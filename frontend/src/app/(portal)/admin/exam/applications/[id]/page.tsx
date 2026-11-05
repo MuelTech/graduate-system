@@ -12,6 +12,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Breadcrumb } from "@/components/ui/breadcrumb";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button, buttonVariants } from "@/components/ui/button";
+import { ExamRecordActions } from "@/components/admin/exam/exam-record-actions";
 import { EssayEvaluationPanel } from "@/components/admin/exam/essay-evaluation-panel";
 import { StartAuthorization } from "@/components/admin/exam/start-authorization";
 import {
@@ -291,6 +292,7 @@ export default function ExamRecordDetailPage() {
   const state = deriveExamState(
     record.status,
     record.essayEvaluation?.status === "COMPLETED",
+    record.effectiveStatus === "passed_reconsidered",
   );
   const fullName =
     `${record.student.user.firstName} ${record.student.user.lastName}`.trim();
@@ -300,7 +302,7 @@ export default function ExamRecordDetailPage() {
     record.slot.examTime,
   )}`;
 
-  const isCompleted = state === "PASSED" || state === "FAILED";
+  const isCompleted = record.status === "PASSED" || record.status === "FAILED";
   const isTaken = record.status === "TAKEN";
 
   return (
@@ -346,6 +348,8 @@ export default function ExamRecordDetailPage() {
         applicationId={applicationId}
         applicantName={fullName}
       />
+
+      <ExamRecordActions record={record} />
 
       {/* Exam Information */}
       <SectionCard title="Exam Information">
@@ -429,18 +433,7 @@ export default function ExamRecordDetailPage() {
         </SectionCard>
       ) : null}
 
-      {/* Missed Exam Appeal (read-only context) */}
-      {state === "APPEAL_PENDING" ? (
-        <SectionCard
-          title="Missed Exam Appeal"
-          description="Appeal actions are not available on this page yet."
-        >
-          <dl className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <DataRow label="Status">Appeal Pending</DataRow>
-            <DataRow label="Original Exam Schedule">{schedule}</DataRow>
-          </dl>
-        </SectionCard>
-      ) : null}
+
     </div>
   );
 }

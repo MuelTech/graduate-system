@@ -27,6 +27,22 @@ export interface ExamRecordEssayAnswer {
 }
 
 export interface ExamRecordDetail {
+  canAmendAppointment: boolean;
+  canReconsiderResult: boolean;
+  computedStatus: string;
+  effectiveStatus: string;
+  institutionalDecision: { decision: "PASSED_RECONSIDERED"; decidedAt: string } | null;
+  seatReleasedAt: string | null;
+  replacementOfApplicationId: string | null;
+  scheduleAmendment: {
+    id: string; type: string; status: string; reason: string; requestedAt: string;
+    requestedBy: { id: string; firstName: string; lastName: string };
+    decisionReason: string | null; decidedAt: string | null;
+    decidedBy: { id: string; firstName: string; lastName: string } | null;
+    replacementApplicationId: string | null;
+    targetSlot: { id: string; examDate: string; examTime: string } | null;
+  } | null;
+  reconsideration: { decision: "PASSED_RECONSIDERED"; decidedAt: string; reason: string; decidedBy: { id: string; firstName: string; lastName: string } } | null;
   result: ReturnType<typeof import("../services/exam-result.rules").resultProjection> | null;
   resultEmailEligible: boolean;
   id: string;

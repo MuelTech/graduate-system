@@ -9,9 +9,9 @@ export class ApplicantRepository {
                 program: true,
                 bridgingWaiver: true,
                 examApplications: {
-                    include: { slot: true },
-                    orderBy: { createdAt: 'desc' },
-                    take: 1
+                    include: { slot: true, score: true, resultDecision: true },
+                    where: { status: { notIn: ["RESCHEDULED","CANCELLED"] } },
+                    orderBy: [{ createdAt: 'desc' },{ id: 'desc' }]
                 }
             }
         });

@@ -1,8 +1,9 @@
 import { AppError } from "../utils/AppError";
 import { parseScheduleDate, parseScheduleTime } from "./exam-schedule-time";
 
-// Transitional existing blocking behavior; this is not an examination-period policy.
-export const BLOCKING_EXAM_STATUSES = ["PENDING", "APPROVED", "TAKEN", "PASSED", "APPEALED", "DISQUALIFIED"] as const;
+// B9 prohibits implicit retakes. Only explicit cancellation/replacement history
+// is non-blocking; a FAILED or MISSED examination never grants another booking.
+export const BLOCKING_EXAM_STATUSES = ["PENDING", "APPROVED", "TAKEN", "PASSED", "FAILED", "APPEALED", "MISSED", "DISQUALIFIED"] as const;
 
 export function scheduleIdentifier(value: unknown, name: string): string {
   if (typeof value !== "string" || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value)) {

@@ -8,7 +8,7 @@ const prismaMock = vi.hoisted(() => {
     student: { findUnique: vi.fn(), updateMany: vi.fn() },
     user: { findUnique: vi.fn(), updateMany: vi.fn(), update: vi.fn() },
     program: { findUnique: vi.fn(), create: vi.fn() },
-    entranceExamApplication: { findFirst: vi.fn() },
+    entranceExamApplication: { findFirst: vi.fn(), findMany: vi.fn(async () => []) },
     auditLog: { create: vi.fn() },
   };
   return {

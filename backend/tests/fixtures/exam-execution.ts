@@ -10,7 +10,7 @@ export const configuration = { examDurationMinutes: 120, mcqPointsPerCorrectItem
 export function executionApplication() {
   const ids = executionIds;
   const date = new Date("2026-11-03T00:00:00Z"), time = new Date("1970-01-01T09:00:00Z");
-  return { id: ids.app, studentId: ids.student, programId: ids.program, slotId: ids.slot, status: "PENDING",
+  return { seatReleasedAt: null, scheduleAmendment: null, resultDecision: null, id: ids.app, studentId: ids.student, programId: ids.program, slotId: ids.slot, status: "PENDING",
     examDate: date, examTime: time, actualStartedAt: null, deadlineAt: null, executionConfiguration: null, contentRevisionId: null,
     startAuthorizedAt: null, startAuthorizedById: null, startAuthorizedBy: null,
     student: { id: ids.student, userId: ids.user, programId: ids.program, admissionStatus: "APPLICANT", alignmentStatus: "ALIGNED", pinnacleApplicantId: "B4-SYNTHETIC", user: { role: "APPLICANT", isActive: true } },

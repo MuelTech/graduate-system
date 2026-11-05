@@ -1,4 +1,7 @@
 export interface ExamResult {
+  computedStatus?: string;
+  effectiveStatus?: string;
+  institutionalDecision?: { decision: "PASSED_RECONSIDERED"; decidedAt: string } | null;
   provenance: "B8" | "LEGACY";
   status: string;
   mcqScore: string | null;

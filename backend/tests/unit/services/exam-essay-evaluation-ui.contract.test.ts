@@ -13,6 +13,7 @@ let states: any[], cursor: number, mutation: any, record: any, pending: boolean;
 const request = vi.fn(), mutate = vi.fn(), invalidate = vi.fn(), setData = vi.fn(), success = vi.fn(), failure = vi.fn();
 const primitive = (tag = "div") => ({ children, ...props }: any) => createElement(tag, props, children);
 const modules: Record<string, any> = {
+  "@/components/admin/exam/exam-record-actions": { ExamRecordActions: () => null },
   "react/jsx-runtime": requireFrontend("react/jsx-runtime"),
   react: { useState: (initial: any) => { const i = cursor++; if (!(i in states)) states[i] = initial; return [states[i], (value: any) => { states[i] = value; }]; }, useRef: (initial: any) => { const i = cursor++; return states[i] ??= { current: initial }; } },
   "@tanstack/react-query": { useMutation: (options: any) => { mutation = options; return { isPending: pending, mutate }; }, useQuery: () => ({ data: record, isLoading: false, isError: false }), useQueryClient: () => ({ setQueryData: setData, invalidateQueries: invalidate }) },

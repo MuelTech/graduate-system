@@ -49,13 +49,13 @@ describe("B3 Admin same-day assignment", () => {
     db.student.findUnique.mockResolvedValue(registered({ alignmentStatus }));
     await expect(service.assignApplicant(ids.student, ids.slot)).resolves.toHaveProperty("id");
   });
-  it.each(["PENDING", "APPROVED", "TAKEN", "PASSED", "APPEALED", "DISQUALIFIED"])("blocks any %s even behind a newer FAILED", async status => {
+  it.each(["PENDING", "APPROVED", "TAKEN", "PASSED", "FAILED", "APPEALED", "MISSED", "DISQUALIFIED"])("blocks any %s even behind a newer FAILED", async status => {
     db.entranceExamApplication.findMany.mockResolvedValue([{ status: "FAILED" }, { status }]);
     await expect(service.assignApplicant(ids.student, ids.slot)).rejects.toMatchObject({ statusCode: 409 });
     expect(db.examSlot.updateMany).not.toHaveBeenCalled();
   });
-  it("preserves transitional FAILED as nonblocking", async () => {
-    db.entranceExamApplication.findMany.mockResolvedValue([{ status: "FAILED" }]);
+  it.each(["CANCELLED", "RESCHEDULED"])("allows nonblocking %s history", async status => {
+    db.entranceExamApplication.findMany.mockResolvedValue([{ status }]);
     await expect(service.assignApplicant(ids.student, ids.slot)).resolves.toHaveProperty("id");
   });
   it.each([
@@ -180,13 +180,13 @@ describe("B3 booking admission", () => {
     db.student.findUnique.mockResolvedValue({ id: ids.student, programId: ids.program, alignmentStatus });
     await expect(service.scheduleExam("jwt-user", ids.slot)).resolves.toHaveProperty("id");
   });
-  it.each(["PENDING", "APPROVED", "TAKEN", "PASSED", "APPEALED", "DISQUALIFIED"])("preserves blocking status %s", async status => {
+  it.each(["PENDING", "APPROVED", "TAKEN", "PASSED", "FAILED", "APPEALED", "MISSED", "DISQUALIFIED"])("preserves blocking status %s", async status => {
     db.entranceExamApplication.findMany.mockResolvedValue([{ id: "previous", status }]);
     await expect(service.scheduleExam("jwt-user", ids.slot)).rejects.toMatchObject({ statusCode: 409 });
     expect(db.examSlot.updateMany).not.toHaveBeenCalled(); expect(db.entranceExamApplication.create).not.toHaveBeenCalled();
   });
-  it("preserves nonblocking FAILED without claiming a period reset", async () => {
-    db.entranceExamApplication.findMany.mockResolvedValue([{ id: "failed", status: "FAILED" }]);
+  it.each(["CANCELLED", "RESCHEDULED"])("allows nonblocking %s without a retake policy", async status => {
+    db.entranceExamApplication.findMany.mockResolvedValue([{ id: "history", status }]);
     await expect(service.scheduleExam("jwt-user", ids.slot)).resolves.toHaveProperty("id");
   });
   it.each(["PENDING_WAIVER", "UNKNOWN", null])("rejects alignment %s before locking slot", async alignmentStatus => {
@@ -278,18 +278,12 @@ describe("B3 Admin schedule mutations", () => {
   });
 });
 
-describe("B3 minimal appeal serialization integration", () => {
-  it("takes Student lock and uses transactional pending lookup, then conditional status update", async () => {
-    db.entranceExamApplication.findFirst.mockResolvedValue({ id: "previous", slot: null });
-    db.entranceExamApplication.updateMany.mockResolvedValue({ count: 1 });
-    await service.appealMissedExam("jwt-user");
-    expect(db.$queryRaw.mock.calls[0][1]).toBe("jwt-user");
-    expect(db.entranceExamApplication.findFirst.mock.calls[0][0].where).toEqual({ studentId: ids.student, status: "PENDING" });
-    expect(db.entranceExamApplication.updateMany).toHaveBeenCalledWith({ where: { id: "previous", status: "PENDING" }, data: { status: "APPEALED" } });
-  });
-  it("cannot restore a non-PENDING application using stale appeal authorization", async () => {
-    db.entranceExamApplication.findFirst.mockResolvedValue({ id: "previous", slot: null });
-    db.entranceExamApplication.updateMany.mockResolvedValue({ count: 0 });
+describe("B9 retired implicit appeal mutation", () => {
+  it("requires exact application, reason and dedicated decision routes without writes", async () => {
     await expect(service.appealMissedExam("jwt-user")).rejects.toMatchObject({ statusCode: 409 });
+    await expect(service.approveAppeal(ids.student)).rejects.toMatchObject({ statusCode: 409 });
+    await expect(service.rejectAppeal(ids.student)).rejects.toMatchObject({ statusCode: 409 });
+    expect(db.$transaction).not.toHaveBeenCalled();
+    expect(db.entranceExamApplication.updateMany).not.toHaveBeenCalled();
   });
 });

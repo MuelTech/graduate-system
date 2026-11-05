@@ -1,6 +1,7 @@
 // backend/src/repositories/admin-applicant.repository.ts
 
 import prisma from "../config/database";
+import { validReconsideredApplicationIds } from "../services/exam-effective-result.rules";
 import {
   AdminApplicantListQuery,
   AdminApplicantListRow,
@@ -12,14 +13,18 @@ import {
 } from "../services/admin-applicant-list.rules";
 
 export class AdminApplicantRepository {
-  async countApplicants(filters: AdminApplicantListQuery): Promise<number> {
-    return prisma.student.count({ where: buildApplicantListWhere(filters) });
+  effectivePassIds() { return validReconsideredApplicationIds(prisma); }
+
+  async countApplicants(filters: AdminApplicantListQuery, decisionIds?: string[]): Promise<number> {
+    return prisma.student.count({ where: buildApplicantListWhere(filters, decisionIds ?? await this.effectivePassIds()) });
   }
 
   async findApplicants(
     filters: AdminApplicantListQuery,
+    decisionIds?: string[],
   ): Promise<AdminApplicantListRow[]> {
-    const where = buildApplicantListWhere(filters);
+    const passIds = decisionIds ?? await this.effectivePassIds();
+    const where = buildApplicantListWhere(filters,passIds);
     const page = filters.page || 1;
     const pageSize = filters.pageSize || 10;
     const skip = (page - 1) * pageSize;
@@ -58,7 +63,7 @@ export class AdminApplicantRepository {
     return students.map((student) => {
       const hasPassedExam = hasAuthoritativePassedExam(
         student.examApplications,
-      );
+      ) || student.examApplications.some(app => passIds.includes(app.id));
       const latestExam = student.examApplications[0];
       const latestCor = student.corUploads[0];
 
@@ -124,7 +129,7 @@ export class AdminApplicantRepository {
         },
         examApplications: {
           include: {
-            score: true,
+            score: true, resultDecision: true,
             slot: true,
           },
           orderBy: [{ createdAt: "desc" }, { id: "desc" }],

@@ -20,7 +20,7 @@ describe("B0B bounded result queries and B7 superseded legacy grading", () => {
     db.entranceExamApplication.findFirst.mockResolvedValue({ id: "owned-app", status: "TAKEN", score: { status: "PENDING" } });
     db.examQuestion.count.mockResolvedValue(72);
     const result = await repo.getLatestResult("jwt-user");
-    expect(db.entranceExamApplication.findFirst).toHaveBeenCalledWith({ where: { student: { userId: "jwt-user" }, score: { isNot: null } }, include: { score: true, slot: true }, orderBy: { createdAt: "desc" } });
+    expect(db.entranceExamApplication.findFirst).toHaveBeenCalledWith({ where: { student: { userId: "jwt-user" }, score: { isNot: null } }, include: { score: true, slot: true, resultDecision: true }, orderBy: { createdAt: "desc" } });
     expect(result?.score.status).toBe("PENDING");
     // B8 never consults or invents a mutable denominator.
     expect(result).not.toHaveProperty("program");

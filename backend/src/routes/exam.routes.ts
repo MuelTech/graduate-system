@@ -1,9 +1,18 @@
 import { Router } from "express";
 import { ExamController } from "../controllers/exam.controller";
+import { ExamAmendmentController } from "../controllers/exam-amendment.controller";
 import { authenticateJWT, requireRole } from "../middlewares/auth.middleware";
 
 const router = Router();
 const examController = new ExamController();
+const amendments = new ExamAmendmentController();
+router.post('/applications/:id/missed-appeal', authenticateJWT, requireRole(['APPLICANT']), amendments.action('MISSED_APPEAL'));
+router.post('/applications/:id/missed-appeal/approve', authenticateJWT, requireRole(['ADMIN']), amendments.action('APPROVE_APPEAL'));
+router.post('/applications/:id/missed-appeal/reject', authenticateJWT, requireRole(['ADMIN']), amendments.action('REJECT_APPEAL'));
+router.post('/applications/:id/reschedule', authenticateJWT, requireRole(['ADMIN']), amendments.action('ADMIN_RESCHEDULE'));
+router.post('/applications/:id/cancel-appointment', authenticateJWT, requireRole(['ADMIN']), amendments.action('ADMIN_CANCELLATION'));
+router.get('/applications/:id/amendment-options', authenticateJWT, requireRole(['ADMIN']), amendments.options);
+router.post('/applications/:id/reconsider-result', authenticateJWT, requireRole(['ADMIN']), amendments.reconsider);
 
 // ADMIN ONLY: Create slots
 router.post('/slots', authenticateJWT, requireRole(['ADMIN']), examController.createSlot);

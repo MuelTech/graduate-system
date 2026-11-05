@@ -1,3 +1,4 @@
+import { findEffectivePassedExam } from "../services/exam-effective-result.rules";
 import prisma from '../config/database';
 import { Prisma, PrismaClient } from '@prisma/client';
 import { AppError } from '../utils/AppError';
@@ -386,9 +387,7 @@ export class CorRepository {
             }
 
             // 4. Entrance exam gate re-checked inside the transaction.
-            const passedExam = await tx.entranceExamApplication.findFirst({
-                where: { studentId, status: 'PASSED' },
-            });
+            const passedExam = await findEffectivePassedExam(tx,studentId);
             if (!passedExam) {
                 throw new AppError(
                     'Applicant has not passed the entrance exam.',
@@ -502,9 +501,7 @@ export class CorRepository {
     }
 
     async checkPassedExam(studentId: string) {
-        return prisma.entranceExamApplication.findFirst({
-            where: { studentId, status: 'PASSED' },
-        });
+        return findEffectivePassedExam(prisma,studentId);
     }
 
     async checkVerifiedRecord(corUploadId: string) {

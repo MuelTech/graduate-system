@@ -5,7 +5,9 @@ import { scheduleIdentifier } from '../services/exam-schedule.rules';
 import { essayScoreValue } from '../services/exam-essay-evaluation.rules';
 import { essayReviewProjection, requireEssayReview, evaluationAuthoritySelect, evaluationScoreSelect } from './exam-essay-evaluation.projection';
 import { scoreLockedApplication } from './exam-result.repository';
+import { hasEffectiveExamPass } from "../services/exam-effective-result.rules";
 import { completedResultStatus } from '../services/exam-result.rules';
+import { amendmentInclude } from './exam-amendment.repository';
 
 // Type for the transaction client that Prisma provides inside $transaction
 type TransactionClient = Omit<PrismaClient, '$connect' | '$disconnect' | '$on' | '$transaction' | '$use' | '$extends'>;
@@ -22,7 +24,7 @@ export class ExamRepository {
                 isActive: true,
                 ...(examDate ? { examDate } : {}),
             },
-            include: { _count: { select: { examApplications: true } } },
+            include: { _count: { select: { examApplications: { where: { seatReleasedAt: null } } } } },
             orderBy: [{ examDate: 'asc' }, { examTime: 'asc' }, { id: 'asc' }]
         });
     }
@@ -82,7 +84,7 @@ export class ExamRepository {
     }
 
     async getAssignedCount(slotId: string, tx: TransactionClient) {
-        return tx.entranceExamApplication.count({ where: { slotId } });
+        return tx.entranceExamApplication.count({ where: { slotId, seatReleasedAt: null } });
     }
 
     async getStudentApplications(studentId: string, tx: TransactionClient) {
@@ -103,7 +105,7 @@ export class ExamRepository {
 
         async getAllSlots() {
         return prisma.examSlot.findMany({
-            include: { program: true },
+            include: { program: true, _count: { select: { examApplications: true } } },
             orderBy: { examDate: 'asc' }
         });
     }
@@ -112,8 +114,11 @@ export class ExamRepository {
         return prisma.student.findUnique({
             where: { userId },
             include: {
+                user: { select: { role: true, isActive: true } },
                 examApplications: {
+                    orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
                     include: {
+                        score: true, resultDecision: true, scheduleAmendment: { include: amendmentInclude }, _count: { select: { answers: true } },
                         slot: {
                             include: { program: true }
                         }
@@ -133,7 +138,7 @@ export class ExamRepository {
     async getAllApplications() {
         const applications = await prisma.entranceExamApplication.findMany({
             include: {
-                score: { select: { essayScore: true, gradedById: true, essayEvaluatedAt: true, status: true, totalScore: true } },
+                score: true, resultDecision: true,
                 student: {
                     include: {
                         user: true,
@@ -146,7 +151,8 @@ export class ExamRepository {
                 createdAt: 'desc'
             }
         });
-        return applications.map(({ score, ...application }) => ({ ...application,
+        return applications.map(({ score, resultDecision, ...application }) => ({ ...application,
+            reconsidered: resultDecision != null && hasEffectiveExamPass({ ...application, score, resultDecision }),
             // Presentation only. The locked B7 resolver remains grading authority.
             essayEvaluationCompleted: application.status === "TAKEN" && application.finalizedAt !== null &&
                 application.finalizationReceiptId !== null && application.finalizationReason !== null &&
@@ -178,6 +184,11 @@ export class ExamRepository {
                     id: true,
                     status: true,
                     ...evaluationAuthoritySelect,
+                    seatReleasedAt: true, startAuthorizedAt: true, startAuthorizedById: true, examDate: true, examTime: true,
+                    _count: { select: { answers: true } },
+                    scheduleAmendment: { include: amendmentInclude },
+                    replacementFor: { select: { applicationId: true } },
+                    resultDecision: { include: { decidedBy: { select: { id: true, firstName: true, lastName: true } } } },
                     student: {
                         select: {
                             id: true,
@@ -206,6 +217,7 @@ export class ExamRepository {
                     },
                     score: {
                         select: {
+                            id: true,
                             ...evaluationScoreSelect,
                             multipleChoiceScore: true,
                             essayScore: true,
@@ -266,32 +278,6 @@ export class ExamRepository {
         });
     }
 
-    async approveAppeal(applicationId: string) {
-        return prisma.$transaction(async (tx) => {
-            const app = await tx.entranceExamApplication.findUnique({ where: { id: applicationId } });
-            if (!app || app.status !== 'APPEALED') {
-                throw new Error("Application must be in APPEALED state to approve");
-            }
-            return tx.entranceExamApplication.update({
-                where: { id: applicationId },
-                data: { status: 'FAILED' }
-            });
-        });
-    }
-
-    async rejectAppeal(applicationId: string) {
-        return prisma.$transaction(async (tx) => {
-            const app = await tx.entranceExamApplication.findUnique({ where: { id: applicationId } });
-            if (!app || app.status !== 'APPEALED') {
-                throw new Error("Application must be in APPEALED state to reject");
-            }
-            return tx.entranceExamApplication.update({
-                where: { id: applicationId },
-                data: { status: 'DISQUALIFIED' }
-            });
-        });
-    }
-
     async getLatestResult(userId: string) {
         const app = await prisma.entranceExamApplication.findFirst({
             where: {
@@ -300,6 +286,7 @@ export class ExamRepository {
             },
             include: {
                 score: true,
+                resultDecision: true,
                 slot: true
             },
             orderBy: { createdAt: 'desc' }
@@ -374,9 +361,10 @@ export class ExamRepository {
         return prisma.$transaction(async tx => {
             await tx.$queryRaw`SELECT status FROM entrance_exam_applications WHERE application_id = ${id} FOR UPDATE`;
             const app = await tx.entranceExamApplication.findUnique({ where: { id }, include: {
-                score: true, student: { select: { user: { select: { email: true, firstName: true } } } },
+                score: true, resultDecision: true, student: { select: { user: { select: { email: true, firstName: true } } } },
             } });
             if (!app) throw new AppError("Exam record not found.", 404);
+            if (app.resultDecision) throw new AppError("An institutional reconsideration decision is recorded. The original computed-result email cannot be queued again. Refer to the portal decision.",409);
             const status = completedResultStatus(app);
             if (!status || !app.score) throw new AppError("A completed, consistent examination result is required before queueing a result email.", 409);
             const template = status === "PASSED" ? "ecat_result_pass" : "ecat_result_fail";

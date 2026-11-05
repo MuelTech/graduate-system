@@ -100,6 +100,8 @@ export default function ApplicantResultsPage() {
       </div>
     );
   }
+  const reconsidered = result.effectiveStatus === "passed_reconsidered" && result.institutionalDecision?.decision === "PASSED_RECONSIDERED";
+  const effectivePass = result.status === "passed" || reconsidered;
   const formattedDate = new Date(result.examDate).toLocaleDateString("en-US", {
     month: "long",
     day: "numeric",
@@ -124,7 +126,9 @@ export default function ApplicantResultsPage() {
       <Card>
         <CardContent className="py-6">
           <div className="flex flex-col items-center text-center">
-            {result.status === "passed" ? (
+            {reconsidered ? (
+              <><Badge className="mb-2 bg-green-100 px-4 py-1 text-base text-green-700">PASSED — RECONSIDERED</Badge><p className="text-sm">The original computed examination result remains FAILED. A separate institutional reconsideration decision grants a pass for admission.</p><p className="text-sm">Decision: {new Date(result.institutionalDecision!.decidedAt).toLocaleString("en-PH", { timeZone: "Asia/Manila" })}</p></>
+            ) : result.status === "passed" ? (
               <>
                 <div className="mx-auto mb-3 flex h-16 w-16 items-center justify-center rounded-full bg-green-50">
                   <CheckCircle2 className="h-10 w-10 text-green-600" />
@@ -166,7 +170,7 @@ export default function ApplicantResultsPage() {
       </Card>
 
       {/* Pass Path — Instructions */}
-      {result.status === "passed" && (
+      {effectivePass && (
         <Card>
           <CardContent className="py-4">
             <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
@@ -204,7 +208,7 @@ export default function ApplicantResultsPage() {
       )}
 
       {/* Fail Path — Re-application Info */}
-      {result.status === "failed" && (
+      {result.status === "failed" && !reconsidered && (
         <Card>
           <CardContent className="py-4">
             <div className="rounded-lg border border-(--earist-border-gray) bg-(--earist-surface-gray) p-4">

@@ -4,7 +4,7 @@ import { AppError } from "../utils/AppError";
 import { ExamConfigurationRepository } from "./exam-configuration.repository";
 import { ExamQuestionSetRepository } from "./exam-question-set.repository";
 import { examConfigurationDto, validateExamConfiguration } from "../services/exam-configuration.rules";
-import { requireConsistentCapacity, scheduleIdentifier } from "../services/exam-schedule.rules";
+import { BLOCKING_EXAM_STATUSES, requireConsistentCapacity, scheduleIdentifier } from "../services/exam-schedule.rules";
 import { manilaCalendarDate, scheduleStartInstant } from "../services/exam-schedule-time";
 import { finalizationReceipt } from "../services/exam-finalization.rules";
 import { singleEssay } from "../services/exam-essay-evaluation.rules";
@@ -18,6 +18,7 @@ type Application = Prisma.EntranceExamApplicationGetPayload<{ include: typeof in
 const writable = (status: string) => status === "PENDING" || status === "APPROVED";
 
 export function validateExecutionIdentity(app: Application, requireActiveSlot = false) {
+  if (app.seatReleasedAt != null) throw new AppError("This appointment's seat has been released. Reload the current examination record.",409);
   if (app.student.user.role !== "APPLICANT" || !app.student.user.isActive ||
       app.student.admissionStatus !== "APPLICANT" || !app.student.pinnacleApplicantId?.trim() ||
       !["ALIGNED", "CLEARED"].includes(app.student.alignmentStatus ?? "") ||
@@ -91,11 +92,12 @@ export class ExamExecutionRepository {
     const student = await prisma.student.findUnique({ where: { userId }, select: { id: true } });
     if (!student) throw new AppError("Student profile not found.", 404);
     const candidates = await prisma.entranceExamApplication.findMany({
-      where: { studentId: student.id, status: { in: ["PENDING", "APPROVED", "TAKEN", "PASSED", "APPEALED", "DISQUALIFIED"] } },
+      where: { studentId: student.id, status: { in: [...BLOCKING_EXAM_STATUSES] } },
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
       select: { id: true }, take: 2,
     });
     if (candidates.length > 1) throw new AppError("Multiple examination records require Graduate School review.", 409);
-    const app = candidates[0] ?? await prisma.entranceExamApplication.findFirst({ where: { studentId: student.id }, orderBy: [{ createdAt: "desc" }, { id: "desc" }], select: { id: true } });
+    const app = candidates[0] ?? await prisma.entranceExamApplication.findFirst({ where: { studentId: student.id, status: { notIn: ["RESCHEDULED","CANCELLED"] } }, orderBy: [{ createdAt: "desc" }, { id: "desc" }], select: { id: true } });
     return app ? this.read(userId, app.id) : null;
   }
 
@@ -155,7 +157,7 @@ export class ExamExecutionRepository {
       if (admin?.role !== "ADMIN" || !admin.isActive) throw new AppError("Only an active Admin may authorize Start Now.", 403);
       if (app.actualStartedAt) throw new AppError("The Applicant has already started this examination.", 409);
       requireNewStart(app, new Date(), true);
-      requireConsistentCapacity(app.slot, await tx.entranceExamApplication.count({ where: { slotId: app.slotId } }));
+      requireConsistentCapacity(app.slot, await tx.entranceExamApplication.count({ where: { slotId: app.slotId, seatReleasedAt: null } }));
       const now = new Date();
       requireNewStart(app, now, true); // Recheck Manila date immediately before writing.
       // Repeated authorization retains its original actor/time; never starts time.
@@ -172,7 +174,7 @@ export class ExamExecutionRepository {
         return this.dto(app);
       }
       requireNewStart(app, new Date());
-      requireConsistentCapacity(app.slot, await tx.entranceExamApplication.count({ where: { slotId: app.slotId } }));
+      requireConsistentCapacity(app.slot, await tx.entranceExamApplication.count({ where: { slotId: app.slotId, seatReleasedAt: null } }));
       const config = await new ExamConfigurationRepository().getCurrent(tx);
       if (!examConfigurationDto(config).isComplete) throw new AppError("Complete Exam Configuration, including the passing percentage, before starting.", 409);
       if (!config.examDurationMinutes) throw new AppError("Configure a valid examination duration before starting.", 409);

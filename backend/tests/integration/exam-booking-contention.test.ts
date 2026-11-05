@@ -1,7 +1,11 @@
-// EXAM_B3_DB_TEST=1: exact UUID-scoped synthetic local records and independent
-// connections. No Question Bank writes, migrations, resets or historical repair.
+// EXAM_B3_DB_TEST=1: disposable local database, committed migrations and independent connections.
+// Never writes to the configured development database.
 import { randomUUID, createHash } from "node:crypto";
-import { readFileSync } from "node:fs";
+import { readFileSync, mkdtempSync, writeFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import path from "node:path";
+import { execFileSync } from "node:child_process";
+import mysql, { type Connection } from "mysql2/promise";
 import { setTimeout as delay } from "node:timers/promises";
 import { parse } from "dotenv";
 import { Prisma, PrismaClient } from "@prisma/client";
@@ -20,6 +24,15 @@ describe.skipIf(process.env.EXAM_B3_DB_TEST !== "1")("B3 real MariaDB booking ad
   const ids = { program: randomUUID(), otherProgram: randomUUID(), users: [randomUUID(), randomUUID(), randomUUID()], students: [randomUUID(), randomUUID(), randomUUID()], slots: [randomUUID(), randomUUID(), randomUUID()] };
   const service = new ExamService();
   let observer: PrismaClient; let workers: PrismaClient[] = []; let initial: string;
+  const database = `exam_b3_test_${randomUUID().replaceAll("-", "")}`;
+  let admin: Connection, source: Connection, sourceHash: string, folder: string, created = false;
+  async function canonicalSnapshot() {
+    const rows = await Promise.all(["exam_questions","exam_options","exam_media","applicant_answers","exam_slots","entrance_exam_applications","entrance_exam_scores","students","users"].map(async table => {
+      const [data] = await source.query(`SELECT * FROM ${table}`);
+      return JSON.parse(JSON.stringify(data)).sort((a: unknown,b: unknown) => JSON.stringify(a).localeCompare(JSON.stringify(b)));
+    }));
+    return createHash("sha256").update(JSON.stringify(rows)).digest("hex");
+  }
   const date = new Date("2099-11-15T00:00:00Z"), time = new Date("1970-01-01T16:00:00Z");
   const body = { programId: ids.program, examDate: "2099-11-15", examTime: time.toISOString(), maxSlots: 2 };
   const booking = (user = 0, slot = 0) => service.scheduleExam(ids.users[user], ids.slots[slot]);
@@ -38,14 +51,24 @@ describe.skipIf(process.env.EXAM_B3_DB_TEST !== "1")("B3 real MariaDB booking ad
   beforeAll(async () => {
     const env = parse(readFileSync(".env")); const url = new URL(process.env.DATABASE_URL || env.DATABASE_URL);
     if (!["localhost", "127.0.0.1", "[::1]"].includes(url.hostname)) throw new Error("B3 fixtures require the supported local database.");
+    source = await mysql.createConnection(url.toString()); sourceHash = await canonicalSnapshot();
+    const adminUrl = new URL(url); adminUrl.pathname = "/";
+    admin = await mysql.createConnection(adminUrl.toString());
+    if (!/^exam_b3_test_[0-9a-f]{32}$/.test(database)) throw new Error("Unsafe disposable database identity");
+    await admin.query(`CREATE DATABASE \`${database}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`); created = true;
+    url.pathname = `/${database}`;
+    folder = mkdtempSync(path.join(tmpdir(),"exam-b3-"));
+    const config = path.join(folder,"prisma.config.ts");
+    writeFileSync(config,`export default ${JSON.stringify({ schema:path.resolve("prisma/schema.prisma"),migrations:{path:path.resolve("prisma/migrations")},datasource:{url:url.toString()} })}`);
+    execFileSync(process.execPath,["node_modules/prisma/build/index.js","migrate","deploy","--config",config],{stdio:"pipe"});
     const client = () => new PrismaClient({ adapter: new PrismaMariaDb(url.toString().replace("mysql://", "mariadb://")) });
     observer = client(); workers = [client(), client()];
     await Promise.all([observer, ...workers].map(db => db.$connect()));
     const engines = await observer.$queryRaw<{ ENGINE: string }[]>`SELECT ENGINE FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME IN ('students','exam_slots','entrance_exam_applications')`;
     expect(engines).toHaveLength(3); expect(engines.every(e => e.ENGINE === "InnoDB")).toBe(true);
-    const drift = await observer.$queryRaw<unknown[]>`SELECT s.slot_id FROM exam_slots s LEFT JOIN entrance_exam_applications a ON a.slot_id = s.slot_id GROUP BY s.slot_id, s.slots_taken HAVING s.slots_taken <> COUNT(a.application_id)`;
+    const drift = await observer.$queryRaw<unknown[]>`SELECT s.slot_id FROM exam_slots s LEFT JOIN entrance_exam_applications a ON a.slot_id = s.slot_id AND a.seat_released_at IS NULL GROUP BY s.slot_id, s.slots_taken HAVING s.slots_taken <> COUNT(a.application_id)`;
     expect(drift, "STOP: existing seat counters require owner reconciliation").toHaveLength(0);
-    const duplicates = await observer.$queryRaw<unknown[]>`SELECT student_id FROM entrance_exam_applications WHERE status IN ('PENDING','APPROVED','TAKEN','PASSED','APPEALED','DISQUALIFIED') GROUP BY student_id HAVING COUNT(*) > 1`;
+    const duplicates = await observer.$queryRaw<unknown[]>`SELECT student_id FROM entrance_exam_applications WHERE status IN ('PENDING','APPROVED','TAKEN','PASSED','FAILED','APPEALED','MISSED','DISQUALIFIED') GROUP BY student_id HAVING COUNT(*) > 1`;
     expect(duplicates, "STOP: existing blocking application duplicates require owner review").toHaveLength(0);
     initial = await snapshot();
     await observer.program.createMany({ data: [ids.program, ids.otherProgram].map((id, i) => ({ id, programName: `B3 synthetic ${id}`, programType: "MASTERS" as const })) });
@@ -60,10 +83,10 @@ describe.skipIf(process.env.EXAM_B3_DB_TEST !== "1")("B3 real MariaDB booking ad
     gateway.examSlot.findMany.mockImplementation(args => observer.examSlot.findMany(args));
     const version = await observer.$queryRaw<unknown[]>`SELECT VERSION() AS version, @@tx_isolation AS default_isolation`;
     console.log("B3 real DB engine", JSON.stringify(version));
-  }, 20_000);
+  }, 60_000);
 
   afterAll(async () => {
-    if (!observer) return;
+    if (!observer && !admin) return;
     try {
       await observer.entranceExamApplication.deleteMany({ where: { studentId: { in: ids.students } } });
       await observer.examSlot.deleteMany({ where: { programId: { in: [ids.program, ids.otherProgram] } } });
@@ -78,7 +101,18 @@ describe.skipIf(process.env.EXAM_B3_DB_TEST !== "1")("B3 real MariaDB booking ad
       ])).toEqual([0, 0, 0, 0, 0]);
       if (initial) expect(await snapshot(), "canonical bank and preexisting schedule/application rows unchanged").toBe(initial);
       console.log("B3 cleanup: zero synthetic records; canonical bank and preexisting schedule/application SHA-256 snapshot unchanged.");
-    } finally { await Promise.all([observer, ...workers].map(db => db.$disconnect())); }
+    } finally {
+      await Promise.all([observer,...workers].filter(Boolean).map(db => db.$disconnect()));
+      if (admin && created) {
+        if (!/^exam_b3_test_[0-9a-f]{32}$/.test(database)) throw new Error("Unsafe disposable cleanup identity");
+        await admin.query(`DROP DATABASE \`${database}\``);
+        const [remaining] = await admin.query("SELECT SCHEMA_NAME FROM information_schema.SCHEMATA WHERE SCHEMA_NAME = ?",[database]); expect(remaining).toHaveLength(0);
+      }
+      if(source) { expect(await canonicalSnapshot()).toBe(sourceHash); await source.end(); }
+      if(admin) await admin.end();
+      if(folder && path.dirname(folder) === path.resolve(tmpdir()) && path.basename(folder).startsWith("exam-b3-")) rmSync(folder,{recursive:true,force:true});
+      console.log("B3 disposable database removed; configured canonical snapshot unchanged",sourceHash);
+    }
   }, 20_000);
 
   beforeEach(async () => {
@@ -299,33 +333,18 @@ describe.skipIf(process.env.EXAM_B3_DB_TEST !== "1")("B3 real MariaDB booking ad
     expect(await observer.entranceExamApplication.count({ where: { slotId: ids.slots[0] } })).toBe(0);
   });
 
-  it("FAILED remains nonblocking; APPEALED remains blocking without decrement or period identity", async () => {
-    await observer.entranceExamApplication.create({ data: { studentId: ids.students[0], programId: ids.program, slotId: ids.slots[0], status: "FAILED" } });
+  it.each(["FAILED","MISSED","APPEALED"])("%s blocks booking without decrement or retake identity", async status => {
+    await observer.entranceExamApplication.create({ data: { studentId: ids.students[0], programId: ids.program, slotId: ids.slots[0], status: status as any } });
     await observer.examSlot.update({ where: { id: ids.slots[0] }, data: { slotsTaken: 1 } });
-    await booking(0, 1);
-    await observer.entranceExamApplication.updateMany({ where: { studentId: ids.students[0], status: "PENDING" }, data: { status: "APPEALED" } });
-    await expect(booking(0, 2)).rejects.toMatchObject({ statusCode: 409 });
-    expect((await observer.examSlot.findUniqueOrThrow({ where: { id: ids.slots[0] } })).slotsTaken).toBe(1);
+    await expect(booking(0,1)).rejects.toMatchObject({statusCode:409});
+    await expect(service.assignApplicant(ids.students[0],ids.slots[1])).rejects.toMatchObject({statusCode:409});
+    expect((await observer.examSlot.findUniqueOrThrow({where:{id:ids.slots[0]}})).slotsTaken).toBe(1);
   });
-
-  it("a delayed appeal cannot resurrect a concurrently changed FAILED application before new admission", async () => {
-    await observer.examSlot.update({ where: { id: ids.slots[0] }, data: { examDate: new Date("2020-01-01T00:00:00Z"), slotsTaken: 1 } });
-    const previous = await observer.entranceExamApplication.create({ data: { studentId: ids.students[0], programId: ids.program, slotId: ids.slots[0], status: "PENDING" } });
-    gateway.$transaction.mockImplementation((callback, options) => workers[0].$transaction(tx => callback(new Proxy(tx, { get(target, key) {
-      if (key !== "entranceExamApplication") return Reflect.get(target, key);
-      return new Proxy(target.entranceExamApplication, { get(model, operation) {
-        if (operation !== "findFirst") return Reflect.get(model, operation);
-        return async (args: Prisma.EntranceExamApplicationFindFirstArgs) => {
-          const found = await model.findFirst(args);
-          await observer.entranceExamApplication.update({ where: { id: previous.id }, data: { status: "FAILED" } });
-          return found;
-        };
-      } });
-    } })), options));
-    await expect(service.appealMissedExam(ids.users[0])).rejects.toMatchObject({ statusCode: 409 });
-    expect((await observer.entranceExamApplication.findUniqueOrThrow({ where: { id: previous.id } })).status).toBe("FAILED");
-    gateway.$transaction.mockImplementation((callback, options) => workers[0].$transaction(callback, options));
-    await booking(0, 1);
-    expect(await observer.entranceExamApplication.count({ where: { studentId: ids.students[0], status: { in: ["PENDING", "APPROVED", "TAKEN", "PASSED", "APPEALED", "DISQUALIFIED"] } } })).toBe(1);
+  it("retired implicit appeal never mutates or guesses a pending application", async () => {
+    const previous = await observer.entranceExamApplication.create({data:{studentId:ids.students[0],programId:ids.program,slotId:ids.slots[0],status:"PENDING"}});
+    await observer.examSlot.update({where:{id:ids.slots[0]},data:{slotsTaken:1}});
+    await expect(service.appealMissedExam(ids.users[0])).rejects.toMatchObject({statusCode:409});
+    expect((await observer.entranceExamApplication.findUniqueOrThrow({where:{id:previous.id}})).status).toBe("PENDING");
+    expect(gateway.$transaction).not.toHaveBeenCalled();
   });
 });

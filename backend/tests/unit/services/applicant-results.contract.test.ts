@@ -76,6 +76,12 @@ describe("B0B real Applicant Results component state rendering", () => {
     expect(html).not.toMatch(/has been sent|has been delivered/);
   });
 
+  it("B9 reconsidered pass preserves computed breakdown and opens COR without exposing justification", () => {
+    const html = render({ ...finalResult("failed"), computedStatus:"failed", effectiveStatus:"passed_reconsidered", institutionalDecision:{decision:"PASSED_RECONSIDERED",decidedAt:"2026-11-05T00:00:00Z"} });
+    for(const value of ["PASSED \u2014 RECONSIDERED","FAILED","Score Breakdown","83","Upload COR"]) expect(html).toContain(value);
+    expect(html).not.toMatch(/Re-application Information|Justification|Mark as Passed/);
+  });
+
   it("keeps unexpected failures distinct and never displays internal error text or stale completed data", () => {
     const html = render(finalResult("failed"), new api.ApiError("private database pending internals", 500));
     expect(html).toContain("Error Loading Results");

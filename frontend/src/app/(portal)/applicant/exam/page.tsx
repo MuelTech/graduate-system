@@ -44,6 +44,7 @@ import { ApplicantQuestionRenderer } from "@/components/exam-content/applicant-q
 import { SemanticText } from "@/components/exam-content/semantic-text";
 import { StimulusRenderer } from "@/components/exam-content/stimulus-renderer";
 import { ExamExecutionContext } from "@/components/exam-content/exam-execution-context";
+import { ApplicantAppointmentGate } from "@/components/exam-content/applicant-appointment-gate";
 import { ExamDraftQueue, draftStatusText } from "@/lib/exam-drafts";
 import {
   Clock,
@@ -377,6 +378,7 @@ export default function ApplicantExamPage() {
     );
   if (!execution)
     return (
+      <ApplicantAppointmentGate>
       <Card>
         <CardContent className="space-y-4">
           <PageHeader title="Entrance Examination" />
@@ -384,9 +386,11 @@ export default function ApplicantExamPage() {
           <Link href="/applicant/schedule">Select Exam Schedule</Link>
         </CardContent>
       </Card>
+      </ApplicantAppointmentGate>
     );
   if (execution.state === "TERMINAL" || execution.state === "LEGACY_UNBOUND")
     return (
+      <ApplicantAppointmentGate>
       <Card>
         <CardContent className="space-y-3">
           <PageHeader title="Entrance Examination" />
@@ -403,6 +407,7 @@ export default function ApplicantExamPage() {
           <Link href="/applicant/results">View examination status</Link>
         </CardContent>
       </Card>
+      </ApplicantAppointmentGate>
     );
   if (
     execution.state === "EXPIRED" ||
@@ -442,6 +447,7 @@ export default function ApplicantExamPage() {
     );
   if (execution.state !== "ACTIVE")
     return (
+      <ApplicantAppointmentGate>
       <div className="mx-auto max-w-3xl space-y-6">
         <PageHeader title="Entrance Examination" />
         <Card>
@@ -483,6 +489,7 @@ export default function ApplicantExamPage() {
           </CardContent>
         </Card>
       </div>
+      </ApplicantAppointmentGate>
     );
   if (questionsQuery.isPending) return <Skeleton className="h-64 w-full" />;
   if (questionsQuery.isError)

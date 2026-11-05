@@ -18,6 +18,7 @@ const draftQueue = { snapshot: () => draftState, subscribe: () => () => {}, acti
 const primitive = (name: string) => ({ children }: any) => createElement(name, {}, children);
 const primitives = (names: string[]) => Object.fromEntries(names.map(name => [name, primitive("div")]));
 const modules: Record<string, any> = {
+  "@/components/exam-content/applicant-appointment-gate": { ApplicantAppointmentGate: ({children}: any) => children },
   "react/jsx-runtime": requireFrontend("react/jsx-runtime"),
   react: {
     useState: (initial: any) => { const i = cursor++; if (!(i in states)) states[i] = initial; return [states[i], (v: any) => { states[i] = typeof v === "function" ? v(states[i]) : v; }]; },

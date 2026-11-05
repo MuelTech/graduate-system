@@ -6,7 +6,9 @@ import { ExamRecordDetail } from "../interfaces/exam.interfaces";
 import { manilaCalendarDate, parseScheduleDate, requireFutureSchedule, requireSameDaySchedule, scheduleStartInstant } from "./exam-schedule-time";
 import { BLOCKING_EXAM_STATUSES, requireConsistentCapacity, requireConsistentCounter, requireEligibleAlignment, scheduleIdentifier, validateSlotBody } from "./exam-schedule.rules";
 import { essayScoreValue } from "./exam-essay-evaluation.rules";
-import { completedResultStatus, resultProjection } from "./exam-result.rules";
+import { completedResultStatus, resultProjection, validatedResultBasis } from "./exam-result.rules";
+import { canAmendAppointment, requireMissedDate } from "./exam-amendment.rules";
+import { institutionalProjection } from "./exam-effective-result.rules";
 
 function assignmentBlockReason(student: {
   admissionStatus: string; pinnacleApplicantId: string | null; alignmentStatus: string | null;
@@ -166,37 +168,29 @@ export class ExamService {
     const student = await this.examRepo.getApplicantStatus(userId);
     if (!student) throw new Error("Student not found");
 
-    const applications = student.examApplications || [];
-
-    // Find the active confirmed slot if it exists
-    const activeApp = applications.find((app: any) =>
-      [
-        "PENDING",
-        "APPROVED",
-        "TAKEN",
-        "PASSED",
-        "APPEALED",
-        "DISQUALIFIED",
-      ].includes(app.status),
-    );
-
-    let confirmedSlot = null;
-    if (activeApp && activeApp.slot) {
-      confirmedSlot = {
-        id: activeApp.slot.id,
-        examDate: activeApp.slot.examDate,
-        examTime: activeApp.slot.examTime,
-        programName: activeApp.slot.program?.programName || "Unknown Program",
-      };
+    const applications = [...(student.examApplications || [])].sort((a,b) =>
+      (b.createdAt?.getTime() ?? 0) - (a.createdAt?.getTime() ?? 0) || b.id.localeCompare(a.id));
+    const activeApp = applications.find(app => BLOCKING_EXAM_STATUSES.some(status => status === app.status));
+    let canAppealMissedExam = false;
+    if (activeApp && canAmendAppointment(activeApp)) {
+      try { requireMissedDate(activeApp); canAppealMissedExam = student.user.role === "APPLICANT" && student.user.isActive; } catch { /* same-day and partial evidence stay closed */ }
     }
-
     return {
-      alignmentStatus: student.alignmentStatus,
-      programId: student.programId,
-      confirmedSlot,
+      alignmentStatus: student.alignmentStatus, programId: student.programId,
+      applicationId: activeApp?.id ?? null,
+      confirmedSlot: activeApp ? { id: activeApp.slot.id, examDate: activeApp.slot.examDate, examTime: activeApp.slot.examTime,
+        programName: activeApp.slot.program?.programName || "Unknown Program" } : null,
       examStatus: activeApp ? activeApp.status.toLowerCase() : "none",
+      canBookExam: !activeApp && ["ALIGNED","CLEARED"].includes(student.alignmentStatus ?? ""),
+      canAppealMissedExam,
+      amendment: activeApp?.scheduleAmendment ? {
+        type: activeApp.scheduleAmendment.type, status: activeApp.scheduleAmendment.status,
+        requestedAt: activeApp.scheduleAmendment.requestedAt.toISOString(),
+        reason: activeApp.scheduleAmendment.reason,
+      } : null,
     };
   }
+
 
   async updateSlot(requestedSlotId: unknown, input: unknown) {
     const slotId = scheduleIdentifier(requestedSlotId, "slotId");
@@ -209,7 +203,8 @@ export class ExamService {
       requireConsistentCounter(slot, assignedCount);
       // Also validate the stored wall-clock rather than silently correcting it.
       scheduleStartInstant(slot.examDate, slot.examTime);
-      if (assignedCount > 0 && (slot.programId !== data.programId ||
+      const historyCount = await tx.entranceExamApplication.count({ where: { slotId } });
+      if (historyCount > 0 && (slot.programId !== data.programId ||
           slot.examDate.getTime() !== data.examDate.getTime() || slot.examTime.getTime() !== data.examTime.getTime())) {
         throw new AppError("Program, Exam Date and Start Time cannot change after applicants are booked.", 409);
       }
@@ -300,43 +295,25 @@ export class ExamService {
       })),
       essayEvaluation: app.essayEvaluation,
       result: completedResultStatus(app) ? resultProjection(app) : null,
-      resultEmailEligible: completedResultStatus(app) !== null,
+      resultEmailEligible: completedResultStatus(app) !== null && !app.resultDecision,
+      canAmendAppointment: canAmendAppointment(app),
+      canReconsiderResult: (() => { try { return !app.resultDecision && validatedResultBasis(app).result === "FAILED"; } catch { return false; } })(),
+      ...institutionalProjection(app),
+      seatReleasedAt: app.seatReleasedAt?.toISOString() ?? null,
+      replacementOfApplicationId: app.replacementFor?.applicationId ?? null,
+      scheduleAmendment: app.scheduleAmendment ? {
+        id: app.scheduleAmendment.id, type: app.scheduleAmendment.type, status: app.scheduleAmendment.status,
+        reason: app.scheduleAmendment.reason, requestedAt: app.scheduleAmendment.requestedAt.toISOString(), requestedBy: app.scheduleAmendment.requestedBy,
+        decisionReason: app.scheduleAmendment.decisionReason, decidedAt: app.scheduleAmendment.decidedAt?.toISOString() ?? null,
+        decidedBy: app.scheduleAmendment.decidedBy, replacementApplicationId: app.scheduleAmendment.replacementApplicationId,
+        targetSlot: app.scheduleAmendment.targetSlot ? { id: app.scheduleAmendment.targetSlot.id, examDate: app.scheduleAmendment.targetSlot.examDate.toISOString(), examTime: app.scheduleAmendment.targetSlot.examTime.toISOString() } : null,
+      } : null,
+      reconsideration: app.resultDecision ? { ...institutionalProjection(app).institutionalDecision!, reason: app.resultDecision.reason, decidedBy: app.resultDecision.decidedBy } : null,
     };
   }
 
-  async appealMissedExam(userId: string) {
-    return this.examRepo.runInTransaction(async (tx) => {
-      // Share booking's Student authority. A delayed appeal must never resurrect
-      // a formerly PENDING, now FAILED application after another booking wins.
-      const student = await this.examRepo.lockSchedulingStudent(userId, tx);
-      const pendingApp = await tx.entranceExamApplication.findFirst({
-        where: { studentId: student.id, status: "PENDING" },
-        include: { slot: true }, orderBy: [{ createdAt: "desc" }, { id: "asc" }],
-      });
-      if (!pendingApp) {
-        throw new Error("No pending or missed exam found to appeal.");
-      }
-
-      if (pendingApp.slot) {
-        const d = new Date(pendingApp.slot.examDate);
-        const t = new Date(pendingApp.slot.examTime);
-        d.setHours(t.getHours(), t.getMinutes(), t.getSeconds());
-        if (d > new Date()) {
-          throw new Error("Cannot appeal an exam that has not happened yet.");
-        }
-      }
-
-      // Update status to APPEALED so the admin can review it
-      const updated = await tx.entranceExamApplication.updateMany({
-        where: { id: pendingApp.id, status: "PENDING" },
-        data: { status: "APPEALED" },
-      });
-      if (updated.count !== 1) throw new AppError("Application state changed; reload before appealing.", 409);
-
-      // TODO: In the future, you can integrate email notifications here to inform the admin
-
-      return { success: true, message: "Appeal processed successfully." };
-    });
+  async appealMissedExam(_userId: string) {
+    throw new AppError("Reload Examination and use Appeal Missed Exam for the exact appointment with a reason.",409);
   }
 
   async getAppealedExams() {
@@ -344,11 +321,11 @@ export class ExamService {
   }
 
   async approveAppeal(applicationId: string) {
-    return this.examRepo.approveAppeal(applicationId);
+    throw new AppError("Use the exact missed-appeal approval action with a future appointment and decision reason.",409);
   }
 
   async rejectAppeal(applicationId: string) {
-    return this.examRepo.rejectAppeal(applicationId);
+    throw new AppError("Use the exact missed-appeal rejection action with a decision reason.",409);
   }
 
   async getExamResult(userId: string) {
@@ -363,6 +340,7 @@ export class ExamService {
 
     return {
       ...resultProjection(app),
+      ...institutionalProjection(app),
       examDate: app.slot?.examDate,
       finalizedAt: app.finalizedAt?.toISOString() ?? null,
     };

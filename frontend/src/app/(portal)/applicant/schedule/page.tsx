@@ -53,7 +53,7 @@ export default function ApplicantSchedulePage() {
     enabled:
       !!applicant &&
       (applicant.alignmentStatus === "ALIGNED" || applicant.alignmentStatus === "CLEARED") &&
-      !applicant.confirmedSlot,
+      !applicant.confirmedSlot && applicant.canBookExam !== false,
   });
 
   const scheduleMutation = useMutation({
@@ -149,7 +149,7 @@ export default function ApplicantSchedulePage() {
               </CardTitle>
               <Badge className="bg-green-100 text-green-700">
                 <CheckCircle2 className="mr-1 h-3 w-3" />
-                Scheduled
+                {applicant?.examStatus === "pending" || applicant?.examStatus === "approved" || !applicant?.examStatus ? "Scheduled" : applicant.examStatus === "appealed" ? "Missed Exam Appeal Pending" : applicant.examStatus.toUpperCase()}
               </Badge>
             </div>
           </CardHeader>
@@ -186,7 +186,7 @@ export default function ApplicantSchedulePage() {
       )}
 
       {/* Available Slots — Active State */}
-      {!isLocked && !isScheduled && (
+      {!isLocked && !isScheduled && applicant?.canBookExam !== false && (
         <>
           {/* View Toggle & Info */}
           <div className="flex items-center justify-between">

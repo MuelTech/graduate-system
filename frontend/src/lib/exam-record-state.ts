@@ -14,11 +14,16 @@ export type ExamStateKey =
   | "FAILED"
   | "APPEAL_PENDING"
   | "DISQUALIFIED"
+  | "MISSED"
+  | "RESCHEDULED"
+  | "CANCELLED"
+  | "PASSED_RECONSIDERED"
   | "UNKNOWN";
 
 export type ExamStateFilter = "ALL" | Exclude<ExamStateKey, "UNKNOWN">;
 
-export function deriveExamState(status: string, essayEvaluationCompleted = false): ExamStateKey {
+export function deriveExamState(status: string, essayEvaluationCompleted = false, reconsidered = false): ExamStateKey {
+  if (status === "FAILED" && reconsidered) return "PASSED_RECONSIDERED";
   switch (status) {
     case "PENDING":
     case "APPROVED":
@@ -29,6 +34,9 @@ export function deriveExamState(status: string, essayEvaluationCompleted = false
       return "PASSED";
     case "FAILED":
       return "FAILED";
+    case "MISSED": return "MISSED";
+    case "RESCHEDULED": return "RESCHEDULED";
+    case "CANCELLED": return "CANCELLED";
     case "APPEALED":
       return "APPEAL_PENDING";
     case "DISQUALIFIED":
@@ -46,6 +54,7 @@ export const EXAM_STATE_LABEL: Record<ExamStateKey, string> = {
   FAILED: "Failed",
   APPEAL_PENDING: "Appeal Pending",
   DISQUALIFIED: "Disqualified",
+  MISSED: "Missed", RESCHEDULED: "Rescheduled", CANCELLED: "Cancelled", PASSED_RECONSIDERED: "PASSED — RECONSIDERED",
   UNKNOWN: "Unknown",
 };
 
@@ -58,6 +67,7 @@ export const EXAM_STATE_BADGE_CLASS: Record<ExamStateKey, string> = {
   FAILED: "text-destructive",
   APPEAL_PENDING: "text-(--earist-warning)",
   DISQUALIFIED: "text-(--earist-body-text)",
+  MISSED: "text-(--earist-warning)", RESCHEDULED: "text-(--earist-body-text)", CANCELLED: "text-(--earist-body-text)", PASSED_RECONSIDERED: "text-(--earist-success)",
   UNKNOWN: "text-(--earist-body-text)",
 };
 
@@ -71,8 +81,12 @@ export const EXAM_STATE_DESCRIPTION: Record<ExamStateKey, string> = {
   FAILED:
     "The entrance examination result is complete and recorded as Failed.",
   APPEAL_PENDING:
-    "A missed-exam appeal is pending. Appeal actions are not available on this page yet.",
+    "A missed-exam appeal is pending an Admin decision.",
   DISQUALIFIED: "This entrance exam record is disqualified.",
+  MISSED: "The missed-exam appeal was rejected. No replacement appointment is authorized.",
+  RESCHEDULED: "The original appointment is preserved. A separate replacement appointment is recorded.",
+  CANCELLED: "This never-started appointment was cancelled and its seat released.",
+  PASSED_RECONSIDERED: "The computed FAILED result is preserved. A separate institutional pass decision is recorded.",
   UNKNOWN:
     "The current exam state could not be determined from a supported authoritative status.",
 };
@@ -86,6 +100,10 @@ export const EXAM_STATE_FILTERS: { value: ExamStateFilter; label: string }[] = [
   { value: "FAILED", label: "Failed" },
   { value: "APPEAL_PENDING", label: "Appeal Pending" },
   { value: "DISQUALIFIED", label: "Disqualified" },
+  { value: "MISSED", label: "Missed" },
+  { value: "RESCHEDULED", label: "Rescheduled" },
+  { value: "CANCELLED", label: "Cancelled" },
+  { value: "PASSED_RECONSIDERED", label: "Passed — Reconsidered" },
 ];
 
 const MISSING = "—";
