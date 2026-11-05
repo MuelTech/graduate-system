@@ -316,6 +316,7 @@ B4 requires a valid configured duration and freezes all representable B1 scoring
 ## 14. EXAM-B10 — Focused lifecycle regression and acceptance gate
 
 **2026-11-05 resumed execution checkpoint: CORE AUTOMATED GATE INCOMPLETE — EXISTING ESLINT ERROR.**
+**2026-11-05 owner authorization: EXAM-B10-CORR-1 — Applicant missed-appeal JSX lint correction.** Scope is limited to the existing `react/no-unescaped-entities` failure at `frontend/src/components/exam-content/applicant-appointment-gate.tsx:137`. Correct only the apostrophe representation (for example `&apos;`) or equivalent wording while preserving the exact message meaning and all runtime behavior. No API/service/repository/schema/migration/email/logic/refactor change is authorized. Focused verification: relevant ESLint, frontend TypeScript, production build, directly affected tests and `git diff --check`. If a different failure appears, stop and report rather than broadening scope.
 The [resumed report](../reports/2026-11-05-exam-b10-lifecycle-acceptance.md#11-resumed-core-gate--2026-11-05)
 records 3,958 unit passes / 5 conditional skips, all nine accepted real-DB suites
 (including nested runners), three new integrated complete/incomplete/timeout

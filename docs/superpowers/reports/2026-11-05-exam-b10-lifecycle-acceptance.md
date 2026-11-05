@@ -593,6 +593,8 @@ Standalone Phase A `node --test scripts/verify-exam-content-6-ui-follow-up.mjs`:
 Read-only canonical content/real-emphasis tests also passed in the unit suite:
 **72 VERIFIED questions / 108 actual images**. No content or image changed.
 
+**Owner authorization after review:** `EXAM-B10-CORR-1 — Applicant missed-appeal JSX lint correction` is authorized as a presentation-only fix for the single pre-existing lint error below. The correction must preserve behavior and meaning, touch no API/schema/data/email logic, and rerun only the focused static/build/affected-test gate before B10 automated closure.
+
 The exact declared relevant ESLint command in 11.3 exits **1**:
 
 ```text
@@ -605,9 +607,7 @@ missed-appeal dialog. `git show a54fb13591ca82441e9888c1f3c2ababdf5b9156:<path>`
 confirms the same text existed at the resume baseline. This is a production JSX
 lint error, **not a new core functional defect or merely a warning**. No rule was
 disabled and the file was not excluded to manufacture a PASS. No runtime source
-edit was authorized, so it remains unchanged. A separately authorized bounded
-presentation correction is needed before the requested full core automated PASS
-can be recorded; no correction package was begun.
+edit was authorized, so it remains unchanged. A separately authorized bounded presentation correction is needed before the requested full core automated PASS can be recorded. That bounded correction is now authorized as `EXAM-B10-CORR-1`; it has not yet been implemented in this report revision.
 
 Five existing nonfatal unused-variable/import warnings: Applicant alignment's
 `isWaiverLoading`; Dashboard's `Button`/`Download`; Applicant layout's
