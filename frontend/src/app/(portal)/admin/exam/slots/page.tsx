@@ -121,6 +121,7 @@ function CapacityCell({
     <span ref={controlRef}>
       <IconTooltipButton
         label="View bookings"
+        className="border border-(--earist-border-gray) bg-(--earist-surface-gray) text-(--earist-primary) shadow-sm"
         onClick={() => onViewBookings(controlRef.current?.querySelector("button") ?? null)}
       >
         <Users className="h-4 w-4" aria-hidden="true" />

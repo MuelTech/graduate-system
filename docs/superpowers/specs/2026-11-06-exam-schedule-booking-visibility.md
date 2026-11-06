@@ -1,6 +1,6 @@
 # EXAM-SCHEDULE-BOOKINGS-1 — Exam Schedule Booking Visibility
 
-**Status:** IMPLEMENTED — INDEPENDENT REMOTE REVIEW / PROJECT-OWNER QA PENDING
+**Status:** IMPLEMENTED — INDEPENDENT REMOTE REVIEW PASS; OWNER QA FIX-1 APPLIED / RECHECK REQUIRED
 **Date:** 2026-11-06  
 **Branch:** `feat/exam-schedule-booking-visibility`  
 **Verified base `main`:** `3a456567a7469c4cdc0ac69c012fdf2e79ee6a4c`
@@ -89,7 +89,10 @@ Icon-only controls must remain understandable and accessible:
 - edit control tooltip: **Edit schedule**;
 - edit control `aria-label="Edit schedule"`;
 - visible focus treatment and keyboard activation must use the shared button /
-  tooltip behavior.
+  tooltip behavior;
+- the **View bookings** icon control must have a subtle visible button affordance
+  (border/background treatment) so it is discoverable as an action rather than
+  reading like a decorative Users icon.
 
 Do not add redundant visible words such as **View bookings** or **Edit schedule**
 inside each table row when the icon, tooltip and accessible name already provide
@@ -125,8 +128,10 @@ Do **not** label the timestamp as:
 because the current application record does not by itself prove which actor
 initiated the booking.
 
-Display ordinary date/time in **Philippine Time (Asia/Manila)** consistently with
-the accepted Exam UI timezone convention.
+Format ordinary date/time using **Asia/Manila** internally, consistent with the
+accepted Exam UI timezone convention. Do **not** repeat a visible
+`Philippine Time (Asia/Manila)` caption in the booking dialog; the institutional
+timezone is already established and the extra label is redundant user-facing copy.
 
 ## 6. Current seats vs historical/released records
 
@@ -332,3 +337,29 @@ Manual/browser QA: NOT EXECUTED — PROJECT OWNER
 
 Independent remote review: **PENDING — separate ChatGPT review required**.
 This checkpoint is not acceptance or a new Approved Reference Implementation.
+
+
+## 15. Owner-QA FIX-1 — booking action discoverability and redundant timezone copy
+
+**Date:** 2026-11-07  
+**Status:** SOURCE FIX APPLIED — PROJECT-OWNER BROWSER RECHECK REQUIRED
+
+Independent remote review of the initial implementation passed. During subsequent
+project-owner browser QA, two presentation findings were recorded:
+
+1. the icon-only **View bookings** Users control was technically present but too
+   visually subtle and could be mistaken for a decorative icon;
+2. the booking dialog repeated the visible caption
+   **Philippine Time (Asia/Manila)** even though the timestamp already uses the
+   authoritative Manila formatter and the institutional timezone is established.
+
+FIX-1 keeps the approved icon-only design but gives the Users control a visible
+border/background affordance while preserving the tooltip, `aria-label`, focus
+behavior and capacity association. The redundant visible timezone caption is
+removed. `examinationTimestamp()` remains unchanged and continues to format
+`Booking recorded` using `Asia/Manila`.
+
+No backend/read-model/schema/scheduling behavior is changed by FIX-1. The focused
+UI contract source is updated to require both corrections. Automated execution
+of the updated contract was not performed through the ChatGPT GitHub connector;
+project-owner browser recheck remains required before final acceptance.

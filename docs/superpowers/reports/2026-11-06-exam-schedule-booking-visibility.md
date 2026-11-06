@@ -2,7 +2,7 @@
 
 Date: 2026-11-06 (Asia/Manila).
 
-**IMPLEMENTED — INDEPENDENT REMOTE REVIEW / PROJECT-OWNER QA PENDING.**
+**IMPLEMENTED — INDEPENDENT REMOTE REVIEW PASS; OWNER QA FIX-1 APPLIED / RECHECK REQUIRED.**
 
 ## Verified starting state
 
@@ -83,7 +83,8 @@ is selected by the new read path. The existing all-schedules response is unchang
   each semantic booking list row contains name/Pinnacle ID, Booking recorded,
   Exam State and View Exam Record. The latter links to
   `/admin/exam/applications/{applicationId}`. Schedule context is not repeated
-  per occupant; one Philippine Time (Asia/Manila) label qualifies timestamps.
+  per occupant. Booking timestamps are formatted authoritatively in
+  `Asia/Manila` without repeating a visible timezone caption.
 - **Time/state authority:** Booking recorded is the application's `createdAt`,
   formatted by the existing `examinationTimestamp` helper with explicit
   `Asia/Manila`. Schedule date/time retains the accepted wall-clock helpers.
@@ -204,3 +205,32 @@ docs/superpowers/reports/2026-11-06-exam-schedule-booking-visibility.md
 Commit/push only this package to the existing feature branch, verify live HEAD
 and tracking state, then STOP. Create & Assign and all follow-up packages remain
 outside this authorization.
+
+
+## Owner-QA FIX-1 — 2026-11-07
+
+Independent remote source/diff review of the initial implementation: **PASS**.
+
+Project-owner browser QA then identified two bounded presentation issues:
+
+- the Users / **View bookings** control was present beside Capacity but too subtle
+  to read immediately as an interactive action;
+- the dialog's visible **Philippine Time (Asia/Manila)** caption was redundant.
+
+FIX-1 changes only frontend presentation plus its focused UI contract/documentation:
+
+- the Users control remains icon-only beside Capacity, with the same tooltip,
+  `aria-label`, keyboard focus and return-focus behavior, but now has a visible
+  border/background/button affordance;
+- the visible timezone caption is removed from the dialog;
+- `Booking recorded` still uses the unchanged `examinationTimestamp()`
+  formatter, which explicitly formats in `Asia/Manila`;
+- no backend/API/read-model/schema/capacity/assignment/scheduling mutation or
+  Email Integration behavior changes.
+
+Focused UI contract source was updated to require the stronger icon affordance,
+absence of the visible timezone caption, and continued Manila timestamp output
+across host timezones. This ChatGPT GitHub-connector correction did **not** execute
+the test suite locally, so no new automated PASS is claimed for FIX-1.
+
+Project-owner browser recheck: **PENDING**. Final package acceptance remains open.

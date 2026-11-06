@@ -99,10 +99,7 @@ function BookingList({ slotId }: { slotId: string }) {
   }
 
   return (
-    <div className="min-w-0 space-y-3">
-      <p className="text-xs text-muted-foreground">
-        Philippine Time (Asia/Manila)
-      </p>
+    <div className="min-w-0">
       <ul className="space-y-3">
         {bookings.data.map((booking) => (
           <li

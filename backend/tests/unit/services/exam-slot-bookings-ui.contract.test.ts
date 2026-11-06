@@ -93,6 +93,9 @@ describe("Entrance Exam Schedules booking viewer", () => {
     expect(markup).toContain("2 / 5 booked"); expect(markup).toContain("3 seats available");
     expect(markup).toContain('aria-label="View bookings"'); expect(markup).toContain('data-icon="Users"');
     expect(markup).toMatch(/>View bookings<\/div>/); expect(markup).toContain("focus-visible:ring-2");
+    expect(markup).toContain("border-(--earist-border-gray)");
+    expect(markup).toContain("bg-(--earist-surface-gray)");
+    expect(markup).toContain("text-(--earist-primary)");
     expect(tooltipSource).toContain("TooltipPrimitive.Popup");
   });
   it("retains the booking control even if capacity is unavailable", () => {
@@ -142,7 +145,8 @@ describe("Entrance Exam Schedules booking viewer", () => {
   });
   it("shows Applicant, Pinnacle ID, createdAt evidence, canonical state and exact application navigation", () => {
     const markup = html(dialog.BookingList, { slotId: slot.id });
-    for (const value of ["Ana", "Applicant", "PIN-123", "Pinnacle Applicant ID", "Booking recorded", "Exam State", "Scheduled", "View Exam Record", "Philippine Time (Asia/Manila)"]) expect(markup).toContain(value);
+    for (const value of ["Ana", "Applicant", "PIN-123", "Pinnacle Applicant ID", "Booking recorded", "Exam State", "Scheduled", "View Exam Record"]) expect(markup).toContain(value);
+    expect(markup).not.toContain("Philippine Time (Asia/Manila)");
     expect(markup).toContain('href="/admin/exam/applications/application-9"');
     expect(markup).toContain(`dateTime="${booking.createdAt}"`);
     expect(markup).toMatch(/Nov 6, 2026.*1:30\s*AM/);
