@@ -93,9 +93,6 @@ describe("Entrance Exam Schedules booking viewer", () => {
     expect(markup).toContain("2 / 5 booked"); expect(markup).toContain("3 seats available");
     expect(markup).toContain('aria-label="View bookings"'); expect(markup).toContain('data-icon="Users"');
     expect(markup).toMatch(/>View bookings<\/div>/); expect(markup).toContain("focus-visible:ring-2");
-    expect(markup).toContain("border-(--earist-border-gray)");
-    expect(markup).toContain("bg-(--earist-surface-gray)");
-    expect(markup).toContain("text-(--earist-primary)");
     expect(tooltipSource).toContain("TooltipPrimitive.Popup");
   });
   it("retains the booking control even if capacity is unavailable", () => {

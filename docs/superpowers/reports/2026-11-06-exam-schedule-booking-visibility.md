@@ -211,26 +211,23 @@ outside this authorization.
 
 Independent remote source/diff review of the initial implementation: **PASS**.
 
-Project-owner browser QA then identified two bounded presentation issues:
+Project-owner browser QA identified one bounded presentation issue: the dialog's
+visible **Philippine Time (Asia/Manila)** caption was redundant.
 
-- the Users / **View bookings** control was present beside Capacity but too subtle
-  to read immediately as an interactive action;
-- the dialog's visible **Philippine Time (Asia/Manila)** caption was redundant.
+FIX-1 changes only that frontend copy plus its focused UI contract/documentation:
 
-FIX-1 changes only frontend presentation plus its focused UI contract/documentation:
-
-- the Users control remains icon-only beside Capacity, with the same tooltip,
-  `aria-label`, keyboard focus and return-focus behavior, but now has a visible
-  border/background/button affordance;
 - the visible timezone caption is removed from the dialog;
+- the original icon-only Users / **View bookings** control design is preserved
+  unchanged, including its tooltip, `aria-label`, keyboard focus and
+  return-focus behavior;
 - `Booking recorded` still uses the unchanged `examinationTimestamp()`
   formatter, which explicitly formats in `Asia/Manila`;
 - no backend/API/read-model/schema/capacity/assignment/scheduling mutation or
   Email Integration behavior changes.
 
-Focused UI contract source was updated to require the stronger icon affordance,
-absence of the visible timezone caption, and continued Manila timestamp output
-across host timezones. This ChatGPT GitHub-connector correction did **not** execute
-the test suite locally, so no new automated PASS is claimed for FIX-1.
+Focused UI contract source was updated to require absence of the visible timezone
+caption and continued Manila timestamp output across host timezones. This ChatGPT
+GitHub-connector correction did **not** execute the test suite locally, so no new
+automated PASS is claimed for FIX-1.
 
 Project-owner browser recheck: **PENDING**. Final package acceptance remains open.

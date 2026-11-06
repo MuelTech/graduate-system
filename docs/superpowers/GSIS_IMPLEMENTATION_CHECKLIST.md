@@ -539,12 +539,13 @@ Users/Pencil tooltip controls and focused booking Dialog. No schema migration
 was added. Focused verification: **6 files / 165 tests PASS**; backend/frontend
 TypeScript, scoped frontend ESLint and diff checks **PASS**. Production-build
 outcome is recorded in the report. Independent remote source/diff review:
-**PASS**. During project-owner browser QA, the Users control was found too subtle
-and the visible `Philippine Time (Asia/Manila)` caption redundant. Bounded FIX-1
-adds a visible icon-button affordance and removes only that caption while keeping
-the authoritative Manila timestamp formatter unchanged. The focused UI contract
-source was updated; no new automated FIX-1 PASS is claimed from the ChatGPT
-GitHub connector session. **Project-owner browser recheck: PENDING.**
+**PASS**. During project-owner browser QA, the visible
+`Philippine Time (Asia/Manila)` caption was found redundant. Bounded FIX-1
+removes only that caption while keeping the authoritative Manila timestamp
+formatter unchanged. The original Users / **View bookings** icon design is
+preserved. The focused UI contract source was updated; no new automated FIX-1
+PASS is claimed from the ChatGPT GitHub connector session.
+**Project-owner browser recheck: PENDING.**
 
 Existing Program/capacity,
 booking atomicity, same-day assignment, seat release, exam execution, scoring,
