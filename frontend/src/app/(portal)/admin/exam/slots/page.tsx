@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import {
   keepPreviousData,
   useMutation,
@@ -14,6 +14,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { IconTooltipButton } from "@/components/ui/tooltip";
+import { ScheduleBookingsDialog } from "@/components/admin/exam/schedule-bookings-dialog";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -58,6 +60,7 @@ import {
   Pencil,
   Plus,
   RefreshCw,
+  Users,
   X,
 } from "lucide-react";
 
@@ -107,17 +110,33 @@ function AvailabilityBadge({
 function CapacityCell({
   slotsTaken,
   maxSlots,
+  onViewBookings,
 }: {
   slotsTaken: number;
   maxSlots: number;
+  onViewBookings: (trigger: HTMLButtonElement | null) => void;
 }) {
+  const controlRef = useRef<HTMLSpanElement>(null);
+  const bookingControl = (
+    <span ref={controlRef}>
+      <IconTooltipButton
+        label="View bookings"
+        onClick={() => onViewBookings(controlRef.current?.querySelector("button") ?? null)}
+      >
+        <Users className="h-4 w-4" aria-hidden="true" />
+      </IconTooltipButton>
+    </span>
+  );
   const capacity = resolveExamCapacity(slotsTaken, maxSlots);
   if (!capacity.hasCapacity) {
     return (
       <div className="min-w-0">
-        <p className="text-sm break-words text-foreground">
-          No capacity configured
-        </p>
+        <div className="flex items-center gap-1">
+          <p className="text-sm break-words text-foreground">
+            No capacity configured
+          </p>
+          {bookingControl}
+        </div>
         <p className="mt-0.5 text-xs break-words text-(--earist-body-text)">
           Capacity unavailable
         </p>
@@ -131,9 +150,12 @@ function CapacityCell({
       : "bg-(--earist-success)";
   return (
     <div className="min-w-0">
-      <p className="text-sm break-words text-foreground">
-        {capacity.booked} / {capacity.maximum} booked
-      </p>
+      <div className="flex items-center gap-1">
+        <p className="text-sm break-words text-foreground">
+          {capacity.booked} / {capacity.maximum} booked
+        </p>
+        {bookingControl}
+      </div>
       <p className="mt-0.5 text-xs break-words text-(--earist-body-text)">
         {capacity.isFull
           ? "No seats available"
@@ -319,6 +341,9 @@ function FieldError({ message }: { message?: string }) {
 
 export default function AdminExamSchedulesPage() {
   const queryClient = useQueryClient();
+
+  const [bookingSlot, setBookingSlot] = useState<ExamSlot | null>(null);
+  const bookingReturnFocus = useRef<HTMLElement | null>(null);
 
   const [temporal, setTemporal] = useState<ExamTemporalFilter>("upcoming");
   const [programId, setProgramId] = useState<string>(ALL);
@@ -736,6 +761,10 @@ export default function AdminExamSchedulesPage() {
                         <CapacityCell
                           slotsTaken={slot.slotsTaken}
                           maxSlots={slot.maxSlots}
+                          onViewBookings={(trigger) => {
+                            bookingReturnFocus.current = trigger;
+                            setBookingSlot(slot);
+                          }}
                         />
                       </td>
                       <td className="px-4 py-3 align-top">
@@ -743,17 +772,15 @@ export default function AdminExamSchedulesPage() {
                       </td>
                       <td className="px-4 py-3 align-top">
                         <div className="flex justify-end">
-                          <Button
-                            variant="outline"
-                            size="sm"
+                          <IconTooltipButton
+                            label="Edit schedule"
                             onClick={() => openEdit(slot)}
                           >
                             <Pencil
-                              className="mr-1.5 h-4 w-4"
+                              className="h-4 w-4"
                               aria-hidden="true"
                             />
-                            Edit
-                          </Button>
+                          </IconTooltipButton>
                         </div>
                       </td>
                     </tr>
@@ -764,6 +791,12 @@ export default function AdminExamSchedulesPage() {
           )}
         </CardContent>
       </Card>
+
+      <ScheduleBookingsDialog
+        slot={bookingSlot}
+        onClose={() => setBookingSlot(null)}
+        returnFocusRef={bookingReturnFocus}
+      />
 
       {/* Pagination */}
       {!isLoading && total > 0 && (

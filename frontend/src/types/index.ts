@@ -32,6 +32,19 @@ export interface Program {
   programName: string;
 }
 
+/** ADMIN-only current seat-holder projection; no scoring/authorization evidence. */
+export interface ExamScheduleBooking {
+  id: string;
+  status: string;
+  createdAt: string;
+  essayEvaluationCompleted: boolean;
+  reconsidered: boolean;
+  student: {
+    pinnacleApplicantId: string | null;
+    user: { firstName: string; lastName: string };
+  };
+}
+
 /**
  * COR-3: assistive EARIST COR parser suggestions. Suggestion-only evidence for
  * Admin comparison; never authoritative profile data.

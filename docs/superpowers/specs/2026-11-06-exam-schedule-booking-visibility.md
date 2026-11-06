@@ -1,6 +1,6 @@
 # EXAM-SCHEDULE-BOOKINGS-1 — Exam Schedule Booking Visibility
 
-**Status:** DOCUMENTED — IMPLEMENTATION NOT YET STARTED  
+**Status:** IMPLEMENTED — INDEPENDENT REMOTE REVIEW / PROJECT-OWNER QA PENDING
 **Date:** 2026-11-06  
 **Branch:** `feat/exam-schedule-booking-visibility`  
 **Verified base `main`:** `3a456567a7469c4cdc0ac69c012fdf2e79ee6a4c`
@@ -299,3 +299,36 @@ reopen the accepted Phase B core Exam scope merged by PR #47.
 Implementation must stop after EXAM-SCHEDULE-BOOKINGS-1 and must not continue into
 `Create & Assign`, Email Integration, or another Exam package without explicit
 project-owner authorization.
+
+## 14. Implementation checkpoint — 2026-11-06
+
+Implemented from verified branch/live remote HEAD
+`80eb7c8290443440926a09acf38e48e30fe439e5` on the existing feature branch.
+The [bounded implementation report](../reports/2026-11-06-exam-schedule-booking-visibility.md)
+records the exact manifest, API, design pass and verification evidence.
+
+- Added ADMIN-only `GET /exam/slots/:id/bookings`, with UUID validation,
+  private/no-store response and bounded 400/404/500 errors. The exact schedule
+  relation selects only `seatReleasedAt: null`, ordered by `createdAt ASC, id ASC`.
+- The response contains application ID/status/createdAt, authoritative Student
+  Pinnacle Applicant ID and User first/last name. Two presentation-only flags
+  (`essayEvaluationCompleted`, `reconsidered`) preserve the existing canonical
+  Exam State helper's meaning. Required evaluation/result evidence is read
+  internally, never included in the response; no answers/content/private media
+  or Email Integration fields are read by the new projection.
+- Users remains beside Capacity, Pencil remains in Action. Both use the shared
+  icon tooltip control with the approved names and visible focus treatment.
+- A shared Dialog identifies Program/date/start time once; wrapping booking rows
+  show Applicant/Pinnacle ID, Booking recorded in Asia/Manila, canonical Exam
+  State and exact application-ID navigation. Read pending/error/empty states,
+  Retry, normal dismissal and explicit return focus are included.
+- No schema migration or scheduling write/capacity/assignment change. The viewer
+  neither compares nor reconciles its row count with `slotsTaken`.
+- Focused automated verification: **6 files / 165 tests PASS**, frontend/backend
+  TypeScript **PASS**, scoped frontend ESLint **PASS**, `git diff --check` **PASS**.
+  Production-build outcome is recorded in the implementation report.
+
+Manual/browser QA: NOT EXECUTED — PROJECT OWNER
+
+Independent remote review: **PENDING — separate ChatGPT review required**.
+This checkpoint is not acceptance or a new Approved Reference Implementation.

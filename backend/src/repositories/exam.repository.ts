@@ -164,6 +164,45 @@ export class ExamRepository {
         }));
     }
 
+    /** Current occupants only. Internal state evidence never leaves this projection. */
+    async getSlotBookings(slotId: string) {
+        const slot = await prisma.examSlot.findUnique({
+            where: { id: slotId },
+            select: { examApplications: {
+                where: { seatReleasedAt: null },
+                orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+                select: {
+                    id: true, status: true, createdAt: true,
+                    ...evaluationAuthoritySelect,
+                    student: { select: { pinnacleApplicantId: true,
+                        user: { select: { firstName: true, lastName: true } },
+                    } },
+                    // Required solely for the existing Exam State presentation rules.
+                    score: { select: { id: true, status: true, multipleChoiceScore: true,
+                        essayScore: true, totalScore: true, gradedById: true,
+                        essayEvaluatedAt: true, scoredAt: true, scoringBasis: true,
+                    } },
+                    resultDecision: { select: { id: true, applicationId: true, scoreId: true,
+                        decision: true, reason: true, decidedById: true, decidedAt: true,
+                    } },
+                },
+            } },
+        });
+        if (!slot) return null;
+        return slot.examApplications.map(app => ({
+            id: app.id, status: app.status, createdAt: app.createdAt, student: app.student,
+            reconsidered: app.resultDecision != null && hasEffectiveExamPass(app),
+            // Same presentation predicate as Exam Records; this grants no grading authority.
+            essayEvaluationCompleted: app.status === 'TAKEN' && app.finalizedAt !== null &&
+                app.finalizationReceiptId !== null && app.finalizationReason !== null &&
+                app.finalizationAnsweredCount !== null && app.finalizationQuestionCount !== null &&
+                app.actualStartedAt !== null && app.deadlineAt !== null &&
+                app.contentRevisionId !== null && app.executionConfiguration !== null &&
+                app.score?.status === 'PENDING' && app.score.totalScore === null && app.score.essayScore !== null &&
+                app.score.gradedById !== null && app.score.essayEvaluatedAt !== null,
+        }));
+    }
+
     async updateApplication(applicationId: string, data: Prisma.EntranceExamApplicationUncheckedUpdateInput) {
         return prisma.entranceExamApplication.update({
             where: { id: applicationId },
