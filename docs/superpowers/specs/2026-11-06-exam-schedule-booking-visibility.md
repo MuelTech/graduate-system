@@ -65,20 +65,38 @@ This is an operational lookup only. It does not grant new scheduling authority.
 Keep the accepted schedule-management list compact. Do **not** place multiple
 Applicant names directly into the main table.
 
-Preferred capacity presentation:
+Preferred capacity/action presentation:
 
 ```text
-2 / 5 booked
-3 seats available
-View bookings
+Program | Schedule | Capacity            | Availability | Action
+MBA     | Nov 6    | 2 / 5 booked  [👥]  | Open         | [✏️]
+                  | 3 seats available
 ```
 
-`View bookings` is a secondary action associated with Capacity, not a competing
-primary row action. The existing **Edit** action remains the schedule-management
-action in the Action column.
+Use compact **icon-only controls** for these row-level actions:
 
-Opening `View bookings` should show a focused dialog or equivalent secondary
-detail surface for the selected schedule.
+- a **Users** icon beside the Capacity summary opens booking details;
+- a **Pencil** icon remains in the Action column for schedule editing.
+
+The booking icon belongs with Capacity because it answers who occupies the shown
+booked seats. It must not be moved into a generic action cluster if that weakens
+the relationship to the capacity summary.
+
+Icon-only controls must remain understandable and accessible:
+
+- booking control tooltip: **View bookings**;
+- booking control `aria-label="View bookings"`;
+- edit control tooltip: **Edit schedule**;
+- edit control `aria-label="Edit schedule"`;
+- visible focus treatment and keyboard activation must use the shared button /
+  tooltip behavior.
+
+Do not add redundant visible words such as **View bookings** or **Edit schedule**
+inside each table row when the icon, tooltip and accessible name already provide
+the action meaning.
+
+Opening the **Users** booking control should show a focused dialog or equivalent
+secondary detail surface for the selected schedule.
 
 For each current booking, show only operationally useful fields:
 
