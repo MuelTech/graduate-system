@@ -526,6 +526,20 @@ Use this single branch for EXAM-CONTENT-1 through EXAM-CONTENT-7. Each package s
 
 ## 7.2 Phase B — Exam Engine / Scheduling Audit
 
+**2026-11-06 EXAM-SCHEDULE-BOOKINGS-1: DOCUMENTED — IMPLEMENTATION NOT YET STARTED.**
+Post-Phase-B Admin usability follow-up on new branch
+`feat/exam-schedule-booking-visibility` from merged `main`
+`3a456567a7469c4cdc0ac69c012fdf2e79ee6a4c`. The [bounded specification](specs/2026-11-06-exam-schedule-booking-visibility.md)
+adds read-only **View bookings** visibility to Entrance Exam Schedules so Admin
+can inspect current seat holders, Pinnacle Applicant ID, neutral **Booking
+recorded** time from `EntranceExamApplication.createdAt`, current Exam State and
+the linked Exam Record. No schema change is expected. Existing Program/capacity,
+booking atomicity, same-day assignment, seat release, exam execution, scoring,
+reconsideration and Email Integration behavior remain protected. Released
+historical applications must not be presented as current occupants. The separate
+future **Create & Assign** workflow is explicitly out of scope and Phase B core
+acceptance is not reopened.
+
 **2026-11-06 B10 / PHASE B CORE EXAM ACCEPTANCE: ACCEPTED FOR MERGE — EMAIL INTEGRATION DEFERRED.**
 The owner-authorized [EXAM-B10-MQA-UI presentation/content refinement](reports/2026-11-06-exam-b10-mqa-ui.md)
 and bounded FIX-1 are accepted at implementation HEAD
