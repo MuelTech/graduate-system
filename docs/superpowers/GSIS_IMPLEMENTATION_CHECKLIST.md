@@ -19,6 +19,22 @@
 - 🐞 **KNOWN GAP / BUG** — current behavior is insufficient or incorrect.
 - 🚫 **DEFERRED** — intentionally postponed.
 
+### Current-state reconciliation rule
+
+This checklist is a **current-state index**, not a chronological source of truth.
+When a later explicit acceptance/merge checkpoint supersedes an earlier
+progression checkpoint, the later checkpoint governs the current status.
+
+- Historical progression notes may be retained for traceability, but they do
+  **not** count as active pending work once clearly marked superseded.
+- Current pending work is represented by the latest applicable non-✅ status:
+  🟡 partial, 🔍 review required, 🚧 active, ⏳ planned, ❓ decision required,
+  🐞 known gap, or 🚫 deferred.
+- A package-level ✅ acceptance supersedes earlier statements such as
+  “manual QA pending”, “review pending”, or “phase incomplete” for that same
+  accepted scope.
+- Acceptance of one subsystem does not imply whole-system production readiness.
+
 ---
 
 ## Recently completed implementation — Official Adviser Request Form (GS-020)
@@ -337,16 +353,21 @@ Current repository facts:
 
 ## 7.1 Phase A — Mixed-Content Exam Integration
 
-This is the immediate Applicant Examination implementation workstream.
+**Current status: ✅ ACCEPTED / CLOSED — 2026-10-31.**
 
-**Working branch:** `feat/exam-content-integration`
+This section is retained as the accepted implementation record for the
+mixed-content examination workstream.
 
-Use this single branch for EXAM-CONTENT-1 through EXAM-CONTENT-7. Each package still has a strict stop/review/owner-authorization boundary before the next package begins. Phase B — Exam Engine / Scheduling Audit will use a separate workstream/branch and is not part of this Phase A branch.
+**Historical implementation branch:** `feat/exam-content-integration`
+
+EXAM-CONTENT-1 through EXAM-CONTENT-7 are accepted. Earlier package sequencing
+and stop/review boundaries below are historical evidence, not active pending
+work.
 
 | Status | Package / Item | Current / target state |
 | --- | --- | --- |
 | ✅ | Extraction pipeline / verified input package | Source-image extraction and exact visual cropping were validated; project-owner review confirmed the output. Treat the package as integration input, not runtime integration proof. |
-| 🟡 | Existing exam question data model | Text question/option/correct-answer structures exist, but mixed-content stimulus/media support is incomplete. |
+| ✅ | Mixed-content exam question data model | Phase A accepted the mixed-content architecture, structured stimuli, private media, verified importer, Admin authoring/preview, Applicant renderer, corrected 72-question bank and semantic source-typography fidelity. Later Phase B exact-attempt binding/immutability completes the accepted core exam-content lifecycle. |
 | ✅ | EXAM-CONTENT-1 — Mixed-content question architecture | **ACCEPTED 2026-10-29.** Implemented at `3506707552e66c03d8e59bb9afdf394077995b9f`; independent source/manifest/migration review PASS; development DB migration `20261029000000_exam_mixed_content` applied successfully; all 7 legacy questions defaulted to `NONE`; selected-option referential check found 0 broken references. |
 | ✅ | EXAM-CONTENT-2 — Private exam media | **ACCEPTED 2026-10-29.** Implemented at `c080222877380b2124c40ef49e6fbf04aa0fe2c9`; independent storage/authorization/retrieval/migration review PASS; development DB migration `20261029010000_exam_private_media` applied successfully; project-owner XAMPP post-migration integrity checks passed with no broken media references reported. |
 | ✅ | EXAM-CONTENT-3 — Verified manifest importer | **ACCEPTED 2026-10-29.** Implemented at `80816ad130dfdfa61fadb7e97fc4aa5d309d51f3`; independent importer/package/media/idempotency/migration review PASS; real package reconciled at 72 VERIFIED questions and 108 image assets; development DB migration `20261029020000_exam_import_identity` applied successfully; post-migration pre-import checks remained at the expected zero state. |
@@ -520,9 +541,14 @@ Use this single branch for EXAM-CONTENT-1 through EXAM-CONTENT-7. Each package s
   - project owner reviewed the resulting EC7E output, confirmed it was correct, and authorized Phase A documentation closure;
   - formal EC7 acceptance: **ACCEPTED — 2026-10-31**.
 - Phase A final acceptance: **ACCEPTED — 2026-10-31**
-- Next workstream: **Phase B — Exam Engine / Scheduling Audit**. Phase B implementation has not started as part of this closure update.
+- Historical next workstream at Phase A closure: **Phase B — Exam Engine / Scheduling Audit**. Phase B was subsequently implemented and accepted for the agreed non-email core scope on 2026-11-06.
 
-**Phase A acceptance boundary:** content representation/import/rendering may be accepted package-by-package, but Phase A must not claim full source fidelity until canonical text matches the owner-reviewed physical assessment and all required source typography demonstrated by that assessment (BOLD, UNDERLINE, ITALIC, including supported structured textual stimuli) is preserved. This still must **not** be described as full Applicant Examination production readiness; Phase B remains required.
+**Phase A acceptance boundary:** Phase A acceptance covers content
+representation/import/rendering and verified source fidelity. At the time of
+Phase A closure it did not, by itself, establish the complete examination
+lifecycle. That lifecycle boundary was subsequently addressed by the accepted
+Phase B core scope. Whole-system production readiness remains a separate
+cross-system gate and is not implied by Phase A or Phase B acceptance.
 
 ## 7.2 Phase B — Exam Engine / Scheduling Audit
 
@@ -584,6 +610,13 @@ Email Integration and the known result-email authorization/integration limitatio
 remain **DEFERRED — OUTSIDE THE ACCEPTED CORE EXAM SCOPE**; hosted CI and
 whole-system production readiness are not claimed.
 
+### Historical Phase B progression checkpoints — superseded by final B10 acceptance
+
+> The checkpoints in this subsection record the state at the time they were
+> written. Statements such as “Phase B incomplete”, “review pending”, or
+> “owner QA pending” are **historical and superseded** by the 2026-11-06
+> B10 / Phase B core acceptance above. They are retained only for traceability.
+
 **2026-11-05 EXAM-B10-CORR-1 result: B10 CORE AUTOMATED GATE PASS — INDEPENDENT REVIEW PENDING — OWNER MANUAL/BROWSER QA PENDING — EMAIL INTEGRATION DEFERRED.**
 The owner-authorized presentation-only apostrophe escape at
 `frontend/src/components/exam-content/applicant-appointment-gate.tsx:137`
@@ -644,22 +677,26 @@ The first B10 run correctly found a real current-actor authorization gap in the 
 
 | Status | Item | Audit target |
 | --- | --- | --- |
-| 🔍 | Admin exam configuration | On **Exam Questions / Exam Question Bank**, the **Exam Configuration** action owns exam duration, MCQ points per correct item, essay maximum score and passing threshold. `Asia/Manila` is fixed/read-only. The duration is Admin-configured; do not restore a hard-coded three-hour default or invent a school-closing deadline. Unresolved score values/rounding remain policy/client-confirmation items. |
-| ✅ | Timer source of truth | B4 accepted for Phase B progression after independent remote source review PASS. Actual server start + valid B1 duration establishes one persisted deadline; reload/reconnect cannot restart time. Early same-day starts require ADMIN authorization; normal starts at/after the appointment on that date need no override, per the 2026-11-03 owner clarification. No shared closing deadline. Manual/browser QA is deferred to the consolidated Phase B lifecycle gate. |
+| ✅ | Admin exam configuration | Accepted through B1/B4/B8 and final B10 acceptance. **Exam Questions / Exam Question Bank → Exam Configuration** owns exam duration, MCQ points per correct item, essay maximum score and percentage passing threshold. `Asia/Manila` is fixed/read-only. Scoring uses the frozen configured values and exact decimal earned/possible comparison; decision rounding is not used. |
+| ✅ | Timer source of truth | B4 accepted and covered by final B10 owner QA. Actual server start + valid B1 duration establishes one persisted deadline; reload/reconnect cannot restart time. Early same-day starts require ADMIN authorization; normal starts at/after the appointment on that date need no override, per the 2026-11-03 owner clarification. No shared closing deadline. |
 | ✅ | Same-day Admin schedule assignment | **ACCEPTED FOR PHASE B PROGRESSION — 2026-11-02.** ADMIN-only existing-Applicant/current-Manila-day assignment retains all B3 safeguards and original appointment values. **Assign Applicant** on the existing Entrance Exam Records PageHeader opens search → authoritative identity/Program/eligibility → eligible slots/capacity → review/confirmation. Success refreshes the unchanged table and resets filters/page to show the new record. Ordinary self-booking remains future-only. [Evidence](reports/2026-11-02-exam-b3-same-day-admin-assignment.md). Independent review PASS and project-owner browser/manual QA PASS after the copy-only timezone-label refinement. |
-| 🔍 | Applicant registration ownership | Applicants self-register using an existing EARIST Pinnacle Applicant ID. Graduate School staff do not create GS-IS Applicant accounts. Preserve the existing registration authority. |
-| ✅ | Timeout behavior | B6 accepted for Phase B progression after independent remote source review PASS. Recorded started executions finalize from acknowledged drafts without a browser; never-started appointments are excluded. Owner manual/browser QA remains deferred to the consolidated Phase B lifecycle gate. |
-| ✅ | MCQ autosave + recovery | B5 accepted for Phase B progression after independent remote source review PASS. Exact owned active drafts restore selections/navigator, retain clear/version state, reject stale writes and coordinate pending saves with final submission. Owner manual/browser QA remains deferred to the consolidated Phase B lifecycle gate. |
-| ✅ | Essay lifecycle | **EXAM-B7 ACCEPTED FOR PHASE B PROGRESSION — 2026-11-05.** Independent remote source review PASS. New publication and B4 first binding require exactly one essay; historical invalid bound compositions require staff review. Admin evaluates the exact frozen B2 prompt/finalized B5/B6 response using only the captured B4 essay maximum. One locked READ COMMITTED transaction writes score/evaluator/completion time once; repeat/concurrent grading rejects. Application stays TAKEN, score stays PENDING, total stays null and result/email remain unavailable until B8. Manual/browser QA remains deferred to the consolidated owner gate. |
+| ✅ | Applicant registration ownership | Owner-confirmed and preserved through final Phase B acceptance: Applicants self-register using an existing EARIST Pinnacle Applicant ID. Graduate School staff do not create GS-IS Applicant accounts. |
+| ✅ | Timeout behavior | B6 accepted and covered by final B10 owner QA. Recorded started executions finalize from acknowledged drafts without a browser; never-started appointments are excluded. |
+| ✅ | MCQ autosave + recovery | B5 accepted and covered by final B10 owner QA. Exact owned active drafts restore selections/navigator, retain clear/version state, reject stale writes and coordinate pending saves with final submission. |
+| ✅ | Essay lifecycle | **EXAM-B7 accepted and covered by final B10 owner QA.** New publication and B4 first binding require exactly one essay; historical invalid bound compositions require staff review. Admin evaluates the exact frozen B2 prompt/finalized B5/B6 response using only the captured B4 essay maximum. One locked READ COMMITTED transaction writes score/evaluator/completion time once; repeat/concurrent grading rejects. Application stays TAKEN, score stays PENDING, total stays null and result/email remain unavailable until B8. |
 | ✅ | Submission rules | B6 accepted for Phase B progression after independent remote source review PASS. Explicit incomplete acknowledgment, persisted-answer-only finalization, immutable reason/receipt, lost-response recovery and terminal draft rejection are implemented. |
 | ✅ | Exam scheduling | Original B3 admission/time/capacity and same-day Admin assignment are accepted. **B9 ACCEPTED FOR PHASE B PROGRESSION — 2026-11-05.** Exact never-started cancellation/reschedule and prior-Manila-date missed appeals preserve original appointments, release seats once and create/link a new PENDING replacement only on approved reschedule. Student → sorted slots → exact application locking and unreleased-seat counts preserve capacity. FAILED/MISSED block booking; only CANCELLED/RESCHEDULED history is nonblocking. No ExamPeriod/retake/reset subsystem. [B9 evidence](reports/2026-11-05-exam-b9-amendments-reconsideration.md). |
-| 🔍 | Question activation / selection | B2 foundation implemented; independent review / owner acceptance pending. Explicit saved membership and immutable publication are available to Admin. Applicant selection activation requires B4 exact attempt binding; the live legacy bank path is intentionally retained in B2. |
+| ✅ | Question activation / selection | Accepted through B2 + B4 and final B10 acceptance. Admin publication preserves explicit saved question membership; the exact immutable published content is bound to the Applicant attempt at authoritative start so later bank/config changes cannot rewrite an active or finalized attempt. |
 | ✅ | Scoring / answer integrity | **B8 accepted for Phase B progression.** New results use frozen B2/B4/B6/B7 evidence, exact Decimal arithmetic, configured MCQ points/essay maximum/percentage threshold and immutable scoring basis; later bank/config changes cannot retroactively alter the computed result. Legacy final records retain honest unknown provenance where B8 evidence is absent. |
 | ✅ | Finalized FAILED-result reconsideration | **B9 ACCEPTED FOR PHASE B PROGRESSION — 2026-11-05.** Current active ADMIN may record one separate **PASSED — RECONSIDERED** decision only for valid B8 computed FAILED. Original application/score FAILED, answers, numbers, basis, threshold and scoredAt remain unchanged. Applicant/Admin projections, both COR gates, Admin Applicant list/filter/count/detail and Applicant progression recognize validated effective pass. Existing queued-email evidence is retained; generic B8 result-email action rejects after decision. Reason/actor/time/audit required; no revoke/regrade, Program Chair authority or legacy reinterpretation. |
-| 🔍 | Automated regression coverage | **B10 CORE AUTOMATED GATE PASS — INDEPENDENT REVIEW PASS — OWNER MANUAL/BROWSER QA IN PROGRESS — EMAIL INTEGRATION DEFERRED.** Owner-authorized EXAM-B10-CORR-1 resolved the pre-existing apostrophe lint error with no behavior/API/schema/data change. Project-owner manual QA has now identified a separate **presentation/content blocker** across Applicant/Admin Exam surfaces: redundant/internal wording and weak Exam Record information hierarchy. See [EXAM-B10-MQA-UI](specs/2026-11-05-exam-ui-content-refinement.md). Core automated behavior remains accepted evidence; B10/Phase B final acceptance remains open until the bounded UI/content correction is implemented, independently reviewed and rechecked manually. |
+| ✅ | Automated regression / acceptance coverage | **B10 / Phase B core acceptance completed 2026-11-06.** Core automated verification, independent remote source/diff review, project-owner functional/manual QA and project-owner visual/UI acceptance passed for the agreed non-email scope. The accepted EXAM-B10-MQA-UI correction and Admin assignment copy FIX-1 are included. Email Integration remains a separate deferred feature and hosted CI/whole-system production readiness are not claimed by this row. |
 | ⏳ | Program Chair examination permissions | Future Faculty permission architecture should govern applicant exam checking/essay grading where appropriate. |
 
-Do not mark the Applicant Entrance Examination production-ready until Phase B has been completed and accepted.
+**Current Exam boundary:** the agreed non-email Phase B core is accepted. Do not
+equate that subsystem acceptance with **whole-system production readiness**.
+Email Integration, Program Chair/Faculty permissions, the deferred
+EXAM-SCHEDULE-CREATE-ASSIGN package, and the cross-system production-readiness
+items in Section 21 remain separate work.
 
 ---
 
