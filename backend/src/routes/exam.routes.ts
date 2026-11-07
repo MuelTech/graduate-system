@@ -23,6 +23,7 @@ router.post('/schedule', authenticateJWT, requireRole(['APPLICANT']), examContro
 
 // ADMIN ONLY: View all slots
 router.get('/slots', authenticateJWT, requireRole(['ADMIN']), examController.getAllSlots);
+router.get('/slots/:id/bookings', authenticateJWT, requireRole(['ADMIN']), examController.getSlotBookings);
 
 // Routes for Admin Exam Applications
 router.get('/assignment-options/:studentId', authenticateJWT, requireRole(['ADMIN']), examController.getAssignmentOptions);

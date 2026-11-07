@@ -14,6 +14,17 @@ function schedulingError(res: Response, error: unknown): void {
 export class ExamController {
   private examService = new ExamService();
 
+  getSlotBookings = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+    res.setHeader("Cache-Control", "private, no-store");
+    try {
+      res.status(200).json(await this.examService.getSlotBookings(req.params.id));
+    } catch (error: unknown) {
+      res.status(error instanceof AppError ? error.statusCode : 500).json({
+        error: error instanceof AppError ? error.message : "Could not load schedule bookings.",
+      });
+    }
+  };
+
   getAssignmentOptions = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
       res.status(200).json(await this.examService.getAssignmentOptions(req.params.studentId));

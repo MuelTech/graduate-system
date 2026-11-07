@@ -142,10 +142,6 @@ function ConfigurationForm({
           </div>
         ))}
       </fieldset>
-      <dl className="space-y-1 text-sm">
-        <dt className="font-medium">Timezone</dt>
-        <dd>Philippine Time (Asia/Manila)</dd>
-      </dl>
       <div className="flex justify-end">
         <Button type="submit" disabled={mutation.isPending}>
           {mutation.isPending ? "Saving…" : "Save Configuration"}

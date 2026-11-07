@@ -164,6 +164,13 @@ export class ExamService {
     return this.examRepo.getAllSlots();
   }
 
+  async getSlotBookings(requestedSlotId: unknown) {
+    const slotId = scheduleIdentifier(requestedSlotId, "slotId");
+    const bookings = await this.examRepo.getSlotBookings(slotId);
+    if (bookings === null) throw new AppError("Exam schedule not found.", 404);
+    return bookings;
+  }
+
   async getApplicantStatus(userId: string) {
     const student = await this.examRepo.getApplicantStatus(userId);
     if (!student) throw new Error("Student not found");
