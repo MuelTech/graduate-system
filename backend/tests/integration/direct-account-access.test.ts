@@ -1,4 +1,5 @@
-// Opt-in, local disposable database only. Never connects to the configured application schema.
+// Opt-in, isolated local disposable database only. Never connects to the configured application schema or MariaDB server.
+import "dotenv/config";
 import { randomUUID, createHash } from "node:crypto";
 import { mkdirSync, mkdtempSync, writeFileSync, readdirSync, cpSync, rmSync } from "node:fs";
 import path from "node:path";
@@ -9,6 +10,55 @@ import { PrismaMariaDb } from "@prisma/adapter-mariadb";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import { readConfiguredAccountAccess } from "../../src/access/account-access.store";
 import { canAuthorizeDirectCapability } from "../../src/access/account-access";
+
+const LOCAL_DATABASE_HOSTS = new Set(["localhost", "127.0.0.1", "[::1]"]);
+
+function databaseServerIdentity(url: URL): string {
+  const hostname = url.hostname.toLowerCase();
+  const host = LOCAL_DATABASE_HOSTS.has(hostname) ? "loopback" : hostname;
+  const port = url.port || "3306";
+  return `${host}:${port}`;
+}
+
+function assertIsolatedDatabaseServer(testServerUrl: string, applicationDatabaseUrl: string): URL {
+  const testUrl = new URL(testServerUrl);
+  const applicationUrl = new URL(applicationDatabaseUrl);
+
+  if (!LOCAL_DATABASE_HOSTS.has(testUrl.hostname.toLowerCase())) {
+    throw new Error("Only a LOCAL disposable database server is supported.");
+  }
+  if (testUrl.pathname !== "/" && testUrl.pathname !== "") {
+    throw new Error("Use a server-only FACULTY_1_DB_SERVER_URL without an application schema.");
+  }
+  if (databaseServerIdentity(testUrl) === databaseServerIdentity(applicationUrl)) {
+    throw new Error("FACULTY_1_DB_SERVER_URL must use a different MariaDB host/port from the application DATABASE_URL.");
+  }
+
+  return testUrl;
+}
+
+describe("FACULTY-1 disposable database isolation guard", () => {
+  it("rejects the same MariaDB server across loopback aliases", () => {
+    expect(() => assertIsolatedDatabaseServer(
+      "mysql://root@example@127.0.0.1:3306/",
+      "mysql://root@example@localhost:3306/graduate_system",
+    )).toThrow(/different MariaDB host\/port/);
+  });
+
+  it("allows a separate local MariaDB port", () => {
+    expect(() => assertIsolatedDatabaseServer(
+      "mysql://root@example@localhost:3307/",
+      "mysql://root@example@localhost:3306/graduate_system",
+    )).not.toThrow();
+  });
+
+  it("rejects a test URL that names a schema", () => {
+    expect(() => assertIsolatedDatabaseServer(
+      "mysql://root@example@localhost:3307/faculty1_test_manual",
+      "mysql://root@example@localhost:3306/graduate_system",
+    )).toThrow(/server-only/);
+  });
+});
 
 describe.skipIf(process.env.FACULTY_1_DB_TEST !== "1")("FACULTY-1 real MariaDB migration/integrity", () => {
   const database = `faculty1_test_${randomUUID().replace(/-/g, "")}`;
@@ -43,11 +93,10 @@ describe.skipIf(process.env.FACULTY_1_DB_TEST !== "1")("FACULTY-1 real MariaDB m
   }
 
   beforeAll(async () => {
-    if (!process.env.FACULTY_1_DB_SERVER_URL) throw new Error("An explicit isolated test-server URL is required; application DATABASE_URL/.env is never used.");
-    const url = new URL(process.env.FACULTY_1_DB_SERVER_URL);
-    if (!['localhost', '127.0.0.1', '[::1]'].includes(url.hostname)) throw new Error("Only a LOCAL disposable database is supported.");
-    if (url.pathname !== "/" && url.pathname !== "") throw new Error("Use a server-only URL without an application schema.");
-    // Never connect to an application schema. No live inventory is read.
+    if (!process.env.FACULTY_1_DB_SERVER_URL) throw new Error("An explicit isolated test-server URL is required.");
+    if (!process.env.DATABASE_URL) throw new Error("DATABASE_URL is required to prove the disposable server is isolated from the application database.");
+    const url = assertIsolatedDatabaseServer(process.env.FACULTY_1_DB_SERVER_URL, process.env.DATABASE_URL);
+    // Never connect to an application schema or the application's MariaDB server. No live inventory is read.
     url.pathname = "/";
     url.search = "";
     connection = await mysql.createConnection(url.toString());

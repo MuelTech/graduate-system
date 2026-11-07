@@ -143,3 +143,10 @@ The normal development database received only the explicitly authorized committe
 The only repository file changed by this continuation is this implementation report. All existing implementation, schema, migration, seed and test files remain unchanged. The final diff is limited to recovery reconciliation and current verification evidence; the ending commit is reported after commit/push rather than embedded self-referentially here.
 
 No FACULTY-1 implementation or local database-readiness blocker remains. Independent source review and owner QA remain their separate acceptance activities. Direct-access enforcement stays off, and no live Full/Restricted Administrator or Essay Evaluation access was granted. FACULTY-2 was not started.
+
+
+## Independent review safety correction — 2026-11-08
+
+After FACULTY-1 source review, the opt-in real-MariaDB migration test was hardened so a future run cannot use the same MariaDB server as the configured application database merely by supplying a server-only URL. The test now loads the application's `DATABASE_URL`, canonicalizes local loopback aliases, and rejects `FACULTY_1_DB_SERVER_URL` when its host+port matches the application database server. A separate local port/server is required for the destructive disposable rehearsal.
+
+Three non-database guard cases cover same-server rejection across loopback aliases, acceptance of a different local port, and rejection of a test URL that names a schema. This correction changes test safety only; it does not alter production schema, access behavior, migration contents, application database data, or FACULTY-1 activation state. No destructive database rehearsal is required for this correction.
