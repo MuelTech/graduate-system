@@ -41,15 +41,15 @@
 .earist-public .public-masthead__inner {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 24px;
-  min-height: 92px;
-  padding-block: 12px;
+  justify-content: center;
+  gap: 32px;
+  min-height: 88px;
+  padding-block: 8px;
 }
 .earist-public .public-masthead__identity {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 12px;
   min-width: 0;
   color: var(--earist-primary);
   text-decoration: none;
@@ -75,7 +75,7 @@
   font-weight: 600;
 }
 .earist-public .public-masthead__full-name {
-  max-width: 260px;
+  max-width: 236px;
   margin-top: 4px;
   color: var(--earist-body-text);
   font-size: 12px;
@@ -121,6 +121,7 @@
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  margin-left: auto;
   border: 1px solid #dfd7cb;
   border-radius: 3px;
   color: var(--earist-primary);
@@ -172,10 +173,14 @@
 .earist-public .public-hero__composition {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
+  width: min(100% - 48px, 1200px);
+  margin-inline: auto;
+  gap: 28px;
+  padding-block: 32px;
 }
 .earist-public .public-hero__copy {
   align-self: center;
-  padding: 48px 24px;
+  padding: 0;
 }
 .earist-public .public-hero__institution {
   display: none;
@@ -295,6 +300,19 @@
   font-size: 12px;
   line-height: 1.5;
 }
+.earist-public .public-hero__visual {
+  align-self: center;
+}
+.earist-public .public-hero__visual .public-preview-image__frame {
+  flex: none;
+  aspect-ratio: 16 / 9;
+}
+.earist-public .public-hero__visual .public-preview-image__caption {
+  padding: 8px 0;
+  border-top: 1px solid #e2dacd;
+  background: transparent;
+  color: #65594b;
+}
 .earist-public .public-masthead__identity:focus-visible,
 .earist-public .public-masthead__link:focus-visible,
 .earist-public .public-masthead__register:focus-visible,
@@ -307,17 +325,14 @@
 
 @media (min-width: 960px) {
   .earist-public .public-hero__composition {
-    grid-template-columns: minmax(0, 45fr) minmax(0, 55fr);
-    min-height: 540px;
-  }
-  .earist-public .public-hero__copy {
-    padding: 52px 40px 52px max(24px, calc((100vw - 1200px) / 2));
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 40px;
   }
   .earist-public .public-hero__title {
     font-size: 64px;
   }
-  .earist-public .public-preview-image__frame {
-    aspect-ratio: auto;
+  .earist-public .public-hero__visual .public-preview-image__frame {
+    aspect-ratio: 3 / 2;
   }
   .earist-public .public-hero__visual .public-preview-image__image {
     position: absolute;
@@ -328,14 +343,14 @@
   .earist-public .public-masthead__desktop-nav {
     display: flex;
     align-items: center;
-    gap: 22px;
+    gap: 18px;
   }
   .earist-public .public-masthead__desktop-account {
     display: flex;
     align-items: center;
-    gap: 20px;
+    gap: 16px;
     border-left: 1px solid #e5dfd5;
-    padding-left: 24px;
+    padding-left: 18px;
   }
   .earist-public .public-masthead__menu-toggle,
   .earist-public .public-masthead__panel {
@@ -378,7 +393,12 @@
     font-size: 12px;
   }
   .earist-public .public-hero__copy {
-    padding: 36px 20px 38px;
+    padding: 0;
+  }
+  .earist-public .public-hero__composition {
+    width: calc(100% - 36px);
+    gap: 24px;
+    padding-block: 28px;
   }
   .earist-public .public-hero__institution {
     display: block;

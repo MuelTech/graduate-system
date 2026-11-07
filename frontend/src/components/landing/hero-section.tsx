@@ -39,7 +39,7 @@ export function HeroSection() {
         <PreviewImage
           image={hero.image}
           className="public-hero__visual"
-          sizes="(min-width: 960px) 55vw, 100vw"
+          sizes="(min-width: 1248px) 580px, (min-width: 960px) calc((100vw - 88px) / 2), (min-width: 600px) calc(100vw - 48px), calc(100vw - 36px)"
           priority
         />
       </div>

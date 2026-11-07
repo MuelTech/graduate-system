@@ -12,7 +12,7 @@
 | --- | --- |
 | Repository path | `frontend/public/images/landing/v2/hero-campus-preview.webp` |
 | Browser path | `/images/landing/v2/hero-campus-preview.webp` |
-| Purpose | One substantial image for the approximately 45% copy / 55% image desktop Hero; same image with responsive crop on tablet/mobile. |
+| Purpose | One substantial image for the photographic Hero; Task 1's owner-requested balance refinement uses equal desktop columns within a centered 1200px frame, with the same asset on tablet/mobile. |
 | Provenance | Newly generated using the built-in OpenAI `image_gen` tool during V2 Task 1. Not stock photography or a verified institutional asset. |
 | Original output | `exec-76fbfbe9-4f7d-4877-9afe-e81a065e0231.png`, retained in the session's Codex generated-images directory; runtime uses only the repository WebP. |
 | Subject | Fictional tropical academic building/courtyard. No institution, building, person, event, campus signage, or logo was supplied as an image reference. |
@@ -20,7 +20,7 @@
 | Web encoding | Original generated PNG encoded as WebP, quality 86, using the existing installed Sharp package; no resizing or content alteration. No dependency added. |
 | Repository file size | 512,744 bytes. |
 | SHA-256 | `b032dee284a073092a95ef97611b53329c2212086b0d3407ab8e82d347388551` |
-| Display behavior | Desktop uses object-fit cover at 55% page width and approximately 540px Hero height, with object-position 55% 50%; narrow screens stack copy then image, using 3:2 tablet / 4:3 mobile framing. |
+| Display behavior | After the Task 1 balance refinement, desktop uses equal copy/image columns with a 40px gap inside a centered frame capped at 1200px. The image is at most 580px wide with 3:2 framing; Hero height follows content (approximately 487px at 1440/1920px). Tablet/mobile stack copy then a 16:9 image. Object-fit cover and object-position 55% 50% remain; the visible preview caption is a quiet neutral line beneath the image. |
 | Visible adjacent caption | **Design placeholder image — not EARIST photography** |
 | Alternative text | **Generated illustration of a fictional academic courtyard with shaded walkways and tropical trees.** |
 | Page-level notice | **Design preview — marked imagery and sample content are for review only.** Visible across the shared public layout; no environment flag suppresses it. |
