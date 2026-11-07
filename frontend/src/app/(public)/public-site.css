@@ -342,14 +342,25 @@
 @media (min-width: 1200px) {
   .earist-public .public-masthead__inner {
     display: grid;
+    /* Inherit the Hero's 1200px frame; equal side tracks center navigation. */
     grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
-    width: min(100% - 32px, 1040px);
     gap: 16px;
     min-height: 84px;
     padding-block: 6px;
   }
   .earist-public .public-masthead__identity {
     justify-self: start;
+    gap: 10px;
+  }
+  .earist-public .public-masthead__seal {
+    width: 60px;
+    height: 60px;
+  }
+  .earist-public .public-masthead__full-name {
+    max-width: 224px;
+    margin-top: 3px;
+    line-height: 1.2;
+    color: #68615a;
   }
   .earist-public .public-masthead__desktop-nav {
     display: flex;
