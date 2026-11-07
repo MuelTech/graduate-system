@@ -705,7 +705,7 @@ Do not invent these:
 - GS-011 Adviser concurrence / Dean attestation e-sign details;
 - exact RAP printed layout;
 - re-defense/multiple-attempt policy;
-- broad account terminology refactor from `PANELIST` to a wider faculty model;
+- Faculty/Admin target access model is now defined by `docs/superpowers/FACULTY_ADMIN_ACCESS_SOURCE_OF_TRUTH.md`; implementation remains pending and must preserve compatibility/history rather than blindly renaming `PANELIST` references;
 - exact post-Final clearance/corrected archival manuscript authority;
 - exact file-type policy by document category beyond confirmed current behavior;
 - Research Databank retention;
