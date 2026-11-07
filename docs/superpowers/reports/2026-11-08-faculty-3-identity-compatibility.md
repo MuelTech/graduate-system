@@ -1,8 +1,8 @@
 # FACULTY-3 — Faculty identity compatibility readers
 
-Date: 2026-11-08 (Asia/Manila). Status: **IMPLEMENTED — independent review/acceptance pending**.
+Date: 2026-11-08 (Asia/Manila). Status: **ACCEPTED FOR CONTINUATION**.
 
-Only FACULTY-3 is implemented. FACULTY-4 was not started. This report does not independently accept the package or authorize migration deployment, account conversion, grants, or activation.
+FACULTY-3 implementation is accepted for continuation at `6d03ab79d56439e805114a9d5bfc5f08664379ac` after independent remote commit-diff/source review and project-owner sanity QA. FACULTY-4 was not started. Acceptance does not authorize migration deployment, account conversion, grants, or activation.
 
 ## Verified starting state
 
@@ -147,4 +147,15 @@ Exact changed-file manifest follows. Ending commit/remote parity are reported in
 
 ## Delivery boundary
 
-Commit/push is limited to FACULTY-3 on `feat/faculty-admin-access`. Independent review, isolated DB rehearsal, browser acceptance, deployment and any actual role conversion remain separate. The checklist/plan record implementation only. **FACULTY-4 was not started. Stop after delivery.**
+Commit/push is limited to FACULTY-3 on `feat/faculty-admin-access`. Deployment and any actual role conversion remain separate. The isolated real-DB rehearsal was safely skipped and remains a deployment/readiness limitation. **FACULTY-4 was not started during this implementation.**
+
+## Independent acceptance checkpoint
+
+- Accepted implementation commit: `6d03ab79d56439e805114a9d5bfc5f08664379ac`.
+- Independent remote review inspected the actual one-commit diff from `9d24ca9bf19f454d16fad6106d5a210f17f06ed0`: 41 changed files, 1 commit ahead / 0 behind.
+- Review confirmed the additive `FACULTY` enum migration, bounded `PANELIST | FACULTY` account normalizer, retained technical `/panelist` paths, preserved `Panelist` profile model/table and `PanelRole.PANELIST`, exact Adviser/Defense/document/realtime authority, stale ADMIN/CUSTOM denial, and zero existing User conversion.
+- Project-owner sanity QA passed for the existing Panelist path: login remained normal, Profile loaded, and My Defenses loaded.
+- No exhaustive new browser matrix is claimed because no live User was converted to `FACULTY` in this package.
+- No isolated real-DB enum rehearsal was available; the safe skip is explicitly retained as a deployment-readiness limitation rather than overstated as passing evidence.
+- Direct-access enforcement remains off; no real Faculty grants, Full/Restricted Administrator activation, or account cutover occurred.
+- **FACULTY-3 is accepted for continuation. FACULTY-4 is next / not started.**
