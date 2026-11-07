@@ -67,7 +67,7 @@ describe("AdminApplicantService academic background", () => {
       }),
     );
 
-    const detail = await new AdminApplicantService().getApplicantDetail("s1");
+    const detail = await new AdminApplicantService().getApplicantDetail("s1", "admin-1");
 
     expect(detail.program).toEqual({
       id: "prog-1",
@@ -90,7 +90,7 @@ describe("AdminApplicantService academic background", () => {
       }),
     );
 
-    const detail = await new AdminApplicantService().getApplicantDetail("s1");
+    const detail = await new AdminApplicantService().getApplicantDetail("s1", "admin-1");
 
     expect(detail.program?.programType).toBe("DOCTORAL");
     expect(detail.previousMastersProgram).toEqual({
@@ -107,7 +107,7 @@ describe("AdminApplicantService alignment + admission stage", () => {
       detailStudent({ alignmentStatus: null }),
     );
 
-    const detail = await new AdminApplicantService().getApplicantDetail("s1");
+    const detail = await new AdminApplicantService().getApplicantDetail("s1", "admin-1");
 
     expect(detail.alignmentStatus).toBeNull();
     expect(detail.alignmentStatus).not.toBe("ALIGNED");
@@ -121,7 +121,7 @@ describe("AdminApplicantService alignment + admission stage", () => {
       }),
     );
 
-    const detail = await new AdminApplicantService().getApplicantDetail("s1");
+    const detail = await new AdminApplicantService().getApplicantDetail("s1", "admin-1");
 
     expect(detail.admissionStage).toBe("ALIGNMENT");
     expect(detail.hasPassedExam).toBe(true);
@@ -135,7 +135,7 @@ describe("AdminApplicantService alignment + admission stage", () => {
       }),
     );
 
-    const detail = await new AdminApplicantService().getApplicantDetail("s1");
+    const detail = await new AdminApplicantService().getApplicantDetail("s1", "admin-1");
 
     expect(detail.admissionStage).toBe("EXAM");
     expect(detail.hasPassedExam).toBe(false);
@@ -149,7 +149,7 @@ describe("AdminApplicantService alignment + admission stage", () => {
       }),
     );
 
-    const detail = await new AdminApplicantService().getApplicantDetail("s1");
+    const detail = await new AdminApplicantService().getApplicantDetail("s1", "admin-1");
 
     expect(detail.admissionStage).toBe("COR");
     expect(detail.hasPassedExam).toBe(true);
@@ -160,7 +160,7 @@ describe("AdminApplicantService removed profile-only projections", () => {
   it("does not expose the removed role/activityLog detail fields", async () => {
     repo.findStudentById.mockResolvedValue(detailStudent());
 
-    const detail = await new AdminApplicantService().getApplicantDetail("s1");
+    const detail = await new AdminApplicantService().getApplicantDetail("s1", "admin-1");
 
     expect(detail).not.toHaveProperty("role");
     expect(detail).not.toHaveProperty("activityLog");
@@ -183,7 +183,7 @@ describe("AdminApplicantService exam schedule contract", () => {
       }),
     );
 
-    const detail = await new AdminApplicantService().getApplicantDetail("s1");
+    const detail = await new AdminApplicantService().getApplicantDetail("s1", "admin-1");
     const exam = detail.examApplications[0];
 
     expect(exam).toHaveProperty("examSlot");

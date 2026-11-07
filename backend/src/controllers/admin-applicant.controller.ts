@@ -1,13 +1,14 @@
+import { AuthenticatedRequest } from "../middlewares/auth.middleware";
 // backend/src/controllers/admin-applicant.controller.ts
 
-import { Request, Response } from "express";
+import { Response } from "express";
 import { AdminApplicantService } from "../services/admin-applicant.service";
 import { AppError } from "../utils/AppError";
 
 export class AdminApplicantController {
   private service = new AdminApplicantService();
 
-  listApplicants = async (req: Request, res: Response): Promise<void> => {
+  listApplicants = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
       const query = {
         page: req.query.page ? parseInt(req.query.page as string) : 1,
@@ -17,7 +18,7 @@ export class AdminApplicantController {
         stage: (req.query.stage as string) || "",
       };
 
-      const result = await this.service.listApplicants(query);
+      const result = await this.service.listApplicants(query, req.user!.userId);
       res.status(200).json(result);
     } catch (error: unknown) {
       if (error instanceof AppError) {
@@ -30,10 +31,10 @@ export class AdminApplicantController {
     }
   };
 
-  getApplicantDetail = async (req: Request, res: Response): Promise<void> => {
+  getApplicantDetail = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
       const id = req.params.id as string;
-      const result = await this.service.getApplicantDetail(id);
+      const result = await this.service.getApplicantDetail(id, req.user!.userId);
       res.status(200).json(result);
     } catch (error: unknown) {
       if (error instanceof AppError) {
@@ -46,10 +47,10 @@ export class AdminApplicantController {
     }
   };
 
-  validateWaiver = async (req: Request, res: Response): Promise<void> => {
+  validateWaiver = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
       const id = req.params.id as string;
-      const adminId = (req as any).user.userId;
+      const adminId = req.user!.userId;
       const result = await this.service.validateWaiver(id, adminId);
       res.status(200).json(result);
     } catch (error: unknown) {
@@ -63,10 +64,10 @@ export class AdminApplicantController {
     }
   };
 
-  rejectWaiver = async (req: Request, res: Response): Promise<void> => {
+  rejectWaiver = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
       const id = req.params.id as string;
-      const adminId = (req as any).user.userId;
+      const adminId = req.user!.userId;
       const { adminNotes } = req.body;
 
       if (!adminNotes) {
@@ -86,10 +87,10 @@ export class AdminApplicantController {
     }
   };
 
-  verifyCor = async (req: Request, res: Response): Promise<void> => {
+  verifyCor = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
       const id = req.params.id as string;
-      const adminId = (req as any).user.userId;
+      const adminId = req.user!.userId;
 
       const result = await this.service.verifyCor(id, adminId, req.body);
       res.status(200).json(result);
@@ -104,10 +105,10 @@ export class AdminApplicantController {
     }
   };
 
-  rejectCor = async (req: Request, res: Response): Promise<void> => {
+  rejectCor = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
       const id = req.params.id as string;
-      const adminId = (req as any).user.userId;
+      const adminId = req.user!.userId;
       const { reason } = req.body;
 
       if (!reason) {
@@ -127,10 +128,10 @@ export class AdminApplicantController {
     }
   };
 
-  promoteToStudent = async (req: Request, res: Response): Promise<void> => {
+  promoteToStudent = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
       const id = req.params.id as string;
-      const adminId = (req as any).user.userId;
+      const adminId = req.user!.userId;
       const result = await this.service.promoteToStudent(id, adminId);
       res.status(200).json(result);
     } catch (error: unknown) {

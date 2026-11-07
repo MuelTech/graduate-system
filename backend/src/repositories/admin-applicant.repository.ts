@@ -13,6 +13,17 @@ import {
 } from "../services/admin-applicant-list.rules";
 
 export class AdminApplicantRepository {
+  /** Exact operation context; never the Applicant registry/detail projection. */
+  findAdmissionContext(id: string) {
+    return prisma.student.findUnique({ where: { id }, select: { id: true, admissionStatus: true, studentNumber: true } });
+  }
+
+  findWaiverContext(id: string) {
+    return prisma.student.findUnique({ where: { id }, select: {
+      id: true, bridgingWaiver: { select: { id: true, status: true } },
+    } });
+  }
+
   effectivePassIds() { return validReconsideredApplicationIds(prisma); }
 
   async countApplicants(filters: AdminApplicantListQuery, decisionIds?: string[]): Promise<number> {

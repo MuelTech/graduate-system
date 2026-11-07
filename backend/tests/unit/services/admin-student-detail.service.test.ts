@@ -52,14 +52,14 @@ describe("AdminStudentService.getStudentDetail", () => {
   it("throws 404 when the student does not exist", async () => {
     repo.findStudentDetailById.mockResolvedValue(null);
     await expect(
-      new AdminStudentService().getStudentDetail("missing"),
+      new AdminStudentService().getStudentDetail("missing", "admin-1"),
     ).rejects.toMatchObject({ statusCode: 404 });
   });
 
   it("returns the explicit detail projection", async () => {
     repo.findStudentDetailById.mockResolvedValue(DETAIL);
     await expect(
-      new AdminStudentService().getStudentDetail("s1"),
+      new AdminStudentService().getStudentDetail("s1", "admin-1"),
     ).resolves.toEqual(DETAIL);
   });
 });
@@ -68,7 +68,7 @@ describe("AdminStudentService.getStudentJourney", () => {
   it("throws 404 and does not evaluate a journey for an unknown student", async () => {
     repo.findStudentUserId.mockResolvedValue(null);
     await expect(
-      new AdminStudentService().getStudentJourney("missing"),
+      new AdminStudentService().getStudentJourney("missing", "admin-1"),
     ).rejects.toMatchObject({ statusCode: 404 });
     expect(journey.getJourney).not.toHaveBeenCalled();
   });
@@ -77,7 +77,7 @@ describe("AdminStudentService.getStudentJourney", () => {
     repo.findStudentUserId.mockResolvedValue("u1");
     journey.getJourney.mockResolvedValue({ currentStep: "TITLE_DEFENSE", steps: [] });
 
-    const result = await new AdminStudentService().getStudentJourney("s1");
+    const result = await new AdminStudentService().getStudentJourney("s1", "admin-1");
 
     expect(journey.getJourney).toHaveBeenCalledWith("u1");
     expect(result).toEqual({ currentStep: "TITLE_DEFENSE", steps: [] });

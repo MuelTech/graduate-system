@@ -1,6 +1,6 @@
 // backend/src/controllers/admin-student.controller.ts
 
-import { Request, Response } from "express";
+import { Response } from "express";
 import { AuthenticatedRequest } from "../middlewares/auth.middleware";
 import { AdminStudentService } from "../services/admin-student.service";
 import { AppError } from "../utils/AppError";
@@ -8,7 +8,7 @@ import { AppError } from "../utils/AppError";
 export class AdminStudentController {
   private service = new AdminStudentService();
 
-  listStudents = async (req: Request, res: Response): Promise<void> => {
+  listStudents = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
       const query = {
         page: req.query.page ? parseInt(req.query.page as string) : 1,
@@ -17,7 +17,7 @@ export class AdminStudentController {
         program: (req.query.program as string) || "",
         status: (req.query.status as string) || "",
       };
-      const result = await this.service.listStudents(query);
+      const result = await this.service.listStudents(query, req.user!.userId);
       res.status(200).json(result);
     } catch (error: unknown) {
       if (error instanceof AppError) {
@@ -30,10 +30,10 @@ export class AdminStudentController {
     }
   };
 
-  getStudentDetail = async (req: Request, res: Response): Promise<void> => {
+  getStudentDetail = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
       const id = req.params.id as string;
-      const result = await this.service.getStudentDetail(id);
+      const result = await this.service.getStudentDetail(id, req.user!.userId);
       res.status(200).json(result);
     } catch (error: unknown) {
       if (error instanceof AppError) {
@@ -46,10 +46,10 @@ export class AdminStudentController {
     }
   };
 
-  getStudentJourney = async (req: Request, res: Response): Promise<void> => {
+  getStudentJourney = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
       const id = req.params.id as string;
-      const result = await this.service.getStudentJourney(id);
+      const result = await this.service.getStudentJourney(id, req.user!.userId);
       res.status(200).json(result);
     } catch (error: unknown) {
       if (error instanceof AppError) {
@@ -71,7 +71,7 @@ export class AdminStudentController {
         throw new AppError("Invalid status. Must be PENDING, PASSED, or FAILED.", 400);
       }
 
-      const result = await this.service.updateCompExamStatus(id, status);
+      const result = await this.service.updateCompExamStatus(id, status, req.user!.userId);
       res.status(200).json({ message: "Comprehensive exam status updated.", result });
     } catch (error: unknown) {
       if (error instanceof AppError) {

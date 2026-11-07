@@ -58,7 +58,7 @@ export class CorController {
         res: Response,
     ): Promise<void> => {
         try {
-            const uploads = await this.corService.getPendingUploads();
+            const uploads = await this.corService.getPendingUploads(req.user!.userId);
             res.status(200).json(uploads);
         } catch (error: unknown) {
             if (error instanceof AppError)

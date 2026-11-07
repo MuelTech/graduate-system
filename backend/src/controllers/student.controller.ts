@@ -1,4 +1,5 @@
-import { Request, Response } from 'express';
+import { AppError } from "../utils/AppError";
+import { Response } from 'express';
 import { StudentService } from '../services/student.service';
 import { AuthenticatedRequest } from '../middlewares/auth.middleware';
 
@@ -18,13 +19,13 @@ export class StudentController {
   };
 
   // For Admin Role
-  updateCompExam = async (req: Request, res: Response): Promise<void> => {
+  updateCompExam = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
       const id = req.params.id as string; // studentId
-      const result = await this.studentService.updateCompExam(id, req.body);
+      const result = await this.studentService.updateCompExam(id, req.body, req.user!.userId);
       res.status(200).json({ message: 'Comprehensive Exam updated successfully', result });
     } catch (error: any) {
-      res.status(400).json({ error: error.message });
+      res.status(error instanceof AppError ? error.statusCode : 400).json({ error: error.message });
     }
   };
 }

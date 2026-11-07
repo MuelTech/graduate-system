@@ -1,3 +1,4 @@
+import { admissionStudentAuthorization } from "../access/admission-student-authorization";
 // backend/src/services/admin-student.service.ts
 
 import { AdminStudentRepository, AdminStudentListQuery } from "../repositories/admin-student.repository";
@@ -7,11 +8,13 @@ import { AdminStudentDetail } from "../interfaces/admin-student.interfaces";
 import { StudentThesisJourneyDto } from "./student-thesis-journey.rules";
 
 export class AdminStudentService {
+  constructor(private readonly access = admissionStudentAuthorization) {}
   private repository = new AdminStudentRepository();
   /** UIUX-2G: reuse the authoritative journey read model (no duplicated rules). */
   private journeyService = new StudentThesisJourneyService();
 
-  async listStudents(query: AdminStudentListQuery) {
+  async listStudents(query: AdminStudentListQuery, actorId: string) {
+    await this.access.assert(actorId, "students.view");
     const page = query.page || 1;
     const pageSize = query.pageSize || 10;
 
@@ -23,7 +26,8 @@ export class AdminStudentService {
     return { students, total, page, pageSize };
   }
 
-  async getStudentDetail(id: string): Promise<AdminStudentDetail> {
+  async getStudentDetail(id: string, actorId: string): Promise<AdminStudentDetail> {
+    await this.access.assert(actorId, "students.view");
     const student = await this.repository.findStudentDetailById(id);
     if (!student) {
       throw new AppError("Student not found!", 404);
@@ -37,7 +41,8 @@ export class AdminStudentService {
    * authoritative journey evaluator so no progression rules are duplicated and
    * no cross-student data is exposed.
    */
-  async getStudentJourney(studentId: string): Promise<StudentThesisJourneyDto> {
+  async getStudentJourney(studentId: string, actorId: string): Promise<StudentThesisJourneyDto> {
+    await this.access.assert(actorId, "students.view");
     const userId = await this.repository.findStudentUserId(studentId);
     if (!userId) {
       throw new AppError("Student not found!", 404);
@@ -45,7 +50,8 @@ export class AdminStudentService {
     return this.journeyService.getJourney(userId);
   }
 
-  async updateCompExamStatus(studentId: string, status: "PENDING" | "PASSED" | "FAILED") {
+  async updateCompExamStatus(studentId: string, status: "PENDING" | "PASSED" | "FAILED", actorId: string) {
+    await this.access.assert(actorId, "students.comprehensive_exam.manage");
     const student = await this.repository.findStudentById(studentId);
     if (!student) {
       throw new AppError("Student not found!", 404);

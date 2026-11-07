@@ -1,7 +1,9 @@
+import { admissionStudentAuthorization } from "../access/admission-student-authorization";
 import prisma from "../config/database";
 import { AlignmentStatus, BridgingWaiverStatus } from "@prisma/client";
 
 export class WaiverRepository {
+    constructor(private readonly access = admissionStudentAuthorization) {}
     async getWaiverByStudentId(studentId: string) {
         return prisma.applicantBridgingWaiver.findUnique({
             where: { studentId },
@@ -51,6 +53,7 @@ export class WaiverRepository {
 
     async validateWaiver(waiverId: string, adminId: string) {
         return prisma.$transaction(async (tx) => {
+            await this.access.assertInTransaction(tx, adminId, "waivers.manage");
             const waiver = await tx.applicantBridgingWaiver.update({
                 where: { id: waiverId },
                 data: {
@@ -73,6 +76,7 @@ export class WaiverRepository {
     }
 
     async rejectWaiver(waiverId: string, adminId: string, notes: string) {
+        await this.access.assert(adminId, "waivers.manage");
         return prisma.applicantBridgingWaiver.update({
             where: { id: waiverId },
             data: {

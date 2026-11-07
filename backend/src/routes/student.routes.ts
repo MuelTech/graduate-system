@@ -1,3 +1,4 @@
+import { requireAdmissionStudentCapability } from "../middlewares/admission-student-capability.middleware";
 import { Router } from "express";
 import { StudentController } from "../controllers/student.controller";
 import { authenticateJWT, requireRole } from "../middlewares/auth.middleware";
@@ -15,6 +16,7 @@ router.post(
   "/:id/comprehensive-exam",
   authenticateJWT,
   requireRole(["ADMIN"]),
+  requireAdmissionStudentCapability("students.comprehensive_exam.manage"),
   studentController.updateCompExam,
 );
 export default router;

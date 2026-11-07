@@ -1,3 +1,4 @@
+import { admissionStudentAuthorization } from "../access/admission-student-authorization";
 // backend/src/services/admin-applicant.service.ts
 
 import { AdminApplicantRepository } from "../repositories/admin-applicant.repository";
@@ -17,13 +18,15 @@ import {
 } from "./admin-applicant-list.rules";
 
 export class AdminApplicantService {
+  constructor(private readonly access = admissionStudentAuthorization) {}
   private repository = new AdminApplicantRepository();
   /** DL-3: the canonical COR business authority (never duplicated here). */
-  private corService = new CorService();
+  private corService = new CorService(undefined, undefined, this.access);
 
   async listApplicants(
-    query: AdminApplicantListQuery
+    query: AdminApplicantListQuery, actorId: string
   ): Promise<AdminApplicantListResponse> {
+    await this.access.assert(actorId, "applicants.view");
     const page = query.page || 1;
     const pageSize = query.pageSize || 10;
 
@@ -37,7 +40,8 @@ export class AdminApplicantService {
     return { applicants, total, page, pageSize };
   }
 
-  async getApplicantDetail(id: string): Promise<AdminApplicantDetail> {
+  async getApplicantDetail(id: string, actorId: string): Promise<AdminApplicantDetail> {
+    await this.access.assert(actorId, "applicants.view");
     const student = await this.repository.findStudentById(id);
     if (!student) {
       throw new AppError("Applicant not found!", 404);
@@ -162,7 +166,8 @@ export class AdminApplicantService {
     studentId: string,
     adminId: string
   ): Promise<{ message: string; alignmentStatus: string }> {
-    const student = await this.repository.findStudentById(studentId);
+    await this.access.assert(adminId, "waivers.manage");
+    const student = await this.repository.findWaiverContext(studentId);
     if (!student) {
       throw new AppError("Applicant not found!", 404);
     }
@@ -201,7 +206,8 @@ export class AdminApplicantService {
     adminId: string,
     input: RejectWaiverInput
   ): Promise<{ message: string; alignmentStatus: string }> {
-    const student = await this.repository.findStudentById(studentId);
+    await this.access.assert(adminId, "waivers.manage");
+    const student = await this.repository.findWaiverContext(studentId);
     if (!student) {
       throw new AppError("Applicant not found!", 404);
     }
@@ -240,12 +246,13 @@ export class AdminApplicantService {
     adminId: string,
     input: VerifyCorInput
   ): Promise<{ message: string; corStatus: string; studentNumber?: string }> {
-    const student = await this.repository.findStudentById(studentId);
+    await this.access.assert(adminId, "cor.verify");
+    const student = await this.repository.findAdmissionContext(studentId);
     if (!student) {
       throw new AppError("Applicant not found!", 404);
     }
 
-    const uploadId = await this.corService.findPendingUploadIdForStudent(studentId);
+    const uploadId = await this.corService.findPendingUploadIdForStudent(studentId, adminId);
     if (!uploadId) {
       throw new AppError("No pending COR upload found!", 400);
     }
@@ -268,12 +275,13 @@ export class AdminApplicantService {
     adminId: string,
     input: RejectCorInput
   ): Promise<{ message: string; corStatus: string }> {
-    const student = await this.repository.findStudentById(studentId);
+    await this.access.assert(adminId, "cor.verify");
+    const student = await this.repository.findAdmissionContext(studentId);
     if (!student) {
       throw new AppError("Applicant not found!", 404);
     }
 
-    const uploadId = await this.corService.findPendingUploadIdForStudent(studentId);
+    const uploadId = await this.corService.findPendingUploadIdForStudent(studentId, adminId);
     if (!uploadId) {
       throw new AppError("No pending COR upload found!", 400);
     }
@@ -293,9 +301,10 @@ export class AdminApplicantService {
    */
   async promoteToStudent(
     studentId: string,
-    _adminId: string
+    adminId: string
   ): Promise<{ message: string; studentNumber: string | null }> {
-    const student = await this.repository.findStudentById(studentId);
+    await this.access.assert(adminId, "cor.verify");
+    const student = await this.repository.findAdmissionContext(studentId);
     if (!student) {
       throw new AppError("Applicant not found!", 404);
     }

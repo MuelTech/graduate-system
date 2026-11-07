@@ -24,6 +24,7 @@ const repo = vi.hoisted(() => ({
 vi.mock("../../../src/repositories/admin-applicant.repository", () => ({
   AdminApplicantRepository: class {
     findStudentById = repo.findStudentById;
+    findAdmissionContext = repo.findStudentById;
     createAuditLog = repo.createAuditLog;
     updateAlignmentStatus = repo.updateAlignmentStatus;
     updateWaiverStatus = repo.updateWaiverStatus;
@@ -69,7 +70,7 @@ describe("AdminApplicantService COR delegation to canonical authority", () => {
       studentNumber: "2026-GS-1",
     });
 
-    expect(cor.findPendingUploadIdForStudent).toHaveBeenCalledWith("student-1");
+    expect(cor.findPendingUploadIdForStudent).toHaveBeenCalledWith("student-1", "admin-1");
     expect(cor.verifyCor).toHaveBeenCalledWith(
       "cor-pending",
       "admin-1",
@@ -172,7 +173,7 @@ describe("AdminApplicantService COR DTO privacy + history", () => {
     );
 
     const svc = new AdminApplicantService();
-    const detail = await svc.getApplicantDetail("student-1");
+    const detail = await svc.getApplicantDetail("student-1", "admin-1");
     const serialized = JSON.stringify(detail);
 
     expect(serialized).not.toContain("filePath");

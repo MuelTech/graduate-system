@@ -1,3 +1,4 @@
+import { AppError } from "../utils/AppError";
 import { Response } from "express";
 import { AuthenticatedRequest } from "../middlewares/auth.middleware";
 import { WaiverService } from "../services/waiver.service";
@@ -141,10 +142,10 @@ export const getAdminWaiverQueue = async (
   res: Response,
 ) => {
   try {
-    const queue = await waiverService.getAdminQueue();
+    const queue = await waiverService.getAdminQueue(req.user!.userId);
     res.json(queue);
   } catch (error: any) {
-    res.status(500).json({ error: error.message });
+    res.status(error instanceof AppError ? error.statusCode : 500).json({ error: error.message });
   }
 };
 
@@ -161,7 +162,7 @@ export const validateWaiver = async (
     const result = await waiverService.validateWaiver(id, adminId);
     res.json(result);
   } catch (error: any) {
-    res.status(500).json({ error: error.message });
+    res.status(error instanceof AppError ? error.statusCode : 500).json({ error: error.message });
   }
 };
 
@@ -181,6 +182,6 @@ export const rejectWaiver = async (
     const result = await waiverService.rejectWaiver(id, adminId, notes);
     res.json(result);
   } catch (error: any) {
-    res.status(500).json({ error: error.message });
+    res.status(error instanceof AppError ? error.statusCode : 500).json({ error: error.message });
   }
 };

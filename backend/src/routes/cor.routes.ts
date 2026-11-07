@@ -1,3 +1,4 @@
+import { requireAdmissionStudentCapability } from "../middlewares/admission-student-capability.middleware";
 import { Router } from 'express';
 import { CorController } from '../controllers/cor.controller';
 import { authenticateJWT, requireRole } from '../middlewares/auth.middleware';
@@ -11,8 +12,8 @@ router.post('/upload', authenticateJWT, requireRole(['APPLICANT']), secureUpload
 router.get('/my-upload', authenticateJWT, requireRole(['APPLICANT']), corController.getMyUpload);
 
 // Admin Routes
-router.get('/pending', authenticateJWT, requireRole(['ADMIN']), corController.getPendingUploads);
-router.post('/verify/:id', authenticateJWT, requireRole(['ADMIN']), corController.verifyCor);
-router.post('/reject/:id', authenticateJWT, requireRole(['ADMIN']), corController.rejectCor);
+router.get('/pending', authenticateJWT, requireRole(['ADMIN']), requireAdmissionStudentCapability("cor.view"), corController.getPendingUploads);
+router.post('/verify/:id', authenticateJWT, requireRole(['ADMIN']), requireAdmissionStudentCapability("cor.verify"), corController.verifyCor);
+router.post('/reject/:id', authenticateJWT, requireRole(['ADMIN']), requireAdmissionStudentCapability("cor.verify"), corController.rejectCor);
 
 export default router;

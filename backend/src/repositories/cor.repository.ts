@@ -1,3 +1,4 @@
+import { admissionStudentAuthorization } from "../access/admission-student-authorization";
 import { findEffectivePassedExam } from "../services/exam-effective-result.rules";
 import prisma from '../config/database';
 import { Prisma, PrismaClient } from '@prisma/client';
@@ -21,6 +22,7 @@ const UPLOAD_SELECT = {
 } as const;
 
 export class CorRepository {
+    constructor(private readonly access = admissionStudentAuthorization) {}
     async createUpload(data: Prisma.CorUploadUncheckedCreateInput) {
         return prisma.corUpload.create({
             data,
@@ -197,11 +199,12 @@ export class CorRepository {
     async getUploadById(id: string) {
         return prisma.corUpload.findUnique({
             where: { id },
-            include: {
-                student: {
-                    include: { user: true },
-                },
-                reviewedBy: { select: { firstName: true, lastName: true } },
+            select: {
+                id: true, status: true, studentId: true,
+                student: { select: {
+                    id: true, userId: true, admissionStatus: true,
+                    user: { select: { role: true } },
+                } },
             },
         });
     }
@@ -258,6 +261,7 @@ export class CorRepository {
         opts: { studentId: string; reason: string; adminId: string },
     ) {
         return prisma.$transaction(async (tx) => {
+            await this.access.assertInTransaction(tx, opts.adminId, "cor.verify");
             await tx.$queryRaw`SELECT student_id FROM students WHERE student_id = ${opts.studentId} FOR UPDATE`;
 
             const latest = await tx.corUpload.findFirst({
@@ -346,6 +350,7 @@ export class CorRepository {
         adminId: string
     ) {
         return prisma.$transaction(async (tx) => {
+            await this.access.assertInTransaction(tx, adminId, "cor.verify");
             // 0. Serialize per Student (also blocks concurrent upload creation).
             await tx.$queryRaw`SELECT student_id FROM students WHERE student_id = ${studentId} FOR UPDATE`;
 

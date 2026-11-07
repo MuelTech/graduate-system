@@ -1,3 +1,4 @@
+import { requireAdmissionStudentCapability } from "../middlewares/admission-student-capability.middleware";
 // backend/src/routes/admin-student.routes.ts
 
 import { Router } from "express";
@@ -12,6 +13,7 @@ router.get(
   "/",
   authenticateJWT,
   requireRole(["ADMIN"]),
+  requireAdmissionStudentCapability("students.view"),
   controller.listStudents
 );
 
@@ -20,6 +22,7 @@ router.get(
   "/:id",
   authenticateJWT,
   requireRole(["ADMIN"]),
+  requireAdmissionStudentCapability("students.view"),
   controller.getStudentDetail
 );
 
@@ -28,6 +31,7 @@ router.get(
   "/:id/journey",
   authenticateJWT,
   requireRole(["ADMIN"]),
+  requireAdmissionStudentCapability("students.view"),
   controller.getStudentJourney
 );
 
@@ -36,6 +40,7 @@ router.put(
   "/:id/comprehensive-exam",
   authenticateJWT,
   requireRole(["ADMIN"]),
+  requireAdmissionStudentCapability("students.comprehensive_exam.manage"),
   controller.updateCompExamStatus
 );
 

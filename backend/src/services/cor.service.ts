@@ -1,3 +1,4 @@
+import { admissionStudentAuthorization } from "../access/admission-student-authorization";
 import fs from "fs/promises";
 import { fileTypeFromFile } from "file-type";
 import { CorRepository } from "../repositories/cor.repository";
@@ -54,10 +55,15 @@ function isUniqueConstraintError(error: unknown): boolean {
 }
 
 export class CorService {
+    private readonly corRepository: CorRepository;
     constructor(
-        private readonly corRepository = new CorRepository(),
+        corRepository: CorRepository | undefined = undefined,
         private readonly corExtractionService = new CorExtractionService(),
-    ) {}
+        private readonly access = admissionStudentAuthorization,
+    ) {
+        // Propagate the same internal composition seam to the canonical transaction.
+        this.corRepository = corRepository ?? new CorRepository(this.access);
+    }
 
     /**
      * DL-2/DL-3: the file is already validated, checksummed and promoted to a
@@ -191,7 +197,8 @@ export class CorService {
         };
     }
 
-    async getPendingUploads() {
+    async getPendingUploads(actorId: string) {
+        await this.access.assert(actorId, "cor.view");
         return this.corRepository.getPendingUploads();
     }
 
@@ -200,7 +207,8 @@ export class CorService {
      * submission is not PENDING. Used by legacy delegation so it can never
      * resolve a stale historical PENDING row.
      */
-    async findPendingUploadIdForStudent(studentId: string): Promise<string | null> {
+    async findPendingUploadIdForStudent(studentId: string, actorId: string): Promise<string | null> {
+        await this.access.assert(actorId, "cor.verify");
         const current = await this.corRepository.getCurrentUploadByStudentId(studentId);
         if (!current || current.status !== "PENDING") return null;
         return current.id;
@@ -212,6 +220,7 @@ export class CorService {
      * Notification is non-authoritative and never rolls back a promotion.
      */
     async verifyCor(corUploadId: string, adminId: string, data: VerifyCorData) {
+        await this.access.assert(adminId, "cor.verify");
         const studentNumber = String(data.studentNumber ?? "").trim();
         if (!studentNumber) {
             throw new AppError("Student Number is required.", 400);
@@ -341,6 +350,7 @@ export class CorService {
      * Applicant becomes eligible to resubmit.
      */
     async rejectCor(corUploadId: string, adminId: string, reason: string) {
+        await this.access.assert(adminId, "cor.verify");
         const trimmed = String(reason ?? "").trim();
         if (!trimmed) {
             throw new AppError("Rejection reason is required.", 400);
