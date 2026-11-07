@@ -1,6 +1,9 @@
 import jwt from "jsonwebtoken";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+const loadAccount = vi.hoisted(() => vi.fn());
+vi.mock("../../../src/services/current-account", () => ({ loadCurrentAccount: loadAccount }));
+
 import { createDefenseSocketAuthMiddleware } from "../../../src/realtime/defense-realtime.auth";
 import {
   JwtConfigurationError,
@@ -24,12 +27,12 @@ function makeSocket(auth: unknown, query: unknown = {}) {
   };
 }
 
-function runMiddleware(
+async function runMiddleware(
   middleware: ReturnType<typeof createDefenseSocketAuthMiddleware>,
   socket: ReturnType<typeof makeSocket>,
 ) {
   const next = vi.fn();
-  middleware(socket as never, next);
+  await middleware(socket as never, next);
   return next;
 }
 
@@ -38,6 +41,7 @@ describe("Defense socket JWT authentication", () => {
 
   beforeEach(() => {
     process.env.JWT_SECRET = SECRET;
+    loadAccount.mockReset().mockResolvedValue({ id: "u-1", role: "PANELIST", mustChangePassword: false, panelist: { isActive: true } });
   });
 
   afterEach(() => {
@@ -48,67 +52,67 @@ describe("Defense socket JWT authentication", () => {
     }
   });
 
-  it("denies a connection with no token", () => {
+  it("denies a connection with no token", async () => {
     const socket = makeSocket(undefined);
-    const next = runMiddleware(createDefenseSocketAuthMiddleware(), socket);
+    const next = await runMiddleware(createDefenseSocketAuthMiddleware(), socket);
 
     expect(next).toHaveBeenCalledTimes(1);
     expect(next.mock.calls[0][0]).toBeInstanceOf(Error);
     expect(socket.data).toEqual({});
   });
 
-  it("denies an invalid token", () => {
+  it("denies an invalid token", async () => {
     const socket = makeSocket({ token: "not-a-jwt" });
-    const next = runMiddleware(createDefenseSocketAuthMiddleware(), socket);
+    const next = await runMiddleware(createDefenseSocketAuthMiddleware(), socket);
 
     expect(next).toHaveBeenCalledTimes(1);
     expect(next.mock.calls[0][0]).toBeInstanceOf(Error);
     expect(socket.data).toEqual({});
   });
 
-  it("denies an expired token", () => {
+  it("denies an expired token", async () => {
     const socket = makeSocket({ token: sign(undefined, { expiresIn: -10 }) });
-    const next = runMiddleware(createDefenseSocketAuthMiddleware(), socket);
+    const next = await runMiddleware(createDefenseSocketAuthMiddleware(), socket);
 
     expect(next).toHaveBeenCalledTimes(1);
     expect(next.mock.calls[0][0]).toBeInstanceOf(Error);
     expect(socket.data).toEqual({});
   });
 
-  it("does not accept a token supplied through the URL query", () => {
+  it("does not accept a token supplied through the URL query", async () => {
     const token = sign();
     const socket = makeSocket(undefined, { token });
-    const next = runMiddleware(createDefenseSocketAuthMiddleware(), socket);
+    const next = await runMiddleware(createDefenseSocketAuthMiddleware(), socket);
 
     expect(next).toHaveBeenCalledTimes(1);
     expect(next.mock.calls[0][0]).toBeInstanceOf(Error);
     expect(socket.data).toEqual({});
   });
 
-  it("does not accept a client-supplied userId or role", () => {
+  it("does not accept a client-supplied userId or role", async () => {
     const token = sign();
     const socket = makeSocket({
       token,
       userId: "attacker",
       role: "ADMIN",
     });
-    const next = runMiddleware(createDefenseSocketAuthMiddleware(), socket);
+    const next = await runMiddleware(createDefenseSocketAuthMiddleware(), socket);
 
     expect(next).toHaveBeenCalledWith();
     expect(socket.data).toEqual({ userId: "u-1", role: "PANELIST" });
   });
 
-  it("authenticates a valid token and exposes only the token identity", () => {
+  it("authenticates a valid token and exposes only the current identity", async () => {
     const socket = makeSocket({ token: sign() });
-    const next = runMiddleware(createDefenseSocketAuthMiddleware(), socket);
+    const next = await runMiddleware(createDefenseSocketAuthMiddleware(), socket);
 
     expect(next).toHaveBeenCalledWith();
     expect(socket.data).toEqual({ userId: "u-1", role: "PANELIST" });
   });
 
-  it("rejects a token without a userId or role payload", () => {
+  it("rejects a token without a userId or role payload", async () => {
     const socket = makeSocket({ token: sign({ role: "PANELIST" }) });
-    const next = runMiddleware(createDefenseSocketAuthMiddleware(), socket);
+    const next = await runMiddleware(createDefenseSocketAuthMiddleware(), socket);
 
     expect(next).toHaveBeenCalledTimes(1);
     expect(next.mock.calls[0][0]).toBeInstanceOf(Error);
@@ -146,5 +150,25 @@ describe("verifyAccessToken (shared REST/socket verifier)", () => {
       userId: "u-1",
       role: "PANELIST",
     });
+  });
+});
+
+describe("FACULTY-2 socket current account boundary", () => {
+  it.each([
+    { role: "ADMIN", mustChangePassword: false, panelist: { isActive: true } },
+    { role: "PANELIST", mustChangePassword: true, panelist: { isActive: true } },
+    { role: "PANELIST", mustChangePassword: false, panelist: { isActive: false } },
+  ])("denies current ineligible identity %j", async (account) => {
+    loadAccount.mockResolvedValue({ id: "u-1", ...account });
+    const socket = makeSocket({ token: sign() });
+    const next = await runMiddleware(createDefenseSocketAuthMiddleware({ verifyToken: () => ({ userId: "u-1", role: "PANELIST" }) }), socket);
+    expect(next.mock.calls[0][0]).toBeInstanceOf(Error);
+    expect(socket.data).toEqual({});
+  });
+  it("fails closed on disabled/missing/unavailable current account", async () => {
+    loadAccount.mockRejectedValue(new Error("inactive"));
+    const socket = makeSocket({ token: sign() });
+    const next = await runMiddleware(createDefenseSocketAuthMiddleware({ verifyToken: () => ({ userId: "u-1", role: "PANELIST" }) }), socket);
+    expect(next.mock.calls[0][0]).toBeInstanceOf(Error);
   });
 });

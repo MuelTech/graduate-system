@@ -1,5 +1,6 @@
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
+import { ApiError } from "./api-error";
 
 import { getServerBackendBaseUrl } from "./backend-origin.server";
 
@@ -8,6 +9,10 @@ export const apiServerRequest = async (
   options: RequestInit = {},
 ) => {
   const session = await auth();
+  if (session?.user?.currentAccountError) {
+    throw new ApiError("Current account access is unavailable.",
+      session.user.currentAccountError === "ACCOUNT_FORBIDDEN" ? 403 : 503);
+  }
   const token = session?.user?.accessToken;
 
   const headers = new Headers(options.headers);
@@ -21,6 +26,7 @@ export const apiServerRequest = async (
   const response = await fetch(`${apiUrl}/api${url}`, {
     ...options,
     headers,
+    cache: "no-store",
   });
 
   // Gracefully redirect the user rather than throwing an error boundary crash
@@ -30,7 +36,7 @@ export const apiServerRequest = async (
 
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
-    throw new Error(errorData.error || `Server API error: ${response.status}`);
+    throw new ApiError(errorData.error || `Server API error: ${response.status}`, response.status, errorData.missing);
   }
 
   return response.json();

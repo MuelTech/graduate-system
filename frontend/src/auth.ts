@@ -4,6 +4,7 @@ import type { JWT } from "@auth/core/jwt";
 import Credentials from "next-auth/providers/credentials";
 
 import { getServerBackendBaseUrl } from "@/lib/backend-origin.server";
+import { synchronizeCurrentSession } from "@/lib/current-session";
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   providers: [
@@ -56,14 +57,14 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     }),
   ],
   callbacks: {
-    jwt({ token, user }: { token: JWT; user?: User }) {
+    async jwt({ token, user }: { token: JWT; user?: User }) {
       if (user) {
         token.id = user.id!;
         token.role = user.role?.toLowerCase() ?? "";
         token.accessToken = user.accessToken ?? "";
         token.mustChangePassword = user.mustChangePassword ?? false;
       }
-      return token;
+      return synchronizeCurrentSession(token, getServerBackendBaseUrl());
     },
     session({ session, token }: { session: Session; token: JWT }) {
       if (session.user) {
@@ -71,6 +72,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         session.user.role = token.role;
         session.user.accessToken = token.accessToken;
         session.user.mustChangePassword = token.mustChangePassword;
+        session.user.currentAccountError = token.currentAccountError;
+        session.user.email = token.email;
       }
       return session;
     },

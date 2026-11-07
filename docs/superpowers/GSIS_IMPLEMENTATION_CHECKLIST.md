@@ -282,6 +282,7 @@ Faculty and Admin are separate account roles in the approved target. Faculty doe
 | ⏳ | Broad PANELIST identity → FACULTY | Approved target. Requires repository-grounded migration/compatibility design; do not blindly rename APIs/routes/data because Panelist remains a valid defense-assignment term. |
 | ✅ | Faculty/Admin product architecture | Decision resolved by the canonical Faculty/Admin source of truth. Four roles remain Applicant / Student / Faculty / Admin; Faculty and Admin stay separate account roles. |
 | ✅ | Direct-access foundation | FACULTY-1 accepted at `56b1ecbcb7806c1a3df9477d4b14f4cfa914f62e`: additive direct per-user grant/Admin-level storage, typed capability catalog, fail-closed resolver, protected access-event taxonomy and preflight format are in place. Enforcement remains intentionally off. |
+| 🟡 | Current-account auth / credential boundary | FACULTY-2 implemented; independent review pending. Selected role/activity validation, fresh REST/socket account checks, generic password gate, safe self-access/session refresh, and 401/403 separation. See [report](reports/2026-11-08-faculty-2-current-account-authentication.md). No permission rollout or FACULTY-3. |
 | ⏳ | Faculty configured access | Initial direct Faculty access remains **Essay Evaluation** through the established `essay.evaluate` capability. Live grant management/activation is not implemented yet. |
 | ⏳ | Dynamic Faculty dashboard/navigation | Dashboard and sidebar must reflect effective Faculty work from Essay Evaluation access plus authoritative Adviser/Defense assignments. Do not show irrelevant zero-value work areas. |
 | ✅ | Defense roles are contextual | Chairman / Panelist / Rapporteur / Facilitator / Adviser are not permanent Faculty permission checkboxes; authority continues to come from exact workflow assignments. |
@@ -906,8 +907,8 @@ Current repository facts:
 - Applicant authenticates with Applicant ID + password;
 - Student authenticates with Student Number + existing password;
 - Admin/Panelist/other roles use email + password;
-- the current middleware forces first-login password change only when `role === "panelist"` and `mustChangePassword === true`;
-- the current Change Password page itself is generic, but route access/enforcement is Panelist-specific;
+- FACULTY-2 enforces current `mustChangePassword` for every account role in REST and frontend middleware; independent review is pending;
+- Change Password uses the existing generic page and re-login completion; only exact password-change/self-session REST paths bypass the credential gate;
 - Applicant registration is the public sign-up flow and creates an Applicant account; Faculty/Admin account creation must not become public sign-up accidentally;
 - COR promotion currently preserves the Applicant's existing password when the account becomes a Student.
 
@@ -919,13 +920,13 @@ Current repository facts:
 | ⏳ | Panelist → Faculty terminology migration in auth UX | Login labels, redirects, routes, messages, session typing, guards, tests, and navigation must be reviewed when the account identity changes to Faculty. |
 | ❓ | Future login entry model | Decide whether Admin remains a visible login choice or Faculty signs in once and receives Admin/module access from permissions. Do not lock this until the Faculty permission architecture is finalized. |
 | ⏳ | Permission-aware post-login routing | Future Faculty users may have multiple capabilities. Redirect/navigation should not assume one mutually exclusive role maps to exactly one dashboard. |
-| 🐞 | Role-specific forced password gate | Current middleware hardcodes forced password change to Panelist only. This will be incorrect after the Faculty refactor and is too narrow even for other temporary-password accounts. |
-| ⏳ | Credential-state-based forced password change | Enforce `mustChangePassword` for any authenticated account that is explicitly flagged, regardless of Applicant/Student/Faculty/Admin identity, subject to safe exceptions for the change-password route itself. |
+| 🟡 | Role-specific forced password gate | Removed by FACULTY-2: current stored credential state gates every role; independent review pending. |
+| 🟡 | Credential-state-based forced password change | FACULTY-2 implemented backend and frontend enforcement for all existing roles; exact authenticated self-session/password-change exceptions and local NextAuth logout only. Independent review pending. |
 | ✅ / 🟡 | Applicant-created password → Student promotion | Current Student promotion keeps the Applicant's existing password. A promoted Student should not be forced to change a password merely because the role changed if the password was self-created and `mustChangePassword` is false. |
 | ⏳ | Temporary/generated password policy | Faculty or any account provisioned with a temporary/default password should set `mustChangePassword = true` and be forced through the change-password flow before normal portal access. |
 | ⏳ | Student temporary/reset credential behavior | If a Student is ever issued a temporary/reset password by an authorized workflow, the same generic `mustChangePassword` gate should apply. |
 | ⏳ | Change-password UX redesign | Align the page visually with the redesigned auth surfaces and ensure safe return/login behavior after completion. |
-| ⏳ | Auth regression coverage | Update login, middleware, NextAuth/session, role/permission routing, forced-password, and COR credential-handoff tests when Faculty/auth redesign is implemented. |
+| 🟡 | Auth regression coverage | FACULTY-2 focused login/current-account/session/helper, credential-gate, COR continuity and related document/socket tests pass. Future Faculty identity/capability rollout and owner browser QA remain separate. |
 
 ### Credential rule to preserve
 
@@ -1125,7 +1126,7 @@ These items are not all end-user features, but they are required before the syst
 Current repository facts:
 
 - JWT/session lifetime is currently 24 hours;
-- the redesigned generic `mustChangePassword` rule is still pending;
+- FACULTY-2 implements the generic current-account `mustChangePassword` gate, pending independent review;
 - no accepted self-service forgot-password/reset-token flow was found;
 - the canonical UI/UX documentation explicitly leaves Admin-assisted Student password recovery as unimplemented.
 

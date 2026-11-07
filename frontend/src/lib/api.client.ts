@@ -1,25 +1,18 @@
 import { getSession, signOut } from "next-auth/react";
-import type { MissingRequirement } from "@/types";
+import { ApiError } from "./api-error";
+export { ApiError } from "./api-error";
 
 import { getClientBackendBaseUrl } from "./backend-origin.client";
-
-export class ApiError extends Error {
-  missing?: MissingRequirement[];
-  statusCode?: number;
-
-  constructor(message: string, statusCode?: number, missing?: MissingRequirement[]) {
-    super(message);
-    this.name = "ApiError";
-    this.statusCode = statusCode;
-    this.missing = missing;
-  }
-}
 
 export const apiClientRequest = async (
   url: string,
   options: RequestInit = {},
 ) => {
   const session = await getSession();
+  if (session?.user?.currentAccountError) {
+    throw new ApiError("Current account access is unavailable.",
+      session.user.currentAccountError === "ACCOUNT_FORBIDDEN" ? 403 : 503);
+  }
   const token = session?.user?.accessToken;
 
   const headers = new Headers(options.headers);
@@ -41,11 +34,16 @@ export const apiClientRequest = async (
   });
 
   // Automatically force logout if the backend rejects the token
-  if (response.status === 401 || response.status === 403) {
+  if (response.status === 401) {
     if (typeof window !== "undefined") {
       signOut({ callbackUrl: "/login" });
     }
-    throw new Error("Session expired. Please log in again.");
+    throw new ApiError("Session expired. Please log in again.", 401);
+  }
+
+  // Refresh the server-derived session on denial without destroying a valid login.
+  if (response.status === 403) {
+    try { await getSession(); } catch { /* Preserve the original forbidden response. */ }
   }
 
   if (!response.ok) {

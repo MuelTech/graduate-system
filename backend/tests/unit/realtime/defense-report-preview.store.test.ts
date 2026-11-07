@@ -2,6 +2,8 @@ import { describe, expect, it, vi } from "vitest";
 
 import { createPrismaDefenseReportPreviewStore } from "../../../src/realtime/defense-report-preview.store";
 
+import { DEFENSE_CURRENT_ACCOUNT_FILTER } from "../../../src/realtime/defense-realtime.store";
+
 function makeClient() {
   return {
     defenseSchedule: { findUnique: vi.fn() },
@@ -33,7 +35,7 @@ describe("Prisma defense report preview store", () => {
       select: {
         sessionStatus: true,
         panelAssignments: {
-          where: { userId: "rapporteur-1", isActive: true },
+          where: { userId: "rapporteur-1", isActive: true, user: DEFENSE_CURRENT_ACCOUNT_FILTER },
           select: { role: true },
           take: 1,
         },

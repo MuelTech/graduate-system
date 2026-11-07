@@ -8,6 +8,11 @@ import type { DefenseRealtimeAuthorizationStore } from "./defense-realtime.autho
  * narrow: they resolve only the exact schedule status and current
  * PanelAssignment membership required by the realtime room rules.
  */
+export const DEFENSE_CURRENT_ACCOUNT_FILTER = {
+  isActive: true, mustChangePassword: false, role: "PANELIST",
+  panelist: { is: { isActive: true } },
+} as const;
+
 export function createPrismaDefenseRealtimeStore(
   client: PrismaClient = prisma,
 ): DefenseRealtimeAuthorizationStore {
@@ -23,7 +28,7 @@ export function createPrismaDefenseRealtimeStore(
 
     async hasPanelAssignment(scheduleId, userId) {
       const assignment = await client.panelAssignment.findFirst({
-        where: { scheduleId, userId, isActive: true },
+        where: { scheduleId, userId, isActive: true, user: DEFENSE_CURRENT_ACCOUNT_FILTER },
         select: { id: true },
       });
 
@@ -44,6 +49,7 @@ export function createPrismaDefenseRealtimeStore(
           scheduleId,
           userId: { in: exactUserIds },
           isActive: true,
+          user: DEFENSE_CURRENT_ACCOUNT_FILTER,
         },
         select: { userId: true },
       });

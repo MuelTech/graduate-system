@@ -1,4 +1,5 @@
 import { DefaultSession } from "next-auth";
+import type { CurrentSessionError } from "../lib/current-session";
 
 declare module "next-auth" {
   interface User {
@@ -14,6 +15,7 @@ declare module "next-auth" {
       role: string;
       accessToken: string;
       mustChangePassword: boolean;
+      currentAccountError?: CurrentSessionError;
     } & DefaultSession["user"];
   }
 }
@@ -24,5 +26,6 @@ declare module "@auth/core/jwt" {
     role: string;
     accessToken: string;
     mustChangePassword: boolean;
+    currentAccountError?: CurrentSessionError;
   }
 }

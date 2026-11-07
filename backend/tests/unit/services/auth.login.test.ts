@@ -47,6 +47,7 @@ function studentUser(overrides: Record<string, unknown> = {}) {
     email: "student@example.com",
     role: "STUDENT",
     mustChangePassword: false,
+    isActive: true,
     passwordHash: "synthetic-hash",
     ...overrides,
   };
@@ -195,7 +196,7 @@ describe("AuthService.login Applicant + staff roles (regression)", () => {
       vi.clearAllMocks();
       bcryptMock.compare.mockResolvedValue(true);
       repo.findUserByEmail.mockResolvedValue(
-        studentUser({ role: role.toUpperCase() }),
+        studentUser({ role: role === "other" ? "CUSTOM" : role.toUpperCase() }),
       );
       const svc = new AuthService();
 
@@ -207,7 +208,57 @@ describe("AuthService.login Applicant + staff roles (regression)", () => {
 
       expect(repo.findUserByEmail).toHaveBeenCalledWith(`${role}@example.com`);
       expect(repo.findStudentByStudentNumber).not.toHaveBeenCalled();
-      expect(result.user.role).toBe(role.toUpperCase());
+      expect(result.user.role).toBe(role === "other" ? "CUSTOM" : role.toUpperCase());
     }
+  });
+});
+
+
+describe("FACULTY-2 email role and activity boundary", () => {
+  it.each(["ADMIN", "PANELIST", "APPLICANT", "STUDENT", "CUSTOM"])("rejects mismatched email role for %s", async (role) => {
+    repo.findUserByEmail.mockResolvedValue(studentUser({ role }));
+    const selected = role === "ADMIN" ? "panelist" : "admin";
+    await expect(new AuthService().login({ role: selected, email: "a@example.com", password: "pw" }))
+      .rejects.toMatchObject({ statusCode: 403 });
+    expect(jwtMock.sign).not.toHaveBeenCalled();
+  });
+  it.each(["faculty", "ADMIN", "__proto__", "constructor", "", null, {}, ["admin"]])("rejects unknown/forged selected role %j before lookup", async (role) => {
+    await expect(new AuthService().login({ role, email: "a@example.com", password: "pw" } as never))
+      .rejects.toMatchObject({ statusCode: 400 });
+    expect(repo.findUserByEmail).not.toHaveBeenCalled();
+    expect(jwtMock.sign).not.toHaveBeenCalled();
+  });
+  it.each(["applicant", "student", "admin", "panelist", "other"])("rejects inactive %s", async (role) => {
+    const user = studentUser({ isActive: false, role: role === "other" ? "CUSTOM" : role.toUpperCase() });
+    repo.findUserByEmail.mockResolvedValue(user);
+    repo.findStudentByApplicantId.mockResolvedValue({ user });
+    repo.findStudentByStudentNumber.mockResolvedValue({ user });
+    await expect(new AuthService().login({ role, email: "a@example.com", applicantId: "APP", studentNumber: "SN", password: "pw" }))
+      .rejects.toMatchObject({ statusCode: 403 });
+    expect(jwtMock.sign).not.toHaveBeenCalled();
+  });
+  it("allows a credential-gated account to authenticate for password change", async () => {
+    repo.findUserByEmail.mockResolvedValue(studentUser({ role: "ADMIN", mustChangePassword: true }));
+    const result = await new AuthService().login({ role: "admin", email: "a@example.com", password: "pw" });
+    expect(result.user.mustChangePassword).toBe(true);
+  });
+});
+
+
+describe("FACULTY-2 public registration preservation", () => {
+  it("always creates APPLICANT despite injected privileged role fields", async () => {
+    repo.findUserByEmail.mockResolvedValue(null);
+    repo.findStudentByApplicantId.mockResolvedValue(null);
+    repo.findProgramById.mockResolvedValue({ id: "program", programName: "Education" });
+    repo.findUndergraduateProgramById.mockResolvedValue({ id: "prereq", programName: "Education" });
+    repo.registerApplicant.mockResolvedValue(studentUser({ role: "APPLICANT" }));
+    bcryptMock.hash.mockResolvedValue("new-applicant-hash");
+    const result = await new AuthService().register({
+      email: "own@gmail.com", password: "own-password", role: "ADMIN", isActive: true,
+      applicantId: "APP-1", firstName: "First", lastName: "Last", cellphone: "09000000000",
+      dateOfBirth: "2000-01-01", programId: "program", programType: "Masters", undergraduateProgramId: "prereq",
+    } as never);
+    expect(repo.registerApplicant.mock.calls[0][0].role).toBe("APPLICANT");
+    expect(result.role).toBe("APPLICANT");
   });
 });

@@ -119,6 +119,7 @@ describe("COR-AUTH promotion -> Student login original-password continuity", () 
         email: "a@b.c",
         role: "STUDENT",
         mustChangePassword: false,
+        isActive: true,
         passwordHash: EXISTING_HASH,
       },
     });

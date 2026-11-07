@@ -2,7 +2,7 @@ import type { PrismaClient } from "@prisma/client";
 
 import prisma from "../config/database";
 import type { DefenseReportPreviewStore } from "./defense-report-preview.authorization";
-import { createPrismaDefenseRealtimeStore } from "./defense-realtime.store";
+import { createPrismaDefenseRealtimeStore, DEFENSE_CURRENT_ACCOUNT_FILTER } from "./defense-realtime.store";
 
 /**
  * CDW-LIVE-1A — narrow Prisma read port for report preview authorization.
@@ -26,7 +26,7 @@ export function createPrismaDefenseReportPreviewStore(
         select: {
           sessionStatus: true,
           panelAssignments: {
-            where: { userId, isActive: true },
+            where: { userId, isActive: true, user: DEFENSE_CURRENT_ACCOUNT_FILTER },
             select: { role: true },
             take: 1,
           },

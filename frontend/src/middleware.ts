@@ -18,13 +18,19 @@ export default auth((req: NextRequest & { auth: Session | null }) => {
   const role = token.user?.role;
   const mustChangePassword = token.user?.mustChangePassword;
 
-  // Force panelists to change password on first login
-  if (role === "panelist" && mustChangePassword && path !== "/change-password") {
+  if (token.user?.currentAccountError === "ACCOUNT_UNAVAILABLE") {
+    return new NextResponse("Account access is temporarily unavailable. Please try again.", { status: 503 });
+  }
+  if (token.user?.currentAccountError || !role) {
+    return NextResponse.redirect(new URL("/login", req.url));
+  }
+
+  // Credential state applies to every account role.
+  if (mustChangePassword && path !== "/change-password") {
     return NextResponse.redirect(new URL("/change-password", req.url));
   }
 
-  // Allow change-password page access for panelists
-  if (path === "/change-password" && role === "panelist") {
+  if (path === "/change-password") {
     return NextResponse.next();
   }
 

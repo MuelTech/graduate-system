@@ -1,4 +1,5 @@
 import type { AuthenticatedIdentity } from "../utils/jwt";
+import { loadCurrentAccount } from "../services/current-account";
 import { verifyAccessToken } from "../utils/jwt";
 
 interface DefenseAuthSocket {
@@ -25,10 +26,10 @@ export interface DefenseSocketAuthOptions {
  */
 export function createDefenseSocketAuthMiddleware(
   options: DefenseSocketAuthOptions = {},
-): (socket: DefenseAuthSocket, next: SocketNext) => void {
+): (socket: DefenseAuthSocket, next: SocketNext) => Promise<void> {
   const verifyToken = options.verifyToken ?? verifyAccessToken;
 
-  return (socket, next) => {
+  return async (socket, next) => {
     const auth = socket.handshake.auth;
     const token =
       auth && typeof auth === "object" && !Array.isArray(auth)
@@ -42,8 +43,12 @@ export function createDefenseSocketAuthMiddleware(
 
     try {
       const identity = verifyToken(token);
-      socket.data.userId = identity.userId;
-      socket.data.role = identity.role;
+      const account = await loadCurrentAccount(identity.userId);
+      if (account.role !== "PANELIST" || account.mustChangePassword || account.panelist?.isActive !== true) {
+        throw new Error("FORBIDDEN");
+      }
+      socket.data.userId = account.id;
+      socket.data.role = account.role;
       next();
     } catch {
       next(new Error("UNAUTHORIZED"));

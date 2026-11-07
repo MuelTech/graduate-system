@@ -2,9 +2,19 @@ import { Request, Response } from "express";
 import { AuthService } from "../services/auth.service";
 import { AppError } from "../utils/AppError";
 import { AuthenticatedRequest } from "../middlewares/auth.middleware";
+import { currentAccountResponse } from "../services/current-account";
 
 export class AuthController {
     private authService = new AuthService();
+
+    currentAccount = (req: AuthenticatedRequest, res: Response): void => {
+        res.setHeader("Cache-Control", "no-store");
+        if (!req.currentAccount) {
+            res.status(503).json({ error: "Current account is unavailable." });
+            return;
+        }
+        res.json(currentAccountResponse(req.currentAccount));
+    };
 
     register = async (req: Request, res: Response): Promise<void> => {
         try {
@@ -45,7 +55,7 @@ export class AuthController {
             }
 
             const { newPassword } = req.body;
-            if (!newPassword || newPassword.length < 6) {
+            if (typeof newPassword !== "string" || newPassword.length < 6) {
                 res.status(400).json({ error: "New password must be at least 6 characters" });
                 return;
             }
