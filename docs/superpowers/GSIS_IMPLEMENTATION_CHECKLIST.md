@@ -526,7 +526,7 @@ Use this single branch for EXAM-CONTENT-1 through EXAM-CONTENT-7. Each package s
 
 ## 7.2 Phase B — Exam Engine / Scheduling Audit
 
-**2026-11-07 EXAM-SCHEDULE-BOOKINGS-1: IMPLEMENTED — INDEPENDENT REVIEW PASS; OWNER QA FIX-1 APPLIED / RECHECK REQUIRED.**
+**2026-11-07 EXAM-SCHEDULE-BOOKINGS-1: ✅ ACCEPTED — INDEPENDENT REVIEW PASS; PROJECT-OWNER FUNCTIONAL/MANUAL + VISUAL QA PASS.**
 Post-Phase-B Admin usability follow-up on the existing branch
 `feat/exam-schedule-booking-visibility` from merged `main`
 `3a456567a7469c4cdc0ac69c012fdf2e79ee6a4c`. The [bounded specification](specs/2026-11-06-exam-schedule-booking-visibility.md)
@@ -544,15 +544,29 @@ outcome is recorded in the report. Independent remote source/diff review:
 removes only that caption while keeping the authoritative Manila timestamp
 formatter unchanged. The original Users / **View bookings** icon design is
 preserved. The focused UI contract source was updated; no new automated FIX-1
-PASS is claimed from the ChatGPT GitHub connector session.
-**Project-owner browser recheck: PENDING.**
+PASS is claimed from the ChatGPT GitHub connector session. Project-owner browser
+recheck after FIX-1: **PASS**. Functional/manual and visual acceptance:
+**PASS — 2026-11-07**. This post-Phase-B scheduling visibility package is
+**ACCEPTED FOR MERGE**.
 
 Existing Program/capacity,
 booking atomicity, same-day assignment, seat release, exam execution, scoring,
 reconsideration and Email Integration behavior remain protected. Released
-historical applications must not be presented as current occupants. The separate
-future **Create & Assign** workflow is explicitly out of scope and Phase B core
+historical applications must not be presented as current occupants. Phase B core
 acceptance is not reopened.
+
+**🚫 DEFERRED — EXAM-SCHEDULE-CREATE-ASSIGN: Create Schedule + Assign Applicant.**
+Future bounded functional package for the Admin **Assign Applicant** flow when no
+eligible same-day schedule exists. The intended direction is an explicit
+**Create & Assign** action: Program is derived from the selected Applicant,
+today may be prefilled where policy allows, and the Admin must still choose the
+schedule time and capacity before creation. The created Exam Schedule remains a
+shared institutional schedule that may accept additional eligible Applicants;
+it must not become an Applicant-owned/private schedule. Silent automatic schedule
+creation is not approved. Existing Program/alignment/waiver, capacity,
+transaction/locking, blocking-record and same-day rules must remain authoritative.
+This deferred package is separate from EXAM-SCHEDULE-BOOKINGS-1 and requires
+explicit owner authorization before implementation.
 
 **2026-11-06 B10 / PHASE B CORE EXAM ACCEPTANCE: ACCEPTED FOR MERGE — EMAIL INTEGRATION DEFERRED.**
 The owner-authorized [EXAM-B10-MQA-UI presentation/content refinement](reports/2026-11-06-exam-b10-mqa-ui.md)

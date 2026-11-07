@@ -2,7 +2,7 @@
 
 Date: 2026-11-06 (Asia/Manila).
 
-**IMPLEMENTED — INDEPENDENT REMOTE REVIEW PASS; OWNER QA FIX-1 APPLIED / RECHECK REQUIRED.**
+**ACCEPTED — INDEPENDENT REMOTE REVIEW PASS; PROJECT-OWNER FUNCTIONAL/MANUAL + VISUAL QA PASS — 2026-11-07.**
 
 ## Verified starting state
 
@@ -230,4 +230,30 @@ caption and continued Manila timestamp output across host timezones. This ChatGP
 GitHub-connector correction did **not** execute the test suite locally, so no new
 automated PASS is claimed for FIX-1.
 
-Project-owner browser recheck: **PENDING**. Final package acceptance remains open.
+Project-owner browser recheck: **PASS — 2026-11-07**. Final package acceptance:
+**PASS / ACCEPTED FOR MERGE**.
+
+
+## Final acceptance — 2026-11-07
+
+Final accepted source state before this documentation-only closure:
+`297e598084c44dabf4d767046f1e2995beb305c8`.
+
+Independent remote review of the implementation: **PASS**.
+
+After the bounded FIX-1 removed the redundant visible timezone caption, the
+project owner completed the final browser recheck and accepted both the
+functionality and visual result:
+
+- project-owner functional/manual QA: **PASS**;
+- project-owner visual/UI QA: **PASS**;
+- EXAM-SCHEDULE-BOOKINGS-1: **ACCEPTED FOR MERGE**.
+
+No new automated FIX-1 PASS is claimed because the final copy-only source
+correction was applied through the ChatGPT GitHub connector rather than a local
+command-running environment. The previously reported implementation verification
+remains historical evidence and the final owner browser recheck closes the
+presentation gate.
+
+The future **Create & Assign** workflow remains explicitly **DEFERRED** as a
+separate functional package. It is not included in this branch's accepted scope.

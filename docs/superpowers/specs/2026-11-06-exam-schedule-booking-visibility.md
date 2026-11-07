@@ -1,6 +1,6 @@
 # EXAM-SCHEDULE-BOOKINGS-1 — Exam Schedule Booking Visibility
 
-**Status:** IMPLEMENTED — INDEPENDENT REMOTE REVIEW PASS; OWNER QA FIX-1 APPLIED / RECHECK REQUIRED
+**Status:** ACCEPTED — INDEPENDENT REMOTE REVIEW PASS; PROJECT-OWNER FUNCTIONAL/MANUAL + VISUAL QA PASS — 2026-11-07
 **Date:** 2026-11-06  
 **Branch:** `feat/exam-schedule-booking-visibility`  
 **Verified base `main`:** `3a456567a7469c4cdc0ac69c012fdf2e79ee6a4c`
@@ -339,7 +339,7 @@ This checkpoint is not acceptance or a new Approved Reference Implementation.
 ## 15. Owner-QA FIX-1 — redundant timezone copy
 
 **Date:** 2026-11-07  
-**Status:** SOURCE FIX APPLIED — PROJECT-OWNER BROWSER RECHECK REQUIRED
+**Status:** ACCEPTED — PROJECT-OWNER BROWSER RECHECK PASS
 
 Independent remote review of the initial implementation passed. During subsequent
 project-owner browser QA, the booking dialog's visible
@@ -357,4 +357,37 @@ No backend/read-model/schema/scheduling behavior is changed by FIX-1. The focuse
 UI contract source is updated only to require absence of the redundant visible
 timezone caption while preserving Manila timestamp output. Automated execution
 of the updated contract was not performed through the ChatGPT GitHub connector;
-project-owner browser recheck remains required before final acceptance.
+no new automated FIX-1 PASS is claimed. Project-owner browser recheck after the
+source correction: **PASS — 2026-11-07**.
+
+
+## 16. Final acceptance closure — 2026-11-07
+
+EXAM-SCHEDULE-BOOKINGS-1 is **ACCEPTED FOR MERGE**.
+
+Final accepted source state before this documentation-only closure:
+`297e598084c44dabf4d767046f1e2995beb305c8`.
+
+Acceptance evidence:
+
+- initial focused automated verification: **6 files / 165 tests PASS**;
+- backend/frontend TypeScript: **PASS**;
+- scoped frontend ESLint: **PASS**;
+- frontend production build: **PASS**, 68 pages;
+- initial `git diff --check`: **PASS**;
+- independent remote source/diff review: **PASS**;
+- project-owner functional/manual QA: **PASS — 2026-11-07**;
+- project-owner visual/UI QA after FIX-1: **PASS — 2026-11-07**.
+
+FIX-1 removed only the redundant visible `Philippine Time (Asia/Manila)`
+caption. The original Users / **View bookings** icon design remains preserved,
+and `Booking recorded` continues to use the authoritative `Asia/Manila`
+formatter.
+
+The ChatGPT GitHub-connector FIX-1 did not rerun the local automated suite, so no
+new post-FIX-1 automated PASS is claimed. The accepted scope remains read-only
+schedule booking visibility; no backend/API/schema/capacity/assignment/scheduling
+mutation or Email Integration behavior changed.
+
+The separate **Create & Assign** concept remains **DEFERRED** as
+`EXAM-SCHEDULE-CREATE-ASSIGN` and is not part of this acceptance.
