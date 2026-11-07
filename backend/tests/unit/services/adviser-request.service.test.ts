@@ -275,14 +275,14 @@ describe("AdviserRequestService (WP2 candidates/request)", () => {
     ).resolves.toBeTruthy();
   });
 
-  it("excludes seats that are not real PANELIST accounts", async () => {
+  it("excludes seats that are not academic accounts", async () => {
     const result = await svc.listOdpCandidates("user-1");
     expect(result.candidates.map((c) => c.userId)).not.toContain("admin-seat");
     expect(result.candidates.map((c) => c.userId)).not.toContain("no-profile");
 
     await expect(
       svc.createRequest("user-1", { requestedAdviserId: "admin-seat" }),
-    ).rejects.toThrow(/PANELIST user role/i);
+    ).rejects.toThrow(/academic account role/i);
     await expect(
       svc.createRequest("user-1", { requestedAdviserId: "no-profile" }),
     ).rejects.toThrow(/Panelist profile/i);

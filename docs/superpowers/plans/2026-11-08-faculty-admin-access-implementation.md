@@ -4,7 +4,7 @@
 - Repository: `MuelTech/graduate-system`
 - Audit baseline / verified live `main`: `045316540d97364214792c7d441ae20a1e426d4c`
 - Branch: `feat/faculty-admin-access`
-- Status: FACULTY-0 accepted; FACULTY-1 accepted; FACULTY-2 implemented, independently reviewed and accepted for continuation. FACULTY-3 is next and has not started.
+- Status: FACULTY-0 accepted; FACULTY-1 accepted; FACULTY-2 implemented, independently reviewed and accepted for continuation. FACULTY-3 is implemented; independent review/acceptance is pending. No subsequent package is authorized.
 
 **Historical FACULTY-0 stop boundary:** FACULTY-0 authorized documentation only and ended before implementation. That boundary was satisfied before FACULTY-1 was separately authorized.
 
@@ -12,7 +12,7 @@
 - ✅ FACULTY-0 — Repository audit and implementation plan accepted.
 - ✅ FACULTY-1 — Direct-access foundation accepted at `56b1ecbcb7806c1a3df9477d4b14f4cfa914f62e`.
 - ✅ FACULTY-2 — Current-account auth / credential boundary accepted for continuation at `62de9f536608b122fc0618cc4761c139baee34c9`; [implementation report](../reports/2026-11-08-faculty-2-current-account-authentication.md). Independent remote commit-diff review passed; project owner confirmed normal login behavior. Exhaustive browser edge-case QA was not claimed.
-- ⏭️ FACULTY-3 — Next package; not started.
+- 🟡 FACULTY-3 — Implemented; independent review/acceptance pending. [Implementation report](../reports/2026-11-08-faculty-3-identity-compatibility.md). Enum/readers only; zero account conversions; isolated DB rehearsal safely skipped. FACULTY-4 not started.
 - Direct-access enforcement remains off; no live Full/Restricted Administrator or Faculty Essay Evaluation access is activated.
 
 ## 1. Authority, baseline and scope
@@ -249,6 +249,8 @@ Sequence: **1 foundation → 2 auth → 3 identity compatibility → 4 Admin aut
 - **Stop condition:** current identity is authoritative and credential handoff preserved; no portal or permission rollout.
 
 ### FACULTY-3 — Faculty identity compatibility readers
+
+- **Status:** 🟡 Implemented; pending independent review/acceptance. See [report](../reports/2026-11-08-faculty-3-identity-compatibility.md). Both account identities are supported, with technical paths/profile/defense roles preserved. Enum migration is source-validated only; isolated real-DB rehearsal was safely skipped. No existing account conversion and no FACULTY-4 work.
 
 - **Scope:** expand enum with FACULTY; support both academic account values through bounded normalizers across backend predicates, session routing/types, notifications/memos and realtime; preserve technical `/panelist` paths.
 - **Non-goals:** existing User conversion, PanelRole rename, profile-table rename, production backfill, broad UI rewrite.

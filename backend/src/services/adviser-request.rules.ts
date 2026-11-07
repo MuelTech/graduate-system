@@ -1,3 +1,4 @@
+import { isAcademicAccountRole } from "../utils/academic-account";
 /**
  * GS-020 pure domain rules (WP2).
  * Candidate eligibility + request-path gates only — no workflow transitions.
@@ -269,7 +270,7 @@ export function evaluateTitleDefenseGate(
 
 export type CandidateEligibilityInput = {
   defenseRole: string;
-  /** Must be a real PANELIST user account. */
+  /** Must be an academic user account (legacy PANELIST or FACULTY). */
   userRole: string;
   userIsActive: boolean;
   /** Missing Panelist profile is NOT implicitly active/available. */
@@ -287,7 +288,7 @@ export type CandidateEligibilityResult =
 /**
  * GS-020 adviser candidacy requires ALL of:
  * - ODP role CHAIRMAN or PANELIST
- * - User.role = PANELIST
+ * - User.role is an academic account identity
  * - User.isActive
  * - Panelist profile exists
  * - Panelist.isActive
@@ -304,10 +305,10 @@ export function evaluateCandidateEligibility(
       reason: `Role ${input.defenseRole} is not eligible for adviser candidacy. Only Chairman and Panelist may be requested.`,
     };
   }
-  if (input.userRole !== "PANELIST") {
+  if (!isAcademicAccountRole(input.userRole)) {
     return {
       eligible: false,
-      reason: "Adviser candidate must have a PANELIST user role.",
+      reason: "Adviser candidate must have an academic account role.",
     };
   }
   if (!input.userIsActive) {

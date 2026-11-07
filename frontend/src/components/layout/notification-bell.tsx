@@ -1,5 +1,6 @@
 "use client";
 
+import { isAcademicAccountRole } from "@/lib/account-role";
 import { useState } from "react";
 import Link from "next/link";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -11,7 +12,7 @@ import { NotificationItem } from "@/types/index";
 export function NotificationBell({
   role = "STUDENT",
 }: {
-  role?: "STUDENT" | "ADMIN" | "PANELIST";
+  role?: "STUDENT" | "ADMIN" | "PANELIST" | "FACULTY";
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const queryClient = useQueryClient();
@@ -40,14 +41,14 @@ export function NotificationBell({
   const basePath =
     role === "ADMIN"
       ? "/admin/notifications"
-      : role === "PANELIST"
+      : isAcademicAccountRole(role)
       ? "/panelist/notifications"
       : "/student/notifications";
 
   const announcementsPath =
     role === "ADMIN"
       ? "/admin/memos"
-      : role === "PANELIST"
+      : isAcademicAccountRole(role)
       ? "/panelist/announcements"
       : "/student/announcements";
 

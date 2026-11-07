@@ -1,3 +1,4 @@
+import { isAcademicAccountRole } from "../src/utils/academic-account";
 /**
  * WP6 — deterministic, idempotent, RESETTABLE Student Thesis Journey fixtures.
  *
@@ -479,10 +480,13 @@ export async function seedStudentThesisJourneyFixtures(
     return [];
   }
 
+  if (![chairman, panelist].every(user => isAcademicAccountRole(user.role))) {
+    throw new Error("Journey fixtures require existing academic accounts.");
+  }
   for (const uid of [chairman.id, panelist.id]) {
     await prisma.user.update({
       where: { id: uid },
-      data: { role: "PANELIST", isActive: true },
+      data: { isActive: true },
     });
     const profile = await prisma.panelist.findUnique({ where: { userId: uid } });
     if (!profile) {

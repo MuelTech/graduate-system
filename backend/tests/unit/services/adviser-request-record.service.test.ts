@@ -34,7 +34,7 @@ describe("GS020-1B finalized Adviser Request authorization and PDF mapping", () 
   });
 
   it.each([
-    { userId: "student-user", role: "STUDENT" }, { userId: "adviser-user", role: "PANELIST" },
+    { userId: "student-user", role: "STUDENT" }, { userId: "adviser-user", role: "PANELIST" }, { userId: "adviser-user", role: "FACULTY" },
     { userId: "admin-user", role: "ADMIN" },
   ])("allows exact authorized actor $role/$userId to generate a real A4 PDF", async actor => {
     const { pdf, filename } = await service.generatePdf("req-1", actor);
@@ -44,7 +44,7 @@ describe("GS020-1B finalized Adviser Request authorization and PDF mapping", () 
   });
 
   it.each([
-    { userId: "other-student", role: "STUDENT" }, { userId: "other-adviser", role: "PANELIST" },
+    { userId: "other-student", role: "STUDENT" }, { userId: "other-adviser", role: "PANELIST" }, { userId: "other-adviser", role: "FACULTY" }, { userId: "adviser-user", role: "CUSTOM" },
     { userId: "title-chairman", role: "PANELIST" }, { userId: "rapporteur", role: "PANELIST" },
     { userId: "facilitator", role: "PANELIST" }, { userId: "adviser-user", role: "STUDENT" },
     { userId: "student-user", role: "PANELIST" }, { userId: "adviser-user", role: "APPLICANT" },
@@ -53,12 +53,12 @@ describe("GS020-1B finalized Adviser Request authorization and PDF mapping", () 
     await expect(service.generatePdf("req-1", actor)).rejects.toMatchObject({ statusCode: 404 });
   });
 
-  it.each(["STUDENT", "PANELIST", "ADMIN"])("scopes %s record history independently of active assignments", async role => {
+  it.each(["STUDENT", "PANELIST", "FACULTY", "ADMIN"])("scopes %s record history independently of active assignments", async role => {
     await service.list({ userId: "actor-id", role });
     const where = db.adviserRequestOfficialRecord.findMany.mock.calls[0][0].where;
     expect(where.request).toEqual({ status: "APPROVED", adviserStatus: "CONFORMED", deanStatus: "APPROVED" });
     if (role === "STUDENT") expect(where.studentUserId).toBe("actor-id");
-    if (role === "PANELIST") expect(where.requestedAdviserId).toBe("actor-id");
+    if (role === "PANELIST" || role === "FACULTY") expect(where.requestedAdviserId).toBe("actor-id");
     if (role === "ADMIN") { expect(where.studentUserId).toBeUndefined(); expect(where.requestedAdviserId).toBeUndefined(); }
   });
 

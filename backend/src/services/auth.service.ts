@@ -1,3 +1,4 @@
+import { isAcademicAccountRole } from "../utils/academic-account";
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { AuthRepository } from '../repositories/auth.repository';
@@ -208,7 +209,7 @@ export class AuthService {
             throw new AppError("Invalid login credentials!", 401);
         }
 
-        if (user.role !== roles[data.role]) {
+        if (!(data.role === "panelist" ? isAcademicAccountRole(user.role) : user.role === roles[data.role])) {
             throw new AppError("Account does not match the selected login role.", 403);
         }
         if (user.isActive !== true) {

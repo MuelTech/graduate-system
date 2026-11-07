@@ -5,7 +5,10 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vites
 import { AppError } from "../../../src/utils/AppError";
 
 const mocks = vi.hoisted(() => ({ pdf: vi.fn(), list: vi.fn(), create: vi.fn() }));
-vi.mock("../../../src/config/database", () => ({ default: {} }));
+const current = vi.hoisted(() => ({ role: "STUDENT" }));
+vi.mock("../../../src/config/database", () => ({ default: { user: { findUnique: async () => ({
+  id: "actor", role: current.role, isActive: true, mustChangePassword: false, panelist: { isActive: true },
+}) } } }));
 vi.mock("../../../src/services/adviser-request-record.service", () => ({ AdviserRequestRecordService: class {
   list = mocks.list; generatePdf = mocks.pdf;
 } }));
@@ -34,10 +37,11 @@ describe("GS020-1B authenticated Adviser Request record routes", () => {
     mocks.create.mockResolvedValue({ id: "req-1" });
   });
   function headers(role?: string) {
+    current.role = ["STUDENT", "PANELIST", "FACULTY", "ADMIN", "APPLICANT"].includes(role ?? "") ? role! : "CUSTOM";
     return role ? { Authorization: `Bearer ${jwt.sign({ userId: "actor", role }, secret)}` } : {};
   }
 
-  it.each(["STUDENT", "PANELIST", "ADMIN"])("forwards exact authenticated %s identity to service authorization", async role => {
+  it.each(["STUDENT", "PANELIST", "FACULTY", "ADMIN"])("forwards exact authenticated %s identity to service authorization", async role => {
     const response = await fetch(`${origin}/thesis/adviser/requests/req-1/pdf`, { headers: headers(role) });
     expect(response.status).toBe(200);
     expect(mocks.pdf).toHaveBeenCalledWith("req-1", { userId: "actor", role });

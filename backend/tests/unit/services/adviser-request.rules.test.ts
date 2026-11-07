@@ -192,14 +192,14 @@ describe("evaluateCandidateEligibility", () => {
     if (!rap.eligible) expect(rap.reason).toMatch(/RAPPORTEUR/);
   });
 
-  it("rejects CHAIRMAN/PANELIST seat when User.role is not PANELIST", () => {
+  it("rejects CHAIRMAN/PANELIST seat when User.role is not academic", () => {
     const r = evaluateCandidateEligibility({
       ...validPanelist,
       defenseRole: "CHAIRMAN",
       userRole: "ADMIN",
     });
     expect(r.eligible).toBe(false);
-    if (!r.eligible) expect(r.reason).toMatch(/PANELIST user role/i);
+    if (!r.eligible) expect(r.reason).toMatch(/academic account role/i);
   });
 
   it("rejects CHAIRMAN/PANELIST seat with no Panelist profile", () => {

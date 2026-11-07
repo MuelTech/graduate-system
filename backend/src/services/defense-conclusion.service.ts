@@ -1,3 +1,4 @@
+import { ACADEMIC_ACCOUNT_ROLES } from "../utils/academic-account";
 /**
  * CP7 — Formal defense conclusion (Chairman academic authority).
  *
@@ -14,7 +15,7 @@ import {
 import { AppError } from "../utils/AppError";
 
 /** Account-level route protection only. Session CHAIRMAN assignment is authoritative. */
-export const CONCLUDER_ACCOUNT_ROLES = ["PANELIST", "ADMIN"] as const;
+export const CONCLUDER_ACCOUNT_ROLES = [...ACADEMIC_ACCOUNT_ROLES, "ADMIN"] as const;
 
 export interface ConclusionPreconditions {
   alreadyConcluded: boolean;

@@ -1,3 +1,4 @@
+import { ACADEMIC_ACCOUNT_ROLES, isAcademicAccountRole } from "../utils/academic-account";
 import prisma from "../config/database";
 import { ACCOUNT_ACCESS_SELECT } from "../access/account-access.store";
 import { DIRECT_ACCESS_ENFORCEMENT_ENABLED, deniedConfiguredAccess, resolveConfiguredAccountAccess } from "../access/account-access";
@@ -16,10 +17,13 @@ export async function loadCurrentAccount(userId: string) {
     throw new AppError("Current account could not be loaded.", 503);
   }
   if (!account) throw new AppError("Authentication account no longer exists.", 401);
-  if (account.id !== userId || !["APPLICANT", "STUDENT", "ADMIN", "PANELIST", "CUSTOM"].includes(account.role)) {
+  if (account.id !== userId || !["APPLICANT", "STUDENT", "ADMIN", ...ACADEMIC_ACCOUNT_ROLES, "CUSTOM"].includes(account.role)) {
     throw new AppError("Current account could not be established.", 503);
   }
   if (account.isActive !== true) throw new AppError("Account is inactive.", 403);
+  if (isAcademicAccountRole(account.role) && account.panelist?.isActive !== true) {
+    throw new AppError("Academic profile is inactive or unavailable.", 403);
+  }
   if (typeof account.mustChangePassword !== "boolean") {
     throw new AppError("Current credential state could not be established.", 503);
   }

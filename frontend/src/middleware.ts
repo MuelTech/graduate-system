@@ -1,3 +1,4 @@
+import { academicPortalRole } from "@/lib/account-role";
 import { auth } from "@/auth";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
@@ -15,7 +16,7 @@ export default auth((req: NextRequest & { auth: Session | null }) => {
     return NextResponse.redirect(new URL("/login", req.url));
   }
 
-  const role = token.user?.role;
+  const role = academicPortalRole(token.user?.role);
   const mustChangePassword = token.user?.mustChangePassword;
 
   if (token.user?.currentAccountError === "ACCOUNT_UNAVAILABLE") {

@@ -64,7 +64,7 @@ describe("PREDEF-1B/1C exact GS-017 mapping and ownership", () => {
   });
 
   it.each([
-    ["issuer", "PANELIST", true], ["unrelated-adviser", "PANELIST", false],
+    ["issuer", "PANELIST", true], ["issuer", "FACULTY", true], ["unrelated", "FACULTY", false], ["issuer", "CUSTOM", false], ["unrelated-adviser", "PANELIST", false],
     ["student", "STUDENT", true], ["other-student", "STUDENT", false],
     ["admin", "ADMIN", true], ["committee-chairman", "PANELIST", false],
     ["committee-panelist", "PANELIST", false], ["rapporteur", "PANELIST", false],

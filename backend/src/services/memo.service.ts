@@ -1,3 +1,4 @@
+import { isAcademicAccountRole } from "../utils/academic-account";
 import { MemoRepository } from "../repositories/memo.repository";
 import { NotificationRepository } from "../repositories/notification.repository";
 import { MemoAudience, NotificationType } from "@prisma/client";
@@ -74,7 +75,7 @@ export class MemoService {
             targetUsers = students.filter(s => s.user?.isActive).map(s => s.user);
         } else if (targetAudience === MemoAudience.PANELISTS) {
             const panelists = await prisma.panelist.findMany({ include: { user: true }});
-            targetUsers = panelists.filter(p => p.user?.isActive).map(p => p.user);
+            targetUsers = panelists.filter(p => p.isActive && p.user?.isActive && isAcademicAccountRole(p.user.role)).map(p => p.user);
         }
 
         if (targetUsers.length > 0) {
@@ -147,7 +148,7 @@ export class MemoService {
             if (!student) return [];
             
             return await this.memoRepo.getMemosForStudent(student.programId);
-        } else if (role === "PANELIST") {
+        } else if (isAcademicAccountRole(role)) {
             return await this.memoRepo.getMemosForPanelist();
         }
 

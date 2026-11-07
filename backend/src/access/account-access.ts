@@ -1,3 +1,4 @@
+import { isAcademicAccountRole } from "../utils/academic-account";
 import {
   type AccessAccountCategory, type CapabilityKey, FULL_ADMINISTRATOR_CAPABILITIES,
   expandCapabilityPrerequisites, isCapabilityKey, validateDirectCapabilityKeys,
@@ -41,8 +42,7 @@ export function resolveConfiguredAccountAccess(snapshot: AccountAccessSnapshot |
   const { id, role, isActive, administratorAccess, panelist } = snapshot;
   if (typeof id !== "string" || !id.trim()) return deniedConfiguredAccess(null, "INVALID_CONFIGURATION");
   if (isActive !== true) return deniedConfiguredAccess(id, "INACTIVE");
-  // Local compatibility classification only. FACULTY enum/identity readers are FACULTY-3.
-  const category = role === "ADMIN" ? "ADMIN" : role === "PANELIST" ? "FACULTY" : null;
+  const category = role === "ADMIN" ? "ADMIN" : isAcademicAccountRole(role) ? "FACULTY" : null;
   if (!category) return deniedConfiguredAccess(id, "UNSUPPORTED_ACCOUNT");
   if (category === "FACULTY" && (!panelist || panelist.isActive !== true)) {
     return deniedConfiguredAccess(id, "INACTIVE");

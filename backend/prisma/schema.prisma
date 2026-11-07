@@ -1475,6 +1475,7 @@ enum UserRole {
   PANELIST
   CUSTOM
   APPLICANT
+  FACULTY
 
   @@map("user_role")
 }

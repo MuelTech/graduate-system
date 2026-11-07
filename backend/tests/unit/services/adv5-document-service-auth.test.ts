@@ -42,13 +42,13 @@ function thesisDocument(overrides: Record<string, unknown> = {}) {
   } as never;
 }
 
-describe("ADV-5 DocumentService authority regression", () => {
+describe.each(["PANELIST", "FACULTY"])("ADV-5 DocumentService authority regression (%s)", (accountRole) => {
   const service = new DocumentService();
 
   beforeEach(() => {
     vi.clearAllMocks();
     prismaMock.user.findUnique.mockResolvedValue({
-      role: "PANELIST",
+      role: accountRole,
       isActive: true,
     });
     prismaMock.auditLog.create.mockResolvedValue({});
@@ -68,7 +68,7 @@ describe("ADV-5 DocumentService authority regression", () => {
         "thesis-document",
         "doc-1",
         "panelist-1",
-        "PANELIST",
+        accountRole,
       ),
     ).rejects.toBeDefined();
 
@@ -125,7 +125,7 @@ describe("ADV-5 DocumentService authority regression", () => {
         "thesis-document",
         "doc-1",
         "adviser-1",
-        "PANELIST",
+        accountRole,
       ),
     ).resolves.toMatchObject({ mimeType: "application/pdf" });
   });
@@ -152,7 +152,7 @@ describe("ADV-5 DocumentService authority regression", () => {
         "thesis-document",
         "doc-1",
         "adviser-1",
-        "PANELIST",
+        accountRole,
       ),
     ).rejects.toMatchObject({ statusCode: 403 });
   });
@@ -185,7 +185,7 @@ describe("ADV-5 DocumentService authority regression", () => {
         "thesis-document",
         "doc-1",
         "panelist-1",
-        "PANELIST",
+        accountRole,
       ),
     ).resolves.toMatchObject({ mimeType: "application/pdf" });
   });

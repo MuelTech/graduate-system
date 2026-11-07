@@ -53,7 +53,7 @@ describe("fail-closed configured account access (not live authorization)", () =>
     expect(resolveConfiguredAccountAccess(account({ role: "PANELIST", panelist: { isActive: true }, administratorAccess: null })).capabilities).toEqual([]);
   });
 
-  it.each(["APPLICANT", "STUDENT", "CUSTOM", "FACULTY", "SUPER_ADMIN", "admin", ""])(
+  it.each(["APPLICANT", "STUDENT", "CUSTOM", "SUPER_ADMIN", "admin", ""])(
     "does not infer supported account identity for %s", role => {
       const access = resolveConfiguredAccountAccess(account({ role, administratorAccess: { level: "FULL" } }));
       expect(access.status).toBe("UNSUPPORTED_ACCOUNT");

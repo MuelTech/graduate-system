@@ -215,6 +215,17 @@ describe("AuthService.login Applicant + staff roles (regression)", () => {
 
 
 describe("FACULTY-2 email role and activity boundary", () => {
+  it.each(["PANELIST", "FACULTY"])("authenticates %s through the existing academic login choice", async role => {
+    repo.findUserByEmail.mockResolvedValue(studentUser({ role }));
+    const result = await new AuthService().login({ role: "panelist", email: "a@example.com", password: "pw" });
+    expect(result.user.role).toBe(role);
+    expect(jwtMock.sign.mock.calls[0][0]).toMatchObject({ role, userId: "user-1" });
+  });
+  it("denies an inactive future academic account", async () => {
+    repo.findUserByEmail.mockResolvedValue(studentUser({ role: "FACULTY", isActive: false }));
+    await expect(new AuthService().login({ role: "panelist", email: "a@example.com", password: "pw" }))
+      .rejects.toMatchObject({ statusCode: 403 });
+  });
   it.each(["ADMIN", "PANELIST", "APPLICANT", "STUDENT", "CUSTOM"])("rejects mismatched email role for %s", async (role) => {
     repo.findUserByEmail.mockResolvedValue(studentUser({ role }));
     const selected = role === "ADMIN" ? "panelist" : "admin";

@@ -137,11 +137,12 @@ function middleware() {
   }
   return load("middleware.ts", {
     "@/auth": { auth: handler => handler }, "next/server": { NextResponse },
+    "@/lib/account-role": load("lib/account-role.ts"),
   }, { URL, console: { log() {} } }).default;
 }
 test("frontend credential gate applies to all roles, and password page remains reachable", () => {
   const gate = middleware();
-  for (const role of ["applicant", "student", "admin", "panelist", "custom"]) {
+  for (const role of ["applicant", "student", "admin", "panelist", "faculty", "custom"]) {
     const auth = { user: { ...identity, role, mustChangePassword: true } };
     assert.equal(gate({ auth, nextUrl: { pathname: `/${role}/dashboard` }, url: "http://frontend" }).redirect, "/change-password");
     assert.equal(gate({ auth, nextUrl: { pathname: "/change-password" }, url: "http://frontend" }).allowed, true);

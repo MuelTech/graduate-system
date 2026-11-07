@@ -1,3 +1,4 @@
+import { ACADEMIC_ACCOUNT_ROLES, isAcademicAccountRole } from "../utils/academic-account";
 import prisma from "../config/database";
 import type { Prisma } from "@prisma/client";
 import { AppError } from "../utils/AppError";
@@ -59,7 +60,7 @@ export function personName(user: { firstName: string; lastName: string } | null 
 }
 
 function authorizeActor(actor: CertificationActor): void {
-  if (!actor.userId || !["ADMIN", "STUDENT", "PANELIST"].includes(actor.role)) {
+  if (!actor.userId || !["ADMIN", "STUDENT", ...ACADEMIC_ACCOUNT_ROLES].includes(actor.role)) {
     throw new AppError("Adviser certification not found.", 404);
   }
 }
@@ -70,7 +71,7 @@ export class AdviserCertificationRecordService {
     const row = await prisma.adviserCertification.findUnique({ where: { id }, select: CERTIFICATION_SELECT });
     const authorized = row && (actor.role === "ADMIN"
       || (actor.role === "STUDENT" && row.thesis.student.userId === actor.userId)
-      || (actor.role === "PANELIST" && row.adviserId === actor.userId));
+      || (isAcademicAccountRole(actor.role) && row.adviserId === actor.userId));
     if (!authorized) throw new AppError("Adviser certification not found.", 404);
     return row;
   }
@@ -87,7 +88,7 @@ export class AdviserCertificationRecordService {
         defenseStage: stage ? (stage === "PROPOSAL" ? "PROPOSAL_DEFENSE" : "FINAL_DEFENSE") : { in: ["PROPOSAL_DEFENSE", "FINAL_DEFENSE"] },
         ...(thesisId ? { thesisId } : {}),
         ...(actor.role === "STUDENT" ? { thesis: { student: { userId: actor.userId } } } : {}),
-        ...(actor.role === "PANELIST" ? { adviserId: actor.userId } : {}),
+        ...(isAcademicAccountRole(actor.role) ? { adviserId: actor.userId } : {}),
       },
       select: CERTIFICATION_SELECT,
       orderBy: { signedAt: "desc" },

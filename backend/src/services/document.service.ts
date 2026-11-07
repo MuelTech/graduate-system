@@ -1,3 +1,4 @@
+import { isAcademicAccountRole } from "../utils/academic-account";
 // backend/src/services/document.service.ts
 import prisma from "../config/database";
 import { AppError } from "../utils/AppError";
@@ -269,7 +270,7 @@ const MODEL_REGISTRY: Record<string, ModelConfig> = {
         },
         getOwnerId: (r) => r.thesis?.student?.user?.id ?? null,
         getExtraAuthCheck: (record, userId, userRole) => {
-            if (userRole !== "PANELIST") return false;
+            if (!isAcademicAccountRole(userRole)) return false;
             return canPanelistAccessThesisDocument(record, userId);
         },
     },
@@ -313,7 +314,7 @@ const MODEL_REGISTRY: Record<string, ModelConfig> = {
         getOwnerId: (r) => r.thesis?.student?.user?.id ?? null,
         getExtraAuthCheck: (record, _userId, userRole) => {
             // Any active authenticated student, panelist, or admin can stream a published manuscript
-            if (record.isPublic && (userRole === "STUDENT" || userRole === "PANELIST" || userRole === "ADMIN")) {
+            if (record.isPublic && (userRole === "STUDENT" || isAcademicAccountRole(userRole) || userRole === "ADMIN")) {
                 return true;
             }
             return false;

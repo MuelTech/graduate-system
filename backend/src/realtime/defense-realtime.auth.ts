@@ -1,3 +1,4 @@
+import { isAcademicAccountRole } from "../utils/academic-account";
 import type { AuthenticatedIdentity } from "../utils/jwt";
 import { loadCurrentAccount } from "../services/current-account";
 import { verifyAccessToken } from "../utils/jwt";
@@ -44,7 +45,7 @@ export function createDefenseSocketAuthMiddleware(
     try {
       const identity = verifyToken(token);
       const account = await loadCurrentAccount(identity.userId);
-      if (account.role !== "PANELIST" || account.mustChangePassword || account.panelist?.isActive !== true) {
+      if (!isAcademicAccountRole(account.role) || account.mustChangePassword || account.panelist?.isActive !== true) {
         throw new Error("FORBIDDEN");
       }
       socket.data.userId = account.id;

@@ -60,8 +60,8 @@ describe("FACULTY-2 REST current account authority", () => {
     await authenticateJWT(request, res(), vi.fn());
     expect(request.user.role).toBe("STUDENT");
   });
-  it.each(["APPLICANT", "STUDENT", "ADMIN", "PANELIST", "CUSTOM"])("gates %s by current credential state", async (role) => {
-    account.role = role; account.mustChangePassword = true;
+  it.each(["APPLICANT", "STUDENT", "ADMIN", "PANELIST", "FACULTY", "CUSTOM"])("gates %s by current credential state", async (role) => {
+    account.role = role; account.panelist = { isActive: true }; account.mustChangePassword = true;
     const response = res(); const next = vi.fn();
     await authenticateJWT(req(), response, next);
     expect(next).not.toHaveBeenCalled(); expect(response.status).toHaveBeenCalledWith(403);

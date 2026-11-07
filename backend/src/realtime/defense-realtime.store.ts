@@ -1,3 +1,4 @@
+import { academicAccountRoleFilter } from "../utils/academic-account";
 import type { PrismaClient } from "@prisma/client";
 
 import prisma from "../config/database";
@@ -9,7 +10,7 @@ import type { DefenseRealtimeAuthorizationStore } from "./defense-realtime.autho
  * PanelAssignment membership required by the realtime room rules.
  */
 export const DEFENSE_CURRENT_ACCOUNT_FILTER = {
-  isActive: true, mustChangePassword: false, role: "PANELIST",
+  isActive: true, mustChangePassword: false, role: academicAccountRoleFilter(),
   panelist: { is: { isActive: true } },
 } as const;
 

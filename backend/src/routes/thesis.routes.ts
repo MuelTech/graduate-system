@@ -1,3 +1,4 @@
+import { ACADEMIC_ACCOUNT_ROLES } from "../utils/academic-account";
 import { Router } from "express";
 import { ThesisController } from "../controllers/thesis.controller";
 import { DefenseCollaborationController } from "../controllers/defense-collaboration.controller";
@@ -11,8 +12,8 @@ const defenseCollaborationController = new DefenseCollaborationController();
 const defenseHistoryController = new DefenseHistoryController();
 
 // GS-017: role gates are coarse; the service proves issuer/Student ownership.
-router.get("/adviser-certifications", authenticateJWT, requireRole(["STUDENT", "PANELIST", "ADMIN"]), thesisController.listAdviserCertifications);
-router.get("/adviser-certifications/:certificationId/pdf", authenticateJWT, requireRole(["STUDENT", "PANELIST", "ADMIN"]), thesisController.getAdviserCertificationPdf);
+router.get("/adviser-certifications", authenticateJWT, requireRole(["STUDENT", ...ACADEMIC_ACCOUNT_ROLES, "ADMIN"]), thesisController.listAdviserCertifications);
+router.get("/adviser-certifications/:certificationId/pdf", authenticateJWT, requireRole(["STUDENT", ...ACADEMIC_ACCOUNT_ROLES, "ADMIN"]), thesisController.getAdviserCertificationPdf);
 
 // STUDENT ONLY: Title Defense — one combined Title Defense Proposal Package +
 // Current Semester COR + Defense-fee Proof of Payment. Structured proposed titles
@@ -74,28 +75,28 @@ router.post(
 router.get(
   "/final-adviser-review/tasks",
   authenticateJWT,
-  requireRole(["PANELIST"]),
+  requireRole([...ACADEMIC_ACCOUNT_ROLES]),
   thesisController.listMyFinalAdviserReviews,
 );
 
 router.get(
   "/final-adviser-review/tasks/:thesisId",
   authenticateJWT,
-  requireRole(["PANELIST"]),
+  requireRole([...ACADEMIC_ACCOUNT_ROLES]),
   thesisController.getFinalAdviserReviewTask,
 );
 
 router.post(
   "/final-adviser-review/tasks/:thesisId/request-changes",
   authenticateJWT,
-  requireRole(["PANELIST"]),
+  requireRole([...ACADEMIC_ACCOUNT_ROLES]),
   thesisController.requestFinalAdviserChanges,
 );
 
 router.post(
   "/final-adviser-review/tasks/:thesisId/certify",
   authenticateJWT,
-  requireRole(["PANELIST"]),
+  requireRole([...ACADEMIC_ACCOUNT_ROLES]),
   thesisController.certifyFinalAdviserReview,
 );
 
@@ -130,7 +131,7 @@ router.post(
 router.get(
   "/proposal-adviser-review/tasks",
   authenticateJWT,
-  requireRole(["PANELIST"]),
+  requireRole([...ACADEMIC_ACCOUNT_ROLES]),
   thesisController.listMyProposalAdviserReviews,
 );
 
@@ -138,7 +139,7 @@ router.get(
 router.get(
   "/proposal-adviser-review/tasks/:thesisId",
   authenticateJWT,
-  requireRole(["PANELIST"]),
+  requireRole([...ACADEMIC_ACCOUNT_ROLES]),
   thesisController.getProposalAdviserReviewTask,
 );
 
@@ -146,7 +147,7 @@ router.get(
 router.post(
   "/proposal-adviser-review/tasks/:thesisId/request-changes",
   authenticateJWT,
-  requireRole(["PANELIST"]),
+  requireRole([...ACADEMIC_ACCOUNT_ROLES]),
   thesisController.requestProposalAdviserChanges,
 );
 
@@ -154,7 +155,7 @@ router.post(
 router.post(
   "/proposal-adviser-review/tasks/:thesisId/certify",
   authenticateJWT,
-  requireRole(["PANELIST"]),
+  requireRole([...ACADEMIC_ACCOUNT_ROLES]),
   thesisController.certifyProposalAdviserReview,
 );
 
@@ -175,8 +176,8 @@ router.post(
 );
 
 // Finalized official records: exact ownership is also checked inside the record service.
-router.get("/adviser/requests/records", authenticateJWT, requireRole(["STUDENT", "PANELIST", "ADMIN"]), thesisController.listAdviserRequestRecords);
-router.get("/adviser/requests/:id/pdf", authenticateJWT, requireRole(["STUDENT", "PANELIST", "ADMIN"]), thesisController.getAdviserRequestPdf);
+router.get("/adviser/requests/records", authenticateJWT, requireRole(["STUDENT", ...ACADEMIC_ACCOUNT_ROLES, "ADMIN"]), thesisController.listAdviserRequestRecords);
+router.get("/adviser/requests/:id/pdf", authenticateJWT, requireRole(["STUDENT", ...ACADEMIC_ACCOUNT_ROLES, "ADMIN"]), thesisController.getAdviserRequestPdf);
 
 // ADMIN: Get all adviser requests
 router.get(
@@ -190,7 +191,7 @@ router.get(
 router.get(
   "/adviser/requests/mine",
   authenticateJWT,
-  requireRole(["PANELIST"]),
+  requireRole([...ACADEMIC_ACCOUNT_ROLES]),
   thesisController.getMyAdviserRequests,
 );
 
@@ -200,7 +201,7 @@ router.get(
 router.get(
   "/adviser/workspace",
   authenticateJWT,
-  requireRole(["PANELIST"]),
+  requireRole([...ACADEMIC_ACCOUNT_ROLES]),
   thesisController.getAdviserWorkspace,
 );
 
@@ -208,7 +209,7 @@ router.get(
 router.get(
   "/adviser/advisees/:studentId",
   authenticateJWT,
-  requireRole(["PANELIST"]),
+  requireRole([...ACADEMIC_ACCOUNT_ROLES]),
   thesisController.getAdviserAdviseeDetail,
 );
 
@@ -216,7 +217,7 @@ router.get(
 router.post(
   "/adviser/requests/:id/adviser-response",
   authenticateJWT,
-  requireRole(["PANELIST"]),
+  requireRole([...ACADEMIC_ACCOUNT_ROLES]),
   thesisController.respondAdviserRequest,
 );
 
@@ -417,7 +418,7 @@ router.get(
 router.get(
   "/defense/panelist/assignments",
   authenticateJWT,
-  requireRole(["PANELIST"]),
+  requireRole([...ACADEMIC_ACCOUNT_ROLES]),
   thesisController.getPanelistAssignments,
 );
 
@@ -425,7 +426,7 @@ router.get(
 router.get(
   "/defense/panelist/dashboard",
   authenticateJWT,
-  requireRole(["PANELIST"]),
+  requireRole([...ACADEMIC_ACCOUNT_ROLES]),
   thesisController.getPanelistDashboard,
 );
 
@@ -433,7 +434,7 @@ router.get(
 router.post(
   "/defense/:scheduleId/score",
   authenticateJWT,
-  requireRole(["PANELIST"]),
+  requireRole([...ACADEMIC_ACCOUNT_ROLES]),
   thesisController.submitOralExamScore,
 );
 
@@ -441,21 +442,21 @@ router.post(
 router.get(
   "/defense/:scheduleId/evaluation/me",
   authenticateJWT,
-  requireRole(["PANELIST"]),
+  requireRole([...ACADEMIC_ACCOUNT_ROLES]),
   thesisController.getMyOralEvaluation,
 );
 
 router.put(
   "/defense/:scheduleId/evaluation/draft",
   authenticateJWT,
-  requireRole(["PANELIST"]),
+  requireRole([...ACADEMIC_ACCOUNT_ROLES]),
   thesisController.saveOralEvaluationDraft,
 );
 
 router.post(
   "/defense/:scheduleId/evaluation/finalize",
   authenticateJWT,
-  requireRole(["PANELIST"]),
+  requireRole([...ACADEMIC_ACCOUNT_ROLES]),
   thesisController.finalizeOralEvaluation,
 );
 
@@ -463,7 +464,7 @@ router.post(
 router.get(
   "/defense/rap-reports/pending",
   authenticateJWT,
-  requireRole(["PANELIST"]),
+  requireRole([...ACADEMIC_ACCOUNT_ROLES]),
   thesisController.getPendingRapReports,
 );
 
@@ -471,7 +472,7 @@ router.get(
 router.post(
   "/defense/rap-reports/:sigId/sign",
   authenticateJWT,
-  requireRole(["PANELIST"]),
+  requireRole([...ACADEMIC_ACCOUNT_ROLES]),
   thesisController.signRapReport,
 );
 
@@ -480,7 +481,7 @@ router.post(
 router.get(
   "/defense/:scheduleId/workspace",
   authenticateJWT,
-  requireRole(["PANELIST"]),
+  requireRole([...ACADEMIC_ACCOUNT_ROLES]),
   thesisController.getDefenseWorkspace,
 );
 
@@ -488,7 +489,7 @@ router.get(
 router.put(
   "/defense/:scheduleId/workspace/rapporteur-notes",
   authenticateJWT,
-  requireRole(["PANELIST"]),
+  requireRole([...ACADEMIC_ACCOUNT_ROLES]),
   thesisController.saveRapporteurWorkspaceNotes,
 );
 
@@ -498,7 +499,7 @@ router.get("/defense/:scheduleId/lobby", authenticateJWT, thesisController.getLo
 router.put(
   "/defense/:scheduleId/notes",
   authenticateJWT,
-  requireRole(["PANELIST"]),
+  requireRole([...ACADEMIC_ACCOUNT_ROLES]),
   thesisController.saveRapporteurWorkspaceNotes,
 );
 // CP7 formal conclusion — session CHAIRMAN assignment is authoritative (not account role).
@@ -507,14 +508,14 @@ router.put(
 router.post(
   "/defense/:scheduleId/conclusion",
   authenticateJWT,
-  requireRole(["PANELIST"]),
+  requireRole([...ACADEMIC_ACCOUNT_ROLES]),
   thesisController.recordFormalConclusion,
 );
 // Legacy path delegates to the same secure service.
 router.post(
   "/defense/:scheduleId/conclude",
   authenticateJWT,
-  requireRole(["PANELIST"]),
+  requireRole([...ACADEMIC_ACCOUNT_ROLES]),
   thesisController.concludeDefense,
 );
 
@@ -523,7 +524,7 @@ router.post(
 router.post(
   "/defense/:scheduleId/start",
   authenticateJWT,
-  requireRole(["PANELIST"]),
+  requireRole([...ACADEMIC_ACCOUNT_ROLES]),
   thesisController.startDefense,
 );
 
@@ -531,7 +532,7 @@ router.post(
 router.post(
   "/defense/:scheduleId/rapporteur/finalize",
   authenticateJWT,
-  requireRole(["PANELIST"]),
+  requireRole([...ACADEMIC_ACCOUNT_ROLES]),
   thesisController.finalizeRapporteurNotes,
 );
 
@@ -542,49 +543,49 @@ router.post(
 router.get(
   "/defense/:scheduleId/collaboration/annotations",
   authenticateJWT,
-  requireRole(["PANELIST"]),
+  requireRole([...ACADEMIC_ACCOUNT_ROLES]),
   defenseCollaborationController.getCollaborationAnnotations,
 );
 router.post(
   "/defense/:scheduleId/collaboration/annotations",
   authenticateJWT,
-  requireRole(["PANELIST"]),
+  requireRole([...ACADEMIC_ACCOUNT_ROLES]),
   defenseCollaborationController.createCollaborationAnnotation,
 );
 router.post(
   "/defense/:scheduleId/collaboration/annotations/:annotationId/comments",
   authenticateJWT,
-  requireRole(["PANELIST"]),
+  requireRole([...ACADEMIC_ACCOUNT_ROLES]),
   defenseCollaborationController.createAnnotationComment,
 );
 router.get(
   "/defense/:scheduleId/collaboration/report",
   authenticateJWT,
-  requireRole(["PANELIST"]),
+  requireRole([...ACADEMIC_ACCOUNT_ROLES]),
   defenseCollaborationController.getCommitteeReport,
 );
 router.put(
   "/defense/:scheduleId/collaboration/report",
   authenticateJWT,
-  requireRole(["PANELIST"]),
+  requireRole([...ACADEMIC_ACCOUNT_ROLES]),
   defenseCollaborationController.saveCommitteeReportDraft,
 );
 router.post(
   "/defense/:scheduleId/collaboration/report/freeze",
   authenticateJWT,
-  requireRole(["PANELIST"]),
+  requireRole([...ACADEMIC_ACCOUNT_ROLES]),
   defenseCollaborationController.freezeCommitteeReport,
 );
 router.post(
   "/defense/:scheduleId/collaboration/report/sign",
   authenticateJWT,
-  requireRole(["PANELIST"]),
+  requireRole([...ACADEMIC_ACCOUNT_ROLES]),
   defenseCollaborationController.signCommitteeReport,
 );
 router.get(
   "/defense/:scheduleId/collaboration/conclusion-readiness",
   authenticateJWT,
-  requireRole(["PANELIST"]),
+  requireRole([...ACADEMIC_ACCOUNT_ROLES]),
   defenseCollaborationController.getConclusionReadiness,
 );
 
@@ -596,13 +597,13 @@ router.get(
 router.get(
   "/defense/:scheduleId/history",
   authenticateJWT,
-  requireRole(["PANELIST"]),
+  requireRole([...ACADEMIC_ACCOUNT_ROLES]),
   defenseHistoryController.getDefenseHistory,
 );
 router.get(
   "/defense/:scheduleId/history/:historicalScheduleId",
   authenticateJWT,
-  requireRole(["PANELIST"]),
+  requireRole([...ACADEMIC_ACCOUNT_ROLES]),
   defenseHistoryController.getDefenseHistoryAttempt,
 );
 
@@ -610,7 +611,7 @@ router.get(
 router.get(
   "/defense/:scheduleId/records/criteria/:panelAssignmentId",
   authenticateJWT,
-  requireRole(["ADMIN", "PANELIST"]),
+  requireRole(["ADMIN", ...ACADEMIC_ACCOUNT_ROLES]),
   thesisController.getOfficialCriteria,
 );
 
