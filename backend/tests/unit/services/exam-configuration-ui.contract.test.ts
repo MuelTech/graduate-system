@@ -109,9 +109,11 @@ describe("B1 Admin draft values and state contract", () => {
     expect(retry).toHaveBeenCalledOnce();
   });
 
-  it("shows explicit draft context, disabled threshold and fixed read-only timezone", () => {
+  it("shows explicit draft context without redundant timezone copy", () => {
     const rendered = html();
-    for (const text of ["Exam Duration", "MCQ Points per Correct Item", "Essay Maximum Score", "Passing Threshold", "Timezone", "Philippine Time (Asia/Manila)", "Complete all fields", "Changes apply only to new examinations."]) expect(rendered).toContain(text);
+    for (const text of ["Exam Duration", "MCQ Points per Correct Item", "Essay Maximum Score", "Passing Threshold", "Complete all fields", "Changes apply only to new examinations."]) expect(rendered).toContain(text);
+    expect(rendered).not.toContain("Timezone");
+    expect(rendered).not.toContain("Philippine Time (Asia/Manila)");
     expect(rendered).not.toMatch(/Institutional Timezone|system-defined|read-only/);
     expect(rendered).toMatch(/id="configuration-passingThreshold"/);
     expect(rendered).not.toMatch(/id="configuration-passingThreshold"[^>]*disabled/);
