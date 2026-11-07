@@ -1,6 +1,6 @@
 # FACULTY-5 — Admission and Student administrative guards
 
-Date: 2026-11-08 (Asia/Manila). Status: **FACULTY-5 implemented / pending independent review**.
+Date: 2026-11-08 (Asia/Manila). Status: **ACCEPTED FOR CONTINUATION**.
 
 ## Verified starting state
 
@@ -133,4 +133,19 @@ npm run build
 
 No implementation blocker or scope deviation. No Prisma migration/schema change, frontend work, account bootstrap/mapping, live Restricted provisioning, global activation, exam-administration guard, Defense/file/settings change, permission UI or FACULTY-6 work. FACULTY-5 is implemented / pending independent review; acceptance is not asserted. Generic private files and other unguarded modules remain the owners of later packages, so these source-ready guards do not make the complete Restricted model safe to activate. Real database contention and independent review remain explicit limitations.
 
-Commit/push only this package to the existing `feat/faculty-admin-access` branch. Final commit SHA and local/remote clean parity are reported after delivery to avoid a self-referential commit hash. Then stop; do not start FACULTY-6 or activate live Restricted access.
+Commit/push only this package to the existing `feat/faculty-admin-access` branch. FACULTY-6 was not started during this implementation and live Restricted access remains unactivated.
+
+## Independent acceptance checkpoint
+
+- Accepted implementation commit: `e0fb5ad4ade4cb3c190310e9d7819afad4e99704`.
+- Independent remote review inspected the actual one-commit diff from `0b61e445ee944edcb365fc7b2559b8bd1364a54f`: 32 changed files, 1 commit ahead / 0 behind.
+- Review confirmed all 18 reported Applicant/Student/COR/waiver/comprehensive-exam administrative endpoints and aliases are mapped to the accepted catalog capabilities.
+- Review confirmed route middleware plus direct service checks use current server-resolved actor authority; stale JWT/body claims cannot restore revoked access.
+- Existing COR verify/reject and canonical waiver-validation transactions reuse the FACULTY-4 singleton fence and revalidate the actor before target workflow locks/writes.
+- Minimum target-context projections preserve the rule that COR/waiver permissions do not imply broad Applicant registry access.
+- Applicant → Student password continuity and `mustChangePassword` preservation remain intact.
+- No blocking source issue was found in the reviewed FACULTY-5 diff.
+- Focused verification and backend build passed; no schema/migration or frontend change occurred. No full backend suite was required for this bounded package.
+- Production capability enforcement remains code-owned/dormant; no live Restricted Administrator, Admin mapping, or global activation is authorized.
+- Real DB contention/manual browser evidence was not required for this source-ready dormant package and remains a later readiness concern where applicable.
+- **FACULTY-5 is accepted for continuation. FACULTY-6 is next / not started.**

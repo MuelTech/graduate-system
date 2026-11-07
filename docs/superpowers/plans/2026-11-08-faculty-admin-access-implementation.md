@@ -4,7 +4,7 @@
 - Repository: `MuelTech/graduate-system`
 - Audit baseline / verified live `main`: `045316540d97364214792c7d441ae20a1e426d4c`
 - Branch: `feat/faculty-admin-access`
-- Status: FACULTY-0 accepted; FACULTY-1 accepted; FACULTY-2 accepted for continuation; FACULTY-3 accepted for continuation; FACULTY-4 accepted for continuation after independent remote commit-diff/source review. FACULTY-5 implemented / pending independent review.
+- Status: FACULTY-0 accepted; FACULTY-1 accepted; FACULTY-2 accepted for continuation; FACULTY-3 accepted for continuation; FACULTY-4 accepted for continuation; FACULTY-5 accepted for continuation after independent remote commit-diff/source review. FACULTY-6 is next and has not started.
 
 **Historical FACULTY-0 stop boundary:** FACULTY-0 authorized documentation only and ended before implementation. That boundary was satisfied before FACULTY-1 was separately authorized.
 
@@ -13,7 +13,7 @@
 - ✅ FACULTY-1 — Direct-access foundation accepted at `56b1ecbcb7806c1a3df9477d4b14f4cfa914f62e`.
 - ✅ FACULTY-2 — Current-account auth / credential boundary accepted for continuation at `62de9f536608b122fc0618cc4761c139baee34c9`; [implementation report](../reports/2026-11-08-faculty-2-current-account-authentication.md). Independent remote commit-diff review passed; project owner confirmed normal login behavior. Exhaustive browser edge-case QA was not claimed.
 - ✅ FACULTY-3 — Accepted for continuation at `6d03ab79d56439e805114a9d5bfc5f08664379ac`. [Implementation report](../reports/2026-11-08-faculty-3-identity-compatibility.md). Independent remote commit-diff/source review passed; project owner confirmed existing Panelist login, Profile, and My Defenses remained normal. Enum/readers only; zero account conversions; isolated real-DB rehearsal safely skipped. FACULTY-4 implementation is tracked below.
-- ✅ FACULTY-4 — Accepted for continuation at `33b3910e90f9008f93a5b203c113088a7e2f4d46`. [Implementation report](../reports/2026-11-08-faculty-4-administrator-management.md). Independent remote commit-diff/source/security review passed. Management remains code-owned/dormant; no live bootstrap or Restricted provisioning. Isolated MariaDB contention was safely skipped and remains a deployment-readiness gate. FACULTY-5 implemented / pending independent review.
+- ✅ FACULTY-4 — Accepted for continuation at `33b3910e90f9008f93a5b203c113088a7e2f4d46`. [Implementation report](../reports/2026-11-08-faculty-4-administrator-management.md). Independent remote commit-diff/source/security review passed. Management remains code-owned/dormant; no live bootstrap or Restricted provisioning. Isolated MariaDB contention was safely skipped and remains a deployment-readiness gate.
 - Direct-access enforcement remains off; no live Full/Restricted Administrator or Faculty Essay Evaluation access is activated.
 
 ## 1. Authority, baseline and scope
@@ -277,7 +277,7 @@ Sequence: **1 foundation → 2 auth → 3 identity compatibility → 4 Admin aut
 
 ### FACULTY-5 — Admission and Student administrative guards
 
-- **Status:** FACULTY-5 implemented / pending independent review. See [implementation report](../reports/2026-11-08-faculty-5-admission-student-guards.md). Guard enforcement remains code-owned/dormant; no live Restricted access, Admin mapping, schema change or FACULTY-6 work.
+- **Status:** ✅ Accepted for continuation at `e0fb5ad4ade4cb3c190310e9d7819afad4e99704` after independent remote commit-diff/source review. See [implementation report](../reports/2026-11-08-faculty-5-admission-student-guards.md). All 18 admission/Student administrative aliases are mapped to bounded catalog capabilities with service checks and current-actor revalidation where the existing transaction permits it. Guard enforcement remains code-owned/dormant; no live Restricted access, Admin mapping, schema change or FACULTY-6 work. FACULTY-6 is next / not started.
 - **Scope:** map Applicant/Student reads, waiver/COR verification, promotion and comprehensive-exam recording aliases to catalog actions, including minimum read dependencies.
 - **Non-goals:** admission-policy redesign, continuing-Student onboarding, comprehensive-exam history repair, password recovery UI.
 - **Dependencies:** 1–4.
