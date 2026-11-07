@@ -5,7 +5,7 @@
 - Verified starting local and fetched remote HEAD: `019a7f078b1d4fa60db4be8beca8ef508c925f08`.
 - Verified local/fetched remote `main`: `045316540d97364214792c7d441ae20a1e426d4c`; no drift from the approved main baseline. Main is an ancestor of the starting feature HEAD, six feature commits ahead, zero main-only commits.
 - Starting worktree/index: clean; local and remote feature branch identical (`0 0`). No fast-forward was needed.
-- Status: implemented and locally verified; independent remote review and owner manual/browser QA remain pending. FACULTY-3 has not started.
+- Status: accepted for continuation at `62de9f536608b122fc0618cc4761c139baee34c9` after focused automated verification, independent remote commit-diff review, and project-owner normal-login sanity confirmation. FACULTY-3 has not started.
 - Authorities: [source of truth](../FACULTY_ADMIN_ACCESS_SOURCE_OF_TRUTH.md), [design](../specs/2026-11-08-faculty-admin-access-design.md), [audit](2026-11-08-faculty-admin-access-audit.md), [plan](../plans/2026-11-08-faculty-admin-access-implementation.md), [checklist](../GSIS_IMPLEMENTATION_CHECKLIST.md), [verification policy](../ENGINEERING_VERIFICATION_POLICY.md).
 
 ## Implementation boundary
@@ -68,8 +68,9 @@ Non-blocking tool warnings: Vite config native-loader compatibility notice; Next
 
 ## Limitations and unexecuted checks
 
-- Manual/browser QA: NOT EXECUTED, explicitly the project owner's responsibility. Focused runtime module/HTTP tests are not browser acceptance.
-- Hosted CI and independent remote source review: not executed/claimed by this agent.
+- Project-owner browser sanity check: normal login behavior was confirmed after implementation. This was not an exhaustive browser matrix for wrong-role selection, forced-password edge cases, or intentional `403` surfaces; those behaviors remain primarily covered by the focused automated verification recorded above.
+- Independent remote source review: completed against the actual `019a7f078b1d4fa60db4be8beca8ef508c925f08` → `62de9f536608b122fc0618cc4761c139baee34c9` commit diff; no blocking FACULTY-2 issue found.
+- Hosted CI: not executed/claimed.
 - Full repository suites, live database tests, migrations/rehearsals, resets, production data inspections and deployments: NOT EXECUTED. No schema/access-version change was needed.
 - Current account/grants are read per request; there is no cross-request authorization cache. This adds a database read/dependency to authenticated requests and an uncached backend request to session reads.
 - Existing token lifetime remains 24 hours. This package does not add a token denylist or revoke every issued token on password change/logout; those recovery/reset/session safeguards remain separate checklist work. Current disabled/role/credential state is enforced on subsequent reads, including socket joins/delivery. Re-enabled accounts can use otherwise valid identity tokens again.
@@ -105,8 +106,17 @@ Non-blocking tool warnings: Vite config native-loader compatibility notice; Next
 - `frontend/src/middleware.ts`
 - `frontend/src/types/next-auth.d.ts`
 
-## Delivery and stop
+## Acceptance checkpoint — 2026-11-08
 
-The delivery commit is the commit containing this report (`git log -1 --format=%H -- docs/superpowers/reports/2026-11-08-faculty-2-current-account-authentication.md`). Commit/push and final worktree/remote equality are verified after creating that commit and reported in the task's final response. No merge, rebase, reset, force push, history rewrite or extra branch is part of delivery.
+FACULTY-2 is accepted for continuation at `62de9f536608b122fc0618cc4761c139baee34c9`.
 
-Stop after committing/pushing FACULTY-2 to `feat/faculty-admin-access`. FACULTY-3 requires separate authorization.
+Acceptance evidence:
+
+- focused backend verification: 21 files / 355 tests passed;
+- frontend FACULTY-2 runtime verifier: 17 checks passed;
+- backend build, frontend typecheck/build, scoped ESLint and `git diff --check` passed;
+- independent remote review inspected the actual one-commit repository diff from the accepted FACULTY-1 documentation checkpoint to the FACULTY-2 implementation and found no blocking issue;
+- project owner confirmed normal login behavior in the browser;
+- no schema/migration, direct-access activation, FACULTY identity conversion, or FACULTY-3 implementation was included.
+
+This acceptance is sufficient to proceed to the separately bounded FACULTY-3 package. It does not claim exhaustive browser execution of every auth edge case or hosted CI.
