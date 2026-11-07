@@ -1,0 +1,415 @@
+/* Public components only. Never target global elements or shared widget internals. */
+.earist-public {
+  background: #fff;
+}
+.earist-public .public-skip-link {
+  position: fixed;
+  top: 8px;
+  left: 12px;
+  z-index: 100;
+  padding: 12px 20px;
+  background: #fff;
+  color: var(--earist-primary);
+  border: 2px solid var(--earist-primary);
+  transform: translateY(-160%);
+}
+.earist-public .public-skip-link:focus {
+  transform: translateY(0);
+}
+.earist-public .public-main {
+  scroll-margin-top: 112px;
+}
+
+/* Existing Home anchors must clear the taller masthead during Task 1. */
+.earist-public #graduate-study,
+.earist-public #graduate-research {
+  scroll-margin-top: 128px;
+}
+.earist-public .public-masthead {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  background: #fff;
+  border-top: 3px solid var(--earist-primary);
+  border-bottom: 1px solid #e5dfd5;
+}
+.earist-public .public-masthead__inner,
+.earist-public .public-masthead__panel-inner {
+  width: min(100% - 48px, 1200px);
+  margin-inline: auto;
+}
+.earist-public .public-masthead__inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  min-height: 92px;
+  padding-block: 12px;
+}
+.earist-public .public-masthead__identity {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+  color: var(--earist-primary);
+  text-decoration: none;
+}
+.earist-public .public-masthead__seal {
+  width: 64px;
+  height: 64px;
+  flex-shrink: 0;
+}
+.earist-public .public-masthead__lockup {
+  display: grid;
+  min-width: 0;
+}
+.earist-public .public-masthead__name {
+  font-size: 19px;
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: 0.08em;
+}
+.earist-public .public-masthead__school {
+  font-size: 21px;
+  line-height: 1.2;
+  font-weight: 600;
+}
+.earist-public .public-masthead__full-name {
+  max-width: 260px;
+  margin-top: 4px;
+  color: var(--earist-body-text);
+  font-size: 12px;
+  line-height: 1.25;
+}
+.earist-public .public-masthead__desktop-nav,
+.earist-public .public-masthead__desktop-account {
+  display: none;
+}
+.earist-public .public-masthead__link,
+.earist-public .public-masthead__register {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.3;
+  text-decoration: none;
+  color: var(--earist-body-text);
+  transition:
+    color 150ms,
+    background-color 150ms;
+}
+.earist-public .public-masthead__link:hover {
+  color: var(--earist-primary);
+  text-decoration: underline;
+  text-underline-offset: 6px;
+}
+.earist-public .public-masthead__register {
+  padding: 10px 19px;
+  border: 1px solid var(--earist-primary);
+  color: var(--earist-primary);
+  border-radius: 3px;
+}
+.earist-public .public-masthead__register:hover {
+  background: var(--earist-surface-cream);
+}
+.earist-public .public-masthead__menu-toggle {
+  display: inline-flex;
+  width: 44px;
+  height: 44px;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border: 1px solid #dfd7cb;
+  border-radius: 3px;
+  color: var(--earist-primary);
+  cursor: pointer;
+}
+.earist-public .public-masthead__panel {
+  max-height: calc(100dvh - 96px);
+  overflow-y: auto;
+  border-top: 1px solid #e5dfd5;
+  background: #fff;
+}
+.earist-public .public-masthead__panel[hidden] {
+  display: none;
+}
+.earist-public .public-masthead__panel-inner {
+  display: grid;
+  gap: 2px;
+  padding-block: 12px 20px;
+}
+.earist-public .public-masthead__panel-inner > .public-masthead__link {
+  justify-content: flex-start;
+  padding-inline: 12px;
+}
+.earist-public .public-masthead__mobile-account {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  align-items: center;
+  border-top: 1px solid #e5dfd5;
+  margin-top: 10px;
+  padding: 16px 12px 0;
+}
+.earist-public .public-review-notice {
+  background: #f5f1e9;
+  border-bottom: 1px solid #e8e1d5;
+}
+.earist-public .public-review-notice__text {
+  width: min(100% - 48px, 1200px);
+  margin-inline: auto;
+  padding-block: 9px;
+  font-size: 13px;
+  line-height: 1.4;
+  color: #66573e;
+}
+.earist-public .public-hero {
+  background: #fffaf2;
+  border-bottom: 1px solid #e7dfd2;
+}
+.earist-public .public-hero__composition {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+}
+.earist-public .public-hero__copy {
+  align-self: center;
+  padding: 48px 24px;
+}
+.earist-public .public-hero__institution {
+  display: none;
+  color: var(--earist-body-text);
+  font-size: 13px;
+  line-height: 1.5;
+  max-width: 360px;
+  margin-bottom: 24px;
+}
+.earist-public .public-hero__eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 22px;
+  font-size: 12px;
+  line-height: 1.4;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--earist-primary);
+}
+.earist-public .public-hero__eyebrow::before {
+  content: "";
+  width: 30px;
+  height: 2px;
+  flex-shrink: 0;
+  background: var(--earist-accent);
+}
+.earist-public .public-hero__title {
+  margin: 0;
+  max-width: 510px;
+  font-size: 48px;
+  line-height: 1.03;
+  letter-spacing: -0.035em;
+  font-weight: 700;
+  color: var(--earist-primary);
+}
+.earist-public .public-hero__title > span {
+  display: block;
+}
+.earist-public .public-hero__description {
+  max-width: 430px;
+  margin-top: 24px;
+  font-size: 18px;
+  line-height: 1.65;
+  color: var(--earist-body-text);
+}
+.earist-public .public-hero__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 30px;
+}
+.earist-public .public-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  min-height: 48px;
+  padding: 13px 20px;
+  border: 1px solid var(--earist-primary);
+  border-radius: 3px;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.3;
+  text-align: center;
+  text-decoration: none;
+  transition:
+    color 150ms,
+    background-color 150ms;
+}
+.earist-public .public-action--primary {
+  color: #fff;
+  background: var(--earist-primary);
+}
+.earist-public .public-action--primary:hover {
+  background: #701515;
+}
+.earist-public .public-action--secondary {
+  color: var(--earist-primary);
+  background: transparent;
+}
+.earist-public .public-action--secondary:hover {
+  background: #f7eddf;
+}
+.earist-public .public-hero__prerequisite {
+  margin-top: 14px;
+  max-width: 430px;
+  color: #65594b;
+  font-size: 14px;
+  line-height: 1.5;
+}
+.earist-public .public-preview-image {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  margin: 0;
+}
+.earist-public .public-preview-image__frame {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  aspect-ratio: 3 / 2;
+}
+.earist-public .public-preview-image__image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 55% 50%;
+}
+.earist-public .public-preview-image__caption {
+  padding: 10px 20px;
+  border-top: 2px solid var(--earist-accent);
+  color: #fff;
+  background: #642027;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.earist-public .public-masthead__identity:focus-visible,
+.earist-public .public-masthead__link:focus-visible,
+.earist-public .public-masthead__register:focus-visible,
+.earist-public .public-masthead__menu-toggle:focus-visible,
+.earist-public .public-action:focus-visible,
+.earist-public .public-main:focus-visible {
+  outline: 2px solid var(--earist-primary);
+  outline-offset: 5px;
+}
+
+@media (min-width: 960px) {
+  .earist-public .public-hero__composition {
+    grid-template-columns: minmax(0, 45fr) minmax(0, 55fr);
+    min-height: 540px;
+  }
+  .earist-public .public-hero__copy {
+    padding: 52px 40px 52px max(24px, calc((100vw - 1200px) / 2));
+  }
+  .earist-public .public-hero__title {
+    font-size: 64px;
+  }
+  .earist-public .public-preview-image__frame {
+    aspect-ratio: auto;
+  }
+  .earist-public .public-hero__visual .public-preview-image__image {
+    position: absolute;
+    inset: 0;
+  }
+}
+@media (min-width: 1200px) {
+  .earist-public .public-masthead__desktop-nav {
+    display: flex;
+    align-items: center;
+    gap: 22px;
+  }
+  .earist-public .public-masthead__desktop-account {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    border-left: 1px solid #e5dfd5;
+    padding-left: 24px;
+  }
+  .earist-public .public-masthead__menu-toggle,
+  .earist-public .public-masthead__panel {
+    display: none;
+  }
+  .earist-public .public-hero__title {
+    font-size: 68px;
+  }
+}
+@media (max-width: 599px) {
+  .earist-public .public-masthead__inner,
+  .earist-public .public-masthead__panel-inner,
+  .earist-public .public-review-notice__text {
+    width: calc(100% - 36px);
+  }
+  .earist-public .public-masthead__inner {
+    min-height: 76px;
+    gap: 12px;
+  }
+  .earist-public .public-masthead__identity {
+    gap: 10px;
+  }
+  .earist-public .public-masthead__seal {
+    width: 48px;
+    height: 48px;
+  }
+  .earist-public .public-masthead__name {
+    font-size: 17px;
+  }
+  .earist-public .public-masthead__school {
+    font-size: 18px;
+  }
+  .earist-public .public-masthead__full-name {
+    display: none;
+  }
+  .earist-public .public-masthead__panel {
+    max-height: calc(100dvh - 80px);
+  }
+  .earist-public .public-review-notice__text {
+    font-size: 12px;
+  }
+  .earist-public .public-hero__copy {
+    padding: 36px 20px 38px;
+  }
+  .earist-public .public-hero__institution {
+    display: block;
+  }
+  .earist-public .public-hero__eyebrow {
+    margin-bottom: 18px;
+    font-size: 11px;
+    letter-spacing: 0.045em;
+  }
+  .earist-public .public-hero__title {
+    font-size: 40px;
+  }
+  .earist-public .public-hero__description {
+    margin-top: 20px;
+    font-size: 17px;
+    line-height: 1.55;
+  }
+  .earist-public .public-hero__actions {
+    margin-top: 24px;
+  }
+  .earist-public .public-action {
+    width: 100%;
+  }
+  .earist-public .public-preview-image__frame {
+    aspect-ratio: 4 / 3;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .earist-public .public-action,
+  .earist-public .public-masthead__link,
+  .earist-public .public-masthead__register {
+    transition: none;
+  }
+}
