@@ -4,7 +4,7 @@
 - Repository: `MuelTech/graduate-system`
 - Audit baseline / verified live `main`: `045316540d97364214792c7d441ae20a1e426d4c`
 - Branch: `feat/faculty-admin-access`
-- Status: FACULTY-0 accepted; FACULTY-1 accepted; FACULTY-2 accepted for continuation; FACULTY-3 accepted for continuation after implementation, independent remote commit-diff/source review, and project-owner sanity QA. FACULTY-4 is next and has not started.
+- Status: FACULTY-0 accepted; FACULTY-1 accepted; FACULTY-2 accepted for continuation; FACULTY-3 accepted for continuation after implementation, independent remote commit-diff/source review, and project-owner sanity QA. FACULTY-4 is implemented; independent review/acceptance is pending. FACULTY-5 has not started.
 
 **Historical FACULTY-0 stop boundary:** FACULTY-0 authorized documentation only and ended before implementation. That boundary was satisfied before FACULTY-1 was separately authorized.
 
@@ -12,7 +12,8 @@
 - ✅ FACULTY-0 — Repository audit and implementation plan accepted.
 - ✅ FACULTY-1 — Direct-access foundation accepted at `56b1ecbcb7806c1a3df9477d4b14f4cfa914f62e`.
 - ✅ FACULTY-2 — Current-account auth / credential boundary accepted for continuation at `62de9f536608b122fc0618cc4761c139baee34c9`; [implementation report](../reports/2026-11-08-faculty-2-current-account-authentication.md). Independent remote commit-diff review passed; project owner confirmed normal login behavior. Exhaustive browser edge-case QA was not claimed.
-- ✅ FACULTY-3 — Accepted for continuation at `6d03ab79d56439e805114a9d5bfc5f08664379ac`. [Implementation report](../reports/2026-11-08-faculty-3-identity-compatibility.md). Independent remote commit-diff/source review passed; project owner confirmed existing Panelist login, Profile, and My Defenses remained normal. Enum/readers only; zero account conversions; isolated real-DB rehearsal safely skipped. FACULTY-4 is next / not started.
+- ✅ FACULTY-3 — Accepted for continuation at `6d03ab79d56439e805114a9d5bfc5f08664379ac`. [Implementation report](../reports/2026-11-08-faculty-3-identity-compatibility.md). Independent remote commit-diff/source review passed; project owner confirmed existing Panelist login, Profile, and My Defenses remained normal. Enum/readers only; zero account conversions; isolated real-DB rehearsal safely skipped. FACULTY-4 implementation is tracked below.
+- 🟡 FACULTY-4 — Implemented; independent review/acceptance pending. [Implementation report](../reports/2026-11-08-faculty-4-administrator-management.md). Management remains code-owned/dormant; no live bootstrap or Restricted provisioning. Isolated MariaDB contention safely skipped; FACULTY-5 not started.
 - Direct-access enforcement remains off; no live Full/Restricted Administrator or Faculty Essay Evaluation access is activated.
 
 ## 1. Authority, baseline and scope
@@ -250,7 +251,7 @@ Sequence: **1 foundation → 2 auth → 3 identity compatibility → 4 Admin aut
 
 ### FACULTY-3 — Faculty identity compatibility readers
 
-- **Status:** ✅ Accepted for continuation at `6d03ab79d56439e805114a9d5bfc5f08664379ac` after independent remote commit-diff/source review and project-owner sanity QA. See [report](../reports/2026-11-08-faculty-3-identity-compatibility.md). Both account identities are supported, with technical paths/profile/defense roles preserved. Enum migration is source-validated only; isolated real-DB rehearsal was safely skipped. No existing account conversion; FACULTY-4 is next and not started.
+- **Status:** ✅ Accepted for continuation at `6d03ab79d56439e805114a9d5bfc5f08664379ac` after independent remote commit-diff/source review and project-owner sanity QA. See [report](../reports/2026-11-08-faculty-3-identity-compatibility.md). Both account identities are supported, with technical paths/profile/defense roles preserved. Enum migration is source-validated only; isolated real-DB rehearsal was safely skipped. No existing account conversion; FACULTY-4 implementation is tracked below.
 
 - **Scope:** expand enum with FACULTY; support both academic account values through bounded normalizers across backend predicates, session routing/types, notifications/memos and realtime; preserve technical `/panelist` paths.
 - **Non-goals:** existing User conversion, PanelRole rename, profile-table rename, production backfill, broad UI rewrite.
@@ -262,6 +263,8 @@ Sequence: **1 foundation → 2 auth → 3 identity compatibility → 4 Admin aut
 - **Stop condition:** all readers/writers needed for safe future conversion are identified and compatible; no existing account converted.
 
 ### FACULTY-4 — Full Administrator management service and safeguards
+
+- **Status:** 🟡 Implemented; pending independent review/acceptance. See [report](../reports/2026-11-08-faculty-4-administrator-management.md). Full-only backend, singleton fence, actor revalidation, last-active-Full and protected atomic audit are implemented and synthetic-test verified. Production management remains disabled. Isolated real-DB contention safely skipped; no live bootstrap/conversion/Restricted rollout and no FACULTY-5 work.
 
 - **Scope:** implement Full-only Administrator account/access/status backend service, safe random temporary privileged credentials, serializable last-active-Full guard and atomic audit; protect access events from generic audit deletion.
 - **Non-goals:** live bootstrap, Restricted rollout, UI, general account recovery or global audit-retention redesign.

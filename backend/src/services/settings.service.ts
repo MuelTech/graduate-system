@@ -33,6 +33,7 @@ export class SettingsService {
     }
 
     async deleteAuditLog(id: string) {
+        if (typeof id !== "string" || !id.trim() || id.length > 191) throw new AppError("Invalid audit log identifier.", 400);
         const log = await this.repository.deleteAuditLog(id);
         if (!log) {
             throw new AppError("Audit log not found!", 404);
@@ -41,7 +42,8 @@ export class SettingsService {
     }
 
     async deleteAuditLogs(ids: string[]) {
-        if (!ids || ids.length === 0) {
+        if (!Array.isArray(ids) || ids.length === 0 || ids.length > 1000 ||
+            ids.some(id => typeof id !== "string" || !id.trim() || id.length > 191)) {
             throw new AppError("No audit logs selected!", 400);
         }
         const result = await this.repository.deleteAuditLogs(ids);

@@ -22,6 +22,7 @@ import emailRoutes from './email.routes';
 import adminDashboardRoutes from './admin-dashboard.routes';
 import adminStorageRoutes from './admin-storage.routes';
 import documentRoutes from './document.routes';
+import administratorAccessRoutes from './administrator-access.routes';
 
 const router = Router();
 
@@ -43,6 +44,7 @@ router.use('/waivers', waiverRoutes);
 router.use('/admin/applicants', adminApplicantRoutes);
 router.use('/admin/panelists', adminPanelistRoutes);
 router.use('/admin/students', adminStudentRoutes);
+router.use('/admin/administrators', administratorAccessRoutes);
 router.use('/exam-engine', examEngineRoutes);
 router.use('/admin/email-logs', emailRoutes);
 router.use('/admin/dashboard', adminDashboardRoutes);

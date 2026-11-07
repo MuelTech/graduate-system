@@ -1,6 +1,7 @@
 import { Prisma } from "@prisma/client";
 import prisma from "../config/database";
 import { UserRole } from "@prisma/client";
+import { AppError } from "../utils/AppError";
 
 /**
  * Patch-safe panelist flag resolution.
@@ -115,6 +116,9 @@ export class AdminPanelistRepository {
             });
 
             if (!panelistRecord) throw new Error("Panelist not found!");
+            if (panelistRecord.user.role === "ADMIN") {
+                throw new AppError("Administrator accounts must use Administrator management.", 403);
+            }
 
             // Patch-safe user fields for status-only PUT { isActive }.
             const userData: Record<string, unknown> = {
@@ -140,7 +144,7 @@ export class AdminPanelistRepository {
             }
 
             await tx.user.update({
-                where: { id: panelistRecord.userId },
+                where: { id: panelistRecord.userId, role: { not: "ADMIN" } },
                 data: userData,
             });
 

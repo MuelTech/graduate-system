@@ -221,6 +221,13 @@ model AdministratorAccess {
   @@map("administrator_access")
 }
 
+/// Singleton transaction fence only; never contains account identity or privilege.
+model AdministratorAccessLock {
+  id Int @id @db.UnsignedTinyInt
+
+  @@map("administrator_access_lock")
+}
+
 /** Keys/categories are validated by the code-owned catalog; unknown keys grant nothing. */
 model AccountCapabilityGrant {
   id            String   @id @default(uuid()) @map("grant_id")

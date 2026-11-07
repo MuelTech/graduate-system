@@ -2,6 +2,7 @@ import prisma from '../config/database';
 import { Prisma } from '@prisma/client';
 import { EXAM_CONFIGURATION_KEY } from '../services/exam-configuration.rules';
 import { AppError } from '../utils/AppError';
+import { PROTECTED_ACCESS_AUDIT_PREFIXES, isProtectedAccessAuditAction } from '../access/access-audit';
 
 export interface AuditLogQuery {
     page?: number;
@@ -76,15 +77,27 @@ export class SettingsRepository {
     }
 
     async deleteAuditLog(id: string) {
-        return prisma.auditLog.delete({
-            where: { id }
-        });
+        const result = await this.deleteUnprotectedAuditRows([id]);
+        if (result.count === 1) return { id };
+        const existing = await prisma.auditLog.findUnique({ where: { id }, select: { actionType: true } });
+        if (isProtectedAccessAuditAction(existing?.actionType)) {
+            throw new AppError("Administrator access audit evidence cannot be deleted.", 403);
+        }
+        return null;
     }
 
     async deleteAuditLogs(ids: string[]) {
-        return prisma.auditLog.deleteMany({
-            where: { id: { in: ids } }
-        });
+        return this.deleteUnprotectedAuditRows(ids);
+    }
+
+    private async deleteUnprotectedAuditRows(ids: string[]) {
+        if (ids.length === 0) return { count: 0 };
+        // Literal prefix comparison in the DELETE itself. SQL LIKE/startsWith
+        // would treat the namespace underscores as wildcards and retain unrelated actions.
+        const exclusions = Prisma.join(PROTECTED_ACCESS_AUDIT_PREFIXES.map(prefix =>
+            Prisma.sql`LEFT(action_type, CHAR_LENGTH(${prefix})) <> ${prefix}`), ' AND ');
+        const count = await prisma.$executeRaw`DELETE FROM audit_logs WHERE log_id IN (${Prisma.join(ids)}) AND ${exclusions}`;
+        return { count };
     }
 
     private buildAuditLogWhereClause(filters: AuditLogQuery): Prisma.AuditLogWhereInput {
