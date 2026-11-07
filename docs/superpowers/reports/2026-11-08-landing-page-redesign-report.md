@@ -3,7 +3,8 @@
 **Project:** EARIST Graduate School Information System (GS-IS)
 **Date:** 2026-11-08
 **Repository / branch:** `MuelTech/graduate-system` / `feat/landing-page-redesign`
-**Implementation state:** Tasks 1–2 implemented and pushed; Task 3 verification/reporting completed. Project-owner browser/manual QA is **NOT EXECUTED**; visual acceptance is **PENDING**.
+**Current owner review state:** V1 was **REJECTED** during project-owner manual visual QA. V2 specification/planning has been initiated; V2 source implementation is not authorized by this documentation package. See section 13.
+**Historical V1 handoff state:** Tasks 1–2 implemented and pushed; Task 3 verification/reporting completed. At the original handoff, owner manual QA had not been executed and visual acceptance was pending. Sections 1–12 preserve that original evidence and its then-current limitations; their pending-QA statements are historical, not the current owner verdict.
 **Document role:** permanent feature evidence and handoff; not a canonical source of truth or a replacement for owner acceptance.
 
 ## 1. Purpose, authority, and scope
@@ -190,3 +191,25 @@ Treat the design spec and plan as historical package authority, including their 
 At Task 3 verification, main and the feature had not advanced; the feature has a linear spec → plan → Task 1 → Task 2 history. This report adds one linear report-only commit, preserving all implementation commits and parallel-development boundaries. Main is not merged or updated, canonical docs are not synchronized, and no additional feature starts automatically.
 
 Delivery must report the exact introducing report SHA/remote ending HEAD, confirm the ten-file complete-feature set and clean local state, and stop after the normal feature-branch push. Project-owner manual QA and any independent acceptance review remain pending.
+
+## 13. Owner rejection of V1 and V2 documentation initiation — 2026-11-08
+
+The project owner subsequently performed manual visual QA and explicitly **rejected both the V1 visual design and its implementation**. This supersedes the pending-acceptance state recorded at the original handoff. The owner supplied this verdict in the redesign request; the coding agent did not independently execute or witness that manual QA. The original checks above remain evidence of their stated technical scope, not evidence of visual acceptance.
+
+Owner-reported reasons:
+
+- The Hero is weak, excessively empty, and reads as an account-access wireframe rather than a university front page.
+- The EARIST seal is awkwardly placed and too small; Navbar/Footer identity still uses generic graduation-cap icons.
+- Programs and Research are too plain, with insufficient content hierarchy and visual depth.
+- Removing Announcements diminished the public experience.
+- The Footer is too sparse and has excessive empty space.
+- Top-level public navigation needs reconsideration instead of retaining every existing route as an equal primary tab.
+- The overall result feels sparse, sterile, and recognizably AI-generated rather than like a polished institutional Graduate School website.
+
+The owner's subsequent instruction adopts the Public IA + Landing V2 audit/proposal as the working direction: photographic/editorial composition, actual institutional branding, a grouped Programs directory, visible News & Announcements, a distinct Research feature, institutional About/help content, and a denser grouped Footer.
+
+V2 begins with the new [design specification](../specs/2026-11-08-landing-page-redesign-v2-design.md) and then the [implementation plan](../plans/2026-11-08-landing-page-redesign-v2.md). The V1 specification, plan, implementation commits, and original report evidence are retained as history. They are **not accepted visual precedents** and must not be used to constrain V2 to the rejected composition.
+
+The V2 strategy is frontend visual validation first. Clearly labelled placeholder images and local design-review sample news are permitted; fabricated research publications are not. No backend/API/database/Prisma/CMS/data-contract changes, authentication or authorization changes, chatbot changes, or shared canonical-document changes are authorized by this package. The UI/UX playbook and copy authority remain behavioral, consistency, accessibility, and wording guardrails; the playbook is not V2's visual template.
+
+The current delivery is documentation only: record this verdict, create and commit the new specification, create and commit its repository-grounded plan, push those documentation commits to `feat/landing-page-redesign`, and stop. V2 implementation, browser validation, and owner visual acceptance remain future work requiring explicit implementation authorization.
