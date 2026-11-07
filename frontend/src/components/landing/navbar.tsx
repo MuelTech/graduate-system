@@ -49,11 +49,10 @@ export function Navbar() {
             className="public-masthead__seal"
           />
           <span className="public-masthead__lockup">
-            <span className="public-masthead__name">EARIST</span>
-            <span className="public-masthead__school">Graduate School</span>
             <span className="public-masthead__full-name">
               {institution.fullName}
             </span>
+            <span className="public-masthead__school">Graduate School</span>
           </span>
         </Link>
         <nav

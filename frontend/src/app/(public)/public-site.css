@@ -63,23 +63,18 @@
   display: grid;
   min-width: 0;
 }
-.earist-public .public-masthead__name {
-  font-size: 19px;
-  font-weight: 700;
-  line-height: 1.1;
-  letter-spacing: 0.08em;
-}
 .earist-public .public-masthead__school {
-  font-size: 21px;
-  line-height: 1.2;
+  margin-top: 4px;
+  font-size: 13px;
+  line-height: 1.25;
   font-weight: 600;
 }
 .earist-public .public-masthead__full-name {
-  max-width: 236px;
-  margin-top: 4px;
+  max-width: 270px;
   color: var(--earist-body-text);
-  font-size: 12px;
+  font-size: 14px;
   line-height: 1.25;
+  font-weight: 500;
 }
 .earist-public .public-masthead__desktop-nav,
 .earist-public .public-masthead__desktop-account {
@@ -356,12 +351,6 @@
     width: 60px;
     height: 60px;
   }
-  .earist-public .public-masthead__full-name {
-    max-width: 224px;
-    margin-top: 3px;
-    line-height: 1.2;
-    color: #68615a;
-  }
   .earist-public .public-masthead__desktop-nav {
     display: flex;
     align-items: center;
@@ -400,14 +389,12 @@
     width: 48px;
     height: 48px;
   }
-  .earist-public .public-masthead__name {
-    font-size: 17px;
-  }
   .earist-public .public-masthead__school {
-    font-size: 18px;
+    font-size: 12px;
   }
   .earist-public .public-masthead__full-name {
-    display: none;
+    font-size: 12px;
+    line-height: 1.2;
   }
   .earist-public .public-masthead__panel {
     max-height: calc(100dvh - 80px);
