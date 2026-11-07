@@ -4,9 +4,15 @@
 - Repository: `MuelTech/graduate-system`
 - Audit baseline / verified live `main`: `045316540d97364214792c7d441ae20a1e426d4c`
 - Branch: `feat/faculty-admin-access`
-- Status: FACULTY-0 audit/planning deliverable; proposed technical packages pending independent review and separate authorization.
+- Status: FACULTY-0 accepted; FACULTY-1 implemented, independently reviewed and accepted; FACULTY-2 is the next package and still requires its own bounded authorization.
 
-**Stop boundary:** this document authorizes no implementation. FACULTY-0 ends after documentation validation, commit and push. Do not begin FACULTY-1, change production source/schema/auth/UI, apply migrations, or activate access changes under this task.
+**Historical FACULTY-0 stop boundary:** FACULTY-0 authorized documentation only and ended before implementation. That boundary was satisfied before FACULTY-1 was separately authorized.
+
+**Execution checkpoint — 2026-11-08**
+- ✅ FACULTY-0 — Repository audit and implementation plan accepted.
+- ✅ FACULTY-1 — Direct-access foundation accepted at `56b1ecbcb7806c1a3df9477d4b14f4cfa914f62e`.
+- ⏭️ FACULTY-2 — Current-account auth / credential boundary is next; not started by this checkpoint.
+- Direct-access enforcement remains off; no live Full/Restricted Administrator or Faculty Essay Evaluation access is activated.
 
 ## 1. Authority, baseline and scope
 
@@ -220,6 +226,7 @@ Sequence: **1 foundation → 2 auth → 3 identity compatibility → 4 Admin aut
 
 ### FACULTY-1 — Direct-access foundation
 
+- **Status:** ✅ Accepted after implementation, independent source review, recovery verification and focused MariaDB-isolation guard verification. Accepted checkpoint: `56b1ecbcb7806c1a3df9477d4b14f4cfa914f62e`.
 - **Scope:** specify typed catalog/implications, add constrained direct-user grants/Admin-level metadata and shared access resolver; establish target activation boundary and protected access-event taxonomy. Deliver operator preflight format without running it on live data.
 - **Non-goals:** role conversion, live grants/bootstrap, login changes, module guard migration, UI.
 - **Dependencies:** accepted FACULTY-0; no unresolved decision may be filled with invented data.

@@ -281,7 +281,8 @@ Faculty and Admin are separate account roles in the approved target. Faculty doe
 | --- | --- | --- |
 | ⏳ | Broad PANELIST identity → FACULTY | Approved target. Requires repository-grounded migration/compatibility design; do not blindly rename APIs/routes/data because Panelist remains a valid defense-assignment term. |
 | ✅ | Faculty/Admin product architecture | Decision resolved by the canonical Faculty/Admin source of truth. Four roles remain Applicant / Student / Faculty / Admin; Faculty and Admin stay separate account roles. |
-| ⏳ | Faculty configured access | Initial direct Faculty access for this feature is **Essay Evaluation**. Exact technical capability keys remain implementation-plan work. |
+| ✅ | Direct-access foundation | FACULTY-1 accepted at `56b1ecbcb7806c1a3df9477d4b14f4cfa914f62e`: additive direct per-user grant/Admin-level storage, typed capability catalog, fail-closed resolver, protected access-event taxonomy and preflight format are in place. Enforcement remains intentionally off. |
+| ⏳ | Faculty configured access | Initial direct Faculty access remains **Essay Evaluation** through the established `essay.evaluate` capability. Live grant management/activation is not implemented yet. |
 | ⏳ | Dynamic Faculty dashboard/navigation | Dashboard and sidebar must reflect effective Faculty work from Essay Evaluation access plus authoritative Adviser/Defense assignments. Do not show irrelevant zero-value work areas. |
 | ✅ | Defense roles are contextual | Chairman / Panelist / Rapporteur / Facilitator / Adviser are not permanent Faculty permission checkboxes; authority continues to come from exact workflow assignments. |
 | ⏳ | Internal / External Faculty migration | Preserve affiliation classification. External Faculty may participate in permitted defense work but cannot be assigned as Adviser. |

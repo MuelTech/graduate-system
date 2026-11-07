@@ -4,7 +4,7 @@
 - Repository/branch: `MuelTech/graduate-system`, `feat/faculty-admin-access`
 - Verified starting feature HEAD: `d080d9006b8820c34fbcf833087926d40532dc6a`
 - Verified live main/base: `045316540d97364214792c7d441ae20a1e426d4c`; no main drift at start.
-- Status: implemented; pending independent source review. Foundation only; not activated.
+- Status: accepted after independent source review and focused safety verification. Foundation only; not activated.
 - Authority: [Faculty/Admin Source of Truth](../FACULTY_ADMIN_ACCESS_SOURCE_OF_TRUTH.md), [approved design](../specs/2026-11-08-faculty-admin-access-design.md), [audit](2026-11-08-faculty-admin-access-audit.md), [FACULTY-1 plan](../plans/2026-11-08-faculty-admin-access-implementation.md), and [verification policy](../ENGINEERING_VERIFICATION_POLICY.md).
 
 ## Implemented boundary
@@ -142,7 +142,7 @@ The normal development database received only the explicitly authorized committe
 
 The only repository file changed by this continuation is this implementation report. All existing implementation, schema, migration, seed and test files remain unchanged. The final diff is limited to recovery reconciliation and current verification evidence; the ending commit is reported after commit/push rather than embedded self-referentially here.
 
-No FACULTY-1 implementation or local database-readiness blocker remains. Independent source review and owner QA remain their separate acceptance activities. Direct-access enforcement stays off, and no live Full/Restricted Administrator or Essay Evaluation access was granted. FACULTY-2 was not started.
+No FACULTY-1 implementation or local database-readiness blocker remains. Independent source review is complete. Direct-access enforcement stays off, and no live Full/Restricted Administrator or Essay Evaluation access was granted. FACULTY-2 was not started.
 
 
 ## Independent review safety correction — 2026-11-08
@@ -150,3 +150,21 @@ No FACULTY-1 implementation or local database-readiness blocker remains. Indepen
 After FACULTY-1 source review, the opt-in real-MariaDB migration test was hardened so a future run cannot use the same MariaDB server as the configured application database merely by supplying a server-only URL. The test now loads the application's `DATABASE_URL`, canonicalizes local loopback aliases, and rejects `FACULTY_1_DB_SERVER_URL` when its host+port matches the application database server. A separate local port/server is required for the destructive disposable rehearsal.
 
 Three non-database guard cases cover same-server rejection across loopback aliases, acceptance of a different local port, and rejection of a test URL that names a schema. This correction changes test safety only; it does not alter production schema, access behavior, migration contents, application database data, or FACULTY-1 activation state. No destructive database rehearsal is required for this correction.
+
+
+## FACULTY-1 acceptance checkpoint — 2026-11-08
+
+FACULTY-1 is accepted at `56b1ecbcb7806c1a3df9477d4b14f4cfa914f62e` after independent remote source review and focused verification of the MariaDB isolation correction.
+
+Final focused guard verification reported:
+
+- local branch fast-forwarded cleanly to the accepted remote checkpoint;
+- working tree clean and remote parity `0 ahead / 0 behind`;
+- 1 focused test file passed;
+- 3/3 isolation-guard tests passed;
+- 9 destructive MariaDB rehearsal tests were intentionally skipped;
+- no database connection or destructive rehearsal ran;
+- no development database was modified;
+- FACULTY-2 was not started.
+
+This closes FACULTY-1 only. The direct-access foundation remains dormant until later packages close the required authentication, authorization, management and activation boundaries.
