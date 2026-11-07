@@ -1,3 +1,6 @@
+> **SUPERSESSION NOTICE — 2026-11-08**  
+> This historical Panelist-management design remains useful only as legacy implementation/migration evidence. The new canonical Faculty/Admin direction is defined by `docs/superpowers/FACULTY_ADMIN_ACCESS_SOURCE_OF_TRUTH.md` and `docs/superpowers/specs/2026-11-08-faculty-admin-access-design.md`. Where this document conflicts with those authorities, the newer documents win. In particular, the broad account identity target is **Faculty**, External Faculty cannot be Advisers, adviser availability is Admin-controlled, defense roles remain assignment-driven, and the target UX uses dedicated Faculty and Administrators management rather than user-facing Custom Roles.
+
 # Admin Panelist Management — Design Spec
 
 **Date:** 2026-07-18
