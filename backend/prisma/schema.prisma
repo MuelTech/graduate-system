@@ -67,6 +67,12 @@ model User {
   examAmendmentsDecided              ExamScheduleAmendment[] @relation("ExamAmendmentDecidedBy")
   examResultDecisions                ExamResultDecision[]
   customRole                         CustomRole?               @relation("UserCustomRole", fields: [customRoleId], references: [id])
+  administratorAccess                AdministratorAccess?      @relation("AdministratorAccessAccount")
+  administratorAccessCreated         AdministratorAccess[]     @relation("AdministratorAccessCreatedBy")
+  administratorAccessUpdated         AdministratorAccess[]     @relation("AdministratorAccessUpdatedBy")
+  capabilityGrants                   AccountCapabilityGrant[]  @relation("CapabilityGrantAccount")
+  capabilityGrantsCreated             AccountCapabilityGrant[]  @relation("CapabilityGrantCreatedBy")
+  capabilityGrantsUpdated             AccountCapabilityGrant[]  @relation("CapabilityGrantUpdatedBy")
 
   @@index([customRoleId], map: "users_custom_role_id_fkey")
   @@map("users")
@@ -195,6 +201,43 @@ model RoleFeatureAccess {
 
   @@index([roleId], map: "role_feature_access_role_id_fkey")
   @@map("role_feature_access")
+}
+
+/** FACULTY-1: explicit metadata only. No row/default is created for existing Admins. */
+model AdministratorAccess {
+  userId      String                   @id @map("user_id")
+  /// No SQL ENUM implicit-first-value default. Forward migration CHECK constrains FULL/RESTRICTED.
+  level       String                   @db.VarChar(16)
+  createdById String                   @map("created_by_id")
+  updatedById String                   @map("updated_by_id")
+  createdAt   DateTime                 @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt   DateTime                 @updatedAt @map("updated_at") @db.DateTime(3)
+  user        User                     @relation("AdministratorAccessAccount", fields: [userId], references: [id], onDelete: Restrict)
+  createdBy   User                     @relation("AdministratorAccessCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  updatedBy   User                     @relation("AdministratorAccessUpdatedBy", fields: [updatedById], references: [id], onDelete: Restrict)
+
+  @@index([createdById])
+  @@index([updatedById])
+  @@map("administrator_access")
+}
+
+/** Keys/categories are validated by the code-owned catalog; unknown keys grant nothing. */
+model AccountCapabilityGrant {
+  id            String   @id @default(uuid()) @map("grant_id")
+  userId        String   @map("user_id")
+  capabilityKey String   @map("capability_key") @db.VarChar(96)
+  createdById   String   @map("created_by_id")
+  updatedById   String   @map("updated_by_id")
+  createdAt     DateTime @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt     DateTime @updatedAt @map("updated_at") @db.DateTime(3)
+  user          User     @relation("CapabilityGrantAccount", fields: [userId], references: [id], onDelete: Restrict)
+  createdBy     User     @relation("CapabilityGrantCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  updatedBy     User     @relation("CapabilityGrantUpdatedBy", fields: [updatedById], references: [id], onDelete: Restrict)
+
+  @@unique([userId, capabilityKey])
+  @@index([createdById])
+  @@index([updatedById])
+  @@map("account_capability_grants")
 }
 
 model ResidencyTracking {
