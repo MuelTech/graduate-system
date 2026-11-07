@@ -251,67 +251,84 @@ Current repository and institutional-reference facts:
 
 ---
 
-# 4. Faculty Identity, Multi-Permission Access, and Defense Assignment
+# 4. Faculty and Administrator Access Management
 
-## Working target
+**Canonical authority:** `docs/superpowers/FACULTY_ADMIN_ACCESS_SOURCE_OF_TRUTH.md`  
+**Design specification:** `docs/superpowers/specs/2026-11-08-faculty-admin-access-design.md`
 
-The current broad system role `PANELIST` is planned to evolve toward a **FACULTY identity/account concept**.
+## Approved target
 
-System/module permissions must be kept separate from defense committee assignment roles.
+The conceptual system-role model remains exactly:
+
+- Applicant
+- Student
+- Faculty
+- Admin
+
+The current broad `PANELIST` account identity is planned to migrate to **FACULTY** with compatibility/history preservation. Defense-specific Panelist/Chairman/Rapporteur/Facilitator/Adviser roles remain assignment-driven and are not permanent Faculty permissions.
+
+Faculty and Admin are separate account roles in the approved target. Faculty does **not** receive Admin access. If one real person legitimately performs both functions, the approved target uses separate Faculty and Admin accounts.
 
 ### Current repository facts
 
 - `UserRole` currently includes `ADMIN`, `STUDENT`, `PANELIST`, `CUSTOM`, and `APPLICANT`.
 - `CustomRole` and `RoleFeatureAccess` already exist with `canView` / `canEdit` feature access.
 - Defense assignment roles are separately represented by `PanelRole`: `CHAIRMAN`, `PANELIST`, `ADVISER`, `RAPPORTEUR`, `FACILITATOR`.
+- current Panelist profile already contains `isExternal` and `isAvailableAsAdviser`.
+- external panelists are already excluded from adviser candidacy.
 
 | Status | Item | Current / target state |
 | --- | --- | --- |
-| ⏳ | Replace broad PANELIST identity with FACULTY concept | Migration/compatibility design required; do not rename blindly because many existing APIs/routes/data references use PANELIST. |
-| ❓ | Final Faculty permission architecture | Project owner will decide the final approach. Track the feature now; do not prematurely lock exact permission keys/schema. |
-| 🟡 | Existing custom-role infrastructure | `CUSTOM`, `CustomRole`, and `RoleFeatureAccess` may be reusable/refactorable, but they are not yet accepted as the final Faculty permission architecture. |
-| ⏳ | Multiple permissions per Faculty | One Faculty account may receive multiple system/module capabilities rather than one mutually exclusive operational role. |
-| ⏳ | Faculty with selected Admin access | Faculty may be granted selected Admin features according to approved permissions. |
-| ⏳ | Program Chair access | Program Chair is a system/academic capability (for example applicant/exam review), not a defense committee role. |
-| ⏳ | Permission-aware navigation | Faculty UI/navigation should expose only authorized modules/actions. |
-| ⏳ | Backend permission enforcement | API authorization must enforce the same capabilities; hiding frontend links is insufficient. |
-| ❓ | Permission-management authority | Define who can grant/revoke high-privilege permissions and prevent privilege escalation. |
+| ⏳ | Broad PANELIST identity → FACULTY | Approved target. Requires repository-grounded migration/compatibility design; do not blindly rename APIs/routes/data because Panelist remains a valid defense-assignment term. |
+| ✅ | Faculty/Admin product architecture | Decision resolved by the canonical Faculty/Admin source of truth. Four roles remain Applicant / Student / Faculty / Admin; Faculty and Admin stay separate account roles. |
+| ⏳ | Faculty configured access | Initial direct Faculty access for this feature is **Essay Evaluation**. Exact technical capability keys remain implementation-plan work. |
+| ⏳ | Dynamic Faculty dashboard/navigation | Dashboard and sidebar must reflect effective Faculty work from Essay Evaluation access plus authoritative Adviser/Defense assignments. Do not show irrelevant zero-value work areas. |
+| ✅ | Defense roles are contextual | Chairman / Panelist / Rapporteur / Facilitator / Adviser are not permanent Faculty permission checkboxes; authority continues to come from exact workflow assignments. |
+| ⏳ | Internal / External Faculty migration | Preserve affiliation classification. External Faculty may participate in permitted defense work but cannot be assigned as Adviser. |
+| ⏳ | Admin-controlled Available as Adviser | Authorized Admin controls whether an **Internal** Faculty member is currently available to receive a new Adviser assignment. External Faculty are never available as Adviser. |
+| ⏳ | Dedicated Faculty Management | Target User Management includes Applicants / Students / Faculty / Administrators. Faculty Management owns account/profile, Internal/External, Essay Evaluation access, Available as Adviser, and read-only assignment summaries where useful. |
+| ⏳ | Dedicated Administrators Management | Admin accounts are managed separately with **Full Administrator** / **Restricted Administrator** access levels and direct per-Admin capabilities. |
+| ✅ | Full Administrator terminology/authority | Approved administrative authority model. Full Administrator is not a fifth role; it is an Admin account with complete approved administrative capabilities plus Administrator-access management. |
+| ⏳ | Restricted Administrator capabilities | Restricted Admin sees/uses only explicitly granted administrative modules/actions; backend enforcement is required. |
+| ⏳ | Custom Roles retirement | User-facing Custom Roles is retired in the target UX. Existing `CUSTOM` / `CustomRole` / `RoleFeatureAccess` must be audited for reuse/migration rather than blindly deleted. |
+| ⏳ | Backend permission enforcement | API authorization must enforce Faculty/Admin capabilities and assignment-scoped authority; hiding frontend links is insufficient. |
+| ⏳ | Login role migration | Target login choices are Applicant / Student / Faculty / Administrator. No second post-login workspace chooser is required. |
+| ⏳ | Repository audit + implementation plan | Coding agent should first audit current auth/schema/routes/workflows and produce dependency-ordered bounded packages. No production implementation is authorized by documentation alone. |
 
-## Important boundary: defense roles are NOT Faculty permissions
+## Important boundary: configured access vs assigned work
 
-Do **not** model Chairman / Panelist / Rapporteur / Facilitator as permanent Faculty access permissions merely because a Faculty member can serve in those roles.
+Configured Faculty access currently approved for this feature:
 
-Actual role authority remains the specific defense schedule assignment:
+- Essay Evaluation.
 
-`DefenseSchedule → PanelAssignment → PanelRole`
+Assigned work remains authoritative for:
 
-A Faculty member may be Chairman in one defense and Panelist or another permitted assignment in a different defense.
+- Adviser;
+- Chairman;
+- Panelist;
+- Rapporteur;
+- Facilitator;
+- other defense-specific roles supported by the existing workflow.
+
+Faculty Management may summarize assignments, but it must not become a second assignment authority.
 
 ---
 
-# 5. Adviser Eligibility and Capacity
+# 5. Adviser Availability and Faculty Policy
 
-Current repository facts:
-
-- current Panelist profile contains `isExternal`;
-- current flow contains `isAvailableAsAdviser`;
-- a Panelist-facing profile toggle currently exists;
-- external panelists are already excluded from adviser candidacy;
-- existing adviser rules explicitly state there is **no adviser load cap** yet.
-
-Target direction discussed for the new Faculty model:
+The Faculty/Admin source of truth resolves the previously open adviser-capacity direction for this feature.
 
 | Status | Item | Current / target state |
 | --- | --- | --- |
-| 🐞 | Remove self-controlled adviser availability | Faculty should not control adviser availability with their own on/off toggle under the new policy. |
-| ⏳ | Admin-controlled adviser eligibility | Admin decides whether an internal Faculty member may receive new advisees. |
-| ✅ | External adviser prohibition (current policy) | External panelists/future external Faculty must not become thesis/dissertation advisers. |
-| ⏳ | Adviser load limit | Admin-configurable maximum active advisees per eligible Faculty member. |
-| ⏳ | Current adviser load | Compute from authoritative active AdviserAssignments; avoid manual counters unless justified. |
-| ⏳ | Capacity enforcement | Block new request/approval/assignment when the adviser has reached the configured limit. |
-| ⏳ | Candidate filtering | Adviser candidate lists must exclude external, inactive, ineligible, or capacity-full Faculty. |
-| ❓ | Active-advisee counting rule | Define exactly which AdviserAssignments count toward capacity and when capacity is released. |
-| 🔍 | Existing Adviser workflow audit | Review current GS-020/request/Dean-approval flow against the future Faculty/capacity policy before implementing the refactor. |
+| 🐞 | Remove self-controlled adviser availability | Faculty should not control adviser availability with their own on/off toggle in the target model. |
+| ⏳ | Admin-controlled **Available as Adviser** | Authorized Admin determines whether an Internal Faculty member may receive new Adviser assignments. |
+| ✅ | External adviser prohibition | External Panelist / future External Faculty must not become thesis/dissertation Advisers or appear as valid Adviser candidates. |
+| ✅ | No adviser load cap in this feature | Do **not** add an Admin-configurable adviser load limit/capacity rule as part of Faculty/Admin access work. Current no-load-cap behavior remains until separately approved. |
+| ⏳ | Adviser candidate filtering | Candidate lists must exclude External, inactive, or unavailable Faculty and continue to enforce existing Adviser workflow requirements server-side. |
+| ⏳ | Assignment-derived Adviser UI | `My Advisees` and Adviser authority come from actual AdviserAssignment relationships, not a manual "Adviser Page Access" permission. |
+| 🔍 | Existing Adviser workflow audit | Audit GS-020/request/Dean-approval/AdviserAssignment behavior during the technical planning package to preserve accepted authority and compatibility. |
+
+Changing `Available as Adviser` must not erase existing/historical Adviser assignments. Availability means eligibility for a **new** assignment, not ownership of an existing Student relationship.
 
 ---
 
