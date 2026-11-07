@@ -1,3 +1,4 @@
+import { examAdministrationAuthorization } from "../access/exam-administration-authorization";
 import { ExamRepository } from "../repositories/exam.repository";
 import { ExamAppStatus } from "@prisma/client";
 import { EmailService } from "./email.service";
@@ -27,12 +28,15 @@ function assignmentBlockReason(student: {
 }
 
 export class ExamService {
-  private examRepo = new ExamRepository();
+  constructor(private readonly access = examAdministrationAuthorization) {}
+  private examRepo = new ExamRepository(this.access);
 
-  async createSlot(input: unknown) {
+  async createSlot(input: unknown, actorId: string) {
+    await this.access.assert(actorId, "exam.schedules.manage");
     const data = validateSlotBody(input);
     await this.examRepo.requireProgram(data.programId);
     requireFutureSchedule(data.examDate, data.examTime);
+    await this.access.assert(actorId, "exam.schedules.manage");
     return this.examRepo.createSlot({ ...data, isActive: true });
   }
 
@@ -68,14 +72,16 @@ export class ExamService {
     return this.admitExam({ kind: "self", userId }, slotId);
   }
 
-  async assignApplicant(requestedStudentId: unknown, requestedSlotId: unknown) {
+  async assignApplicant(requestedStudentId: unknown, requestedSlotId: unknown, actorId: string) {
+    await this.access.assert(actorId, "exam.schedules.manage");
     const studentId = scheduleIdentifier(requestedStudentId, "studentId");
     const slotId = scheduleIdentifier(requestedSlotId, "slotId");
-    return this.admitExam({ kind: "admin", studentId }, slotId);
+    return this.admitExam({ kind: "admin", studentId, actorId }, slotId);
   }
 
   /** Selection is advisory; confirmation independently repeats every safeguard. */
-  async getAssignmentOptions(requestedStudentId: unknown) {
+  async getAssignmentOptions(requestedStudentId: unknown, actorId: string) {
+    await this.access.assert(actorId, "exam.schedules.view");
     const studentId = scheduleIdentifier(requestedStudentId, "studentId");
     return this.examRepo.runInTransaction(async tx => {
       const student = await this.examRepo.lockAssignmentStudent(studentId, tx);
@@ -108,9 +114,10 @@ export class ExamService {
   }
 
   /** Shared B3 admission; no caller-controlled time-bypass flag. */
-  private async admitExam(target: { kind: "self"; userId: string } | { kind: "admin"; studentId: string }, slotId: string) {
+  private async admitExam(target: { kind: "self"; userId: string } | { kind: "admin"; studentId: string; actorId: string }, slotId: string) {
     const requireSchedule = target.kind === "admin" ? requireSameDaySchedule : requireFutureSchedule;
     return this.examRepo.runInTransaction(async (tx) => {
+      if (target.kind === "admin") await this.access.assertInTransaction(tx, target.actorId, "exam.schedules.manage");
       const student = target.kind === "admin"
         ? await this.examRepo.lockAssignmentStudent(target.studentId, tx).then(async selected => {
             const reason = assignmentBlockReason(selected, await this.examRepo.getStudentApplications(selected.id, tx));
@@ -160,11 +167,13 @@ export class ExamService {
     });
   }
 
-  async getAllSlots() {
+  async getAllSlots(actorId: string) {
+    await this.access.assert(actorId, "exam.schedules.view");
     return this.examRepo.getAllSlots();
   }
 
-  async getSlotBookings(requestedSlotId: unknown) {
+  async getSlotBookings(requestedSlotId: unknown, actorId: string) {
+    await this.access.assert(actorId, "exam.schedules.view");
     const slotId = scheduleIdentifier(requestedSlotId, "slotId");
     const bookings = await this.examRepo.getSlotBookings(slotId);
     if (bookings === null) throw new AppError("Exam schedule not found.", 404);
@@ -199,10 +208,12 @@ export class ExamService {
   }
 
 
-  async updateSlot(requestedSlotId: unknown, input: unknown) {
+  async updateSlot(requestedSlotId: unknown, input: unknown, actorId: string) {
+    await this.access.assert(actorId, "exam.schedules.manage");
     const slotId = scheduleIdentifier(requestedSlotId, "slotId");
     const data = validateSlotBody(input);
     return this.examRepo.runInTransaction(async tx => {
+      await this.access.assertInTransaction(tx, actorId, "exam.schedules.manage");
       const slot = await this.examRepo.lockSlot(slotId, tx);
       const assignedCount = await this.examRepo.getAssignedCount(slotId, tx);
       // The new validated capacity may correct an old invalid maximum, but the
@@ -222,10 +233,12 @@ export class ExamService {
     });
   }
 
-  async toggleSlotStatus(requestedSlotId: unknown, isActive: unknown) {
+  async toggleSlotStatus(requestedSlotId: unknown, isActive: unknown, actorId: string) {
+    await this.access.assert(actorId, "exam.schedules.manage");
     const slotId = scheduleIdentifier(requestedSlotId, "slotId");
     if (typeof isActive !== "boolean") throw new AppError("isActive must be a boolean.", 400);
     return this.examRepo.runInTransaction(async tx => {
+      await this.access.assertInTransaction(tx, actorId, "exam.schedules.manage");
       const slot = await this.examRepo.lockSlot(slotId, tx);
       requireConsistentCapacity(slot, await this.examRepo.getAssignedCount(slotId, tx));
       requireFutureSchedule(slot.examDate, slot.examTime);
@@ -233,7 +246,8 @@ export class ExamService {
     });
   }
 
-  async getAllApplications() {
+  async getAllApplications(actorId: string) {
+    await this.access.assert(actorId, "exam.records.view");
     return this.examRepo.getAllApplications();
   }
 
@@ -242,8 +256,9 @@ export class ExamService {
    * into a safe DTO (Decimals -> numbers, Dates -> ISO strings). Read-only.
    */
   async getApplicationDetail(
-    applicationId: string,
+    applicationId: string, actorId: string,
   ): Promise<ExamRecordDetail> {
+    await this.access.assert(actorId, "exam.records.view");
     const app = await this.examRepo.getApplicationDetail(applicationId);
     if (!app) {
       throw new AppError("Exam record not found.", 404);
@@ -323,15 +338,18 @@ export class ExamService {
     throw new AppError("Reload Examination and use Appeal Missed Exam for the exact appointment with a reason.",409);
   }
 
-  async getAppealedExams() {
+  async getAppealedExams(actorId: string) {
+    await this.access.assert(actorId, "exam.schedules.view");
     return this.examRepo.getAppealedExams();
   }
 
-  async approveAppeal(applicationId: string) {
+  async approveAppeal(applicationId: string, actorId: string) {
+    await this.access.assert(actorId, "exam.schedules.manage");
     throw new AppError("Use the exact missed-appeal approval action with a future appointment and decision reason.",409);
   }
 
-  async rejectAppeal(applicationId: string) {
+  async rejectAppeal(applicationId: string, actorId: string) {
+    await this.access.assert(actorId, "exam.schedules.manage");
     throw new AppError("Use the exact missed-appeal rejection action with a decision reason.",409);
   }
 
@@ -358,15 +376,20 @@ export class ExamService {
     essayScore: number,
     adminId: string
   ) {
+    this.access.assertExcluded("ESSAY_EVALUATION");
     return this.examRepo.gradeEssay(applicationId, essayScoreValue(essayScore), adminId);
   }
 
-  async confirmResultAndEmail(applicationId: string) {
+  async confirmResultAndEmail(applicationId: string, actorId: string) {
+    this.access.assertExcluded("RESULT_EMAIL");
     return this.examRepo.queueResultEmail(applicationId, (recipient, template, firstName, jobId) =>
       EmailService.sendTemplateEmail(recipient, template, {
         student_name: firstName, portal_link: process.env.FRONTEND_URL || "http://localhost:3000",
       }, { jobId, removeOnComplete: false, removeOnFail: false }));
   }
 
-  finalizeResult(applicationId: string, adminId: string) { return this.examRepo.finalizeResult(applicationId, adminId); }
+  async finalizeResult(applicationId: string, adminId: string) {
+    await this.access.assert(adminId, "exam.results.finalize");
+    return this.examRepo.finalizeResult(applicationId, adminId);
+  }
 }

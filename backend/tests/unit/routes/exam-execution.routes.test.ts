@@ -9,6 +9,11 @@ const db = vi.hoisted(() => ({ $transaction: vi.fn(), $queryRaw: vi.fn(), user: 
   entranceExamApplication: { findUnique: vi.fn(), update: vi.fn(), count: vi.fn() }, systemSetting: { findUnique: vi.fn() }, examContentRevision: { findUnique: vi.fn(), findFirst: vi.fn() },
 }));
 vi.mock("../../../src/config/database", () => ({ default: db }));
+// Domain-regression auth fixture; FACULTY-6 tests exercise the real current-account loader separately.
+const currentActors = vi.hoisted(() => new Map<string, { id: string; role: string; mustChangePassword: boolean }>());
+vi.mock("../../../src/services/current-account", () => ({
+  loadCurrentAccount: async (id: string) => { const actor = currentActors.get(id); if (!actor) throw new Error("Missing synthetic actor"); return actor; },
+}));
 import router from "../../../src/routes/exam-engine.routes";
 let server: Server, base: string, app: any;
 const secret = "b4-synthetic-auth-secret";
@@ -28,6 +33,7 @@ beforeEach(() => {
   db.examContentRevision.findFirst.mockResolvedValue({ id: ids.revision }); db.examContentRevision.findUnique.mockResolvedValue(executionRevision(ids.revision, true));
 });
 function request(method: string, route: string, role?: string, body: unknown = {}, userId = role === "ADMIN" ? ids.admin : ids.user) {
+  currentActors.set(userId, { id: userId, role: role ?? "APPLICANT", mustChangePassword: false });
   const token = role === "invalid" ? "invalid" : role ? jwt.sign({ userId, role }, secret) : null;
   return fetch(`${base}/exam-engine${route}`, { method, headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) }, ...(method === "GET" ? {} : { body: JSON.stringify(body) }) });
 }
@@ -52,7 +58,7 @@ describe("B4 actual HTTP role and identity boundaries", () => {
     ["GET", `/applications/${ids.app}/questions`, "APPLICANT"],
   ]) {
     it.each([undefined, "invalid", "STUDENT", "PANELIST", "CUSTOM", allowed === "ADMIN" ? "APPLICANT" : "ADMIN"])(`${method} ${route} rejects %s`, async role => {
-      const response = await request(method, route, role); expect(response.status).toBe(role ? 403 : 401); expect(db.$transaction).not.toHaveBeenCalled();
+      const response = await request(method, route, role); expect(response.status).toBe(role && role !== "invalid" ? 403 : 401); expect(db.$transaction).not.toHaveBeenCalled();
     });
   }
   it("Admin authorization has actor/time and no actual start; Applicant starts and reads only bound content", async () => {

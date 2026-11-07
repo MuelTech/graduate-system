@@ -1,3 +1,4 @@
+import { examAdministrationAuthorization } from "../access/exam-administration-authorization";
 import { randomUUID } from "crypto";
 import fsp from "fs/promises";
 import path from "path";
@@ -24,10 +25,12 @@ export class ExamMediaService {
     private readonly repo = new ExamMediaRepository(),
     private readonly provider: StorageProvider = storageProvider,
     private readonly examAccess: Pick<ExamEngineService, "assertApplicantQuestionAccess"> = new ExamEngineService(),
+    private readonly access = examAdministrationAuthorization,
   ) {}
 
   /** Register the secure-upload pipeline's existing object; never promote twice. */
-  async registerPromotedImage(file: SecureMulterFile): Promise<{ id: string }> {
+  async registerPromotedImage(file: SecureMulterFile, actorId: string): Promise<{ id: string }> {
+    await this.access.assert(actorId, "exam.questions.manage");
     const meta = file.storageMeta;
     const policy = getUploadPolicy("exam-media");
     if (!meta || meta.storageProvider !== this.provider.name ||
@@ -44,6 +47,7 @@ export class ExamMediaService {
     if (verified.verifiedMimeType !== meta.verifiedMimeType || verified.sizeBytes !== meta.sizeBytes || verified.checksum !== meta.checksum) {
       throw new AppError("Image upload integrity check failed.", 400);
     }
+    await this.access.assert(actorId, "exam.questions.manage");
     const created = await this.repo.create({
       id: randomUUID(), storageKey: key, storageProvider: this.provider.name,
       verifiedMimeType: verified.verifiedMimeType!, sizeBytes: verified.sizeBytes,
@@ -106,6 +110,8 @@ export class ExamMediaService {
 
   async getContent(id: string, actor: MediaActor | undefined, applicationId?: unknown): Promise<ExamImageContent> {
     if (!actor?.userId) throw new AppError("Unauthorized.", 401);
+    actor = await this.access.mediaActor(actor);
+    if (actor.role === "ADMIN") await this.access.assert(actor.userId, "exam.questions.view");
     if (actor.role !== "ADMIN" && actor.role !== "APPLICANT") throw new AppError("Forbidden.", 403);
     let revisionId: string | undefined;
     if (actor.role === "APPLICANT") {

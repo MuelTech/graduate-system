@@ -9,12 +9,23 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vites
 import { LocalStorageProvider } from "../../../src/storage/local-storage.provider";
 import { EXAM_PNG, EXAM_JPEG } from "../../fixtures/exam-images";
 
+const currentActor = vi.hoisted(() => ({ role: "ADMIN", enforce: false, keys: [] as string[] }));
+vi.mock("../../../src/services/current-account", () => ({ loadCurrentAccount: async (id: string) => ({ id, role: currentActor.role, isActive: true, mustChangePassword: false, panelist: null, administratorAccess: { level: "RESTRICTED" }, capabilityGrants: currentActor.keys.map(capabilityKey => ({ capabilityKey })) }) }));
+// Bounded test composition: production's default remains dormant.
+vi.mock("../../../src/access/exam-administration-authorization", async importOriginal => {
+  const original = await importOriginal<typeof import("../../../src/access/exam-administration-authorization")>();
+  const enabled = new original.ExamAdministrationAuthorization(true), dormant = new original.ExamAdministrationAuthorization();
+  return { ...original, examAdministrationAuthorization: new Proxy(dormant, { get(_target, key) {
+    const selected = currentActor.enforce ? enabled : dormant;
+    const value = Reflect.get(selected, key); return typeof value === "function" ? value.bind(selected) : value;
+  } }) };
+});
 const db = vi.hoisted(() => ({ examMedia: { create: vi.fn(), findUnique: vi.fn() } }));
 vi.mock("../../../src/config/database", () => ({ default: db }));
 vi.mock("../../../src/utils/jwt", () => ({
   JwtConfigurationError: class extends Error {},
   verifyAccessToken: (token: string) => {
-    if (["ADMIN", "APPLICANT", "STUDENT", "PANELIST"].includes(token)) return { userId: "u1", role: token };
+    if (["ADMIN", "APPLICANT", "STUDENT", "PANELIST"].includes(token)) { currentActor.role = token; return { userId: "u1", role: token }; }
     throw new Error("Invalid token");
   },
 }));
@@ -35,7 +46,7 @@ beforeAll(async () => {
   origin = `http://127.0.0.1:${(server.address() as AddressInfo).port}/api/exam-engine`;
 });
 beforeEach(() => {
-  vi.clearAllMocks();
+  vi.clearAllMocks(); currentActor.enforce = false; currentActor.keys = [];
   db.examMedia.create.mockImplementation(async ({ data }) => { records.set(data.id, data); return { id: data.id }; });
   db.examMedia.findUnique.mockImplementation(async ({ where }) => records.get(where.id) ?? null);
 });
@@ -74,7 +85,7 @@ describe("Admin-only image upload with the actual secure promotion/request lifec
     promotion.mockRestore();
   });
 
-  it.each([[undefined, 401], ["APPLICANT", 403], ["STUDENT", 403], ["PANELIST", 403], ["invalid", 403]] as const)("rejects unauthorized role/token %s before promotion", async (role, status) => {
+  it.each([[undefined, 401], ["APPLICANT", 403], ["STUDENT", 403], ["PANELIST", 403], ["invalid", 401]] as const)("rejects unauthorized role/token %s before promotion", async (role, status) => {
     const before = (await permanentFiles()).length;
     // Pass undefined explicitly; upload's default is overridden via a direct request.
     const form = new FormData();
@@ -117,4 +128,23 @@ describe("Admin-only image upload with the actual secure promotion/request lifec
     expect(response.status).toBe(400);
     expect(db.examMedia.create).not.toHaveBeenCalled();
   });
+  it("FACULTY-6 target denial precedes actual temporary/promoted storage and registration", async () => {
+    currentActor.enforce = true; currentActor.keys = ["exam.questions.view"];
+    const before = (await permanentFiles()).length;
+    const promotion = vi.spyOn(provider, "promoteTemporaryFile"), temporary = vi.spyOn(provider, "ensureTemporaryDirectory");
+    try {
+      expect((await upload(EXAM_PNG)).status).toBe(403);
+      expect(promotion).not.toHaveBeenCalled(); expect(temporary).not.toHaveBeenCalled();
+      expect(db.examMedia.create).not.toHaveBeenCalled(); expect((await permanentFiles()).length).toBe(before);
+    } finally { promotion.mockRestore(); temporary.mockRestore(); }
+  });
+  it("FACULTY-6 exact manage allows actual upload; revoked read authority denies its private bytes", async () => {
+    currentActor.enforce = true; currentActor.keys = ["exam.questions.manage"];
+    const response = await upload(EXAM_PNG); expect(response.status).toBe(201);
+    const image = await response.json();
+    expect((await fetch(`${origin}/media/${image.id}`, { headers: { Authorization: "Bearer ADMIN" } })).status).toBe(200);
+    currentActor.keys = ["exam.records.view"];
+    expect((await fetch(`${origin}/media/${image.id}`, { headers: { Authorization: "Bearer ADMIN" } })).status).toBe(403);
+  });
+
 });

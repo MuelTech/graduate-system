@@ -12,7 +12,7 @@ export class ExamQuestionSetController {
       res.status(error instanceof AppError ? error.statusCode : 500).json({ error: error instanceof AppError ? error.message : "Could not access the Question Set." });
     }
   }
-  getCurrent = (_req: AuthenticatedRequest, res: Response) => this.respond(res, () => this.repo.getCurrent());
-  replaceSelection = (req: AuthenticatedRequest, res: Response) => this.respond(res, () => this.repo.replaceSelection(req.body));
+  getCurrent = (req: AuthenticatedRequest, res: Response) => this.respond(res, () => this.repo.getCurrent(req.user!.userId));
+  replaceSelection = (req: AuthenticatedRequest, res: Response) => this.respond(res, () => this.repo.replaceSelection(req.body, req.user!.userId));
   publish = (req: AuthenticatedRequest, res: Response) => this.respond(res, () => this.repo.publish(req.body, req.user!.userId));
 }

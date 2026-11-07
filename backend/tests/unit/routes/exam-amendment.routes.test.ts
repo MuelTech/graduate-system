@@ -32,6 +32,11 @@ const db = vi.hoisted(() => ({
 }));
 vi.mock("../../../src/config/database", () => ({ default: db }));
 vi.mock("../../../src/services/email.service", () => ({ EmailService: {} }));
+// Domain-regression auth fixture; FACULTY-6 tests exercise the real current-account loader separately.
+const currentActors = vi.hoisted(() => new Map<string, { id: string; role: string; mustChangePassword: boolean }>());
+vi.mock("../../../src/services/current-account", () => ({
+  loadCurrentAccount: async (id: string) => { const actor = currentActors.get(id); if (!actor) throw new Error("Missing synthetic actor"); return actor; },
+}));
 import router from "../../../src/routes/exam.routes";
 let server: Server, base: string, app: any;
 const secret = "b9-synthetic-http-secret";
@@ -74,6 +79,7 @@ function request(
   method = "POST",
   userId = ids.admin,
 ) {
+  currentActors.set(userId, { id: userId, role: role ?? "ADMIN", mustChangePassword: false });
   const token =
     role === "invalid"
       ? "invalid"
@@ -137,7 +143,7 @@ describe("B9 actual route/authentication/repository boundary", () => {
     async (suffix) => {
       for (const [role, status] of [
         [null, 401],
-        ["invalid", 403],
+        ["invalid", 401],
         ["APPLICANT", 403],
         ["STUDENT", 403],
         ["PANELIST", 403],
@@ -277,4 +283,25 @@ describe("B9 actual route/authentication/repository boundary", () => {
       expect(db.$transaction).not.toHaveBeenCalled();
     },
   );
+});
+
+
+describe("FACULTY-6 controller business-denial propagation", () => {
+  it.each(["getAllSlots", "getAllApplications", "approveAppeal", "rejectAppeal"] as const)("%s preserves service-level 403 after route authorization", async method => {
+    const { ExamController } = await import("../../../src/controllers/exam.controller");
+    const { ExamService } = await import("../../../src/services/exam.service");
+    const { AppError } = await import("../../../src/utils/AppError");
+    const spy = vi.spyOn(ExamService.prototype, method).mockRejectedValue(new AppError("Revoked capability", 403));
+    const response = { status: vi.fn().mockReturnThis(), json: vi.fn() };
+    try {
+      await new ExamController()[method]({ user: { userId: ids.admin, role: "ADMIN" }, params: { id: ids.app } } as never, response as never);
+      expect(response.status).toHaveBeenCalledWith(403);
+    } finally { spy.mockRestore(); }
+  });
+  it.each(["approveAppeal", "rejectAppeal"] as const)("%s keeps the dormant retired compatibility response", async method => {
+    const { ExamController } = await import("../../../src/controllers/exam.controller");
+    const response = { status: vi.fn().mockReturnThis(), json: vi.fn() };
+    await new ExamController()[method]({ user: { userId: ids.admin, role: "ADMIN" }, params: { id: ids.app } } as never, response as never);
+    expect(response.status).toHaveBeenCalledWith(400);
+  });
 });

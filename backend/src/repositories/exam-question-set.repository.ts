@@ -1,3 +1,4 @@
+import { examAdministrationAuthorization } from "../access/exam-administration-authorization";
 import prisma from "../config/database";
 import { Prisma } from "@prisma/client";
 import { adminQuestionSelect, toAdminQuestion, toApplicantQuestion } from "./exam-content.projection";
@@ -33,13 +34,16 @@ async function current(tx: Prisma.TransactionClient) {
 }
 
 export class ExamQuestionSetRepository {
-  getCurrent() {
+  constructor(private readonly access = examAdministrationAuthorization) {}
+  async getCurrent(actorId: string) {
+    await this.access.assert(actorId, "exam.questions.view");
     return prisma.$transaction(tx => current(tx), { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead });
   }
 
-  async replaceSelection(payload: unknown) {
+  async replaceSelection(payload: unknown, actorId: string) {
     const ids = selectionIds(payload);
     return this.atomic(async tx => {
+      await this.access.assertInTransaction(tx, actorId, "exam.questions.manage");
       const existing = await tx.examQuestion.findMany({ where: { id: { in: ids } }, select: { id: true } });
       if (existing.length !== ids.length) throw new AppError("One or more selected questions no longer exist. Reload the Question Set.", 400);
       await tx.examQuestionSelection.deleteMany({});
@@ -52,6 +56,7 @@ export class ExamQuestionSetRepository {
   async publish(expectedPayload: unknown, actorId: string) {
     const expected = selectionIds(expectedPayload);
     return this.atomic(async tx => {
+      await this.access.assertInTransaction(tx, actorId, "exam.questions.manage");
       const members = await tx.examQuestionSelection.findMany({ select: { questionId: true } });
       if (!members.length) throw new AppError("Select and save questions before publishing.", 400);
       const actual = new Set(members.map(m => m.questionId.toLowerCase()));

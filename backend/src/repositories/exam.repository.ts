@@ -1,3 +1,4 @@
+import { examAdministrationAuthorization } from "../access/exam-administration-authorization";
 import prisma from '../config/database';
 import { Prisma, PrismaClient } from '@prisma/client';
 import { AppError } from '../utils/AppError';
@@ -13,6 +14,7 @@ import { amendmentInclude } from './exam-amendment.repository';
 type TransactionClient = Omit<PrismaClient, '$connect' | '$disconnect' | '$on' | '$transaction' | '$use' | '$extends'>;
 
 export class ExamRepository {
+    constructor(private readonly access = examAdministrationAuthorization) {}
     async createSlot(data: Prisma.ExamSlotUncheckedCreateInput) {
         return prisma.examSlot.create({ data });
     }
@@ -74,7 +76,8 @@ export class ExamRepository {
         if (!rows.length) throw new AppError('Applicant not found.', 404);
         const student = await tx.student.findUnique({
             where: { id: studentId },
-            include: {
+            select: {
+                id: true, programId: true, admissionStatus: true, pinnacleApplicantId: true, alignmentStatus: true,
                 user: { select: { role: true, firstName: true, lastName: true, email: true } },
                 program: { select: { id: true, programName: true } },
             },
@@ -88,7 +91,7 @@ export class ExamRepository {
     }
 
     async getStudentApplications(studentId: string, tx: TransactionClient) {
-        return tx.entranceExamApplication.findMany({ where: { studentId }, orderBy: [{ createdAt: 'desc' }, { id: 'asc' }] });
+        return tx.entranceExamApplication.findMany({ where: { studentId }, select: { status: true }, orderBy: [{ createdAt: 'desc' }, { id: 'asc' }] });
     }
 
     async incrementSlotTaken(slotId: string, slotsTaken: number, maxSlots: number, tx: TransactionClient) {
@@ -337,6 +340,7 @@ export class ExamRepository {
     }
 
     async gradeEssay(applicationId: string, essayScore: number, adminId: string) {
+        this.access.assertExcluded("ESSAY_EVALUATION");
         const id = scheduleIdentifier(applicationId, "applicationId");
         essayScoreValue(essayScore);
         return prisma.$transaction(async tx => {
@@ -387,6 +391,7 @@ export class ExamRepository {
     async finalizeResult(applicationId: string, adminId: string) {
         const id = scheduleIdentifier(applicationId, "applicationId");
         return prisma.$transaction(async tx => {
+            await this.access.assertInTransaction(tx, adminId, "exam.results.finalize");
             const rows = await tx.$queryRaw`SELECT status FROM entrance_exam_applications WHERE application_id = ${id} FOR UPDATE`;
             if (!(rows as unknown[]).length) throw new AppError("Exam record not found.", 404);
             const admin = await tx.user.findUnique({ where: { id: adminId }, select: { role: true, isActive: true } });
@@ -396,6 +401,7 @@ export class ExamRepository {
     }
 
     async queueResultEmail(applicationId: string, enqueue: (recipient: string, template: string, firstName: string, jobId: string) => Promise<void>) {
+        this.access.assertExcluded("RESULT_EMAIL");
         const id = scheduleIdentifier(applicationId, "applicationId");
         return prisma.$transaction(async tx => {
             await tx.$queryRaw`SELECT status FROM entrance_exam_applications WHERE application_id = ${id} FOR UPDATE`;

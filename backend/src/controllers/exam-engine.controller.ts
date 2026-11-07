@@ -66,17 +66,17 @@ export class ExamEngineController {
 
     getAllQuestionsForAdmin = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
         try {
-            const questions = await this.service.getAllQuestionsForAdmin();
+            const questions = await this.service.getAllQuestionsForAdmin(req.user!.userId);
 
             res.status(200).json(questions);
         } catch (error: any) {
-            res.status(500).json({ error: error.message });
+            res.status(error instanceof AppError ? error.statusCode : 500).json({ error: error.message });
         }
     }
 
     createQuestion = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
         try {
-            const question = await this.service.createQuestion(req.body);
+            const question = await this.service.createQuestion(req.body, req.user!.userId);
 
             res.status(201).json(question);
         } catch (error: unknown) {
@@ -86,7 +86,7 @@ export class ExamEngineController {
 
     updateQuestion = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
         try {
-            const question = await this.service.updateQuestion(req.params.id as string, req.body);
+            const question = await this.service.updateQuestion(req.params.id as string, req.body, req.user!.userId);
 
             res.status(200).json(question);
         } catch (error: unknown) {
@@ -96,7 +96,7 @@ export class ExamEngineController {
 
     deleteQuestion = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
         try {
-            await this.service.deleteQuestion(req.params.id as string);
+            await this.service.deleteQuestion(req.params.id as string, req.user!.userId);
 
             res.status(200).json({ success: true });
         } catch (error: unknown) {

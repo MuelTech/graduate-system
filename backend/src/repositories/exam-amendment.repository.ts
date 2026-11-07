@@ -1,3 +1,4 @@
+import { examAdministrationAuthorization } from "../access/exam-administration-authorization";
 import { Prisma, type ExamAppStatus } from "@prisma/client";
 import prisma from "../config/database";
 import { AppError } from "../utils/AppError";
@@ -115,11 +116,13 @@ function pendingAppeal(app: Application) {
 }
 
 export class ExamAmendmentRepository {
+  constructor(private readonly access = examAdministrationAuthorization) {}
   private locked<T>(
     applicationId: string,
     actorId: string,
     applicant: boolean,
     targetSlotId: string | null,
+    capability: "exam.schedules.view" | "exam.schedules.manage",
     operation: (
       tx: Prisma.TransactionClient,
       app: Application,
@@ -129,6 +132,7 @@ export class ExamAmendmentRepository {
     const id = scheduleIdentifier(applicationId, "applicationId");
     return prisma.$transaction(
       async (tx) => {
+        if (!applicant) await this.access.assertInTransaction(tx, actorId, capability);
         // Preliminary identities only. No eligibility is decided before locks.
         const before = await tx.entranceExamApplication.findUnique({
           where: { id },
@@ -194,6 +198,7 @@ export class ExamAmendmentRepository {
       actorId,
       action === "MISSED_APPEAL",
       targetSlotId,
+      "exam.schedules.manage",
       async (tx, app, slots) => {
         requireNeverStarted(app);
         originalAppointment(app);
@@ -373,7 +378,7 @@ export class ExamAmendmentRepository {
   }
 
   options(applicationId: string, adminId: string) {
-    return this.locked(applicationId, adminId, false, null, async (tx, app) => {
+    return this.locked(applicationId, adminId, false, null, "exam.schedules.view", async (tx, app) => {
       requireNeverStarted(app);
       originalAppointment(app);
       if (app.status === "APPEALED") pendingAppeal(app);
@@ -416,6 +421,7 @@ export class ExamAmendmentRepository {
     const { reason } = amendmentBody(input);
     return prisma.$transaction(
       async (tx) => {
+        await this.access.assertInTransaction(tx, adminId, "exam.results.reconsider");
         await tx.$queryRaw`SELECT application_id FROM entrance_exam_applications WHERE application_id = ${id} FOR UPDATE`;
         await requireAdmin(tx, adminId);
         const app = await tx.entranceExamApplication.findUnique({

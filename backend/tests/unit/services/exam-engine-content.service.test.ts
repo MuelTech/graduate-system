@@ -27,7 +27,7 @@ describe("ExamEngineService question input boundary", () => {
   });
 
   it("passes partial updates to the transactional effective-question validator", async () => {
-    await new ExamEngineService().updateQuestion("q1", { order: 4 });
-    expect(repo.updateQuestion).toHaveBeenCalledWith("q1", { order: 4 });
+    await new ExamEngineService().updateQuestion("q1", { order: 4 }, "actor");
+    expect(repo.updateQuestion).toHaveBeenCalledWith("q1", { order: 4 }, "actor");
   });
 });

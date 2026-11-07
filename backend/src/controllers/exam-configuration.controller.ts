@@ -6,9 +6,9 @@ import { AppError } from "../utils/AppError";
 export class ExamConfigurationController {
   private service = new ExamConfigurationService();
 
-  getCurrent = async (_req: AuthenticatedRequest, res: Response): Promise<void> => {
+  getCurrent = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     res.setHeader("Cache-Control", "private, no-store");
-    try { res.status(200).json(await this.service.getCurrent()); }
+    try { res.status(200).json(await this.service.getCurrent(req.user!.userId)); }
     catch (error: unknown) { this.failure(error, res); }
   };
 

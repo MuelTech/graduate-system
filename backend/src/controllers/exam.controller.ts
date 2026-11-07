@@ -17,7 +17,7 @@ export class ExamController {
   getSlotBookings = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     res.setHeader("Cache-Control", "private, no-store");
     try {
-      res.status(200).json(await this.examService.getSlotBookings(req.params.id));
+      res.status(200).json(await this.examService.getSlotBookings(req.params.id, req.user!.userId));
     } catch (error: unknown) {
       res.status(error instanceof AppError ? error.statusCode : 500).json({
         error: error instanceof AppError ? error.message : "Could not load schedule bookings.",
@@ -27,14 +27,14 @@ export class ExamController {
 
   getAssignmentOptions = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
-      res.status(200).json(await this.examService.getAssignmentOptions(req.params.studentId));
+      res.status(200).json(await this.examService.getAssignmentOptions(req.params.studentId, req.user!.userId));
     } catch (error: unknown) { schedulingError(res, error); }
   };
 
   assignApplicant = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
       const { studentId, slotId } = validateAssignmentBody(req.body);
-      const application = await this.examService.assignApplicant(studentId, slotId);
+      const application = await this.examService.assignApplicant(studentId, slotId, req.user!.userId);
       // Do not expose Student/account data from an expanded Prisma relation.
       res.status(201).json({ application: { id: application.id }, message: "Applicant assigned successfully." });
     } catch (error: unknown) { schedulingError(res, error); }
@@ -45,7 +45,7 @@ export class ExamController {
     res: Response,
   ): Promise<void> => {
     try {
-      const slot = await this.examService.createSlot(req.body);
+      const slot = await this.examService.createSlot(req.body, req.user!.userId);
       res.status(201).json(slot);
     } catch (error: unknown) {
       schedulingError(res, error);
@@ -57,11 +57,11 @@ export class ExamController {
     res: Response,
   ): Promise<void> => {
     try {
-      const slots = await this.examService.getAllSlots();
+      const slots = await this.examService.getAllSlots(req.user!.userId);
       res.status(200).json(slots);
     } catch (error: any) {
       res
-        .status(500)
+        .status(error instanceof AppError ? error.statusCode : 500)
         .json({ error: error.message || "An unexpected error occurred." });
     }
   };
@@ -131,7 +131,7 @@ export class ExamController {
   ): Promise<void> => {
     try {
       const id = req.params.id as string;
-      const slot = await this.examService.updateSlot(id, req.body);
+      const slot = await this.examService.updateSlot(id, req.body, req.user!.userId);
       res.status(200).json(slot);
     } catch (error: unknown) {
       schedulingError(res, error);
@@ -144,7 +144,7 @@ export class ExamController {
   ): Promise<void> => {
     try {
       const id = req.params.id as string;
-      const slot = await this.examService.toggleSlotStatus(id, validateBookingStatusBody(req.body));
+      const slot = await this.examService.toggleSlotStatus(id, validateBookingStatusBody(req.body), req.user!.userId);
       res.status(200).json(slot);
     } catch (error: unknown) {
       schedulingError(res, error);
@@ -156,11 +156,11 @@ export class ExamController {
     res: Response,
   ): Promise<void> => {
     try {
-      const applications = await this.examService.getAllApplications();
+      const applications = await this.examService.getAllApplications(req.user!.userId);
       res.status(200).json(applications);
     } catch (error: any) {
       res
-        .status(500)
+        .status(error instanceof AppError ? error.statusCode : 500)
         .json({ error: error.message || "An unexpected error occurred." });
     }
   };
@@ -172,7 +172,7 @@ export class ExamController {
     res.setHeader("Cache-Control", "private, no-store");
     try {
       const id = req.params.id as string;
-      const detail = await this.examService.getApplicationDetail(id);
+      const detail = await this.examService.getApplicationDetail(id, req.user!.userId);
       res.status(200).json(detail);
     } catch (error: unknown) {
       if (error instanceof AppError) {
@@ -200,10 +200,10 @@ export class ExamController {
     res: Response,
   ): Promise<void> => {
     try {
-      const appeals = await this.examService.getAppealedExams();
+      const appeals = await this.examService.getAppealedExams(req.user!.userId);
       res.status(200).json(appeals);
     } catch (error: any) {
-      res.status(500).json({ error: error.message });
+      res.status(error instanceof AppError ? error.statusCode : 500).json({ error: error.message });
     }
   };
 
@@ -213,11 +213,11 @@ export class ExamController {
   ): Promise<void> => {
     try {
       const result = await this.examService.approveAppeal(
-        req.params.id as string,
+        req.params.id as string, req.user!.userId,
       );
       res.status(200).json({ success: true, result });
     } catch (error: any) {
-      res.status(400).json({ error: error.message });
+      res.status(error instanceof AppError && error.statusCode === 403 ? 403 : 400).json({ error: error.message });
     }
   };
 
@@ -227,11 +227,11 @@ export class ExamController {
   ): Promise<void> => {
     try {
       const result = await this.examService.rejectAppeal(
-        req.params.id as string,
+        req.params.id as string, req.user!.userId,
       );
       res.status(200).json({ success: true, result });
     } catch (error: any) {
-      res.status(400).json({ error: error.message });
+      res.status(error instanceof AppError && error.statusCode === 403 ? 403 : 400).json({ error: error.message });
     }
   };
 
@@ -287,7 +287,7 @@ export class ExamController {
     res.setHeader("Cache-Control", "private, no-store");
     try {
       const applicationId = req.params.id as string;
-      const result = await this.examService.confirmResultAndEmail(applicationId);
+      const result = await this.examService.confirmResultAndEmail(applicationId, req.user!.userId);
 
       res.status(200).json(result);
     } catch (error: unknown) {

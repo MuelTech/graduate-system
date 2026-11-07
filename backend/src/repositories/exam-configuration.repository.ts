@@ -1,3 +1,4 @@
+import { examAdministrationAuthorization } from "../access/exam-administration-authorization";
 import prisma from "../config/database";
 import { AppError } from "../utils/AppError";
 import { EXAM_CONFIGURATION_KEY, validateExamConfiguration } from "../services/exam-configuration.rules";
@@ -16,6 +17,7 @@ function readValues(row: { settingType: string; settingValue: string | null } | 
 }
 
 export class ExamConfigurationRepository {
+  constructor(private readonly access = examAdministrationAuthorization) {}
   async getCurrent(db: Prisma.TransactionClient = prisma): Promise<ExamConfigurationValues> {
     return readValues(await db.systemSetting.findUnique({
       where: { settingKey: EXAM_CONFIGURATION_KEY },
@@ -24,6 +26,7 @@ export class ExamConfigurationRepository {
   }
 
   async replaceCurrent(values: ExamConfigurationValues, actorId: string): Promise<ExamConfigurationValues> {
+    await this.access.assert(actorId, "exam.configuration.manage");
     const data = {
       settingValue: JSON.stringify(values), settingType: "JSON" as const,
       isEditableByAdmin: false, lastModifiedById: actorId,

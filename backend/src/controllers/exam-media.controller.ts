@@ -14,7 +14,7 @@ export class ExamMediaController {
       if (!req.user) throw new AppError("Unauthorized.", 401);
       if (req.user.role !== "ADMIN") throw new AppError("Forbidden.", 403);
       if (!req.file) throw new AppError("An image is required.", 400);
-      const result = await this.service.registerPromotedImage(req.file as SecureMulterFile);
+      const result = await this.service.registerPromotedImage(req.file as SecureMulterFile, req.user.userId);
       commitRequestUploads(req);
       res.status(201).json({ id: result.id });
     } catch (error: unknown) {

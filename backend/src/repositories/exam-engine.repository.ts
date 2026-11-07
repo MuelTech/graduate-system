@@ -1,3 +1,4 @@
+import { examAdministrationAuthorization } from "../access/exam-administration-authorization";
 import prisma from "../config/database";
 import { Prisma, ExamAppStatus } from "@prisma/client";
 import type { ExamQuestionInput } from "../interfaces/exam-content.interfaces";
@@ -38,6 +39,7 @@ function questionData(data: ExamQuestionInput) {
 }
 
 export class ExamEngineRepository {
+  constructor(private readonly access = examAdministrationAuthorization) {}
   private async draftTransaction<T>(applicationId: string, userId: string, operation: (tx: Prisma.TransactionClient, bound: Awaited<ReturnType<typeof activeBoundExecution>>) => Promise<T>) {
     const id = scheduleIdentifier(applicationId, "applicationId");
     return prisma.$transaction(async tx => {
@@ -112,7 +114,8 @@ export class ExamEngineRepository {
     return this.saveDraft(applicationId, { questionId, essayAnswer, expectedRevision }, userId);
   }
 
-  async getAllQuestionsForAdmin() {
+  async getAllQuestionsForAdmin(actorId: string) {
+    await this.access.assert(actorId, "exam.questions.view");
     const rows = await prisma.examQuestion.findMany({
       orderBy: [{ order: "asc" }, { id: "asc" }],
       select: adminQuestionSelect,
@@ -120,7 +123,8 @@ export class ExamEngineRepository {
     return rows.map(toAdminQuestion);
   }
 
-  async createQuestion(data: ExamQuestionInput) {
+  async createQuestion(data: ExamQuestionInput, actorId: string) {
+    await this.access.assert(actorId, "exam.questions.manage");
     if (data.options.some(opt => opt.id !== undefined)) throw new AppError("New options cannot specify existing IDs.", 400);
     const row = await prisma.examQuestion.create({
       data: {
@@ -132,8 +136,9 @@ export class ExamEngineRepository {
     return toAdminQuestion(row);
   }
 
-  async updateQuestion(id: string, patch: unknown) {
+  async updateQuestion(id: string, patch: unknown, actorId: string) {
     return prisma.$transaction(async (tx) => {
+      await this.access.assertInTransaction(tx, actorId, "exam.questions.manage");
       const current = await tx.examQuestion.findUnique({ where: { id }, select: adminQuestionSelect });
       if (!current) throw new AppError("Question not found.", 404);
       const currentDto = toAdminQuestion(current);
@@ -177,9 +182,10 @@ export class ExamEngineRepository {
     });
   }
 
-  async deleteQuestion(id: string) {
+  async deleteQuestion(id: string, actorId: string) {
     try {
       return await prisma.$transaction(async tx => {
+        await this.access.assertInTransaction(tx, actorId, "exam.questions.manage");
         if (await tx.applicantAnswer.count({ where: { questionId: id } })
           || await tx.examRevisionQuestion.count({ where: { questionId: id } })) {
           throw new AppError("This question has answer history or belongs to a published set. Deselect it from future sets instead.", 409);

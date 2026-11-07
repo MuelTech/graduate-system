@@ -18,6 +18,6 @@ export class ExamExecutionController {
   current = this.handle(req => this.repo.current(req.user!.userId));
   read = this.handle(req => this.repo.read(req.user!.userId, req.params.applicationId as string));
   start = this.handle(req => this.repo.start(req.user!.userId, req.params.applicationId as string), true);
-  adminRead = this.handle(req => this.repo.adminRead(req.params.applicationId as string));
+  adminRead = this.handle(req => this.repo.adminRead(req.params.applicationId as string, req.user!.userId));
   authorize = this.handle(req => this.repo.authorize(req.user!.userId, req.params.applicationId as string), true);
 }

@@ -1,3 +1,4 @@
+import { examAdministrationAuthorization } from "../access/exam-administration-authorization";
 import { ExamEngineRepository } from "../repositories/exam-engine.repository";
 import { ExamExecutionRepository } from "../repositories/exam-execution.repository";
 import { validateExamQuestion } from "./exam-content.rules";
@@ -7,8 +8,8 @@ import { AppError } from "../utils/AppError";
 export class ExamEngineService {
     private repo: ExamEngineRepository;
 
-    constructor() {
-        this.repo = new ExamEngineRepository();
+    constructor(private readonly access = examAdministrationAuthorization) {
+        this.repo = new ExamEngineRepository(this.access);
     }
 
     async assertApplicantQuestionAccess(userId: string, applicationId: string, mediaId: string) {
@@ -39,19 +40,23 @@ export class ExamEngineService {
     async readFinalization(applicationId: string, userId: string) {
         return new ExamFinalizationRepository().read(applicationId, userId);
     }
-    async getAllQuestionsForAdmin() {
-        return this.repo.getAllQuestionsForAdmin();
+    async getAllQuestionsForAdmin(actorId: string) {
+        await this.access.assert(actorId, "exam.questions.view");
+        return this.repo.getAllQuestionsForAdmin(actorId);
     }
 
-    async createQuestion(data: unknown) {
-        return this.repo.createQuestion(validateExamQuestion(data));
+    async createQuestion(data: unknown, actorId: string) {
+        await this.access.assert(actorId, "exam.questions.manage");
+        return this.repo.createQuestion(validateExamQuestion(data), actorId);
     }
 
-    async updateQuestion(id: string, data: unknown) {
-        return this.repo.updateQuestion(id, data);
+    async updateQuestion(id: string, data: unknown, actorId: string) {
+        await this.access.assert(actorId, "exam.questions.manage");
+        return this.repo.updateQuestion(id, data, actorId);
     }
 
-    async deleteQuestion(id: string) {
-        return this.repo.deleteQuestion(id);
+    async deleteQuestion(id: string, actorId: string) {
+        await this.access.assert(actorId, "exam.questions.manage");
+        return this.repo.deleteQuestion(id, actorId);
     }
 }

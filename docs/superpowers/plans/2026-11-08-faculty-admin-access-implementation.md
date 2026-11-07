@@ -4,7 +4,7 @@
 - Repository: `MuelTech/graduate-system`
 - Audit baseline / verified live `main`: `045316540d97364214792c7d441ae20a1e426d4c`
 - Branch: `feat/faculty-admin-access`
-- Status: FACULTY-0 accepted; FACULTY-1 accepted; FACULTY-2 accepted for continuation; FACULTY-3 accepted for continuation; FACULTY-4 accepted for continuation; FACULTY-5 accepted for continuation after independent remote commit-diff/source review. FACULTY-6 is next and has not started.
+- Status: FACULTY-0 accepted; FACULTY-1 accepted; FACULTY-2 accepted for continuation; FACULTY-3 accepted for continuation; FACULTY-4 accepted for continuation; FACULTY-5 accepted for continuation after independent remote commit-diff/source review. FACULTY-6 implemented / pending independent review.
 
 **Historical FACULTY-0 stop boundary:** FACULTY-0 authorized documentation only and ended before implementation. That boundary was satisfied before FACULTY-1 was separately authorized.
 
@@ -277,7 +277,7 @@ Sequence: **1 foundation → 2 auth → 3 identity compatibility → 4 Admin aut
 
 ### FACULTY-5 — Admission and Student administrative guards
 
-- **Status:** ✅ Accepted for continuation at `e0fb5ad4ade4cb3c190310e9d7819afad4e99704` after independent remote commit-diff/source review. See [implementation report](../reports/2026-11-08-faculty-5-admission-student-guards.md). All 18 admission/Student administrative aliases are mapped to bounded catalog capabilities with service checks and current-actor revalidation where the existing transaction permits it. Guard enforcement remains code-owned/dormant; no live Restricted access, Admin mapping, schema change or FACULTY-6 work. FACULTY-6 is next / not started.
+- **Status:** ✅ Accepted for continuation at `e0fb5ad4ade4cb3c190310e9d7819afad4e99704` after independent remote commit-diff/source review. See [implementation report](../reports/2026-11-08-faculty-5-admission-student-guards.md). All 18 admission/Student administrative aliases are mapped to bounded catalog capabilities with service checks and current-actor revalidation where the existing transaction permits it. Guard enforcement remains code-owned/dormant; no live Restricted access, Admin mapping, schema change or FACULTY-6 work. FACULTY-6 implemented / pending independent review.
 - **Scope:** map Applicant/Student reads, waiver/COR verification, promotion and comprehensive-exam recording aliases to catalog actions, including minimum read dependencies.
 - **Non-goals:** admission-policy redesign, continuing-Student onboarding, comprehensive-exam history repair, password recovery UI.
 - **Dependencies:** 1–4.
@@ -289,6 +289,7 @@ Sequence: **1 foundation → 2 auth → 3 identity compatibility → 4 Admin aut
 
 ### FACULTY-6 — Examination administrative guards
 
+- **Status:** FACULTY-6 implemented / pending independent review. See [implementation report](../reports/2026-11-08-faculty-6-examination-administrative-guards.md). Source-ready capability checks and exclusions remain code-owned/dormant; no Admin mapping, Restricted activation, Faculty essay implementation, schema change or FACULTY-7 work.
 - **Scope:** capability enforcement for schedules/bookings/assignment/amendments, records/execution, Start Now, configuration, bank/media/publication, B8 result recovery and B9 reconsideration.
 - **Non-goals:** Faculty essay authority/UI, email integration, new scheduling policies, scorer changes.
 - **Dependencies:** 1–5.

@@ -1,3 +1,4 @@
+import { requireExamAdministrationCapability } from "../middlewares/exam-administration-capability.middleware";
 import { Router } from "express";
 import { ExamEngineController } from "../controllers/exam-engine.controller";
 import { ExamMediaController } from "../controllers/exam-media.controller";
@@ -28,7 +29,7 @@ router.get('/media/:mediaId', (_req, res, next) => {
     res.setHeader('X-Content-Type-Options', 'nosniff');
     res.setHeader('Cross-Origin-Resource-Policy', 'same-origin');
     next();
-}, authenticateJWT, requireRole(['ADMIN', 'APPLICANT']), mediaController.getContent);
+}, authenticateJWT, requireRole(['ADMIN', 'APPLICANT']), requireExamAdministrationCapability("exam.questions.view", true), mediaController.getContent);
 
 // APPLICANT ROUTES
 const retired = (_req: unknown, res: import('express').Response) => { res.status(409).json({ error: 'Reload the examination page to use the exact application and server-owned start.' }); };
@@ -46,22 +47,22 @@ router.get('/applications/:applicationId/finalization', authenticateJWT, require
 router.post('/applications/:applicationId/submit', authenticateJWT, requireRole(['APPLICANT']), controller.submitAnswers);
 
 // ADMIN ROUTES
-router.get('/admin/applications/:applicationId/execution', authenticateJWT, requireRole(['ADMIN']), executionController.adminRead);
-router.post('/admin/applications/:applicationId/start-authorization', authenticateJWT, requireRole(['ADMIN']), executionController.authorize);
-router.get('/admin/question-set', authenticateJWT, requireRole(['ADMIN']), questionSetController.getCurrent);
-router.put('/admin/question-set', authenticateJWT, requireRole(['ADMIN']), questionSetController.replaceSelection);
-router.post('/admin/question-set/publish', authenticateJWT, requireRole(['ADMIN']), questionSetController.publish);
-router.get('/admin/configuration', authenticateJWT, requireRole(['ADMIN']), configurationController.getCurrent);
-router.put('/admin/configuration', authenticateJWT, requireRole(['ADMIN']), configurationController.replaceCurrent);
+router.get('/admin/applications/:applicationId/execution', authenticateJWT, requireRole(['ADMIN']), requireExamAdministrationCapability("exam.records.view"), executionController.adminRead);
+router.post('/admin/applications/:applicationId/start-authorization', authenticateJWT, requireRole(['ADMIN']), requireExamAdministrationCapability("exam.starts.authorize"), executionController.authorize);
+router.get('/admin/question-set', authenticateJWT, requireRole(['ADMIN']), requireExamAdministrationCapability("exam.questions.view"), questionSetController.getCurrent);
+router.put('/admin/question-set', authenticateJWT, requireRole(['ADMIN']), requireExamAdministrationCapability("exam.questions.manage"), questionSetController.replaceSelection);
+router.post('/admin/question-set/publish', authenticateJWT, requireRole(['ADMIN']), requireExamAdministrationCapability("exam.questions.manage"), questionSetController.publish);
+router.get('/admin/configuration', authenticateJWT, requireRole(['ADMIN']), requireExamAdministrationCapability("exam.configuration.manage"), configurationController.getCurrent);
+router.put('/admin/configuration', authenticateJWT, requireRole(['ADMIN']), requireExamAdministrationCapability("exam.configuration.manage"), configurationController.replaceCurrent);
 const mediaUploadError: ErrorRequestHandler = (error: unknown, _req, res, _next) => {
     const status = error instanceof AppError && error.statusCode === 413 ? 413 : 400;
     res.setHeader('Cache-Control', 'private, no-store');
     res.status(status).json({ error: status === 413 ? 'Image exceeds the allowed size.' : 'Upload one valid PNG or JPEG image.' });
 };
-router.post('/admin/media', authenticateJWT, requireRole(['ADMIN']), secureUpload('exam-media').single('file'), mediaController.upload, mediaUploadError);
-router.get('/admin/questions', authenticateJWT, requireRole(['ADMIN']), controller.getAllQuestionsForAdmin);
-router.post('/admin/questions', authenticateJWT, requireRole(['ADMIN']), controller.createQuestion);
-router.put('/admin/questions/:id', authenticateJWT, requireRole(['ADMIN']), controller.updateQuestion);
-router.delete('/admin/questions/:id', authenticateJWT, requireRole(['ADMIN']), controller.deleteQuestion);
+router.post('/admin/media', authenticateJWT, requireRole(['ADMIN']), requireExamAdministrationCapability("exam.questions.manage"), secureUpload('exam-media').single('file'), mediaController.upload, mediaUploadError);
+router.get('/admin/questions', authenticateJWT, requireRole(['ADMIN']), requireExamAdministrationCapability("exam.questions.view"), controller.getAllQuestionsForAdmin);
+router.post('/admin/questions', authenticateJWT, requireRole(['ADMIN']), requireExamAdministrationCapability("exam.questions.manage"), controller.createQuestion);
+router.put('/admin/questions/:id', authenticateJWT, requireRole(['ADMIN']), requireExamAdministrationCapability("exam.questions.manage"), controller.updateQuestion);
+router.delete('/admin/questions/:id', authenticateJWT, requireRole(['ADMIN']), requireExamAdministrationCapability("exam.questions.manage"), controller.deleteQuestion);
 
 export default router;

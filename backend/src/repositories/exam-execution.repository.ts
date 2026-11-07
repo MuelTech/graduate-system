@@ -1,3 +1,4 @@
+import { examAdministrationAuthorization } from "../access/exam-administration-authorization";
 import prisma from "../config/database";
 import { Prisma } from "@prisma/client";
 import { AppError } from "../utils/AppError";
@@ -87,6 +88,7 @@ export async function activeBoundExecution(tx: Prisma.TransactionClient, applica
 }
 
 export class ExamExecutionRepository {
+  constructor(private readonly access = examAdministrationAuthorization) {}
   /** Discovery only: never chooses a different identity after a client pins one. */
   async current(userId: string) {
     const student = await prisma.student.findUnique({ where: { userId }, select: { id: true } });
@@ -101,9 +103,10 @@ export class ExamExecutionRepository {
     return app ? this.read(userId, app.id) : null;
   }
 
-  private async locked<T>(applicationId: string, userId: string | null, operation: (app: Application, tx: Prisma.TransactionClient) => Promise<T>): Promise<T> {
+  private async locked<T>(applicationId: string, userId: string | null, operation: (app: Application, tx: Prisma.TransactionClient) => Promise<T>, adminAuthorization?: { actorId: string }): Promise<T> {
     const id = scheduleIdentifier(applicationId, "applicationId");
     return prisma.$transaction(async tx => {
+      if (adminAuthorization) await this.access.assertInTransaction(tx, adminAuthorization.actorId, "exam.starts.authorize");
       // Preliminary read supplies lock identities only; all authority is reread.
       const target = await tx.entranceExamApplication.findUnique({ where: { id }, select: { studentId: true, slotId: true, student: { select: { userId: true } } } });
       if (!target || (userId !== null && target.student.userId !== userId)) throw new AppError("Exam application not found.", 404);
@@ -144,12 +147,15 @@ export class ExamExecutionRepository {
   }
 
   read(userId: string, id: string) { return this.locked(id, userId, async app => this.dto(app)); }
-  adminRead(id: string) { return this.locked(id, null, async app => {
-    const dto = this.dto(app);
-    let canAuthorize = false;
-    try { requireNewStart(app, new Date(), true); canAuthorize = !app.actualStartedAt; } catch { /* fail closed */ }
-    return { ...dto, canAuthorize };
-  }); }
+  async adminRead(id: string, actorId: string) {
+    await this.access.assert(actorId, "exam.records.view");
+    return this.locked(id, null, async app => {
+      const dto = this.dto(app);
+      let canAuthorize = false;
+      try { requireNewStart(app, new Date(), true); canAuthorize = !app.actualStartedAt; } catch { /* fail closed */ }
+      return { ...dto, canAuthorize };
+    });
+  }
 
   authorize(adminId: string, id: string) {
     return this.locked(id, null, async (app, tx) => {
@@ -163,7 +169,7 @@ export class ExamExecutionRepository {
       // Repeated authorization retains its original actor/time; never starts time.
       if (!app.startAuthorizedAt) await tx.entranceExamApplication.update({ where: { id: app.id }, data: { startAuthorizedById: adminId, startAuthorizedAt: now } });
       return this.dto((await tx.entranceExamApplication.findUnique({ where: { id: app.id }, include }))!);
-    });
+    }, { actorId: adminId });
   }
 
   start(userId: string, id: string) {

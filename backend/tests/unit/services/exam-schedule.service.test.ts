@@ -41,8 +41,9 @@ describe("B3 Admin same-day assignment", () => {
       [expect.stringMatching(/FROM students WHERE student_id = \? FOR UPDATE/), ids.student],
       [expect.stringMatching(/FROM exam_slots WHERE slot_id = \? FOR UPDATE/), ids.slot],
     ]);
-    expect(db.student.findUnique.mock.calls[0][0]).toMatchObject({ where: { id: ids.student }, include: { user: { select: { role: true } } } });
+    expect(db.student.findUnique.mock.calls[0][0]).toMatchObject({ where: { id: ids.student }, select: { user: { select: { role: true } } } });
     expect(db.examSlot.updateMany.mock.calls[0][0]).toMatchObject({ where: { id: ids.slot, slotsTaken: 0, maxSlots: 2, isActive: true, AND: { slotsTaken: { lt: 2 } } } });
+    expect(db.entranceExamApplication.findMany).toHaveBeenCalledWith(expect.objectContaining({ select: { status: true } }));
     expect(db.examSlot.update).not.toHaveBeenCalled();
   });
   it.each(["ALIGNED", "CLEARED"])("allows eligible alignment %s", async alignmentStatus => {
