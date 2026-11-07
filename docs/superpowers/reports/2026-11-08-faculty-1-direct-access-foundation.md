@@ -65,7 +65,7 @@ The real-DB tests deploy the entire committed pre-foundation migration chain int
 
 The passing final rehearsal used a separately initialized, loopback-only temporary MariaDB instance; its test schemas were removed and absence checked. The test requires both `FACULTY_1_DB_TEST=1` and an explicit server-only `FACULTY_1_DB_SERVER_URL`; it never falls back to application DATABASE_URL or `.env`, and rejects a URL naming an application schema. Default runs skip the database suite.
 
-During the initial local-server rehearsal, schema cleanup stalled inside MariaDB; only generated disposable schemas were involved, not application tables. The test connections were cancelled and final verification moved to the isolated server. Cleanup of the initial server's remaining disposable schemas requires recovery of that local server; a restart is requested separately because it interrupts other database connections. This operational limitation does not invalidate the passing isolated migration/integrity evidence and is not reported as successful cleanup of the initial server.
+During the initial local-server rehearsal, schema cleanup stalled inside MariaDB; only generated disposable schemas were involved, not application tables. The test connections were cancelled and final verification moved to the isolated server. At original completion, cleanup of the initial server's remaining disposable schemas required recovery of that local server; a restart was requested separately because it interrupts other database connections. This operational limitation did not invalidate the passing isolated migration/integrity evidence and was not reported as successful cleanup of the initial server. The later owner-rebuilt environment and authorized development-database setup are recorded below; this continuation does not claim to have repaired the previous InnoDB files.
 
 ## Changed files
 
@@ -88,4 +88,58 @@ During the initial local-server rehearsal, schema cleanup stalled inside MariaDB
 
 No product-policy blocker was discovered for FACULTY-1. DR-3 is resolved: Essay Evaluation is school-wide. Actual Full bootstrap, CUSTOM mappings, dual-account identifiers and Adviser/External edge policies remain with their planned later packages; no real data was queried or mapped to resolve them here.
 
-Last-active-Full locking, grant mutation/audit writers, credential/current-actor authentication, route/service enforcement, access UI and live activation are not implemented. The configured application database has not received this migration. FACULTY-2 and all later implementation work remain untouched. Stop after the reviewed commit and push.
+Last-active-Full locking, grant mutation/audit writers, credential/current-actor authentication, route/service enforcement, access UI and live activation are not implemented. At original completion, the configured application database had not received this migration; the authorized recovery continuation below supersedes that environment status. FACULTY-2 and all later implementation work remain untouched. Stop after the reviewed commit and push.
+
+## Recovery continuation — 2026-11-08
+
+### Reconciliation before database work
+
+- Starting branch: `feat/faculty-admin-access`.
+- Starting HEAD: `1208e45d73447450db9b6e3f7b785c191f0fe5bd`, also independently verified as the remote feature-branch HEAD before continuation.
+- Working tree and index: clean; no staged or unstaged changes to recover, discard or recreate.
+- Recent history already contained the FACULTY-1 implementation commit above, following the approved scope clarification at `d080d9006b8820c34fbcf833087926d40532dc6a`.
+
+| FACULTY-1 requirement | State on resumption | Continuation |
+| --- | --- | --- |
+| Typed capability catalog/categories and precise prerequisites | Completed | Preserved unchanged |
+| Additive direct-grant/Admin-level storage, constraints and forward migration | Completed | Preserved unchanged; deployed committed migration as part of authorized local setup |
+| Fail-closed resolver/read store and dormant activation boundary | Completed | Preserved unchanged; focused checks rerun |
+| Protected access audit/event taxonomy | Completed | Preserved unchanged |
+| Read-only operator/preflight format | Completed | Preserved unchanged; no live preflight collection |
+| Focused foundation tests and previous isolated rehearsal evidence | Completed | 97 non-destructive checks rerun; historical isolated results retained as historical evidence |
+| Rebuilt local development database deployment, seed and application connectivity | Not yet verified | Completed after resolving the missing database with explicit owner authorization |
+
+No partially implemented or missing FACULTY-1 production-code requirement was found. This continuation completed environment setup, verification and reporting only; it did not restart implementation.
+
+### Database target, authorization and results
+
+Verified active configuration: **host `localhost`, port `3306`, database `graduate_system`**. Passwords, credential values and full connection URLs are omitted.
+
+The first requested `npx prisma migrate deploy` failed with an empty schema-engine error. A bounded connection diagnostic established `ER_BAD_DB_ERROR` / SQLSTATE `42000`: MariaDB was running, but `graduate_system` was absent. No seed or database creation was attempted before clarification because the owner's instructions prohibited recreating that database.
+
+The owner then explicitly authorized: **Create empty graduate_system, then migrate and seed**. The continuation verified normal recovery mode (`0`) and used `CREATE DATABASE IF NOT EXISTS` for only that exact intended database, then executed the requested commands. No existing database was dropped or reset.
+
+| Recovery check | Result |
+| --- | --- |
+| `npx prisma migrate deploy` after authorized database creation | Passed; all 54 committed migrations applied, including `20261108000000_direct_account_access` |
+| `npx prisma db seed` | Passed, exit code 0; invoked the unchanged configured `ts-node prisma/seed.ts` command; fixture credentials suppressed from output |
+| Seed safety inspection | Existing fixture creation/upserts; no reset, database drop or destructive schema recreation required |
+| `npx prisma migrate status` | Passed; schema up to date |
+| Prisma/application database-module connection | Passed using the built application's existing `dist/config/database` module and a read-only query against `graduate_system` |
+| Migration ledger | 54 finished, 0 unfinished |
+| Seeded User count | 53 |
+| Direct-access rows after seed | `administrator_access = 0`, `account_capability_grants = 0` |
+| Server recovery mode | 0 |
+| `npx prisma generate` / `npx prisma validate` | Passed |
+| Focused access/migration-boundary tests | 5 files / 97 passed / 0 failed |
+| `npm run build` in backend | Passed |
+| Disposable/full-chain destructive rehearsal | **Not executed during continuation due to environment isolation requirements**; no separate isolated destructive-test environment was configured |
+| Manual/browser QA and hosted CI | Not executed/claimed for this continuation |
+
+The normal development database received only the explicitly authorized committed migration deployment and existing project seed. No `faculty1_test_*` or other disposable schemas were created/dropped, no reset/force-reset was run, and no XAMPP data-directory files, shared tablespaces or redo-log files were manually modified. The isolated rehearsal tests were not run against the development database.
+
+### Delivery and remaining work
+
+The only repository file changed by this continuation is this implementation report. All existing implementation, schema, migration, seed and test files remain unchanged. The final diff is limited to recovery reconciliation and current verification evidence; the ending commit is reported after commit/push rather than embedded self-referentially here.
+
+No FACULTY-1 implementation or local database-readiness blocker remains. Independent source review and owner QA remain their separate acceptance activities. Direct-access enforcement stays off, and no live Full/Restricted Administrator or Essay Evaluation access was granted. FACULTY-2 was not started.
