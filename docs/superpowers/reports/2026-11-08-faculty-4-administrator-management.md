@@ -1,8 +1,8 @@
 # FACULTY-4 — Full Administrator management service and safeguards
 
-Date: 2026-11-08 (Asia/Manila). Status: **IMPLEMENTED — independent review/acceptance pending**.
+Date: 2026-11-08 (Asia/Manila). Status: **ACCEPTED FOR CONTINUATION**.
 
-This package implements backend foundation only. Administrator management remains disabled in production composition. No live Full bootstrap, Admin conversion, Restricted provisioning/rollout, UI, Faculty management/essay work, or FACULTY-5 occurred.
+This package implements backend foundation only and is accepted for continuation at `33b3910e90f9008f93a5b203c113088a7e2f4d46` after independent remote commit-diff/source/security review. Administrator management remains disabled in production composition. No live Full bootstrap, Admin conversion, Restricted provisioning/rollout, UI, Faculty management/essay work, or FACULTY-5 occurred.
 
 ## Starting repository state
 
@@ -127,4 +127,16 @@ Real DB locking/rollback verification is a known limitation and must remain a re
 
 ## Delivery and stop
 
-Only FACULTY-4 is committed/pushed to `feat/faculty-admin-access`. The ending commit and verified remote parity are reported in the delivery message rather than embedded as a self-referential SHA. Checklist/plan mark implementation pending independent review only. No real Full bootstrap, live Restricted accounts, global Restricted enforcement, frontend/UI work or FACULTY-5. **Stop after delivery.**
+Only FACULTY-4 is committed/pushed to `feat/faculty-admin-access`. No real Full bootstrap, live Restricted accounts, global Restricted enforcement, frontend/UI work or FACULTY-5 occurred during implementation.
+
+## Independent acceptance checkpoint
+
+- Accepted implementation commit: `33b3910e90f9008f93a5b203c113088a7e2f4d46`.
+- Independent remote review inspected the actual one-commit diff from `023adef40a92ee9140c28781c379bdd7cb44b2a7`: 23 changed files, 1 commit ahead / 0 behind.
+- Review confirmed the code-owned dormant management gate, current Full-Administrator revalidation after the database fence, strict DTO/capability validation, random temporary privileged credentials with forced password change, singleton InnoDB last-active-Full fence, transactional audit rollback, protected generic audit deletion, and legacy Admin-through-Panelist mutation denial.
+- No blocking source/security issue was found in the reviewed FACULTY-4 diff.
+- Focused verification evidence remains 16 files / 343 tests PASS with 5 opt-in real-MariaDB tests safely skipped.
+- Real InnoDB contention/rollback proof remains an explicit deployment-readiness gate because no isolated MariaDB endpoint was configured; the normal XAMPP application database was not used for scratch/destructive testing.
+- Manual/browser QA is not required for this acceptance checkpoint because no UI/live management rollout exists in FACULTY-4.
+- Direct-access enforcement and Administrator Management remain dormant; no live Full/Restricted mapping or bootstrap is authorized.
+- **FACULTY-4 is accepted for continuation. FACULTY-5 is next / not started.**
