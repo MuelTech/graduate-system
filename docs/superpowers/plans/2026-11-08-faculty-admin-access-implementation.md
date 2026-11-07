@@ -19,6 +19,7 @@ Target invariants remain:
 - exactly four conceptual system roles: Applicant, Student, Faculty, Admin;
 - separate Faculty and Admin accounts, credentials/session identities and portals;
 - configured Faculty access initially means Essay Evaluation only;
+- Essay Evaluation is school-wide across all pending eligible entrance-exam essays; Program is not an authorization boundary and no Faculty-to-Program evaluator relation is required;
 - Adviser/Chairman/Panelist/Rapporteur/Facilitator authority comes from exact authoritative relationships and assignments;
 - External Faculty cannot be new Advisers; availability is Admin-controlled and does not erase existing relationships;
 - Full/Restricted Administrator are access levels within ADMIN; direct per-account administrative capabilities;
@@ -36,7 +37,7 @@ No new Program Chair role, Adviser load cap, academic Admin override, workspace 
 | Auth | Email login does not validate selected role/activity; JWT/NextAuth claims live 24 hours | Validate selected portal server-side and refresh current identity/access rather than trusting stale role claims |
 | Credential state | Panelist-only frontend password gate; predictable Panelist provisioning password | Preserve existing credential hashes/flags; establish role-independent credential-state protection and secure privileged provisioning |
 | Faculty portal | Static `/panelist` navigation; dashboard composes assignment/request/review work | Dynamic work projection; add configured essays without replacing workflow authorization |
-| Essay | ADMIN-only route **and transaction-level** actor check | Faculty grant plus authoritative queue scope; exact frozen prompt/answer/max and B8 scorer retained |
+| Essay | ADMIN-only route **and transaction-level** actor check | Faculty grant plus school-wide pending-eligible essay queue; Program is not an authorization boundary; exact frozen prompt/answer/max and B8 scorer retained |
 | Adviser | Sole active AdviserAssignment; signed GS-020 with CONFORME then Dean approval | Preserve those authorities; remove self-toggle, fix directory bypass, recheck eligibility for new assignment |
 | Defense | Schedule → active PanelAssignment → PanelRole; own evaluation/report/signature/verdict checks | Preserve role/lifecycle semantics; update identity predicates and current account checks, not committee policy |
 | Admin | Broad ADMIN checks across many route namespaces and record/file services | Business-action capabilities at routes, service boundaries, file reads and operational projections |
@@ -104,7 +105,7 @@ These internal keys define the planned technical catalog for implemented reposit
 | `storage.health.view`, `storage.integrity.scan` | health and integrity scan | Operational capability; protect sensitive diagnostics |
 | `audit.view` | settings audit-log read projection | Protected access-change events must not be deletable through generic endpoints |
 | `administrator_access.manage` | new Administrators list/detail/provision/status/access editor | Full Administrator only; never grantable to Restricted |
-| `essay.evaluate` | new Faculty essay queue/detail and existing grading service | Configured Faculty only, approved scope, immutable grade; no exam administration |
+| `essay.evaluate` | new Faculty essay queue/detail and existing grading service | Configured Faculty only; school-wide pending eligible entrance essays across Programs; immutable grade; no exam administration |
 
 Catalog rules:
 
@@ -125,7 +126,7 @@ Faculty work sources:
 
 | Work | Derivation | Authority for the actual operation |
 | --- | --- | --- |
-| Essay Evaluations | Direct `essay.evaluate` grant plus approved queue scope | Current active Faculty + current grant + same authoritative Program/resource predicate in list/detail/write |
+| Essay Evaluations | Direct `essay.evaluate` grant | Current active Faculty + current grant; list/detail/write use the same school-wide pending-eligibility predicate, with Program available only as optional context/filtering |
 | Active Advisees / manuscript reviews | Sole active AdviserAssignment for each Student | Existing active-Adviser and exact reviewed-document service rules |
 | Adviser Requests / own issued records | Requests addressed to that Faculty / explicit issuer-record rights | Existing exact-request response/GS-020 and issuer GS-017 visibility; no current-advisee power inferred |
 | My Defenses | Active exact-schedule assignments and legitimately readable concluded assignments | Exact assignment role, attempt, lifecycle, own evaluator/signature/report/verdict rules |
@@ -195,13 +196,13 @@ Before role conversion, application rollback can retain unused additive tables/e
 
 ## 5. Decision Required register
 
-These are genuine policy/environment gaps. They are not permission to redesign the approved model. Resolve only the decision needed for the next package; independent documentation/foundation work may continue when separately authorized.
+This register preserves both remaining policy/environment gaps and resolved decisions for traceability. It is not permission to redesign the approved model. Resolve only the remaining decision needed for the next package; independent documentation/foundation work may continue when separately authorized.
 
 | ID | Decision / evidence needed | Blocks |
 | --- | --- | --- |
 | DR-1 | Identify actual initial Full Administrator account(s), remaining Admin mapping and operator bootstrap authority. Seed account is not evidence. | Live Admin bootstrap, Restricted provisioning, cutover |
 | DR-2 | Inspect real CUSTOM users/roles/grants; approve each target account identity and direct grant set, including mixed duties, inactive/unmapped accounts and unknown/duplicate keys. | CUSTOM conversion, removal of Other Roles, final activation if unresolved live users remain |
-| DR-3 | Confirm whether Faculty Essay Evaluation is school-wide or Program-scoped; if scoped, supply authoritative assignment/data ownership and rules. No current evaluator-Program relation exists. Also designate initial evaluators explicitly when moving current Admin essay work to separate Faculty accounts. | Faculty essay queue/read/write exposure; no broad-all-Programs default or fake Program Chair role |
+| DR-3 — **RESOLVED** | Faculty Essay Evaluation is school-wide: configured Faculty evaluators may see and evaluate all pending eligible entrance-exam essays across Programs. Program is not an authorization boundary; no evaluator-to-Program relation or Program Chair role is required. Initial evaluator designation remains an operator/cutover mapping task, not a scope-policy question. | Resolved; no longer blocks Faculty essay queue/read/write design |
 | DR-4 | Choose approved unique identifiers for separate Faculty/Admin accounts when the same person currently uses one email. Preserve separate accounts; current unique email constraint cannot support identical emails twice. | Dual-duty provisioning/import; do not silently relax email uniqueness or invent aliases |
 | DR-5 | Confirm exact permitted External committee roles beyond the supported External Panelist scenario if new assignment validation requires them. Current generic candidate/role code does not prove institutional eligibility. Preserve existing exact history. | New/changed External Chairman/Rapporteur/Facilitator eligibility; no expansion by absence of a check |
 | DR-6 | Confirm disposition/UX when availability or activity changes after a signed request/CONFORME but before Dean approval. New assignment must satisfy Internal/active/available target rules, but accepted signed evidence must not be edited or deleted. | Eligibility-change recovery at Dean approval; ordinary eligible requests remain unchanged |
@@ -340,14 +341,14 @@ Sequence: **1 foundation → 2 auth → 3 identity compatibility → 4 Admin aut
 
 ### FACULTY-12 — Faculty Essay Evaluation backend
 
-- **Scope:** narrow Faculty queue/detail projection and immutable grade authority through the existing transactional evaluation/scoring path; require current Faculty, configured grant and approved scope for list/detail/write.
-- **Non-goals:** manual MCQ checks, new rubric/remarks, regrading, Faculty reconsideration/Start Now/question-bank/email powers, resurrected Score Management.
-- **Dependencies:** 1–10 and resolved DR-3; no live grant activation before release gate.
+- **Scope:** narrow Faculty queue/detail projection and immutable grade authority through the existing transactional evaluation/scoring path; require current Faculty and configured `essay.evaluate` grant for list/detail/write; expose all pending eligible entrance-exam essays across Programs.
+- **Non-goals:** manual MCQ checks, new rubric/remarks, regrading, Faculty reconsideration/Start Now/question-bank/email powers, resurrected Score Management, Faculty-to-Program evaluator assignment.
+- **Dependencies:** 1–10; DR-3 is resolved; no live grant activation before release gate.
 - **Expected areas:** exam routes/controller/service/repository, essay DTOs/rules and existing grading actor check.
-- **Migration impact:** only a separately reviewed scope relation if DR-3 actually requires one; no fabricated historical scope/grades. Preserve `gradedById` and all result evidence.
-- **Authorization/UI impact:** essay grant is Faculty-only; target ADMIN grading is denied, including Full. Operational result recovery remains separate. Current Admin grade history remains unchanged.
-- **Verification:** grant/no-grant, Admin/Student/External account-category cases as allowed by approved scope, same predicate in list/read/write, out-of-scope attempt IDs, revoked grant during lock wait, competing graders, frozen prompt/answer/max and B8 MCQ/result regressions.
-- **Stop condition:** safe essay API reviewed with no new scoring policy or automatic broad scope.
+- **Migration impact:** none for evaluator scope; do not add an evaluator-to-Program relation. Preserve `gradedById` and all result evidence.
+- **Authorization/UI impact:** essay grant is Faculty-only and school-wide for pending eligible essays; Program may be exposed as context/filtering only. Target ADMIN grading is denied, including Full. Operational result recovery remains separate. Current Admin grade history remains unchanged.
+- **Verification:** grant/no-grant, Admin/Student/External account-category cases, school-wide cross-Program visibility for pending eligible essays, exclusion of non-pending/ineligible attempts, the same eligibility predicate in list/read/write, revoked grant during lock wait, competing graders, frozen prompt/answer/max and B8 MCQ/result regressions.
+- **Stop condition:** safe essay API reviewed with no new scoring policy, Program-scoped authorization, or email integration.
 
 ### FACULTY-13 — Effective-access and Faculty-work read models
 
@@ -386,7 +387,7 @@ Sequence: **1 foundation → 2 auth → 3 identity compatibility → 4 Admin aut
 
 - **Scope:** implement dry-run/idempotent operator manifest tooling, inventory actual authorized environment when separately permitted, bootstrap mappings and PANELIST/CUSTOM conversion rehearsal; record integrity/rollback evidence.
 - **Non-goals:** destructive resets, guessing CUSTOM grants or Full accounts, deleting legacy tables, modifying signed history, automatic academic repair.
-- **Dependencies:** 1–15; DR-1/2 and all data-dependent DR-3–7 cases must be resolved or explicitly held out with safe denied access. No implicit approval to touch production DB from this plan.
+- **Dependencies:** 1–15; DR-1/2 and all remaining data-dependent DR-4–7 cases must be resolved or explicitly held out with safe denied access. DR-3 is already resolved. No implicit approval to touch production DB from this plan.
 - **Expected areas:** operator scripts/CLI, additive migration/backfill files if required, migration fixtures/tests and deployment/runbook docs.
 - **Migration impact:** explicit audited User role/direct-grant data changes in rehearsal; exact counts and before/after checks. Preserve all authoritative foreign keys, credentials, records and signatures.
 - **Authorization/UI impact:** approved initial evaluators/Admin levels only; unmapped identities denied. Session cutover and compatibility binaries proven.
@@ -421,7 +422,7 @@ Each backend row includes direct HTTP, guessed resource ID and direct service-bo
 
 | Scenario | Positive evidence | Required denial / preservation |
 | --- | --- | --- |
-| Essay Evaluator only | Dashboard + Essay Evaluations; accepted scoped essay read/grade | No Admin, arbitrary Student, committee or MCQ edit authority |
+| Essay Evaluator only | Dashboard + Essay Evaluations; school-wide read/grade for all pending eligible entrance essays across Programs | No Admin, non-pending/ineligible attempt, committee or MCQ edit authority |
 | Internal available, no assignments | Eligible passed-Title ODP candidate when all current gates pass | No arbitrary My Advisees Student access; availability is not relationship authority |
 | Pending addressed GS-020, no advisee yet | Request context reachable; exact request response | No active relationship until CONFORME + Dean approval; no request-content mutation under signature |
 | Assigned Adviser now unavailable for new work | Current assigned research/review work retained | External/new-assignment rules and history preservation remain; no COR/payment blanket access |

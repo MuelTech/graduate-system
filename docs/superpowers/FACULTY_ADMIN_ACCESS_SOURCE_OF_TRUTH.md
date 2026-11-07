@@ -111,6 +111,10 @@ The initial approved configured Faculty access for this feature is:
 
 - **Essay Evaluation**
 
+Configured Essay Evaluation access is **school-wide** for the current entrance-exam essay workload. An authorized Faculty Essay Evaluator may see and evaluate **all pending eligible entrance-exam essays, regardless of Program**.
+
+No Faculty-to-Program evaluator assignment or Program-scoped authorization relation is required by this feature. Program information may still be displayed or used as a queue/filtering aid, but Program is **not an authorization boundary** for Essay Evaluation.
+
 Multiple-choice entrance-exam checking remains automated by the system. Faculty do not manually re-check or alter automatically computed multiple-choice scores as part of Essay Evaluation.
 
 The system may expose relevant automatically computed exam information read-only when needed by the accepted evaluation workflow.
@@ -146,7 +150,9 @@ The client workflow may use Program Chairs as the Faculty members who perform Es
 
 Do not create a user-facing Program Chair role/capability solely to implement this Faculty/Admin feature.
 
-If implementation discovers an existing authoritative program-scoping rule needed for Essay Evaluation, preserve that rule and document it in the implementation plan. Do not invent new Program Chair identity or authority.
+For this feature, Essay Evaluation is not Program-scoped. A Faculty member with configured Essay Evaluation access is authorized for all pending eligible entrance-exam essays across Programs.
+
+Do not introduce a Faculty-to-Program evaluator assignment, Program-scoped permission relation, or Program Chair identity solely for Essay Evaluation. Program information may be presented for context or filtering, but it must not narrow or broaden Essay Evaluation authorization unless a later separately approved policy changes this source of truth.
 
 ---
 
@@ -484,7 +490,7 @@ The implementation plan must not redefine this product behavior. If repository f
 
 The final feature must support at least these behavioral scenarios:
 
-1. **Essay Evaluator only:** Faculty sees Essay Evaluations; no Adviser or Defense authority is fabricated.
+1. **Essay Evaluator only:** Faculty sees Essay Evaluations and may work on all pending eligible entrance-exam essays across Programs; no Adviser or Defense authority is fabricated.
 2. **Internal Faculty available as Adviser, no assignment:** may be selected by the authoritative Adviser workflow, but has no arbitrary Student Adviser authority.
 3. **Assigned Adviser:** Faculty receives the accepted Adviser functionality only for authoritative advisee relationships.
 4. **External Panelist:** may receive permitted defense assignment functionality but cannot become an Adviser or appear as an Adviser candidate.

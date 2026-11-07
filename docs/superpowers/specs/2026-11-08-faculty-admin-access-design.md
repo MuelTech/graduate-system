@@ -80,6 +80,8 @@ Initial configured access:
 
 - **Essay Evaluation**
 
+Essay Evaluation access is school-wide for the current entrance-exam essay workload. A Faculty member with this access may see and evaluate all pending eligible entrance-exam essays regardless of Program. No Faculty-to-Program evaluator assignment is required. Program may be shown as context or as a queue filter, but it is not an authorization boundary.
+
 Do not expose permanent controls for:
 
 - Chairman;
@@ -244,7 +246,7 @@ Expected Faculty task flow:
 ```text
 Faculty signs in
   -> Essay Evaluations
-  -> sees only authorized/relevant essay work
+  -> sees all pending eligible entrance-exam essays, regardless of Program
   -> opens essay submission
   -> reviews answer and accepted evaluation criteria
   -> records allowed score/remarks
@@ -254,6 +256,8 @@ Faculty signs in
 Do not create a manual multiple-choice checking workflow.
 
 Do not let Faculty arbitrarily modify system-computed MCQ scores.
+
+Essay Evaluation authorization is based on the Faculty member's configured Essay Evaluation access, not on Program membership or a Program Chair role. The queue may provide Program-based filtering for usability without changing the school-wide authorization scope.
 
 Exact scoring/rubric semantics remain governed by the current accepted Exam workflow and repository behavior unless a separate approved change says otherwise.
 
@@ -482,6 +486,7 @@ Given:
 Then:
 - Dashboard is available;
 - Essay Evaluations is available;
+- all pending eligible entrance-exam essays across Programs are available in the Essay Evaluations queue;
 - My Advisees is not shown as active work;
 - My Defenses is not shown as active work;
 - Adviser/Defense APIs remain denied without assignment.
