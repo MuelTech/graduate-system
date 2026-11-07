@@ -52,7 +52,6 @@ export function Navbar() {
             <span className="public-masthead__full-name">
               {institution.fullName}
             </span>
-            <span className="public-masthead__school">Graduate School</span>
           </span>
         </Link>
         <nav

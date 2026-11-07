@@ -63,12 +63,6 @@
   display: grid;
   min-width: 0;
 }
-.earist-public .public-masthead__school {
-  margin-top: 4px;
-  font-size: 13px;
-  line-height: 1.25;
-  font-weight: 600;
-}
 .earist-public .public-masthead__full-name {
   max-width: 270px;
   color: var(--earist-body-text);
@@ -388,9 +382,6 @@
   .earist-public .public-masthead__seal {
     width: 48px;
     height: 48px;
-  }
-  .earist-public .public-masthead__school {
-    font-size: 12px;
   }
   .earist-public .public-masthead__full-name {
     font-size: 12px;
