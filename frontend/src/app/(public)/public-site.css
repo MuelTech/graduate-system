@@ -340,17 +340,29 @@
   }
 }
 @media (min-width: 1200px) {
+  .earist-public .public-masthead__inner {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    width: min(100% - 32px, 1040px);
+    gap: 16px;
+    min-height: 84px;
+    padding-block: 6px;
+  }
+  .earist-public .public-masthead__identity {
+    justify-self: start;
+  }
   .earist-public .public-masthead__desktop-nav {
     display: flex;
     align-items: center;
-    gap: 18px;
+    gap: 14px;
   }
   .earist-public .public-masthead__desktop-account {
     display: flex;
+    justify-self: end;
     align-items: center;
-    gap: 16px;
+    gap: 12px;
     border-left: 1px solid #e5dfd5;
-    padding-left: 18px;
+    padding-left: 12px;
   }
   .earist-public .public-masthead__menu-toggle,
   .earist-public .public-masthead__panel {
