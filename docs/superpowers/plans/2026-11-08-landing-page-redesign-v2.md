@@ -3,7 +3,7 @@
 **Project:** EARIST Graduate School Information System (GS-IS)
 **Date:** 2026-11-08
 **Repository / branch:** `MuelTech/graduate-system` / `feat/landing-page-redesign`
-**Status:** Working bounded implementation plan. Tasks 1–2 are implemented on `feat/landing-page-redesign` and owner-reviewed for continuation; Task 3 has not begun. Pre-Task-3 owner clarifications now add official program-source references, a Home Contact Us section, and official-source contact/platform review content.
+**Status:** Working bounded implementation plan. Tasks 1–3 are implemented on `feat/landing-page-redesign`; Task 3 is under owner refinement before closure. The refinement now covers the complete selected official program listing, Home-only FAQ IA, accessible smooth anchor scrolling, and the Contact Us inquiry form. Task 4 has not begun.
 **Verified documentation starting HEAD:** `ab6086026ec68715035f36be91663b6e306af2fd`
 **Committed V2 specification / report update:** `da5d0d6c23d24c2232d8c0420f2e54cb858c8f55`
 **Verified current main / feature merge base:** `045316540d97364214792c7d441ae20a1e426d4c`
@@ -16,7 +16,7 @@ The owner rejected the V1 design and implementation in manual visual QA. V1 evid
 
 Follow current domain authority, [copy authority](../USER_FACING_COPY_SOURCE_OF_TRUTH.md), the [UI/UX playbook](../ui-ux/SYSTEM_UI_UX_PLAYBOOK.md), and [verification policy](../ENGINEERING_VERIFICATION_POLICY.md). The playbook is a consistency/accessibility/behavioral guardrail, **not V2's visual template**. Retain the existing font family while using the public display hierarchy defined in the specification. External design resources, if used later, are craft aids only.
 
-Current delivery: commit this plan, verify the exact three-file documentation package, push both documentation commits, and stop. No application source, images, dependencies, deployment, merge, or implementation package is authorized now. The proposed task numbers below are V2 packages, unrelated to the historical V1 task numbers.
+Current delivery: record the owner-approved Task 3 refinement decisions in the V2 specification/plan, push documentation only, and stop. No application source, backend, deployment, merge, or Task 4 work is authorized by this documentation update itself. The next separately authorized implementation package is the bounded Task 3 refinement described below.
 
 ## 2. Verified branch/worktree and publication discipline
 
@@ -85,11 +85,11 @@ The actual seals are documented in `backend/assets/official-forms/README.md`; ba
 
 ### 4.3 Content handling without integration
 
-Use the official EARIST Graduate School pages as the program-content references: https://earist.edu.ph/graduate-school/ and https://earist.edu.ph/graduate-school-2/. They differ in some majors/wording, so the current frontend list remains review content until the client confirms the reconciled catalog. Home and the later directory share this official-source/client-confirmation status; do not silently merge conflicts, invent degrees, assert a total count, or add program-specific Apply behavior.
+Use https://earist.edu.ph/graduate-school-2/ as the selected official working source for the complete displayed Graduate School offerings, including the majors published there. Keep https://earist.edu.ph/graduate-school/ as provenance/comparison evidence only. Do not reduce Home to the old four-plus-four intersection. Client corrections may replace individual entries later without changing the presentation contract. Do not invent degrees, majors, admissions availability, deadlines, total counts, or program-specific Apply behavior.
 
 News samples use neutral sample headlines, sample-date labels or no date, and no invented admissions deadlines, events, policies, institutional outcomes, or public article destinations. They are non-link editorial entries. Do not introduce `/news`, `/news/[slug]`, a CMS, API calls, or expose private memos.
 
-Research contains no sample publications at all. About uses verified identity and concise public-purpose copy until approved institutional prose arrives. Home help covers only the verified account/public-browsing paths; detailed policy is not inferred from old FAQ text. Contact Us and Footer may now use official-source review content from the EARIST Graduate School pages: the newer page's Nagtahan St campus address, earistofficial1945@gmail.com and (02) 7738 5059; the older Graduate School page's (02) 7154914 and earistgraduateschool social handle; the current EARIST website; and the official-site-linked Applicants Access Module. Because the sources differ in age/detail, client confirmation is required before calling individual contact/social details final production content.
+Research contains no sample publications at all. About uses verified identity and concise public-purpose copy until approved institutional prose arrives. Home is the primary public FAQ surface: remove **View All FAQs** and do not promote `/faq` from the new Landing/Footer while that legacy page remains unreconciled. Contact Us and Footer may use official-source contact/platform content from the EARIST Graduate School pages, while source/audit details stay in feature documentation rather than ordinary visitor copy. Contact Us also includes the six-field inquiry form defined in the specification. If no authorized submission path exists, implement honest form UI/validation only and record submission integration as pending rather than faking success.
 
 ## 5. Six proposed implementation packages
 
@@ -149,33 +149,33 @@ Packages are sequential because they share Home, content, and scoped styles. Eac
 
 **Assets/content:** Neutral locally defined News samples with per-item **Sample content — design review only** and section-level notice. Dates are explicitly samples or omitted. Optional image has its own visible not-EARIST caption. Footer uses the real seal. Contact Us may use the official EARIST-source review details recorded in the specification, including the current EARIST website and official-site-linked Applicants Access Module. Where the two official Graduate School pages differ, keep the content reviewable/client-confirmable rather than claiming final verification.
 
-**Shared blast radius:** Final Navbar/Footer affect all five public routes. Final Navbar is logo → `/`, Programs → `/#programs`, Research Repository → `/repository`, News → `/#news`, About → `/#about`, Contact → `/#contact`, Sign In → `/login`, Register → `/register`. FAQ remains available from Home help/Footer via `/faq`, not as a primary masthead item. Footer reaches deeper pages, Home help, Contact Us, and official platform destinations. No new news route, fake article link, contact-form backend, or session-based behavior.
+**Shared blast radius:** Final Navbar/Footer affect all five public routes. Final Navbar is logo → `/`, Programs → `/#programs`, Research Repository → `/repository`, News → `/#news`, About → `/#about`, Contact → `/#contact`, Sign In → `/login`, Register → `/register`. FAQ is read directly on Home and is not promoted through `/faq` in the new Navbar/Footer. Footer reaches deeper pages, Home help, Contact Us, and official platform destinations. No new news route, fake article link, or session-based behavior. A real inquiry submission path is not implied by the form UI.
 
-**Responsive/accessibility:** News is a vertical editorial list on mobile, not a horizontal strip. Samples are not falsely clickable. Contact details and platform actions must remain readable/clickable without tiny icon-only controls. Check active/focus treatment, mobile menu closing after cross-route hash navigation, real target positions beneath the masthead, four balanced Footer groups, white-text contrast, external-link semantics where appropriate, and widget clearance.
+**Responsive/accessibility:** News is a vertical editorial list on mobile, not a horizontal strip. Samples are not falsely clickable. Contact details, platform actions, and inquiry-form labels/controls must remain readable and keyboard-operable without tiny icon-only controls. Same-page anchors use smooth scrolling for ordinary motion preferences while `prefers-reduced-motion: reduce` keeps immediate navigation. Preserve sticky-header offsets. Check active/focus treatment, mobile menu closing after cross-route hash navigation, real target positions beneath the masthead, four balanced Footer groups, white-text contrast, external-link semantics where appropriate, form required/error states, and widget clearance.
 
-**Verification:** TypeScript, scoped ESLint/diff checks; verify exact final section order/anchor uniqueness including `contact`, all Navbar/Footer/platform links from all five routes, per-item sample labels at every viewport, and absence of old dated/official-sounding news. Confirm no invented contact endpoint or fake social destination was added. Browser review should assess the assembled Home and shared shell, not just isolated sections. No new API calls or backend tests.
+**Verification:** TypeScript, scoped ESLint/diff checks; verify exact final section order/anchor uniqueness including `contact`, all Navbar/Footer/platform links from all five routes, smooth same-page scrolling plus reduced-motion fallback, complete selected official program offerings/majors, absence of **View All FAQs** and `/faq` promotion, per-item sample-news labels, and inquiry-form required/optional/privacy states. Confirm no invented contact endpoint, fake submission success, or fake social destination was added. Browser review should assess the assembled Home and shared shell, not just isolated sections. Backend tests are required only if a separately authorized real inquiry submission path is implemented.
 
 **Stop:** Commit/handoff Task 3 for whole-Landing owner visual review before deeper page work. Record which contact/program details still await client confirmation. A rejection requires bounded revision/instruction; do not treat technically passing checks as acceptance or proceed automatically.
 
-### Task 4 — Coordinated Programs, About, and FAQ public-page refinement
+### Task 4 — Coordinated Programs and About public-page refinement
 
-**Visual goal:** Make the three information destinations consistent with the accepted Landing/shell while keeping them useful deeper reading experiences. This is one coordinated information-page package, not an unrelated system-wide copy rewrite.
+**Visual goal:** Make the two deeper information destinations consistent with the accepted Landing/shell while keeping them useful reading/directory experiences. Home remains the primary FAQ/help surface; the legacy `/faq` route is intentionally outside this package unless the owner later authorizes a separate Help Center.
 
 **Exact likely files:**
 
-- Modify `frontend/src/app/(public)/programs/page.tsx`, `frontend/src/app/(public)/about/page.tsx`, `frontend/src/app/(public)/faq/page.tsx`.
+- Modify `frontend/src/app/(public)/programs/page.tsx` and `frontend/src/app/(public)/about/page.tsx`.
 - Add `frontend/src/components/programs/programs-directory.tsx` if needed for a narrow client-side local search/type-filter boundary; this directory is new, not an existing repository component.
 - Extend `frontend/src/content/public-site-content.ts` and named deeper-page classes in `frontend/src/app/(public)/public-site.css`.
 
-**Assets/content:** Reuse the already labelled About image and real seals; no additional photography is required. Programs shares Home's official EARIST-source/client-confirmation snapshot from the two Graduate School pages. Reconcile differing majors/wording only from client confirmation; do not silently combine the pages. Remove unsupported admissions-open text, statistics, and software mission/vision from the redesigned presentation. Use approved institutional prose if available. Verify detailed FAQ claims against canonical sources before reuse; omit or flag unresolved public-policy text for confirmation rather than inventing a replacement rule. Do not change the underlying workflow or chatbot text.
+**Assets/content:** Reuse the already labelled About image and real seals; no additional photography is required. Programs shares Home's complete working listing from the selected official Graduate School page. Client corrections may update individual program/major entries later. Remove unsupported admissions-open text, statistics, and software mission/vision from the redesigned presentation. Use approved institutional prose if available. Do not change underlying workflow or chatbot text.
 
-**Shared blast radius:** These three pages plus explicitly shared public content/styles. Local catalog/search/filtering does not alter registration options or API responses. Preserve `/programs`, `/about`, `/faq` and existing actual account actions. Do not introduce program detail routes or registration preselection.
+**Shared blast radius:** These two pages plus explicitly shared public content/styles. Local catalog/search/filtering does not alter registration options or API responses. Preserve `/programs`, `/about`, the untouched compatibility `/faq` route, and existing actual account actions. Do not introduce program detail routes or registration preselection.
 
-**Responsive/accessibility:** Reading-oriented headers, natural title wrapping, accessible directory controls and result/empty feedback; real local filtering if search is shown. FAQ controls need proper state/relationships, keyboard operation, and labelled search. No internal schema/model terms or tiny dense metadata.
+**Responsive/accessibility:** Reading-oriented headers, natural title wrapping, accessible directory controls and result/empty feedback; real local filtering if search is shown. No internal schema/model terms or tiny dense metadata.
 
-**Verification:** TypeScript, scoped ESLint/diff; focused local filter behavior for query/type/clear/no-match and FAQ disclosure/search where implemented; responsive/keyboard review of all three routes; check Home's shared content has not drifted. Add only focused tests if substantive filtering warrants them, not layout snapshots or sentence-mirroring tests. Build only for meaningful new client/server wiring or concrete uncertainty.
+**Verification:** TypeScript, scoped ESLint/diff; focused local filter behavior for query/type/clear/no-match where implemented; responsive/keyboard review of Programs and About; check Home's shared content has not drifted and that `/faq` remains unpromoted/untouched. Add only focused tests if substantive filtering warrants them. Build only for meaningful new client/server wiring or concrete uncertainty.
 
-**Stop:** Commit/handoff these three routes. Record unresolved production content and owner review status; do not advance to Repository or integration automatically.
+**Stop:** Commit/handoff these two routes. Record unresolved production content and owner review status; do not advance to Repository or integration automatically.
 
 ### Task 5 — Repository public-page framing
 
@@ -201,7 +201,7 @@ Packages are sequential because they share Home, content, and scoped styles. Eac
 
 **Assets/content:** Inventory every review image/sample, rights/provenance and replacement requirement. Missing approved production content is a recorded dependency, not a reason to build a backend or present samples as official.
 
-**Shared blast radius:** Verify Home, Programs, Repository, FAQ, About, shared Navbar/Footer, deep-route anchor navigation, and unchanged chatbot clearance. Confirm auth/portal/backend/canonical boundaries in the complete actual diff.
+**Shared blast radius:** Verify Home, Programs, Repository, About, shared Navbar/Footer, deep-route anchor navigation, and unchanged chatbot clearance. Confirm the legacy `/faq` route remains unpromoted and was not accidentally rewritten by the accepted V2 packages. Confirm auth/portal/backend/canonical boundaries in the complete actual diff.
 
 **Responsive/accessibility:** Browser review of desktop/tablet/mobile, 320px reflow, 200% zoom, keyboard-only navigation/accordions, contrast, image crops/labels, sticky targets, footer groups, and menu resize/cross-route behavior. Report unavailable checks without claiming they passed.
 
