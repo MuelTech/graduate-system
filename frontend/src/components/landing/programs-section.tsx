@@ -1,5 +1,3 @@
-import Link from "next/link";
-import { ArrowRight } from "lucide-react";
 import { publicSiteContent } from "@/content/public-site-content";
 
 export function ProgramsSection() {
@@ -24,13 +22,9 @@ export function ProgramsSection() {
           </div>
           <div>
             <p className="public-body-copy">
-              Browse master&apos;s and doctoral study options before continuing
-              to GS-IS registration.
+              Browse the Graduate School&apos;s master&apos;s and doctoral
+              programs and their published majors.
             </p>
-            <Link href="/programs" className="public-body-link">
-              View All Graduate Programs{" "}
-              <ArrowRight aria-hidden="true" size={18} />
-            </Link>
           </div>
         </div>
         <div className="public-programs__directory">

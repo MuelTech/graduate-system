@@ -1,5 +1,3 @@
-import Link from "next/link";
-import { ArrowRight } from "lucide-react";
 import { publicSiteContent } from "@/content/public-site-content";
 import { PreviewImage } from "./preview-image";
 
@@ -24,10 +22,6 @@ export function AboutSection() {
             Use this public site to explore program information and published
             research. Sign in to GS-IS for existing account services.
           </p>
-          <Link href="/about" className="public-body-link">
-            About the Graduate School{" "}
-            <ArrowRight aria-hidden="true" size={18} />
-          </Link>
         </div>
         <PreviewImage
           image={publicSiteContent.about.image}

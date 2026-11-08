@@ -5,32 +5,32 @@ import { publicSiteContent } from "@/content/public-site-content";
 const footerGroups = [
   {
     id: "study",
-    title: "Study & Information",
+    title: "Explore the Graduate School",
     links: [
-      { label: "Programs", href: "/#programs" },
-      { label: "Getting Started", href: "/#getting-started" },
+      { label: "Home", href: "/" },
+      { label: "News & Announcements", href: "/#news" },
       { label: "About", href: "/#about" },
+      { label: "Programs", href: "/#programs" },
     ],
   },
   {
     id: "research",
-    title: "Research & Updates",
+    title: "Research & Contact",
     links: [
       { label: "Research Repository", href: "/repository" },
-      { label: "News & Announcements", href: "/#news" },
+      { label: "Contact Us", href: "/#contact" },
     ],
   },
   {
     id: "contact",
-    title: "Contact & Access",
+    title: "Official platforms",
     links: [
-      { label: "Contact Us", href: "/#contact" },
       {
         label: "EARIST Website",
         href: publicSiteContent.contact.platforms[0].href,
       },
       {
-        label: "Applicant Portal",
+        label: "Apply through Pinnacle ↗",
         href: publicSiteContent.contact.platforms[1].href,
       },
     ],
@@ -88,7 +88,7 @@ export function Footer() {
                       Sign In
                     </Link>
                     <Link href="/register" className="public-footer__link">
-                      Register
+                      Create Account
                     </Link>
                   </div>
                 )}

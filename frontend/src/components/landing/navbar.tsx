@@ -7,10 +7,11 @@ import { Menu, X } from "lucide-react";
 import { publicSiteContent } from "@/content/public-site-content";
 
 const navLinks = [
-  { href: "/#programs", label: "Programs" },
-  { href: "/repository", label: "Research Repository" },
+  { href: "/", label: "Home" },
   { href: "/#news", label: "News" },
   { href: "/#about", label: "About" },
+  { href: "/#programs", label: "Programs" },
+  { href: "/repository", label: "Research Repository" },
   { href: "/#contact", label: "Contact" },
 ];
 
@@ -81,7 +82,7 @@ export function Navbar() {
             onClick={closeMenu}
             className="public-masthead__register"
           >
-            Register
+            Create Account
           </Link>
         </div>
         <button
@@ -132,7 +133,7 @@ export function Navbar() {
               onClick={closeMenu}
               className="public-masthead__register"
             >
-              Register
+              Create Account
             </Link>
           </div>
         </div>

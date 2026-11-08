@@ -111,7 +111,7 @@ export const publicSiteContent = {
       {
         title: "Sample campus information",
         summary:
-          "Placeholder copy for a text-only announcement in the public news section.",
+          "Sample copy for reviewing a campus-information feature. No official notice or event is described.",
       },
     ],
   },
