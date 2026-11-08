@@ -1,6 +1,6 @@
 # FACULTY-6 — Examination administrative guards
 
-Date: 2026-11-08 (Asia/Manila). Status: **FACULTY-6 implemented / pending independent review**.
+Date: 2026-11-08 (Asia/Manila). Status: **ACCEPTED FOR CONTINUATION**.
 
 ## Verified starting state and authorities
 
@@ -186,3 +186,16 @@ Fetched/verified starting feature HEAD `7fd57d941309170612c72941e50eb308eaf1cfff
 - `docs/superpowers/reports/2026-11-08-faculty-6-examination-administrative-guards.md`
 
 Focused correction command (from `backend`): `npm test -- tests/unit/repositories/exam-record.repository.test.ts tests/unit/routes/faculty-6-exam-administration.routes.test.ts tests/unit/services/faculty-6-exam-boundaries.test.ts tests/unit/services/exam-record-detail.service.test.ts` — **4 files / 162 tests PASS**. Tests inspect the selected field allowlists and returned DTO, including overfilled persistence results; flag regressions also apply the actual Prisma select before calculation to catch missing internal evidence. Backend `npm run build` and `git diff --check` — **PASS**. No full suite, frontend build or real-DB contention run; no lock/write/schema/migration/frontend change. No live access activation or FACULTY-7 work. FACULTY-6 remains **implemented / pending independent review**; acceptance is not asserted.
+
+
+## Independent acceptance checkpoint
+
+- Accepted implementation/correction head: `987b75bbceb1822798e5d2ce7fafe858fb956456`; original FACULTY-6 implementation commit: `7fd57d941309170612c72941e50eb308eaf1cfff`.
+- Independent remote review inspected the original one-commit FACULTY-6 diff from `0ad28910f67b7b584f01ccc4a9e931f298f0656d`, then separately reviewed the bounded three-file correction from `7fd57d941309170612c72941e50eb308eaf1cfff`.
+- Review confirmed all 32 mapped Admin exam surfaces use the accepted Exam administrative catalog and the two legacy actions remain explicitly excluded from Exam Administration: essay grading and result-email.
+- Review confirmed current server-resolved authority, dormant code-owned rollout, shared FACULTY-4 access fence for sensitive transactional writers, Applicant execution isolation, B3–B9 lock/state preservation, frozen B8 scoring basis, separate B9 reconsideration, and no implicit academic essay authority for Full/Restricted Admin.
+- Independent review found one over-broad Exam Records list projection; correction commit `987b75bbceb1822798e5d2ce7fafe858fb956456` replaced broad relations/object spreading with explicit Prisma selects and a deliberate response DTO. Credential/internal account fields, raw score/decision objects, and internal finalization evidence are no longer exposed.
+- Focused original verification: 25 files / 718 tests PASS. Focused correction verification: 4 files / 162 tests PASS. Backend build and `git diff --check` passed for both reviewed states as reported.
+- Real DB contention was safely skipped because no isolated server was configured; the normal XAMPP application database was not used for destructive/scratch testing. This remains a deployment-readiness limitation, not a continuation blocker while rollout remains dormant.
+- No schema/migration, frontend/UI, live Admin mapping/bootstrap, Restricted activation, Faculty Essay Evaluation implementation, or FACULTY-7 work occurred.
+- **FACULTY-6 is accepted for continuation. FACULTY-7 is next / not started.**

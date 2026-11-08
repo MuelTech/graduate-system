@@ -4,7 +4,7 @@
 - Repository: `MuelTech/graduate-system`
 - Audit baseline / verified live `main`: `045316540d97364214792c7d441ae20a1e426d4c`
 - Branch: `feat/faculty-admin-access`
-- Status: FACULTY-0 accepted; FACULTY-1 accepted; FACULTY-2 accepted for continuation; FACULTY-3 accepted for continuation; FACULTY-4 accepted for continuation; FACULTY-5 accepted for continuation after independent remote commit-diff/source review. FACULTY-6 implemented / pending independent review.
+- Status: FACULTY-0 accepted; FACULTY-1 accepted; FACULTY-2 accepted for continuation; FACULTY-3 accepted for continuation; FACULTY-4 accepted for continuation; FACULTY-5 accepted for continuation; FACULTY-6 accepted for continuation after implementation, independent remote commit-diff/source review, and bounded least-privilege correction review. FACULTY-7 is next and has not started.
 
 **Historical FACULTY-0 stop boundary:** FACULTY-0 authorized documentation only and ended before implementation. That boundary was satisfied before FACULTY-1 was separately authorized.
 
@@ -289,7 +289,7 @@ Sequence: **1 foundation → 2 auth → 3 identity compatibility → 4 Admin aut
 
 ### FACULTY-6 — Examination administrative guards
 
-- **Status:** FACULTY-6 implemented / pending independent review. See [implementation report](../reports/2026-11-08-faculty-6-examination-administrative-guards.md). Source-ready capability checks and exclusions remain code-owned/dormant; no Admin mapping, Restricted activation, Faculty essay implementation, schema change or FACULTY-7 work.
+- **Status:** ✅ Accepted for continuation at correction HEAD `987b75bbceb1822798e5d2ce7fafe858fb956456` (original implementation `7fd57d941309170612c72941e50eb308eaf1cfff`) after independent remote commit-diff/source review and bounded least-privilege correction review. See [implementation report](../reports/2026-11-08-faculty-6-examination-administrative-guards.md). All 32 mapped Admin exam surfaces and 2 explicit legacy exclusions remain source-ready/dormant; the Exam Records list projection is explicitly bounded and no credential/internal account fields are exposed. No Admin mapping, Restricted activation, Faculty essay implementation, schema change or FACULTY-7 work. FACULTY-7 is next / not started.
 - **Scope:** capability enforcement for schedules/bookings/assignment/amendments, records/execution, Start Now, configuration, bank/media/publication, B8 result recovery and B9 reconsideration.
 - **Non-goals:** Faculty essay authority/UI, email integration, new scheduling policies, scorer changes.
 - **Dependencies:** 1–5.
