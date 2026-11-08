@@ -279,6 +279,9 @@ export function mapOfficialSummaryToRenderInput(
       409,
     );
   }
+  if (snapshot.scheduleId !== source.scheduleId || snapshot.defenseType !== source.defenseType) {
+    throw new AppError("The official summary does not belong to this exact defense.", 409);
+  }
   if (snapshot.schemaVersion !== 1) {
     throw new AppError(
       "The Oral Examination Summary uses an unsupported snapshot schema.",

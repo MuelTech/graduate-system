@@ -646,6 +646,10 @@ export class OfficialDefenseRecordService {
 
     const defenseType = String(schedule.defenseType);
     const summary = schedule.oralExamSummary;
+    const snapshot = (summary?.snapshotData ?? null) as OralExamSummarySnapshot | null;
+    if (snapshot && (snapshot.scheduleId !== scheduleId || snapshot.defenseType !== defenseType)) {
+      throw new AppError("The official summary does not belong to this exact defense.", 409);
+    }
 
     // Title Defense has no Adviser seat. Proposal/Final use only the exact
     // historical ADVISER assignment on this schedule - never the current active
@@ -679,7 +683,7 @@ export class OfficialDefenseRecordService {
       scheduleId,
       defenseType,
       summaryId: summary?.id ?? null,
-      snapshot: (summary?.snapshotData ?? null) as OralExamSummarySnapshot | null,
+      snapshot,
       adviserName,
     };
   }

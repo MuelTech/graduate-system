@@ -72,7 +72,7 @@ function source(overrides: Partial<OfficialSummaryDocumentSource> = {}): Officia
     scheduleId: "sched-1",
     defenseType: "PROPOSAL_DEFENSE",
     summaryId: "sum-1",
-    snapshot: snapshot(),
+    snapshot: snapshot({ defenseType: overrides.defenseType ?? "PROPOSAL_DEFENSE" }),
     adviserName: "Exact Adviser",
     ...overrides,
   };
@@ -120,6 +120,12 @@ const adviserAssignment = {
 };
 
 describe("mapOfficialSummaryToRenderInput", () => {
+  it.each([{ scheduleId: "other-attempt" }, { defenseType: "FINAL_DEFENSE" }])("rejects a mismatched frozen Summary identity %j", mismatch => {
+    const input = source({ snapshot: snapshot(mismatch) });
+    const before = JSON.stringify(input);
+    expectMappingError(input, 409, /does not belong to this exact defense/i);
+    expect(JSON.stringify(input)).toBe(before);
+  });
   it("uses the persisted snapshot identity, not live schedule fields", () => {
     const input = mapOfficialSummaryToRenderInput(source(), LOGOS);
     expect(input.candidateName).toBe("Frozen Student");
@@ -402,6 +408,17 @@ describe("OfficialDefenseDocumentService.generateOralExamSummaryPdf", () => {
     return { service, getOfficialSummaryDocumentSource, renderSummary };
   }
 
+  it.each([{ scheduleId: "other-attempt" }, { defenseType: "FINAL_DEFENSE" }])("rejects injected frozen Summary mismatch %j before rendering", async mismatch => {
+    const input = source({ snapshot: snapshot(mismatch) });
+    const before = JSON.stringify(input);
+    const { service, renderSummary } = makeService(input);
+    await expect(service.generateOralExamSummaryPdf("sched-1", ADMIN)).rejects.toMatchObject({
+      statusCode: 409, message: "The official summary does not belong to this exact defense.",
+    });
+    expect(renderSummary).not.toHaveBeenCalled();
+    expect(JSON.stringify(input)).toBe(before);
+  });
+
   it("generates the GS-011 PDF for an ADMIN and passes the exact scheduleId", async () => {
     const { service, getOfficialSummaryDocumentSource, renderSummary } = makeService();
 
@@ -520,6 +537,17 @@ describe("OfficialDefenseRecordService.getOfficialSummaryDocumentSource", () => 
 
   beforeEach(() => vi.clearAllMocks());
 
+  it.each([{ scheduleId: "other-attempt" }, { defenseType: "FINAL_DEFENSE" }])("rejects persisted frozen Summary mismatch %j before resolving an Adviser", async mismatch => {
+    const persisted = { ...scheduleBase, oralExamSummary: { id: "sum-1", snapshotData: snapshot(mismatch) } };
+    const before = JSON.stringify(persisted);
+    prismaMock.defenseSchedule.findUnique.mockResolvedValue(persisted);
+    await expect(records.getOfficialSummaryDocumentSource("sched-1", ADMIN)).rejects.toMatchObject({
+      statusCode: 409, message: "The official summary does not belong to this exact defense.",
+    });
+    expect(prismaMock.panelAssignment.findMany).not.toHaveBeenCalled();
+    expect(JSON.stringify(persisted)).toBe(before);
+  });
+
   it("rejects non-Admin actors before reading the schedule", async () => {
     try {
       await records.getOfficialSummaryDocumentSource("sched-1", {
@@ -550,6 +578,7 @@ describe("OfficialDefenseRecordService.getOfficialSummaryDocumentSource", () => 
     prismaMock.defenseSchedule.findUnique.mockResolvedValue({
       ...scheduleBase,
       defenseType: "TITLE_DEFENSE",
+      oralExamSummary: { id: "sum-1", snapshotData: snapshot({ defenseType: "TITLE_DEFENSE" }) },
     });
 
     const result = await records.getOfficialSummaryDocumentSource("sched-1", ADMIN);
@@ -561,7 +590,9 @@ describe("OfficialDefenseRecordService.getOfficialSummaryDocumentSource", () => 
 
   it("uses the exact schedule ADVISER assignment for Proposal/Final", async () => {
     for (const defenseType of ["PROPOSAL_DEFENSE", "FINAL_DEFENSE"]) {
-      prismaMock.defenseSchedule.findUnique.mockResolvedValue({ ...scheduleBase, defenseType });
+      prismaMock.defenseSchedule.findUnique.mockResolvedValue({
+        ...scheduleBase, defenseType, oralExamSummary: { id: "sum-1", snapshotData: snapshot({ defenseType }) },
+      });
       prismaMock.panelAssignment.findMany.mockResolvedValue([adviserAssignment]);
 
       const result = await records.getOfficialSummaryDocumentSource("sched-1", ADMIN);

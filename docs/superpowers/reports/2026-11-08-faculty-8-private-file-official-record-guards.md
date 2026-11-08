@@ -130,3 +130,32 @@ Independent remote commit-diff/source review remains required. Target capability
 - `docs/superpowers/GSIS_IMPLEMENTATION_CHECKLIST.md`
 - `docs/superpowers/plans/2026-11-08-faculty-admin-access-implementation.md`
 - `docs/superpowers/reports/2026-11-08-faculty-8-private-file-official-record-guards.md`
+
+## Independent-review correction — GS-011 frozen attempt identity
+
+Correction starting local/fetched remote HEAD: `f94d02f87c471602a7a2a6e3f9a5775653790ac9` on `feat/faculty-admin-access`; worktree/index clean and branch drift `0 0`. Status remains **FACULTY-8 implemented / pending independent review**.
+
+Independent review found that the Summary JSON boundary checked frozen attempt identity but the GS-011 PDF source did not. `getOfficialSummaryDocumentSource()` now rejects a non-null persisted snapshot with HTTP 409 and the existing JSON-boundary error message when its `scheduleId` or `defenseType` differs from the requested exact schedule. The check occurs before historical Adviser-seat resolution. `mapOfficialSummaryToRenderInput()` independently rejects either mismatch against its source identity, so an inconsistent injected source cannot reach the renderer.
+
+The source still returns the exact persisted snapshot without repair, regeneration, mutation or backfill. Valid frozen Student/evaluator/result values, Proposal/Final historical Adviser selection, Title's absent Adviser, and existing Admin/capability boundaries remain unchanged. Existing positive stage fixtures now explicitly carry matching frozen stage identities; malformed injected/persisted fixtures remain deliberately mismatched in the new regressions.
+
+Ten new cases cover both mismatch dimensions at the mapping, injected PDF, real source, and enabled Full/Restricted source-to-PDF boundaries. They assert denial before rendering/Adviser lookup and unchanged persisted data. The new tests reproduced the finding before the fix: 10 failed, 97 existing tests passed. After the correction, verification from `backend` was:
+
+```powershell
+npx vitest run tests/unit/services/official-defense-summary-document.service.test.ts tests/unit/services/faculty-8-official-records.test.ts
+npm run build
+```
+
+- Focused tests: **2 files / 107 tests passed; none skipped**.
+- Backend build: **PASS**.
+- Repository-root `git diff --check`: **PASS**.
+- Manual/browser, hosted CI and real-DB checks: **NOT EXECUTED / NOT CLAIMED**. Existing broader-package limitations above remain; this correction did not rerun or certify those checks. The existing Vite configuration warning remains unchanged.
+- No schema, migration, frontend, renderer/template, snapshot-write or enforcement-switch change. No Memo/eLibrary/Repository/Storage policy work, no FACULTY-9 or other package work, and no merge to `main`.
+
+Exact correction files:
+
+- `backend/src/services/official-defense-record.service.ts`
+- `backend/src/services/official-defense-document.service.ts`
+- `backend/tests/unit/services/official-defense-summary-document.service.test.ts`
+- `backend/tests/unit/services/faculty-8-official-records.test.ts`
+- `docs/superpowers/reports/2026-11-08-faculty-8-private-file-official-record-guards.md`

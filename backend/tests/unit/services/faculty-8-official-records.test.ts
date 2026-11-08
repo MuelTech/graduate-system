@@ -183,6 +183,28 @@ describe("FACULTY-8 official Defense service closure", () => {
     db.defenseSchedule.findUnique.mockResolvedValue({ ...schedule(), oralExamSummary: { snapshotData: { scheduleId: "other-attempt", defenseType: "TITLE_DEFENSE", evaluators: [] } } });
     await expect(records.getSummaryReadModel("schedule", actor)).rejects.toMatchObject({ statusCode: 409 });
   });
+  it.each([
+    { level: "RESTRICTED", mismatch: { scheduleId: "other-attempt" } },
+    { level: "RESTRICTED", mismatch: { defenseType: "FINAL_DEFENSE" } },
+    { level: "FULL", mismatch: { scheduleId: "other-attempt" } },
+    { level: "FULL", mismatch: { defenseType: "FINAL_DEFENSE" } },
+  ])("$level denies corrupted GS-011 source and PDF $mismatch without historical writes", async ({ level, mismatch }) => {
+    account(["defense.records.view"], { administratorAccess: { level } });
+    const persisted = { ...schedule(), oralExamSummary: { id: "summary", snapshotData: {
+      schemaVersion: 1, scheduleId: "schedule", defenseType: "TITLE_DEFENSE", evaluators: [], ...mismatch,
+    } } };
+    const before = JSON.stringify(persisted);
+    db.defenseSchedule.findUnique.mockResolvedValue(persisted);
+    const renderSummary = vi.fn(); const loadLogos = vi.fn();
+    const service = new OfficialDefenseDocumentService({ authorization: auth, records, renderSummary, loadLogos });
+    for (const read of [() => records.getOfficialSummaryDocumentSource("schedule", actor),
+      () => service.generateOralExamSummaryPdf("schedule", actor)]) {
+      await expect(read()).rejects.toMatchObject({ statusCode: 409, message: "The official summary does not belong to this exact defense." });
+    }
+    expect(renderSummary).not.toHaveBeenCalled(); expect(loadLogos).not.toHaveBeenCalled();
+    expect(db.panelAssignment.findMany).not.toHaveBeenCalled(); expect(db.oralExamScore.updateMany).not.toHaveBeenCalled();
+    expect(JSON.stringify(persisted)).toBe(before);
+  });
   it("exact owning evaluator receives safe JSON only; other academic accounts and raw print are denied", async () => {
     account([], { id: "evaluator", role: "FACULTY", administratorAccess: null, panelist: { isActive: true } });
     const own = { userId: "evaluator", role: "ADMIN" };
