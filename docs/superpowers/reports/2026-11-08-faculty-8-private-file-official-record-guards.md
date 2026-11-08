@@ -1,7 +1,7 @@
 # FACULTY-8 — Private Files and Official-Record Guard Closure
 
 - Date: 2026-11-08 (Asia/Manila).
-- Status: **FACULTY-8 implemented / pending independent review**. Not independently accepted.
+- Status: **FACULTY-8 accepted for continuation** at correction HEAD `76cc0ae8da9e2aca109ccd729356f793faf909b6` after independent remote commit-diff/source review and bounded GS-011 frozen-attempt identity correction review. FACULTY-9 remains deferred / not started.
 - Branch: `feat/faculty-admin-access`.
 - Starting feature/local/remote HEAD: `cddd60cc5d916c3a02ac002f4d6ff9135dfb01d0`.
 - Fetched `origin/main`: `045316540d97364214792c7d441ae20a1e426d4c`.
@@ -97,9 +97,9 @@ No memo/repository policy tests or frontend tests/build were required because th
 
 ## Delivery and limits
 
-The delivery commit contains this report and changes only FACULTY-8. Exact ending SHA, push result, clean worktree and local/remote parity are recorded in the accompanying final delivery after Git verification; this report does not embed its own circular commit hash. The plan/checklist status is only **FACULTY-8 implemented / pending independent review**.
+The original delivery commit contains this report and changes only FACULTY-8. The accepted implementation is the original FACULTY-8 commit `f94d02f87c471602a7a2a6e3f9a5775653790ac9` plus the bounded correction at `76cc0ae8da9e2aca109ccd729356f793faf909b6`. The plan/checklist now record **FACULTY-8 accepted for continuation** after independent review.
 
-Independent remote commit-diff/source review remains required. Target capability enforcement is synthetic/source-ready and dormant, not a claim of deployed Restricted access. The deferred Memo/eLibrary/Repository/Storage policies and Windows symlink verification limitation remain outstanding beyond this package. FACULTY-9 was not started.
+Independent remote commit-diff/source review is complete for the FACULTY-8 implementation and its bounded correction. Target capability enforcement remains synthetic/source-ready and dormant, not a claim of deployed Restricted access. The deferred Memo/eLibrary/Repository/Storage policies, hosted-CI/manual/real-DB evidence gaps, and Windows symlink verification limitation remain outside this acceptance. FACULTY-9 was not started and remains deferred pending project-owner approval.
 
 ## Exact changed files
 
@@ -133,7 +133,7 @@ Independent remote commit-diff/source review remains required. Target capability
 
 ## Independent-review correction — GS-011 frozen attempt identity
 
-Correction starting local/fetched remote HEAD: `f94d02f87c471602a7a2a6e3f9a5775653790ac9` on `feat/faculty-admin-access`; worktree/index clean and branch drift `0 0`. Status remains **FACULTY-8 implemented / pending independent review**.
+Correction starting local/fetched remote HEAD: `f94d02f87c471602a7a2a6e3f9a5775653790ac9` on `feat/faculty-admin-access`; worktree/index clean and branch drift `0 0`. At correction delivery, status remained **FACULTY-8 implemented / pending independent review**; the subsequent independent review accepted the corrected package at `76cc0ae8da9e2aca109ccd729356f793faf909b6`.
 
 Independent review found that the Summary JSON boundary checked frozen attempt identity but the GS-011 PDF source did not. `getOfficialSummaryDocumentSource()` now rejects a non-null persisted snapshot with HTTP 409 and the existing JSON-boundary error message when its `scheduleId` or `defenseType` differs from the requested exact schedule. The check occurs before historical Adviser-seat resolution. `mapOfficialSummaryToRenderInput()` independently rejects either mismatch against its source identity, so an inconsistent injected source cannot reach the renderer.
 
@@ -159,3 +159,14 @@ Exact correction files:
 - `backend/tests/unit/services/official-defense-summary-document.service.test.ts`
 - `backend/tests/unit/services/faculty-8-official-records.test.ts`
 - `docs/superpowers/reports/2026-11-08-faculty-8-private-file-official-record-guards.md`
+
+
+## Independent-review acceptance — 2026-11-09 (Asia/Manila)
+
+Independent remote commit-diff/source review is complete for the original FACULTY-8 implementation `f94d02f87c471602a7a2a6e3f9a5775653790ac9` and the bounded correction `76cc0ae8da9e2aca109ccd729356f793faf909b6`. The live `feat/faculty-admin-access` branch was verified at the correction HEAD during review.
+
+The original acceptance blocker was the GS-011 Summary PDF path lacking the frozen `scheduleId` / `defenseType` attempt-identity validation already present in the Summary JSON read model. The correction closes that gap at both `getOfficialSummaryDocumentSource()` and `mapOfficialSummaryToRenderInput()`, before Adviser resolution/rendering, and adds focused regressions for both mismatch dimensions across persisted-source and PDF paths. The review found no remaining FACULTY-8 blocker and no scope drift into schema/migrations, frontend, renderer/template redesign, enforcement activation, or FACULTY-9.
+
+Evidence classes remain separate: Codex reported the package and correction test/build results above; the independent review verified the pushed remote diff/source and regression intent, not a second execution of the Windows test commands. GitHub hosted CI, manual/browser QA and real-DB checks were not executed or claimed for this acceptance.
+
+**Acceptance checkpoint:** FACULTY-8 is accepted for continuation at correction HEAD `76cc0ae8da9e2aca109ccd729356f793faf909b6`. Direct-access/private-record enforcement remains dormant. FACULTY-9 remains deferred / not started and requires explicit project-owner approval before implementation.

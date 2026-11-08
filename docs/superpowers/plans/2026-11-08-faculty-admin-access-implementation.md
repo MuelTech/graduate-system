@@ -4,7 +4,7 @@
 - Repository: `MuelTech/graduate-system`
 - Audit baseline / verified live `main`: `045316540d97364214792c7d441ae20a1e426d4c`
 - Branch: `feat/faculty-admin-access`
-- Status: FACULTY-0 accepted; FACULTY-1 accepted; FACULTY-2 accepted for continuation; FACULTY-3 accepted for continuation; FACULTY-4 accepted for continuation; FACULTY-5 accepted for continuation; FACULTY-6 accepted for continuation after implementation, independent remote commit-diff/source review, and bounded least-privilege correction review; FACULTY-7 accepted for continuation after implementation, independent remote commit-diff/source review, and bounded least-privilege correction review. FACULTY-8 implemented / pending independent review.
+- Status: FACULTY-0 accepted; FACULTY-1 accepted; FACULTY-2 accepted for continuation; FACULTY-3 accepted for continuation; FACULTY-4 accepted for continuation; FACULTY-5 accepted for continuation; FACULTY-6 accepted for continuation after implementation, independent remote commit-diff/source review, and bounded least-privilege correction review; FACULTY-7 accepted for continuation after implementation, independent remote commit-diff/source review, and bounded least-privilege correction review; FACULTY-8 accepted for continuation at correction HEAD `76cc0ae8da9e2aca109ccd729356f793faf909b6` after independent remote commit-diff/source review and bounded GS-011 frozen-attempt identity correction review. FACULTY-9 remains deferred / not started pending project-owner approval.
 
 **Historical FACULTY-0 stop boundary:** FACULTY-0 authorized documentation only and ended before implementation. That boundary was satisfied before FACULTY-1 was separately authorized.
 
@@ -301,7 +301,7 @@ Sequence: **1 foundation → 2 auth → 3 identity compatibility → 4 Admin aut
 
 ### FACULTY-7 — Defense and Adviser administrative guards
 
-- **Status:** ✅ Accepted for continuation at correction HEAD `ec68ff3d9ef4202f1321418467ed08e4cc642286` (original implementation `ff12c6cbe92ed7cda312c9e8af5b44f39b531fef`) after independent remote commit-diff/source review and bounded least-privilege correction review. See [implementation report](../reports/2026-11-08-faculty-7-defense-adviser-administrative-guards.md). FACULTY-8 implemented / pending independent review.
+- **Status:** ✅ Accepted for continuation at correction HEAD `ec68ff3d9ef4202f1321418467ed08e4cc642286` (original implementation `ff12c6cbe92ed7cda312c9e8af5b44f39b531fef`) after independent remote commit-diff/source review and bounded least-privilege correction review. See [implementation report](../reports/2026-11-08-faculty-7-defense-adviser-administrative-guards.md). FACULTY-8 is accepted for continuation at correction HEAD `76cc0ae8da9e2aca109ccd729356f793faf909b6`; FACULTY-9 remains deferred / not started.
 
 - **Scope:** guard application review, scheduling/correction, committee candidate queries, records administration and Dean review/legacy assign wrapper; recheck proposed manual participant identity/activity/profile at writes.
 - **Non-goals:** committee quotas, external-role expansion, Adviser replacement, post-start substitution, scoring/verdict/report redesign.
@@ -314,7 +314,7 @@ Sequence: **1 foundation → 2 auth → 3 identity compatibility → 4 Admin aut
 
 ### FACULTY-8 — Private files and official-record guard closure
 
-- **Status:** FACULTY-8 implemented / pending independent review; [implementation report](../reports/2026-11-08-faculty-8-private-file-official-record-guards.md).
+- **Status:** ✅ Accepted for continuation at correction HEAD `76cc0ae8da9e2aca109ccd729356f793faf909b6` (original implementation `f94d02f87c471602a7a2a6e3f9a5775653790ac9`) after independent remote commit-diff/source review and bounded GS-011 frozen-attempt identity correction review; [implementation report](../reports/2026-11-08-faculty-8-private-file-official-record-guards.md). Enforcement remains dormant; FACULTY-9 is deferred / not started.
 
 - **Scope:** replace broad Admin branches in document streaming, GS-017, GS-020 and official Defense read/PDF services with resource/context capabilities; retain Faculty ownership/request/issuer checks.
 - **Non-goals:** new document entitlements, renderer/template changes, public storage, signed-record backfills, generic file manager.
