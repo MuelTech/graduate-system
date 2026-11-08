@@ -2,18 +2,27 @@ import { Request, Response } from "express";
 import { AuthService } from "../services/auth.service";
 import { AppError } from "../utils/AppError";
 import { AuthenticatedRequest } from "../middlewares/auth.middleware";
-import { currentAccountResponse } from "../services/current-account";
+import { EffectiveAccessService } from "../services/effective-access.service";
 
 export class AuthController {
     private authService = new AuthService();
+    private effectiveAccess = new EffectiveAccessService();
 
-    currentAccount = (req: AuthenticatedRequest, res: Response): void => {
+    currentAccount = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
         res.setHeader("Cache-Control", "no-store");
         if (!req.currentAccount) {
             res.status(503).json({ error: "Current account is unavailable." });
             return;
         }
-        res.json(currentAccountResponse(req.currentAccount));
+        try {
+            res.json(await this.effectiveAccess.currentAccount(req.currentAccount));
+        } catch (error: unknown) {
+            if (error instanceof AppError) {
+                res.status(error.statusCode).json({ error: error.message });
+            } else {
+                res.status(503).json({ error: "Current access is unavailable." });
+            }
+        }
     };
 
     register = async (req: Request, res: Response): Promise<void> => {

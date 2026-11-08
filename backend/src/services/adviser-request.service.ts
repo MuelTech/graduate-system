@@ -371,6 +371,12 @@ export class AdviserRequestService {
    * WP3: requested Adviser inbox — server-scoped to authenticated userId only.
    * Never uses the Admin-wide request list.
    */
+  /** Same own inbox scope, including historical addressed records. No payload
+   * or availability/classification predicate is needed for navigation hints. */
+  async countMyAdviserRequests(adviserUserId: string): Promise<number> {
+    return prisma.adviserRequest.count({ where: { requestedAdviserId: adviserUserId } });
+  }
+
   async listMyAdviserRequests(adviserUserId: string) {
     const rows = await prisma.adviserRequest.findMany({
       where: { requestedAdviserId: adviserUserId },

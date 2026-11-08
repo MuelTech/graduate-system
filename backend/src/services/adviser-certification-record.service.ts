@@ -69,6 +69,17 @@ function authorizeActor(actor: CertificationActor): void {
 export class AdviserCertificationRecordService {
   constructor(private readonly authorization: PrivateRecordAuthorization = privateRecordAuthorization) {}
 
+  /** Internal self-access reduction of listSources' exact academic issuer scope.
+   * Never loads signatures/documents and never confers current Adviser authority.
+   * The caller supplies only the already-authenticated current academic User id.
+   */
+  async countOwnIssuedSources(adviserId: string): Promise<number> {
+    return prisma.adviserCertification.count({ where: {
+      adviserId, status: "ISSUED",
+      defenseStage: { in: ["PROPOSAL_DEFENSE", "FINAL_DEFENSE"] },
+    } });
+  }
+
   private async adminContext(row: AdviserCertificationSource, actor: CertificationActor): Promise<boolean> {
     if (!this.authorization.enabled) return true;
     if (await this.authorization.can(actor, "defense.applications.view")) return true;

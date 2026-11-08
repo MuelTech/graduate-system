@@ -29,6 +29,15 @@ function toWallTime(value: Date | string | null | undefined): string | null {
 }
 
 export class PanelistDashboardRepository {
+  /** Same exact own active-assignment read authority as getAssignments and the
+   * Defense workspace/history entry point. No date/session-status cutoff:
+   * concluded assignments stay readable; corrected inactive rows confer none.
+   * Adviser requests/reviews and RAP task totals are deliberately not counted.
+   */
+  async countReadableAssignments(userId: string): Promise<number> {
+    return prisma.panelAssignment.count({ where: { userId, isActive: true } });
+  }
+
   /** Own PanelAssignment rows enriched with authoritative session state. */
   async getAssignments(userId: string): Promise<DashboardAssignmentInput[]> {
     const rows = await prisma.panelAssignment.findMany({

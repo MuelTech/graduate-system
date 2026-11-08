@@ -1,4 +1,6 @@
 import prisma from "../config/database";
+import { AppError } from "../utils/AppError";
+import { resolveSingleActiveAdviser } from "../services/active-adviser.rules";
 
 /**
  * ADV-2 — read-only Adviser workspace repository.
@@ -90,6 +92,29 @@ export type AdviserDefenseHistoryRow = {
 };
 
 export class AdviserWorkspaceRepository {
+  /** FACULTY-13: same sole-active authority as the workspace, without profiles,
+   * theses or review documents. One relation query, never one query per Student.
+   * Review queues require this relationship and add no independent relevance.
+   */
+  async countSoleActiveAdvisees(adviserId: string): Promise<number> {
+    const rows = await prisma.adviserAssignment.findMany({
+      where: { adviserId, isActive: true },
+      select: { student: { select: { adviserAssignments: {
+        where: { isActive: true }, select: { id: true, adviserId: true },
+      } } } },
+    });
+    for (const row of rows) {
+      const resolution = resolveSingleActiveAdviser(row.student.adviserAssignments);
+      if (resolution.status === "CONFLICT") {
+        throw new AppError("More than one active adviser is recorded for this student. Correct the adviser record before continuing.", 409);
+      }
+      if (resolution.status !== "ACTIVE" || resolution.assignment.adviserId !== adviserId) {
+        throw new AppError("The active adviser relationship could not be verified. Correct the adviser record before continuing.", 409);
+      }
+    }
+    return rows.length;
+  }
+
   /** Active advisees for exactly one authenticated Adviser. */
   async listActiveAssignmentsForAdviser(
     adviserId: string,
