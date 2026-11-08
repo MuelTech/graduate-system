@@ -140,30 +140,52 @@ export class ExamRepository {
 
     async getAllApplications() {
         const applications = await prisma.entranceExamApplication.findMany({
-            include: {
-                score: true, resultDecision: true,
-                student: {
-                    include: {
-                        user: true,
-                    }
-                },
-                program: true,
-                slot: true,
+            select: {
+                id: true, status: true,
+                // Internal evidence for the existing list flags, never response fields.
+                ...evaluationAuthoritySelect,
+                score: { select: {
+                    id: true, status: true, multipleChoiceScore: true, essayScore: true,
+                    totalScore: true, gradedById: true, essayEvaluatedAt: true,
+                    scoredAt: true, scoringBasis: true,
+                } },
+                resultDecision: { select: {
+                    applicationId: true, scoreId: true, decision: true,
+                    reason: true, decidedById: true, decidedAt: true,
+                } },
+                student: { select: {
+                    pinnacleApplicantId: true,
+                    user: { select: { firstName: true, lastName: true, email: true } },
+                } },
+                program: { select: { id: true, programName: true } },
+                slot: { select: { examDate: true, examTime: true } },
             },
             orderBy: {
                 createdAt: 'desc'
             }
         });
-        return applications.map(({ score, resultDecision, ...application }) => ({ ...application,
-            reconsidered: resultDecision != null && hasEffectiveExamPass({ ...application, score, resultDecision }),
+        return applications.map(application => ({
+            id: application.id,
+            status: application.status,
+            student: {
+                pinnacleApplicantId: application.student.pinnacleApplicantId,
+                user: {
+                    firstName: application.student.user.firstName,
+                    lastName: application.student.user.lastName,
+                    email: application.student.user.email,
+                },
+            },
+            program: { id: application.program.id, programName: application.program.programName },
+            slot: { examDate: application.slot.examDate, examTime: application.slot.examTime },
+            reconsidered: application.resultDecision != null && hasEffectiveExamPass(application),
             // Presentation only. The locked B7 resolver remains grading authority.
             essayEvaluationCompleted: application.status === "TAKEN" && application.finalizedAt !== null &&
                 application.finalizationReceiptId !== null && application.finalizationReason !== null &&
                 application.finalizationAnsweredCount !== null && application.finalizationQuestionCount !== null &&
                 application.actualStartedAt !== null && application.deadlineAt !== null &&
                 application.contentRevisionId !== null && application.executionConfiguration !== null &&
-                score?.status === "PENDING" && score.totalScore === null && score.essayScore !== null &&
-                score.gradedById !== null && score.essayEvaluatedAt !== null,
+                application.score?.status === "PENDING" && application.score.totalScore === null && application.score.essayScore !== null &&
+                application.score.gradedById !== null && application.score.essayEvaluatedAt !== null,
         }));
     }
 

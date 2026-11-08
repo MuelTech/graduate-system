@@ -173,3 +173,16 @@ npm run build
 No schema/migration or frontend/UI change. No live Administrator mapping/bootstrap/Restricted provisioning/activation, Faculty Essay Evaluation implementation, outside-exam file/Defense/settings guard, scoring/policy redesign or FACULTY-7 work. No implementation blocker or scope deviation; real DB contention and independent review remain explicit limitations. Plan/checklist state is **FACULTY-6 implemented / pending independent review**, not accepted.
 
 Commit/push only FACULTY-6 to the existing feature branch. Final commit SHA and clean local/live-remote parity are reported after delivery to avoid a self-referential commit hash. Stop after delivery; do not activate Restricted access, implement Faculty Essay Evaluation or begin FACULTY-7.
+
+
+## Bounded independent-review correction — Exam Records list projection
+
+Independent review found that `ExamRepository.getAllApplications()` used over-broad application/User/Student relations and spread internal fields into `GET /api/exam/applications`. This correction narrows that list only to an explicit Prisma selection and deliberate response DTO. The response contains `id`, `status`, `student.pinnacleApplicantId`, `student.user.{firstName,lastName,email}`, `program.{id,programName}`, `slot.{examDate,examTime}`, `reconsidered` and `essayEvaluationCompleted`. Credentials/internal account fields (including `passwordHash`, `mustChangePassword`, `customRoleId`, `createdById`, `updatedById`), raw score/decision objects and internal evaluation evidence are not exposed. Existing flag predicates, record detail, capability mapping, ordering and B3–B10 business rules are unchanged.
+
+Fetched/verified starting feature HEAD `7fd57d941309170612c72941e50eb308eaf1cfff` and main `045316540d97364214792c7d441ae20a1e426d4c`; tree/index clean, feature local/remote drift `0 0`, main/feature drift `0 15`. No branch/history operation or fast-forward was needed. Correction files only:
+
+- `backend/src/repositories/exam.repository.ts`
+- `backend/tests/unit/repositories/exam-record.repository.test.ts`
+- `docs/superpowers/reports/2026-11-08-faculty-6-examination-administrative-guards.md`
+
+Focused correction command (from `backend`): `npm test -- tests/unit/repositories/exam-record.repository.test.ts tests/unit/routes/faculty-6-exam-administration.routes.test.ts tests/unit/services/faculty-6-exam-boundaries.test.ts tests/unit/services/exam-record-detail.service.test.ts` — **4 files / 162 tests PASS**. Tests inspect the selected field allowlists and returned DTO, including overfilled persistence results; flag regressions also apply the actual Prisma select before calculation to catch missing internal evidence. Backend `npm run build` and `git diff --check` — **PASS**. No full suite, frontend build or real-DB contention run; no lock/write/schema/migration/frontend change. No live access activation or FACULTY-7 work. FACULTY-6 remains **implemented / pending independent review**; acceptance is not asserted.
