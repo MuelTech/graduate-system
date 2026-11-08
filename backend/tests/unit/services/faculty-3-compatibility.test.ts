@@ -86,7 +86,8 @@ describe("FACULTY-3 bounded academic identity", () => {
     db.user.findMany.mockResolvedValue([]); db.user.count.mockResolvedValue(0);
     const repository = new ThesisRepository();
     await repository.searchActivePanelists({ page: 1, pageSize: 10 });
-    await repository.getActivePanelistCandidates(); await repository.getAvailableAdvisers();
+    await repository.getActivePanelistCandidates();
+    await expect(repository.getAvailableAdvisers()).rejects.toMatchObject({ statusCode: 410 }); // FACULTY-10 retires unrestricted selection.
     for (const [query] of db.user.findMany.mock.calls) {
       expect(query.where.role).toEqual({ in: ["PANELIST", "FACULTY"] });
       expect(query.where.panelist.isActive).toBe(true);

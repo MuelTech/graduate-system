@@ -11,11 +11,11 @@ describe("FACULTY-4 alternate legacy identity mutation boundary", () => {
     }, "restricted", "injected-hash")).rejects.toMatchObject({ statusCode: 403 });
     expect(tx.user.update).not.toHaveBeenCalled(); expect(tx.panelist.update).not.toHaveBeenCalled();
   });
-  it.each(["PANELIST", "FACULTY"])("preserves existing %s profile updates and atomically excludes ADMIN targets", async role => {
+  it.each(["PANELIST", "FACULTY"])("retires the alternate %s writer; authorized changes now use Faculty configuration", async role => {
     tx.panelist.findUnique.mockResolvedValue({ id: "profile", userId: "academic", user: { role },
       isExternal: false, isAvailableAsAdviser: true });
     tx.user.update.mockResolvedValue({}); tx.panelist.update.mockResolvedValue({ id: "profile" });
-    await new AdminPanelistRepository().updateWithUserTransaction("profile", { isActive: false }, "admin");
-    expect(tx.user.update).toHaveBeenCalledWith(expect.objectContaining({ where: { id: "academic", role: { not: "ADMIN" } } }));
+    await expect(new AdminPanelistRepository().updateWithUserTransaction("profile", { isActive: false }, "admin")).rejects.toMatchObject({ statusCode: 403 });
+    expect(tx.user.update).not.toHaveBeenCalled(); expect(tx.panelist.update).not.toHaveBeenCalled();
   });
 });

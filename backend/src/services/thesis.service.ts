@@ -1,3 +1,5 @@
+import { facultyAuthorization } from "../access/faculty-configuration";
+import type { OperationalAuthorization } from "../access/operational-authorization";
 import { privateRecordAuthorization, PrivateRecordAuthorization } from "../access/private-record-authorization";
 import { defenseAdviserAuthorization, DefenseAdviserAuthorization } from "../access/defense-adviser-authorization";
 import { ThesisRepository } from '../repositories/thesis.repository';
@@ -54,7 +56,8 @@ export interface ScheduleDefenseInput {
 
 export class ThesisService {
   constructor(private readonly administration: DefenseAdviserAuthorization = defenseAdviserAuthorization,
-    private readonly privateAccess: PrivateRecordAuthorization = privateRecordAuthorization) {}
+    private readonly privateAccess: PrivateRecordAuthorization = privateRecordAuthorization,
+    private readonly faculty: OperationalAuthorization = facultyAuthorization) {}
   private scheduledSubmission = new ScheduledDefenseSubmissionService(undefined, undefined, undefined, this.administration);
 
   async getScheduledDefenseSubmission(scheduleId: string, actor: { userId: string; role: string }) {
@@ -74,7 +77,7 @@ export class ThesisService {
   private eligibilityRepo = new DefenseEligibilityRepository();
   private eligibility = new DefenseEligibilityService();
   private committeePolicy = new DefenseCommitteePolicy();
-  private adviserRequestService = new AdviserRequestService(this.administration);
+  private adviserRequestService = new AdviserRequestService(this.administration, this.faculty);
   private conclusion = new DefenseConclusionService();
   private officialRecords = new OfficialDefenseRecordService(this.administration, this.privateAccess);
   private officialDocuments = new OfficialDefenseDocumentService({ authorization: this.privateAccess });
@@ -259,7 +262,7 @@ export class ThesisService {
 
   async getAvailableAdvisers(actorId?: string) {
     await this.administration.assertAvailableAdvisers(actorId as string);
-    return this.thesisRepo.getAvailableAdvisers();
+    return (await this.adviserRequestService.listOdpCandidates(actorId as string)).candidates;
   }
 
   /** Defense committee candidates: active PANELIST users (not adviser-availability filtered). */

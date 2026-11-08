@@ -13,7 +13,6 @@ import { SettingsService } from "../../../src/services/settings.service";
 import { EmailLogService } from "../../../src/services/email-log.service";
 import { StorageHealthService } from "../../../src/services/storage-health.service";
 import { UploadTelemetry } from "../../../src/storage/upload-telemetry";
-import { AdminPanelistService } from "../../../src/services/admin-panelist.service";
 import { EvaluationService } from "../../../src/services/evaluation.service";
 import { EXAM_CONFIGURATION_KEY } from "../../../src/services/exam-configuration.rules";
 import { ORDINARY_SETTING_KEYS } from "../../../src/access/operational-settings-policy";
@@ -125,14 +124,11 @@ describe("FACULTY-9 safe settings and exclusions", () => {
     account([], { administratorAccess: { level: "FULL" } });
     await expect(settings.deleteAuditLogs(["id"], "actor")).rejects.toMatchObject({ statusCode: 403 });
   });
-  it("deferred Expert and Faculty administration cannot execute even for Full", async () => {
+  it("deferred Expert assignment remains excluded even for Full", async () => {
     account([], { administratorAccess: { level: "FULL" } });
     await expect(new EvaluationService(auth).assignExpert("id", { assignedById: "actor" })).rejects.toMatchObject({ statusCode: 403 });
-    const faculty = new AdminPanelistService(auth);
-    for (const call of [() => faculty.getAllPanelists(), () => faculty.getPanelistById("id"),
-      () => faculty.createPanelist({}, "actor"), () => faculty.updatePanelist("id", {}, "actor")]) {
-      await expect(call()).rejects.toMatchObject({ statusCode: 403 });
-    }
+    // Faculty management transfers to the dedicated FACULTY-10 capability matrix.
+
   });
   it("direct omitted actors fail closed", async () => {
     account([], { administratorAccess: { level: "FULL" } });

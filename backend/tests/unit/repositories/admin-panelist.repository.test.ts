@@ -1,4 +1,5 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+vi.mock("../../../src/config/database", () => ({ default: {} }));
 import { resolvePanelistAdviserFlags } from "../../../src/repositories/admin-panelist.repository";
 
 describe("resolvePanelistAdviserFlags", () => {

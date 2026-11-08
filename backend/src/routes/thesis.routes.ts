@@ -251,11 +251,11 @@ router.get(
   thesisController.getActiveAssignments,
 );
 
-// ADMIN & STUDENTS: Get available advisers (panelists)
+// STUDENT: compatibility alias of the exact passed Title ODP candidates
 router.get(
   "/adviser/available",
   authenticateJWT,
-  requireRole(["ADMIN", "STUDENT"]),
+  requireRole(["STUDENT"]),
   excludeDefenseAdviserAdministration(true),
   thesisController.getAvailableAdvisers,
 );

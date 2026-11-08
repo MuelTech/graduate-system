@@ -1,3 +1,5 @@
+import { facultyAuthorization, lockFacultyEligibility } from "../access/faculty-configuration";
+import { OperationalAuthorization } from "../access/operational-authorization";
 import { isAcademicAccountRole } from "../utils/academic-account";
 import { defenseAdviserAuthorization, DefenseAdviserAuthorization } from "../access/defense-adviser-authorization";
 /**
@@ -20,6 +22,7 @@ import type {
 } from "../interfaces/thesis.interfaces";
 import {
   evaluateCandidateEligibility,
+  evaluateNewAdviserEligibility,
   evaluateTitleDefenseGate,
   evaluateAdviserResponseTransition,
   evaluateDeanResponseTransition,
@@ -78,16 +81,33 @@ export interface PassedTitleDefenseContext {
 }
 
 export class AdviserRequestService {
-  constructor(private readonly administration: DefenseAdviserAuthorization = defenseAdviserAuthorization) {}
+  constructor(private readonly administration: DefenseAdviserAuthorization = defenseAdviserAuthorization,
+    private readonly faculty: OperationalAuthorization = facultyAuthorization) {}
+
+  private async currentStudent(userId: string) {
+    const actor = await this.faculty.current({ userId, role: "STUDENT" });
+    if (actor.role !== "STUDENT") throw new AppError("Only the owning Student may submit an Adviser Request.", 403);
+  }
+
+  private assertSameCandidate(ctx: PassedTitleDefenseContext, requestedAdviserId: string,
+    expected: { sourceDefenseScheduleId: string; requestedAdviserName?: string; sourceConclusionId?: string }) {
+    const candidate = ctx.candidates.find(row => row.userId === requestedAdviserId);
+    if (!candidate || ctx.scheduleId !== expected.sourceDefenseScheduleId ||
+        (expected.sourceConclusionId && expected.sourceConclusionId !== ctx.conclusionId) ||
+        (expected.requestedAdviserName && candidate.name !== expected.requestedAdviserName)) {
+      throw new AppError("The requested Adviser is no longer eligible. Review the request before continuing.", 409);
+    }
+  }
   /**
    * Authoritative source: DefenseConclusion.outcome = PASSED (Title) with a
    * finalized same-session Title RAP. Never derive from ThesisRecord.status
    * alone or application APPROVED. A selected title is not required.
    */
-  async getPassedTitleDefenseContext(
+  private async getPassedTitleDefenseContext(
     studentId: string,
+    database: Pick<Prisma.TransactionClient, "defenseConclusion" | "rapReport"> = prisma,
   ): Promise<PassedTitleDefenseContext> {
-    const conclusion = await prisma.defenseConclusion.findFirst({
+    const conclusion = await database.defenseConclusion.findFirst({
       where: {
         thesis: { studentId },
         outcome: "PASSED",
@@ -132,7 +152,7 @@ export class AdviserRequestService {
     let hasFinalizedTitleRap = false;
     if (conclusion) {
       // RAP must belong to the same defense session as this PASSED conclusion.
-      const titleRaps = await prisma.rapReport.findMany({
+      const titleRaps = await database.rapReport.findMany({
         where: {
           scheduleId: conclusion.scheduleId,
           defenseType: "TITLE_DEFENSE",
@@ -210,6 +230,7 @@ export class AdviserRequestService {
     candidates: OdpCandidateDto[];
     student: { studentId: string; studentName: string; studentNumber: string; programName: string };
   }> {
+    await this.currentStudent(userId);
     const student = await prisma.student.findUnique({ where: { userId }, include: { user: true, program: true } });
     if (!student) throw new AppError("Student profile not found.", 404);
 
@@ -226,6 +247,7 @@ export class AdviserRequestService {
   }
 
   async createRequest(userId: string, input: RequestAdviserInput) {
+    await this.currentStudent(userId);
     const requestedAdviserId = String(input.requestedAdviserId || "").trim();
     if (!requestedAdviserId) {
       throw new AppError("requestedAdviserId is required.", 400);
@@ -303,6 +325,10 @@ export class AdviserRequestService {
 
     // Serialize duplicate submissions using the same per-Student lock as final approval.
     return prisma.$transaction(async tx => {
+      if (this.faculty.enabled) {
+        await lockFacultyEligibility(tx, userId, requestedAdviserId);
+        await this.currentStudent(userId);
+      }
       await tx.$queryRaw`SELECT student_id FROM students WHERE student_id = ${student.id} FOR UPDATE`;
       if (await tx.adviserAssignment.findFirst({ where: { studentId: student.id, isActive: true } })) {
         throw new AppError("An active adviser assignment already exists.", 409);
@@ -311,6 +337,15 @@ export class AdviserRequestService {
         OR: [{ adviserStatus: "PENDING" }, { adviserStatus: "CONFORMED", deanStatus: "PENDING" }] } });
       if (pending && isOpenAdviserRequest(pending)) {
         throw new AppError("An adviser request is already waiting for Adviser response or Dean review.", 409);
+      }
+      if (this.faculty.enabled) {
+        const fresh = await this.getPassedTitleDefenseContext(student.id, tx);
+        this.assertSameCandidate(fresh, requestedAdviserId, signed);
+        const currentStudent = await tx.student.findUnique({ where: { userId }, include: { user: true, program: true } });
+        if (!currentStudent || currentStudent.id !== student.id || Object.entries(signingStudent(currentStudent)).some(([key, value]) =>
+          signed[key as keyof SignedAdviserRequestState] !== value)) {
+          throw new AppError("The request details have changed. Review and sign again.", 409);
+        }
       }
       // Nested create atomically binds the request to its immutable signing evidence.
       return tx.adviserRequest.create({
@@ -574,6 +609,7 @@ export class AdviserRequestService {
     input: DeanResponseInput,
   ) {
     await this.administration.assert(deanUserId, "adviser.requests.review");
+    if (this.faculty.enabled) await this.faculty.assert(deanUserId, "adviser.requests.review");
     const existing = await prisma.adviserRequest.findUnique({
       where: { id: requestId },
     });
@@ -595,7 +631,7 @@ export class AdviserRequestService {
     const remarks = input.remarks?.trim() ? input.remarks.trim() : null;
 
     try {
-      return await prisma.$transaction(async (tx) => {
+      const decide = async (tx: Prisma.TransactionClient) => {
         await this.administration.assertInTransaction(tx, deanUserId, "adviser.requests.review");
         // Keep the existing Student lock after the shared access fence and
         // before workflow reads. The conditional claim still protects the exact decision.
@@ -629,22 +665,20 @@ export class AdviserRequestService {
             );
           }
 
-          // Hard invariant: external panelists can never become advisers
-          // (request may predate Admin marking the panelist external).
-          const requestedPanelist = await tx.panelist.findUnique({
-            where: { userId: current.requestedAdviserId },
-          });
-          if (!requestedPanelist || requestedPanelist.isExternal === true) {
-            throw new AppError(
-              "External panelists cannot be assigned as thesis/dissertation advisers.",
-              409,
-            );
+          if (this.faculty.enabled) {
+            await tx.$queryRaw`SELECT user_id FROM users WHERE user_id = ${current.requestedAdviserId} FOR UPDATE`;
+            await tx.$queryRaw`SELECT panelist_id FROM panelists WHERE user_id = ${current.requestedAdviserId} FOR UPDATE`;
           }
-          const requestedUser = await tx.user.findUnique({ where: { id: current.requestedAdviserId },
-            select: { id: true, role: true, isActive: true } });
-          if (!requestedUser || !isAcademicAccountRole(requestedUser.role) || requestedUser.isActive !== true ||
-              requestedPanelist.isActive !== true || requestedPanelist.isAvailableAsAdviser !== true) {
-            throw new AppError("The requested Adviser is no longer eligible for a new assignment.", 409);
+          const requestedPanelist = await tx.panelist.findUnique({ where: { userId: current.requestedAdviserId } });
+          const requestedUser = await tx.user.findUnique({ where: { id: current.requestedAdviserId }, select: { id: true, role: true, isActive: true } });
+          const eligibility = evaluateNewAdviserEligibility({
+            userRole: requestedUser?.role ?? "", userIsActive: requestedUser?.isActive === true,
+            hasPanelistProfile: Boolean(requestedPanelist), panelistIsActive: requestedPanelist?.isActive,
+            isExternal: requestedPanelist?.isExternal, isAvailableAsAdviser: requestedPanelist?.isAvailableAsAdviser,
+          });
+          if (!eligibility.eligible) throw new AppError("The requested Adviser is no longer eligible for a new assignment.", 409);
+          if (this.faculty.enabled && (requestedUser?.id !== current.requestedAdviserId || requestedPanelist?.userId !== current.requestedAdviserId)) {
+            throw new AppError("The requested Adviser account requires review.", 409);
           }
         }
 
@@ -691,6 +725,10 @@ export class AdviserRequestService {
           const evidence = await tx.adviserRequestSignedState.findUnique({ where: { requestId } });
           const signed = assertSignedAdviserRequest(current, evidence);
           await validateStudentRequestSignature(evidence!.signatureData);
+          if (this.faculty.enabled) {
+            const ctx = await this.getPassedTitleDefenseContext(current.studentId, tx);
+            this.assertSameCandidate(ctx, current.requestedAdviserId, { sourceDefenseScheduleId: signed.sourceDefenseScheduleId, sourceConclusionId: signed.sourceConclusionId });
+          }
           const snapshot = finalizedAdviserRequestSnapshot(signed, current.adviserRespondedAt, deanUserId, now);
           // A primary key on requestId prevents duplicate official records. Failure rolls back approval and assignment.
           await tx.adviserRequestOfficialRecord.create({ data: {
@@ -709,7 +747,13 @@ export class AdviserRequestService {
         }
 
         return tx.adviserRequest.findUnique({ where: { id: requestId } });
-      });
+      };
+      return this.faculty.enabled
+        ? await this.faculty.write(deanUserId, "adviser.requests.review", tx => {
+            if (!tx) throw new AppError("Faculty configuration is unavailable.", 503);
+            return decide(tx);
+          })
+        : await prisma.$transaction(decide);
     } catch (error: unknown) {
       // Map lock/deadlock/serialization conflicts to domain 409.
       const message = error instanceof Error ? error.message : String(error);

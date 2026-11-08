@@ -25,7 +25,8 @@ const validPanelist = {
   hasPanelistProfile: true,
   panelistIsActive: true,
   isAvailableAsAdviser: true,
-};
+  isExternal: false,
+  };
 
 describe("ADVISER_CANDIDATE_ROLES", () => {
   it("includes Chairman and Panelist only", () => {

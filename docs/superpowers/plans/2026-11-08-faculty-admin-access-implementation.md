@@ -4,7 +4,7 @@
 - Repository: `MuelTech/graduate-system`
 - Audit baseline / verified live `main`: `045316540d97364214792c7d441ae20a1e426d4c`
 - Branch: `feat/faculty-admin-access`
-- Status: FACULTY-0 accepted; FACULTY-1 accepted; FACULTY-2 accepted for continuation; FACULTY-3 accepted for continuation; FACULTY-4 accepted for continuation; FACULTY-5 accepted for continuation; FACULTY-6 accepted for continuation after implementation, independent remote commit-diff/source review, and bounded least-privilege correction review; FACULTY-7 accepted for continuation after implementation, independent remote commit-diff/source review, and bounded least-privilege correction review; FACULTY-8 accepted for continuation at correction HEAD `76cc0ae8da9e2aca109ccd729356f793faf909b6` after independent remote commit-diff/source review and bounded GS-011 frozen-attempt identity correction review; FACULTY-9 accepted for continuation at `a22777becfb901973d2aec3e1548e360a60d25d0` after independent remote commit-diff/source review. FACULTY-10 remains deferred / not started pending project-owner approval.
+- Status: FACULTY-0 accepted; FACULTY-1 accepted; FACULTY-2 accepted for continuation; FACULTY-3 accepted for continuation; FACULTY-4 accepted for continuation; FACULTY-5 accepted for continuation; FACULTY-6 accepted for continuation after implementation, independent remote commit-diff/source review, and bounded least-privilege correction review; FACULTY-7 accepted for continuation after implementation, independent remote commit-diff/source review, and bounded least-privilege correction review; FACULTY-8 accepted for continuation at correction HEAD `76cc0ae8da9e2aca109ccd729356f793faf909b6` after independent remote commit-diff/source review and bounded GS-011 frozen-attempt identity correction review; FACULTY-9 accepted for continuation at `a22777becfb901973d2aec3e1548e360a60d25d0` after independent remote commit-diff/source review. FACULTY-10 implemented / pending independent review; see its checkpoint below.
 
 **Historical FACULTY-0 stop boundary:** FACULTY-0 authorized documentation only and ended before implementation. That boundary was satisfied before FACULTY-1 was separately authorized.
 
@@ -327,7 +327,7 @@ Sequence: **1 foundation → 2 auth → 3 identity compatibility → 4 Admin aut
 
 ### FACULTY-9 — Settings, operational surfaces and aggregate containment
 
-- **Status:** ✅ Accepted for continuation at `a22777becfb901973d2aec3e1548e360a60d25d0` after independent remote commit-diff/source review. [Implementation report and complete action/capability ledger](../reports/2026-11-09-faculty-9-operational-aggregate-guards.md). Settings/key policy, separate email-template/log authority, storage diagnostics, Repository/Databank, Memo/audience/file checks and capability-filtered dashboard queries were independently reviewed. Raw respondent data remains exact current Student-researcher only in the enabled target; unauthorized dashboard sources are not queried. Unclassified legacy Expert/Faculty administration and generic audit deletion remain denied in the target, while protected access/security audit evidence remains protected. Enforcement stays code-owned/dormant; no schema/migration/frontend/live mapping or Restricted activation. FACULTY-10 remains deferred / not started pending project-owner approval.
+- **Status:** ✅ Accepted for continuation at `a22777becfb901973d2aec3e1548e360a60d25d0` after independent remote commit-diff/source review. [Implementation report and complete action/capability ledger](../reports/2026-11-09-faculty-9-operational-aggregate-guards.md). Settings/key policy, separate email-template/log authority, storage diagnostics, Repository/Databank, Memo/audience/file checks and capability-filtered dashboard queries were independently reviewed. Raw respondent data remains exact current Student-researcher only in the enabled target; unauthorized dashboard sources are not queried. Unclassified legacy Expert/Faculty administration and generic audit deletion remain denied in the target, while protected access/security audit evidence remains protected. Enforcement stays code-owned/dormant; no schema/migration/frontend/live mapping or Restricted activation. FACULTY-10 implemented / pending independent review; see its checkpoint below.
 
 - **Scope:** enforce remaining settings/key allowlists, email-template/log reads, storage, repository, memo management and audit reads; filter Admin dashboard queries by effective modules; close unclassified Restricted entry points.
 - **Non-goals:** implementing Analytics/Curriculum, email delivery, expert-evaluation workflow, audit-retention redesign.
@@ -340,6 +340,8 @@ Sequence: **1 foundation → 2 auth → 3 identity compatibility → 4 Admin aut
 
 ### FACULTY-10 — Faculty configuration and new-Adviser eligibility backend
 
+- **Status:** 🔍 FACULTY-10 implemented / pending independent review. [Implementation report and bounded action/capability ledger](../reports/2026-11-09-faculty-10-configuration-adviser-eligibility.md). `faculty.view`/`faculty.manage` guard bounded Faculty DTOs, secure provisioning, profile/status/classification/availability and only `essay.evaluate` grants, with fenced target locks and protected atomic audit. The enabled target denies self-availability writes; candidate list, signed request submission and Dean approval share current new-Adviser eligibility, with transaction rechecks. The broad available directory is retired in favor of Student ODP candidates. DR-6/DR-7 cases fail closed without rewriting evidence/relationships. Faculty Management is code-owned/dormant (503 until activated); no real provisioning/grant activation, data conversion, schema/migration or frontend work. FACULTY-11 remains deferred / not started.
+
 - **Scope:** Admin-managed Faculty profile/status/classification, direct Essay Evaluation grants, adviser availability; remove/deny self-service availability writes; align all new-assignment candidate/approval checks.
 - **Non-goals:** assigning Students/committees from Faculty Management, load caps, editing signed requests, rewriting existing assignments.
 - **Dependencies:** 1–9; DR-6/7 before affected pending-request/reclassification cases ship.
@@ -350,6 +352,8 @@ Sequence: **1 foundation → 2 auth → 3 identity compatibility → 4 Admin aut
 - **Stop condition:** backend configuration and eligibility invariants proven; no UI changes or live essay grants implied.
 
 ### FACULTY-11 — Faculty Management UI
+
+- **Status:** Deferred / not started. FACULTY-10 implements backend configuration only.
 
 - **Scope:** Faculty list/detail, account status, Internal/External, Essay Evaluation access, Available as Adviser, bounded read-only assignment summaries.
 - **Non-goals:** committee/adviser assignment editors, broad portal redesign, Administrator management.

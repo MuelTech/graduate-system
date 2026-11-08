@@ -52,7 +52,7 @@ const endpoints = [
 ] as const;
 const excluded = [
   ["DELETE", "/settings/audit-logs/log"], ["POST", "/settings/audit-logs/delete"], ["POST", "/evaluation/request/assign"],
-  ["GET", "/admin/panelists"], ["GET", "/admin/panelists/faculty"], ["POST", "/admin/panelists"], ["PUT", "/admin/panelists/faculty"],
+  // Faculty administration transfers to FACULTY-10 and remains separately gated.
 ] as const;
 let server: ReturnType<typeof createServer>, base: string;
 function account(keys: string[] = [], extra = {}) {

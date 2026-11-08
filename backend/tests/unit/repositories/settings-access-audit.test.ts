@@ -10,6 +10,7 @@ import settingsRoutes from "../../../src/routes/settings.routes";
 import { SettingsRepository } from "../../../src/repositories/settings.repository";
 import { SettingsService } from "../../../src/services/settings.service";
 import { ACCESS_AUDIT_ACTIONS, PROTECTED_ACCESS_AUDIT_PREFIXES } from "../../../src/access/access-audit";
+import { FACULTY_AUDIT_ACTIONS } from "../../../src/access/faculty-configuration";
 
 let rows: { id: string; actionType: string }[];
 let server: ReturnType<typeof createServer>; let url: string;
@@ -44,6 +45,15 @@ beforeEach(() => {
   });
 });
 describe("FACULTY-4 protected audit deletion", () => {
+  it("preserves FACULTY-10 profile/status/access evidence under the existing protected prefix", async () => {
+    const facultyRows = Object.values(FACULTY_AUDIT_ACTIONS).map((actionType, i) => ({ id: `faculty-${i}`, actionType }));
+    rows.push(...facultyRows);
+    expect(await new SettingsRepository().deleteAuditLogs(facultyRows.map(row => row.id))).toEqual({ count: 0 });
+    for (const row of facultyRows) {
+      await expect(new SettingsRepository().deleteAuditLog(row.id)).rejects.toMatchObject({ statusCode: 403 });
+      expect(rows).toContainEqual(row);
+    }
+  });
   it.each(Object.values(ACCESS_AUDIT_ACTIONS))("denies single deletion of %s at the repository boundary", async action => {
     const row = rows.find(row => row.actionType === action)!;
     await expect(new SettingsRepository().deleteAuditLog(row.id)).rejects.toMatchObject({ statusCode: 403 });

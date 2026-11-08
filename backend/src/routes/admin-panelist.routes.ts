@@ -1,4 +1,4 @@
-import { excludeOperationalAction } from "../middlewares/operational-capability.middleware";
+import { requireFacultyCapability } from "../middlewares/faculty-capability.middleware";
 import { Router } from "express";
 import { AdminPanelistController } from "../controllers/admin-panelist.controller";
 import { authenticateJWT, requireRole } from '../middlewares/auth.middleware';
@@ -10,9 +10,9 @@ const controller = new AdminPanelistController();
 router.use(authenticateJWT);
 
 // Admin-only CRUD routes
-router.get("/", requireRole(["ADMIN"]), excludeOperationalAction, controller.getAllPanelists.bind(controller));
-router.get("/:id", requireRole(["ADMIN"]), excludeOperationalAction, controller.getPanelistById.bind(controller));
-router.post("/", requireRole(["ADMIN"]), excludeOperationalAction, controller.createPanelist.bind(controller));
-router.put("/:id", requireRole(["ADMIN"]), excludeOperationalAction, controller.updatePanelist.bind(controller));
+router.get("/", requireRole(["ADMIN"]), requireFacultyCapability("faculty.view"), controller.getAllPanelists.bind(controller));
+router.get("/:id", requireRole(["ADMIN"]), requireFacultyCapability("faculty.view"), controller.getPanelistById.bind(controller));
+router.post("/", requireRole(["ADMIN"]), requireFacultyCapability("faculty.manage"), controller.createPanelist.bind(controller));
+router.put("/:id", requireRole(["ADMIN"]), requireFacultyCapability("faculty.manage"), controller.updatePanelist.bind(controller));
 
 export default router;

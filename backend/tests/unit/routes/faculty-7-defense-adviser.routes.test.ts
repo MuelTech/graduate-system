@@ -102,7 +102,7 @@ describe("FACULTY-7 complete administrative route matrix", () => {
     fixture.enabled = false; actor([], { administratorAccess: null });
     vi.stubEnv("DEFENSE_ADVISER_CAPABILITY_ENFORCEMENT_ENABLED", "true");
     for (const [method, path] of endpoints) expect((await request(method, path)).status).toBe(200);
-    expect((await request("GET", "/adviser/available")).status).toBe(200);
+    expect((await request("GET", "/adviser/available")).status).toBe(403); // FACULTY-10: Student-only ODP alias.
     expect((await request("POST", "/defense/rap-reports/target/remind")).status).toBe(200);
     expect((await request("POST", "/defense/rap-reports/target/distribute")).status).toBe(409);
   });

@@ -395,11 +395,9 @@ export class ThesisRepository {
     });
   }
 
-  async getAvailableAdvisers() {
-    return prisma.user.findMany({
-      where: { role: academicAccountRoleFilter(), panelist: { isAvailableAsAdviser: true, isActive: true } },
-      include: { panelist: true },
-    });
+  /** Retired: Student choices must use their exact passed Title ODP context. */
+  async getAvailableAdvisers(): Promise<never> {
+    throw new AppError("Use the Student Adviser candidate workflow.", 410);
   }
 
   async getActiveThesis(studentId: string) {

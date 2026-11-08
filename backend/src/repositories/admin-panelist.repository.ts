@@ -1,6 +1,5 @@
 import { Prisma } from "@prisma/client";
 import prisma from "../config/database";
-import { UserRole } from "@prisma/client";
 import { AppError } from "../utils/AppError";
 
 /**
@@ -26,155 +25,33 @@ export function resolvePanelistAdviserFlags(
   };
 }
 
-const userSelect = {
-    id: true,
-    firstName: true,
-    lastName: true,
-    email: true,
-    title: true,
-    suffix: true,
-    isActive: true,
-    createdAt: true,
-    updatedAt: true,
-    createdBy: {
-        select: {
-            firstName: true,
-            lastName: true,
-        },
-    },
-    updatedBy: {
-        select: {
-            firstName: true,
-            lastName: true,
-        },
-    },
-};
+/** Internal validation projection. Public DTOs are explicitly assembled by the service. */
+export const FACULTY_PROFILE_SELECT = {
+    id: true, userId: true, highestEducationalAttainment: true, officeAffiliation: true, specialization: true,
+    isExternal: true, isAvailableAsAdviser: true, isActive: true, createdAt: true,
+    user: { select: {
+        id: true, role: true, email: true, firstName: true, lastName: true, title: true, suffix: true,
+        isActive: true, createdAt: true, updatedAt: true,
+        createdBy: { select: { firstName: true, lastName: true } },
+        updatedBy: { select: { firstName: true, lastName: true } },
+        administratorAccess: { select: { level: true } }, capabilityGrants: { select: { capabilityKey: true } },
+    } },
+} as const satisfies Prisma.PanelistSelect;
+export type FacultyProfile = Prisma.PanelistGetPayload<{ select: typeof FACULTY_PROFILE_SELECT }>;
 
 export class AdminPanelistRepository {
-    async findAll() {
-        return prisma.panelist.findMany({
-            include: { user: { select: userSelect } },
-            orderBy: { createdAt: "desc" },
-        });
+    constructor(private readonly db: Pick<Prisma.TransactionClient, "panelist" | "user"> = prisma) {}
+    findAll() {
+        return this.db.panelist.findMany({ where: { user: { role: { in: ["FACULTY", "PANELIST"] } } },
+            select: FACULTY_PROFILE_SELECT, orderBy: { createdAt: "desc" } });
     }
+    findById(id: string) { return this.db.panelist.findUnique({ where: { id }, select: FACULTY_PROFILE_SELECT }); }
 
-    async findById(id: string) {
-        return prisma.panelist.findUnique({
-            where: { id },
-            include: { user: { select: userSelect } },
-        });
+    /** Retired alternate writers: all configuration must enter the audited capability service. */
+    async createWithUserTransaction(_data: unknown, _passwordHash: string, _adminId: string): Promise<never> {
+        throw new AppError("Use Faculty configuration to manage academic accounts.", 403);
     }
-
-    async checkEmailInUse(email: string) {
-        return prisma.user.findUnique({ where: { email } });
-    }
-
-    async createWithUserTransaction(data: any, passwordHash: string, adminId: string) {
-        return prisma.$transaction(async (tx) => {
-            const user = await tx.user.create({
-                data: {
-                    email: data.email,
-                    passwordHash,
-                    title: data.title || null,
-                    firstName: data.firstName,
-                    lastName: data.lastName,
-                    suffix: data.suffix || null,
-                    role: UserRole.PANELIST,
-                    isActive: true,
-                    mustChangePassword: true,
-                    createdById: adminId,
-                    updatedById: adminId,
-                },
-            });
-
-            const isExternal = Boolean(data.isExternal);
-            // Hard invariant: external panelists cannot be adviser-available.
-            const isAvailableAsAdviser = isExternal
-                ? false
-                : data.isAvailableAsAdviser !== false;
-
-            const panelist = await tx.panelist.create({
-                data: {
-                    userId: user.id,
-                    highestEducationalAttainment: data.highestEducationalAttainment,
-                    officeAffiliation: data.officeAffiliation,
-                    specialization: data.specialization,
-                    isExternal,
-                    isAvailableAsAdviser,
-                },
-                include: { user: { select: userSelect } },
-            });
-            return panelist;
-        });
-    }
-
-    async updateWithUserTransaction(id: string, data: any, adminId: string, passwordHash?: string) {
-        return prisma.$transaction(async (tx) => {
-            const panelistRecord = await tx.panelist.findUnique({
-                where: { id },
-                include: { user: true },
-            });
-
-            if (!panelistRecord) throw new Error("Panelist not found!");
-            if (panelistRecord.user.role === "ADMIN") {
-                throw new AppError("Administrator accounts must use Administrator management.", 403);
-            }
-
-            // Patch-safe user fields for status-only PUT { isActive }.
-            const userData: Record<string, unknown> = {
-                updatedById: adminId,
-            };
-            if (typeof data.firstName === "string") {
-                userData.firstName = data.firstName;
-            }
-            if (typeof data.lastName === "string") {
-                userData.lastName = data.lastName;
-            }
-            if (data.title !== undefined) {
-                userData.title = data.title || null;
-            }
-            if (data.suffix !== undefined) {
-                userData.suffix = data.suffix || null;
-            }
-            if (typeof data.isActive === "boolean") {
-                userData.isActive = data.isActive;
-            }
-            if (passwordHash) {
-                userData.passwordHash = passwordHash;
-            }
-
-            await tx.user.update({
-                where: { id: panelistRecord.userId, role: { not: "ADMIN" } },
-                data: userData,
-            });
-
-            // Patch-safe flags + hard external invariant.
-            const { isExternal, isAvailableAsAdviser } =
-                resolvePanelistAdviserFlags(data, {
-                    isExternal: panelistRecord.isExternal,
-                    isAvailableAsAdviser: panelistRecord.isAvailableAsAdviser,
-                });
-
-            return tx.panelist.update({
-                where: { id },
-                data: {
-                    highestEducationalAttainment:
-                        data.highestEducationalAttainment === undefined
-                            ? panelistRecord.highestEducationalAttainment
-                            : data.highestEducationalAttainment,
-                    officeAffiliation:
-                        data.officeAffiliation === undefined
-                            ? panelistRecord.officeAffiliation
-                            : data.officeAffiliation,
-                    specialization:
-                        data.specialization === undefined
-                            ? panelistRecord.specialization
-                            : data.specialization,
-                    isExternal,
-                    isAvailableAsAdviser,
-                },
-                include: { user: { select: userSelect } },
-            });
-        });
+    async updateWithUserTransaction(_id: string, _data: unknown, _adminId: string, _passwordHash?: string): Promise<never> {
+        throw new AppError("Use Faculty configuration to manage academic accounts.", 403);
     }
 }

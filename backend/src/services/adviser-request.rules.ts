@@ -305,13 +305,20 @@ export function evaluateCandidateEligibility(
       reason: `Role ${input.defenseRole} is not eligible for adviser candidacy. Only Chairman and Panelist may be requested.`,
     };
   }
+  return evaluateNewAdviserEligibility(input);
+}
+
+/** Common current-account/profile eligibility; ODP membership is checked by the owning context. */
+export function evaluateNewAdviserEligibility(
+  input: Omit<CandidateEligibilityInput, "defenseRole">,
+): CandidateEligibilityResult {
   if (!isAcademicAccountRole(input.userRole)) {
     return {
       eligible: false,
       reason: "Adviser candidate must have an academic account role.",
     };
   }
-  if (!input.userIsActive) {
+  if (input.userIsActive !== true) {
     return { eligible: false, reason: "User account is inactive." };
   }
   if (!input.hasPanelistProfile) {
@@ -321,17 +328,17 @@ export function evaluateCandidateEligibility(
     };
   }
   // Hard invariant: external panelists never become thesis advisers.
-  if (input.isExternal === true) {
+  if (input.isExternal !== false) {
     return {
       eligible: false,
       reason:
         "External panelists are not eligible to serve as thesis/dissertation advisers.",
     };
   }
-  if (input.panelistIsActive === false) {
+  if (input.panelistIsActive !== true) {
     return { eligible: false, reason: "Panelist profile is inactive." };
   }
-  if (input.isAvailableAsAdviser === false) {
+  if (input.isAvailableAsAdviser !== true) {
     return {
       eligible: false,
       reason: "Panelist is not available as adviser.",

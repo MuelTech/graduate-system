@@ -723,7 +723,7 @@ describe("AdviserRequestService (WP4 Dean decision)", () => {
 
     await expect(
       svc.deanDecideAdviserRequest("dean-1", "req-1", { decision: "APPROVED" }),
-    ).rejects.toThrow(/External panelists/i);
+    ).rejects.toMatchObject({ statusCode: 409 });
     expect(tx.adviserAssignment.create).not.toHaveBeenCalled();
     expect(tx.adviserRequest.updateMany).not.toHaveBeenCalled();
   });
