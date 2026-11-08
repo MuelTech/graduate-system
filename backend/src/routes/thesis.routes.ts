@@ -1,3 +1,4 @@
+import { requirePrivateRecordCapability } from "../middlewares/private-record-capability.middleware";
 import { requireDefenseAdviserCapability, excludeDefenseAdviserAdministration } from "../middlewares/defense-adviser-capability.middleware";
 import { ACADEMIC_ACCOUNT_ROLES } from "../utils/academic-account";
 import { Router } from "express";
@@ -13,8 +14,8 @@ const defenseCollaborationController = new DefenseCollaborationController();
 const defenseHistoryController = new DefenseHistoryController();
 
 // GS-017: role gates are coarse; the service proves issuer/Student ownership.
-router.get("/adviser-certifications", authenticateJWT, requireRole(["STUDENT", ...ACADEMIC_ACCOUNT_ROLES, "ADMIN"]), excludeDefenseAdviserAdministration(true), thesisController.listAdviserCertifications);
-router.get("/adviser-certifications/:certificationId/pdf", authenticateJWT, requireRole(["STUDENT", ...ACADEMIC_ACCOUNT_ROLES, "ADMIN"]), excludeDefenseAdviserAdministration(true), thesisController.getAdviserCertificationPdf);
+router.get("/adviser-certifications", authenticateJWT, requireRole(["STUDENT", ...ACADEMIC_ACCOUNT_ROLES, "ADMIN"]), requirePrivateRecordCapability(["defense.applications.view", "defense.schedules.view"], true), thesisController.listAdviserCertifications);
+router.get("/adviser-certifications/:certificationId/pdf", authenticateJWT, requireRole(["STUDENT", ...ACADEMIC_ACCOUNT_ROLES, "ADMIN"]), requirePrivateRecordCapability(["defense.applications.view", "defense.schedules.view"], true), thesisController.getAdviserCertificationPdf);
 
 // STUDENT ONLY: Title Defense — one combined Title Defense Proposal Package +
 // Current Semester COR + Defense-fee Proof of Payment. Structured proposed titles
@@ -177,8 +178,8 @@ router.post(
 );
 
 // Finalized official records: exact ownership is also checked inside the record service.
-router.get("/adviser/requests/records", authenticateJWT, requireRole(["STUDENT", ...ACADEMIC_ACCOUNT_ROLES, "ADMIN"]), excludeDefenseAdviserAdministration(true), thesisController.listAdviserRequestRecords);
-router.get("/adviser/requests/:id/pdf", authenticateJWT, requireRole(["STUDENT", ...ACADEMIC_ACCOUNT_ROLES, "ADMIN"]), excludeDefenseAdviserAdministration(true), thesisController.getAdviserRequestPdf);
+router.get("/adviser/requests/records", authenticateJWT, requireRole(["STUDENT", ...ACADEMIC_ACCOUNT_ROLES, "ADMIN"]), requirePrivateRecordCapability(["adviser.requests.view"], true), thesisController.listAdviserRequestRecords);
+router.get("/adviser/requests/:id/pdf", authenticateJWT, requireRole(["STUDENT", ...ACADEMIC_ACCOUNT_ROLES, "ADMIN"]), requirePrivateRecordCapability(["adviser.requests.view"], true), thesisController.getAdviserRequestPdf);
 
 // ADMIN: Get all adviser requests
 router.get(
@@ -635,7 +636,7 @@ router.get(
   "/defense/:scheduleId/records/criteria/:panelAssignmentId",
   authenticateJWT,
   requireRole(["ADMIN", ...ACADEMIC_ACCOUNT_ROLES]),
-  excludeDefenseAdviserAdministration(true),
+  requirePrivateRecordCapability(["defense.records.view"], true),
   thesisController.getOfficialCriteria,
 );
 
@@ -644,7 +645,7 @@ router.get(
   "/defense/:scheduleId/records/criteria/:panelAssignmentId/pdf",
   authenticateJWT,
   requireRole(["ADMIN"]),
-  excludeDefenseAdviserAdministration(),
+  requirePrivateRecordCapability(["defense.records.view"]),
   thesisController.getOfficialCriteriaPdf,
 );
 
@@ -653,7 +654,7 @@ router.get(
   "/defense/:scheduleId/records/summary/pdf",
   authenticateJWT,
   requireRole(["ADMIN"]),
-  excludeDefenseAdviserAdministration(),
+  requirePrivateRecordCapability(["defense.records.view"]),
   thesisController.getOralExamSummaryPdf,
 );
 
@@ -683,7 +684,7 @@ router.get(
   "/defense/:scheduleId/records/application/pdf",
   authenticateJWT,
   requireRole(["ADMIN"]),
-  excludeDefenseAdviserAdministration(),
+  requirePrivateRecordCapability(["defense.records.view"]),
   thesisController.getDefenseApplicationPdf,
 );
 
@@ -692,7 +693,7 @@ router.get(
   "/defense/:scheduleId/records/evaluations/pdf",
   authenticateJWT,
   requireRole(["ADMIN"]),
-  excludeDefenseAdviserAdministration(),
+  requirePrivateRecordCapability(["defense.records.view"]),
   thesisController.getOfficialEvaluationBundlePdf,
 );
 
@@ -702,7 +703,7 @@ router.get(
   "/defense/:scheduleId/records/summary",
   authenticateJWT,
   requireRole(["ADMIN"]),
-  excludeDefenseAdviserAdministration(),
+  requirePrivateRecordCapability(["defense.records.view"]),
   thesisController.getOralExamSummary,
 );
 

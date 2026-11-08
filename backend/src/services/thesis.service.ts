@@ -1,3 +1,4 @@
+import { privateRecordAuthorization, PrivateRecordAuthorization } from "../access/private-record-authorization";
 import { defenseAdviserAuthorization, DefenseAdviserAuthorization } from "../access/defense-adviser-authorization";
 import { ThesisRepository } from '../repositories/thesis.repository';
 import { DefenseApplicationsRepository } from '../repositories/defense-applications.repository';
@@ -52,7 +53,8 @@ export interface ScheduleDefenseInput {
 }
 
 export class ThesisService {
-  constructor(private readonly administration: DefenseAdviserAuthorization = defenseAdviserAuthorization) {}
+  constructor(private readonly administration: DefenseAdviserAuthorization = defenseAdviserAuthorization,
+    private readonly privateAccess: PrivateRecordAuthorization = privateRecordAuthorization) {}
   private scheduledSubmission = new ScheduledDefenseSubmissionService(undefined, undefined, undefined, this.administration);
 
   async getScheduledDefenseSubmission(scheduleId: string, actor: { userId: string; role: string }) {
@@ -74,8 +76,8 @@ export class ThesisService {
   private committeePolicy = new DefenseCommitteePolicy();
   private adviserRequestService = new AdviserRequestService(this.administration);
   private conclusion = new DefenseConclusionService();
-  private officialRecords = new OfficialDefenseRecordService(this.administration);
-  private officialDocuments = new OfficialDefenseDocumentService();
+  private officialRecords = new OfficialDefenseRecordService(this.administration, this.privateAccess);
+  private officialDocuments = new OfficialDefenseDocumentService({ authorization: this.privateAccess });
   private rapporteurFinalization = new RapporteurFinalizationService();
   private rapReports = new RapReportService();
   private scheduleCorrection = new DefenseScheduleCorrectionService(this.administration);
@@ -944,8 +946,7 @@ export class ThesisService {
     panelAssignmentId: string,
     actor: { userId: string; role: string },
   ) {
-    // CP7-FIX1 Issue 8: authorization happens inside the service BEFORE any backfill.
-    if (actor.role === "ADMIN") this.administration.assertExcluded();
+    // The owning record service authorizes before reading scores or signature evidence.
     return this.officialRecords.getOfficialCriteria(
       scheduleId,
       panelAssignmentId,
@@ -1016,7 +1017,6 @@ export class ThesisService {
     scheduleId: string,
     actor: { userId: string; role: string },
   ) {
-    this.administration.assertExcluded();
     return this.officialRecords.getSummaryReadModel(scheduleId, actor);
   }
 

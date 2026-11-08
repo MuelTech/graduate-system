@@ -1,3 +1,4 @@
+import { privateRecordAuthorization, PrivateRecordAuthorization } from "../access/private-record-authorization";
 /**
  * FORM-INT-1: official defense document orchestration.
  *
@@ -25,7 +26,7 @@ import {
 } from "./official-defense-document-filename";
 import {
   OfficialDefenseRecordService,
-  type OfficialCriteriaDto,
+  type OfficialCriteriaPrintSource,
 } from "./official-defense-record.service";
 import { loadOfficialFormLogos } from "./official-form-assets";
 import {
@@ -91,14 +92,14 @@ export interface OfficialDefenseDocumentActor {
 
 type RecordsReader = Pick<
   OfficialDefenseRecordService,
-  | "getOfficialCriteria"
+  | "getOfficialCriteriaForPrint"
   | "getOfficialSummaryDocumentSource"
   | "getOfficialDefenseApplicationDocumentSource"
 >;
 
 type BundleRecordsReader = Pick<
   OfficialDefenseRecordService,
-  "getOfficialCriteria" | "getOfficialEvaluationBundleSource"
+  "getOfficialCriteriaForPrint" | "getOfficialEvaluationBundleSource"
 >;
 type FilenameSourceReader = Pick<
   OfficialDefenseRecordService,
@@ -106,6 +107,7 @@ type FilenameSourceReader = Pick<
 >;
 
 export interface OfficialDefenseDocumentDeps {
+  readonly authorization?: PrivateRecordAuthorization;
   readonly studentApplications?: Pick<
     OfficialDefenseRecordService,
     "getStudentDefenseApplicationDocumentSource"
@@ -170,7 +172,7 @@ function printedAverage(value: unknown, label: string): string {
  * mutable record columns. No averages, ratings, or verdicts are computed here.
  */
 export function mapOfficialCriteriaToRenderInput(
-  record: OfficialCriteriaDto,
+  record: OfficialCriteriaPrintSource,
   logos: InstitutionalLogos,
 ): OralExamCriteriaRenderInput {
   const snapshot = record.officialSnapshot;
@@ -636,6 +638,7 @@ export function mapDefenseApplicationToRenderInput(
 }
 
 export class OfficialDefenseDocumentService {
+  private readonly authorization: PrivateRecordAuthorization;
   private readonly studentApplications: Pick<
     OfficialDefenseRecordService,
     "getStudentDefenseApplicationDocumentSource"
@@ -653,13 +656,14 @@ export class OfficialDefenseDocumentService {
   ) => Promise<Uint8Array>;
 
   constructor(deps: OfficialDefenseDocumentDeps = {}) {
-    this.studentApplications = deps.studentApplications ?? new OfficialDefenseRecordService();
-    this.certifications = deps.certifications ?? new AdviserCertificationRecordService();
+    this.authorization = deps.authorization ?? privateRecordAuthorization;
+    this.studentApplications = deps.studentApplications ?? new OfficialDefenseRecordService(undefined, this.authorization);
+    this.certifications = deps.certifications ?? new AdviserCertificationRecordService(this.authorization);
     this.renderCertification = deps.renderCertification ?? renderAdviserCertification;
-    this.records = deps.records ?? new OfficialDefenseRecordService();
-    this.bundleRecords = deps.bundleRecords ?? new OfficialDefenseRecordService();
+    this.records = deps.records ?? new OfficialDefenseRecordService(undefined, this.authorization);
+    this.bundleRecords = deps.bundleRecords ?? new OfficialDefenseRecordService(undefined, this.authorization);
     this.filenameSource =
-      deps.filenameSource ?? new OfficialDefenseRecordService();
+      deps.filenameSource ?? new OfficialDefenseRecordService(undefined, this.authorization);
     this.loadLogos = deps.loadLogos ?? loadOfficialFormLogos;
     this.render = deps.render ?? renderOralExamCriteria;
     this.renderSummary = deps.renderSummary ?? renderOralExamSummary;
@@ -719,14 +723,9 @@ export class OfficialDefenseDocumentService {
     panelAssignmentId: string,
     actor: OfficialDefenseDocumentActor,
   ): Promise<Uint8Array> {
-    if (actor.role !== "ADMIN") {
-      throw new AppError(
-        "Official document generation is restricted to Admin.",
-        403,
-      );
-    }
+    await this.authorization.admin(actor, "defense.records.view");
 
-    const record = await this.records.getOfficialCriteria(
+    const record = await this.records.getOfficialCriteriaForPrint(
       scheduleId,
       panelAssignmentId,
       actor,
@@ -760,12 +759,7 @@ export class OfficialDefenseDocumentService {
     scheduleId: string,
     actor: OfficialDefenseDocumentActor,
   ): Promise<Uint8Array> {
-    if (actor.role !== "ADMIN") {
-      throw new AppError(
-        "Official document generation is restricted to Admin.",
-        403,
-      );
-    }
+    await this.authorization.admin(actor, "defense.records.view");
 
     const source = await this.records.getOfficialSummaryDocumentSource(
       scheduleId,
@@ -800,12 +794,7 @@ export class OfficialDefenseDocumentService {
     scheduleId: string,
     actor: OfficialDefenseDocumentActor,
   ): Promise<Uint8Array> {
-    if (actor.role !== "ADMIN") {
-      throw new AppError(
-        "Official document generation is restricted to Admin.",
-        403,
-      );
-    }
+    await this.authorization.admin(actor, "defense.records.view");
 
     const source =
       await this.records.getOfficialDefenseApplicationDocumentSource(
@@ -819,6 +808,7 @@ export class OfficialDefenseDocumentService {
     scheduleId: string,
     actor: OfficialDefenseDocumentActor,
   ) {
+    actor = await this.authorization.current(actor);
     if (actor.role !== "STUDENT" || !actor.userId) {
       throw new AppError("Student access is required.", 403);
     }
@@ -891,12 +881,7 @@ export class OfficialDefenseDocumentService {
     scheduleId: string,
     actor: OfficialDefenseDocumentActor,
   ): Promise<Uint8Array> {
-    if (actor.role !== "ADMIN") {
-      throw new AppError(
-        "Official document generation is restricted to Admin.",
-        403,
-      );
-    }
+    await this.authorization.admin(actor, "defense.records.view");
 
     const source = await this.bundleRecords.getOfficialEvaluationBundleSource(
       scheduleId,
@@ -919,7 +904,7 @@ export class OfficialDefenseDocumentService {
 
     try {
       for (const assignment of source.evaluatorAssignments) {
-        const record = await this.bundleRecords.getOfficialCriteria(
+        const record = await this.bundleRecords.getOfficialCriteriaForPrint(
           scheduleId,
           assignment.panelAssignmentId,
           actor,
@@ -976,12 +961,7 @@ export class OfficialDefenseDocumentService {
     kind: OfficialDefenseDocumentKind,
     actor: OfficialDefenseDocumentActor,
   ): Promise<string> {
-    if (actor.role !== "ADMIN") {
-      throw new AppError(
-        "Official document generation is restricted to Admin.",
-        403,
-      );
-    }
+    await this.authorization.admin(actor, "defense.records.view");
     const identity = await this.filenameSource.getOfficialDocumentIdentity(
       scheduleId,
       actor,

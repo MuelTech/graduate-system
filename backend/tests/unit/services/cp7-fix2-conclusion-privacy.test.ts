@@ -709,7 +709,7 @@ describe("CP7-FIX2 REAL 11–12: OfficialDefenseRecordService Summary authorizat
         overallAverage: 88,
         finalRating: null,
         createdAt: new Date(),
-        snapshotData: { evaluators: [] },
+        snapshotData: { scheduleId: "sched-1", defenseType: "PROPOSAL_DEFENSE", evaluators: [] },
       },
       conclusion: { outcome: "PASSED" },
       thesis: {

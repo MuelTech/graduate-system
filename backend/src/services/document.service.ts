@@ -1,3 +1,5 @@
+import { privateRecordAuthorization, PrivateRecordAuthorization } from "../access/private-record-authorization";
+import { PRIVATE_DOCUMENT_CLASSIFICATION, isDefenseApplicationDocument, isScheduledDocument } from "../access/private-document-context";
 import { isAcademicAccountRole } from "../utils/academic-account";
 // backend/src/services/document.service.ts
 import prisma from "../config/database";
@@ -5,7 +7,7 @@ import { AppError } from "../utils/AppError";
 import { storageService } from "../storage";
 import { isAuthoritativePriorProposalManuscript } from "./proposal-adviser-review.rules";
 import { canReadHistoricalBoundManuscript } from "./defense-history.rules";
-import { canActiveAdviserAccessAcademicThesisDocument } from "./adviser-document.rules";
+import { canActiveAdviserAccessAcademicThesisDocument, resolveAdviserAcademicDocument } from "./adviser-document.rules";
 
 interface ModelConfig {
     prismaModel: string;
@@ -229,7 +231,7 @@ export function canPanelistAccessThesisDocument(
   return false;
 }
 
-const MODEL_REGISTRY: Record<string, ModelConfig> = {
+const MODEL_REGISTRY: Record<keyof typeof PRIVATE_DOCUMENT_CLASSIFICATION, ModelConfig> = {
     "cor-upload": {
         prismaModel: "corUpload",
         fileField: "filePath",
@@ -271,7 +273,7 @@ const MODEL_REGISTRY: Record<string, ModelConfig> = {
         getOwnerId: (r) => r.thesis?.student?.user?.id ?? null,
         getExtraAuthCheck: (record, userId, userRole) => {
             if (!isAcademicAccountRole(userRole)) return false;
-            return canPanelistAccessThesisDocument(record, userId);
+            return Boolean(resolveAdviserAcademicDocument(record)) && canPanelistAccessThesisDocument(record, userId);
         },
     },
     "rap-report": {
@@ -339,24 +341,54 @@ const MODEL_REGISTRY: Record<string, ModelConfig> = {
 };
 
 export class DocumentService {
+    constructor(private readonly authorization: PrivateRecordAuthorization = privateRecordAuthorization) {}
+
+    private async adminAllowed(modelType: string, record: any, actor: { userId: string; role: string }): Promise<boolean> {
+        if (!this.authorization.enabled) return actor.role === "ADMIN";
+        switch (modelType) {
+            case "cor-upload": return this.authorization.can(actor, "cor.view");
+            case "student-requirement": return this.authorization.can(actor, "students.view");
+            case "rap-report": return this.authorization.can(actor, "defense.records.view");
+            case "plagiarism-result":
+                return record.thesisId === record.thesis?.id && Boolean(record.thesis?.student?.user?.id) &&
+                    this.authorization.can(actor, "defense.applications.view");
+            case "thesis-document":
+                if (!isDefenseApplicationDocument(record)) return false;
+                if (await this.authorization.can(actor, "defense.applications.view")) return true;
+                return (record.thesis?.defenseSchedules ?? []).some((schedule: any) => isScheduledDocument(record, schedule)) &&
+                    this.authorization.can(actor, "defense.schedules.view");
+            default: return false;
+        }
+    }
+    private async auditDenied(config: ModelConfig, id: string, userId: string) {
+        await prisma.auditLog.create({ data: { actorId: userId, actionType: "DOCUMENT_ACCESS_DENIED",
+            targetTable: config.prismaModel, targetId: id, description: "Unauthorized document access attempt" } }).catch(() => {});
+    }
+
     async resolveDocument(
         modelType: string,
         id: string,
         userId: string,
         userRole: string
     ): Promise<{ filePath: string; mimeType: string; originalFilename: string }> {
-        const config = MODEL_REGISTRY[modelType];
+        const config = Object.prototype.hasOwnProperty.call(MODEL_REGISTRY, modelType) ? MODEL_REGISTRY[modelType as keyof typeof MODEL_REGISTRY] : undefined;
         if (!config) {
             throw new AppError("Unknown document type", 400);
         }
 
-        // Verify the requesting user is active (not dismissed/graduated)
-        const user = await prisma.user.findUnique({
-            where: { id: userId },
-            select: { role: true, isActive: true },
-        });
-        if (!user || user.isActive === false) {
-            throw new AppError("Account is not active", 403);
+        // FACULTY-9 classes retain their existing policy until that package is authorized.
+        const deferred = PRIVATE_DOCUMENT_CLASSIFICATION[modelType as keyof typeof PRIVATE_DOCUMENT_CLASSIFICATION] === "FACULTY-9";
+        let actor = { userId, role: userRole };
+        try {
+            if (!deferred && this.authorization.enabled) {
+                actor = await this.authorization.current(actor);
+            } else {
+                const user = await prisma.user.findUnique({ where: { id: userId }, select: { role: true, isActive: true } });
+                if (!user || user.isActive === false) throw new AppError("Account is not active", 403);
+            }
+        } catch (error) {
+            await this.auditDenied(config, id, userId);
+            throw error;
         }
 
         // Fetch record using raw prisma query to support dynamic model access
@@ -369,23 +401,20 @@ export class DocumentService {
             throw new AppError("Document not found", 404);
         }
 
-        // Permission check: owner or authorized role
-        const isOwner = config.getOwnerId(record) === userId;
-        const isAdmin = userRole === "ADMIN";
-        const hasExtraAuth = config.getExtraAuthCheck?.(record, userId, userRole) ?? false;
-
-        if (!isOwner && !isAdmin && !hasExtraAuth) {
-            // Log unauthorized access attempt
-            await prisma.auditLog.create({
-                data: {
-                    actorId: userId,
-                    actionType: "DOCUMENT_ACCESS_DENIED",
-                    targetTable: config.prismaModel,
-                    targetId: id,
-                    description: `Unauthorized document access attempt by ${userRole}`,
-                },
-            }).catch(() => {}); // Best-effort — do not fail the request over logging
-            throw new AppError("Not authorized to view this document", 403);
+        try {
+            const validThesis = !["thesis-document", "plagiarism-result"].includes(modelType) ||
+                !this.authorization.enabled || (record.thesisId === record.thesis?.id && Boolean(record.thesisId));
+            const ownerRole = deferred || !this.authorization.enabled ||
+                actor.role === "STUDENT" || (modelType === "cor-upload" && actor.role === "APPLICANT");
+            const isOwner = validThesis && ownerRole && config.getOwnerId(record) === userId;
+            const isAdmin = deferred ? userRole === "ADMIN" : await this.adminAllowed(modelType, record, actor);
+            const hasExtraAuth = config.getExtraAuthCheck?.(record, userId, actor.role) ?? false;
+            if (!validThesis || (!isOwner && !isAdmin && !hasExtraAuth)) {
+                throw new AppError("Not authorized to view this document", 403);
+            }
+        } catch (error) {
+            await this.auditDenied(config, id, userId);
+            throw error;
         }
 
         // Resolve the file through the storage abstraction: modern storage key

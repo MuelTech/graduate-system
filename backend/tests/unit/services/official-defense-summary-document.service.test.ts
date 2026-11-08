@@ -392,7 +392,7 @@ describe("OfficialDefenseDocumentService.generateOralExamSummaryPdf", () => {
     const renderSummary = vi.fn().mockResolvedValue(Buffer.from("%PDF-1.7 fake summary"));
     const service = new OfficialDefenseDocumentService({
       records: {
-        getOfficialCriteria: vi.fn(),
+        getOfficialCriteriaForPrint: vi.fn(),
         getOfficialDefenseApplicationDocumentSource: vi.fn(),
         getOfficialSummaryDocumentSource,
       },
@@ -424,7 +424,7 @@ describe("OfficialDefenseDocumentService.generateOralExamSummaryPdf", () => {
   it("produces real PDF bytes through the accepted TEMPLATE-2 renderer and logo loader", async () => {
     const service = new OfficialDefenseDocumentService({
       records: {
-        getOfficialCriteria: vi.fn(),
+        getOfficialCriteriaForPrint: vi.fn(),
         getOfficialDefenseApplicationDocumentSource: vi.fn(),
         getOfficialSummaryDocumentSource: vi.fn().mockResolvedValue(source()),
       },
@@ -455,7 +455,7 @@ describe("OfficialDefenseDocumentService.generateOralExamSummaryPdf", () => {
   it("maps renderer content rejection to a controlled 422", async () => {
     const service = new OfficialDefenseDocumentService({
       records: {
-        getOfficialCriteria: vi.fn(),
+        getOfficialCriteriaForPrint: vi.fn(),
         getOfficialDefenseApplicationDocumentSource: vi.fn(),
         getOfficialSummaryDocumentSource: vi.fn().mockResolvedValue(source()),
       },
@@ -475,7 +475,7 @@ describe("OfficialDefenseDocumentService.generateOralExamSummaryPdf", () => {
   it("propagates a controlled asset failure", async () => {
     const service = new OfficialDefenseDocumentService({
       records: {
-        getOfficialCriteria: vi.fn(),
+        getOfficialCriteriaForPrint: vi.fn(),
         getOfficialDefenseApplicationDocumentSource: vi.fn(),
         getOfficialSummaryDocumentSource: vi.fn().mockResolvedValue(source()),
       },

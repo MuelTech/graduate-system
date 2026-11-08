@@ -46,9 +46,8 @@ function request(method: string, path: string, claim = "ADMIN") {
   return fetch(base + path, { method, headers: { "Content-Type": "application/json", Authorization: `Bearer ${jwt.sign({ userId: "actor", role: claim, capabilities: endpoints.map(row => row[2]) }, process.env.JWT_SECRET!)}` },
     ...(method === "GET" ? {} : { body: JSON.stringify({ actorId: "other-full-admin", role: "ADMIN", capabilityKeys: endpoints.map(row => row[2]) }) }) });
 }
-const deferred = ["/adviser/available", "/adviser-certifications", "/adviser-certifications/target/pdf", "/adviser/requests/records", "/adviser/requests/target/pdf",
-  "/defense/target/records/criteria/target", "/defense/target/records/criteria/target/pdf", "/defense/target/records/summary/pdf", "/defense/target/records/application/pdf",
-  "/defense/target/records/evaluations/pdf", "/defense/target/records/summary", "/defense/target/lobby", "/eligibility/TITLE_DEFENSE"];
+// FACULTY-8 now owns private official-record reads; remaining exclusions stay FACULTY-7-owned.
+const deferred = ["/adviser/available", "/defense/target/lobby", "/eligibility/TITLE_DEFENSE"];
 const academic = [
   ["POST", "/defense/target/score"], ["GET", "/defense/target/evaluation/me"], ["PUT", "/defense/target/evaluation/draft"], ["POST", "/defense/target/evaluation/finalize"],
   ["POST", "/defense/target/start"], ["POST", "/defense/target/conclusion"], ["POST", "/defense/target/conclude"],

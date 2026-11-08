@@ -172,7 +172,7 @@ describe("CP7-FIX1 Issue 3: detailed Summary authorization", () => {
         overallAverage: 88,
         finalRating: null,
         createdAt: new Date(),
-        snapshotData: { evaluators: [] },
+        snapshotData: { scheduleId: "sched-1", defenseType: "PROPOSAL_DEFENSE", evaluators: [] },
       },
       conclusion: { outcome: "PASSED" },
     });
@@ -212,7 +212,7 @@ describe("CP7-FIX1 Issue 3: detailed Summary authorization", () => {
         overallAverage: 90,
         finalRating: null,
         createdAt: new Date(),
-        snapshotData: { evaluators: [] },
+        snapshotData: { scheduleId: "sched-1", defenseType: "PROPOSAL_DEFENSE", evaluators: [] },
       },
       conclusion: null,
     });
@@ -232,7 +232,7 @@ describe("CP7-FIX1 Issue 3: detailed Summary authorization", () => {
         overallAverage: 80,
         finalRating: null,
         createdAt: new Date(),
-        snapshotData: { evaluators: [] },
+        snapshotData: { scheduleId: "sched-1", defenseType: "TITLE_DEFENSE", evaluators: [] },
       },
       conclusion: null,
     });
@@ -463,7 +463,7 @@ describe("CP7-FIX1 Issue 8: Criteria authorization before backfill", () => {
     expect(prismaMock.oralExamScore.updateMany).not.toHaveBeenCalled();
   });
 
-  it("Test 18: owning evaluator may read and backfill", async () => {
+  it("Test 18: owning evaluator may read without writing historical snapshots", async () => {
     prismaMock.defenseSchedule.findUnique.mockResolvedValue(scheduleBase);
     prismaMock.panelAssignment.findUnique.mockResolvedValue({
       id: "p1",
@@ -501,7 +501,7 @@ describe("CP7-FIX1 Issue 8: Criteria authorization before backfill", () => {
       role: "PANELIST",
     });
     expect(result.available).toBe(true);
-    expect(prismaMock.oralExamScore.updateMany).toHaveBeenCalled();
+    expect(prismaMock.oralExamScore.updateMany).not.toHaveBeenCalled();
   });
 });
 

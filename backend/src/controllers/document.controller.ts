@@ -28,6 +28,7 @@ export class DocumentController {
       res.setHeader("Content-Type", mimeType);
       res.setHeader("Content-Disposition", `inline; filename="${safeFilename}"`);
       res.setHeader("Cache-Control", "private, no-store");
+      res.setHeader("X-Content-Type-Options", "nosniff");
 
       const stream = fs.createReadStream(filePath);
       stream.on("error", (err) => {
@@ -40,7 +41,7 @@ export class DocumentController {
       if (error instanceof AppError) {
         res.status(error.statusCode).json({ error: error.message });
       } else if (error instanceof Error) {
-        res.status(400).json({ error: error.message });
+        res.status(500).json({ error: "Document could not be retrieved." });
       } else {
         res.status(500).json({ error: "An unexpected error occurred." });
       }

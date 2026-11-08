@@ -1,3 +1,5 @@
+import { privateRecordAuthorization, PrivateRecordAuthorization } from "../access/private-record-authorization";
+import { isAcademicAccountRole } from "../utils/academic-account";
 import { defenseAdviserAuthorization, DefenseAdviserAuthorization } from "../access/defense-adviser-authorization";
 /**
  * CP7 — Official defense record generation and read models.
@@ -183,7 +185,8 @@ export interface OfficialDocumentIdentitySource {
   studentName: string | null;
 }
 
-export interface OfficialCriteriaDto {
+/** Internal official-print source; never returned by the JSON read boundary. */
+export interface OfficialCriteriaPrintSource {
   available: boolean;
   status: string;
   scheduleId: string;
@@ -210,6 +213,8 @@ export interface OfficialCriteriaDto {
   officialSnapshot: OralExamScoreOfficialSnapshot | null;
 }
 
+export type OfficialCriteriaDto = Omit<OfficialCriteriaPrintSource, "signatureData">;
+
 export interface OralExamScoreOfficialSnapshot {
   schemaVersion: 1;
   scheduleId: string;
@@ -235,8 +240,22 @@ export interface OralExamScoreOfficialSnapshot {
   snapshotAt: string;
 }
 
+/** Stored JSON is not a response DTO; project only the approved snapshot fields. */
+function safeCriteriaSnapshot(row: OralExamScoreOfficialSnapshot): OralExamScoreOfficialSnapshot {
+  return {
+    schemaVersion: row.schemaVersion, scheduleId: row.scheduleId, panelAssignmentId: row.panelAssignmentId,
+    defenseType: row.defenseType, studentName: row.studentName, studentNumber: row.studentNumber,
+    program: row.program, defenseDate: row.defenseDate, evaluatorName: row.evaluatorName,
+    evaluatorUserId: row.evaluatorUserId, functionalRole: row.functionalRole, criteria: row.criteria,
+    groupIValue: row.groupIValue, groupIIValue: row.groupIIValue, overallValue: row.overallValue,
+    rating: row.rating, recommendations: row.recommendations, signedAt: row.signedAt,
+    finalizedAt: row.finalizedAt, scoringVersion: row.scoringVersion, snapshotAt: row.snapshotAt,
+  };
+}
+
 export class OfficialDefenseRecordService {
-  constructor(private readonly administration: DefenseAdviserAuthorization = defenseAdviserAuthorization) {}
+  constructor(private readonly administration: DefenseAdviserAuthorization = defenseAdviserAuthorization,
+    private readonly authorization: PrivateRecordAuthorization = privateRecordAuthorization) {}
   /**
    * Idempotent, race-safe Oral Examination Summary generation.
    * Uses OralExamSummary.scheduleId uniqueness as the convergence point.
@@ -521,12 +540,13 @@ export class OfficialDefenseRecordService {
    * authorized to read it — the live workspace exposes only evaluation progress
    * and roster status. Issue 12: Title never fabricates numerical content.
    *
-   * `actor` is optional for internal callers; when supplied, only ADMIN passes.
+   * Every read requires a current authorized Admin actor.
    */
   async getSummaryReadModel(
     scheduleId: string,
-    actor?: { userId: string; role: string },
+    actor: { userId: string; role: string },
   ) {
+    await this.authorization.admin(actor, "defense.records.view");
     const schedule = await prisma.defenseSchedule.findUnique({
       where: { id: scheduleId },
       include: {
@@ -545,14 +565,6 @@ export class OfficialDefenseRecordService {
       },
     });
     if (!schedule) throw new AppError("Defense session not found.", 404);
-
-    // Authorization: ADMIN only (committee-facing fallback removed in CDW-4 FIX).
-    if (actor && actor.role !== "ADMIN") {
-      throw new AppError(
-        "Detailed Oral Examination Summary is restricted to Admin.",
-        403,
-      );
-    }
 
     // WF-C1b: every canonical defense stage has an official evaluator Summary.
     if (!isEvaluationStage(String(schedule.defenseType))) {
@@ -583,6 +595,9 @@ export class OfficialDefenseRecordService {
 
     const summary = schedule.oralExamSummary;
     const snapshot = (summary?.snapshotData ?? null) as OralExamSummarySnapshot | null;
+    if (snapshot && (snapshot.scheduleId !== scheduleId || snapshot.defenseType !== String(schedule.defenseType))) {
+      throw new AppError("The official summary does not belong to this exact defense.", 409);
+    }
 
     return {
       scheduleId,
@@ -615,12 +630,7 @@ export class OfficialDefenseRecordService {
     scheduleId: string,
     actor: { userId: string; role: string },
   ): Promise<OfficialSummaryDocumentSource> {
-    if (actor.role !== "ADMIN") {
-      throw new AppError(
-        "Official document generation is restricted to Admin.",
-        403,
-      );
-    }
+    await this.authorization.admin(actor, "defense.records.view");
 
     const schedule = await prisma.defenseSchedule.findUnique({
       where: { id: scheduleId },
@@ -685,12 +695,7 @@ export class OfficialDefenseRecordService {
     scheduleId: string,
     actor: { userId: string; role: string },
   ): Promise<OfficialDefenseApplicationDocumentSource> {
-    if (actor.role !== "ADMIN") {
-      throw new AppError(
-        "Official document generation is restricted to Admin.",
-        403,
-      );
-    }
+    await this.authorization.admin(actor, "defense.records.view");
 
     return this.loadExactDefenseApplicationSource(scheduleId);
   }
@@ -700,6 +705,7 @@ export class OfficialDefenseRecordService {
     scheduleId: string,
     actor: { userId: string; role: string },
   ): Promise<OfficialDefenseApplicationDocumentSource> {
+    actor = await this.authorization.current(actor);
     if (actor.role !== "STUDENT" || !actor.userId) {
       throw new AppError("Student access is required.", 403);
     }
@@ -798,12 +804,7 @@ export class OfficialDefenseRecordService {
     scheduleId: string,
     actor: { userId: string; role: string },
   ): Promise<OfficialEvaluationBundleSource> {
-    if (actor.role !== "ADMIN") {
-      throw new AppError(
-        "Official document generation is restricted to Admin.",
-        403,
-      );
-    }
+    await this.authorization.admin(actor, "defense.records.view");
 
     const schedule = await prisma.defenseSchedule.findUnique({
       where: { id: scheduleId },
@@ -919,12 +920,7 @@ export class OfficialDefenseRecordService {
     scheduleId: string,
     actor: { userId: string; role: string },
   ): Promise<OfficialDocumentIdentitySource> {
-    if (actor.role !== "ADMIN") {
-      throw new AppError(
-        "Official document generation is restricted to Admin.",
-        403,
-      );
-    }
+    await this.authorization.admin(actor, "defense.records.view");
 
     const schedule = await prisma.defenseSchedule.findUnique({
       where: { id: scheduleId },
@@ -955,16 +951,32 @@ export class OfficialDefenseRecordService {
   }
 
   /**
-  /**
    * Official individual Oral Examination Criteria.
    * CP7-FIX1 Issue 8: authorization FIRST — before any snapshot backfill.
    * Available only for FINALIZED evaluator records with signature evidence.
    */
   async getOfficialCriteria(
+    scheduleId: string, panelAssignmentId: string, actor: { userId: string; role: string },
+  ): Promise<OfficialCriteriaDto> {
+    const { signatureData: _signature, ...safe } = await this.loadOfficialCriteria(scheduleId, panelAssignmentId, actor);
+    return { ...safe, officialSnapshot: safe.officialSnapshot ? safeCriteriaSnapshot(safe.officialSnapshot) : null };
+  }
+
+  async getOfficialCriteriaForPrint(
+    scheduleId: string, panelAssignmentId: string, actor: { userId: string; role: string },
+  ): Promise<OfficialCriteriaPrintSource> {
+    await this.authorization.admin(actor, "defense.records.view");
+    return this.loadOfficialCriteria(scheduleId, panelAssignmentId, actor);
+  }
+
+  private async loadOfficialCriteria(
     scheduleId: string,
     panelAssignmentId: string,
-    actor?: { userId: string; role: string },
-  ): Promise<OfficialCriteriaDto> {
+    actor: { userId: string; role: string },
+  ): Promise<OfficialCriteriaPrintSource> {
+    if (!actor?.userId) throw new AppError("Current actor is required.", 403);
+    actor = await this.authorization.current(actor);
+    if (actor.role === "ADMIN") await this.authorization.admin(actor, "defense.records.view");
     const schedule = await prisma.defenseSchedule.findUnique({
       where: { id: scheduleId },
       include: {
@@ -993,9 +1005,9 @@ export class OfficialDefenseRecordService {
     }
 
     // Authorization BEFORE any official-record side effect.
-    if (actor) {
+    {
       const isAdmin = actor.role === "ADMIN";
-      const isOwner = actor.userId === assignment.userId;
+      const isOwner = isAcademicAccountRole(actor.role) && actor.userId === assignment.userId && (!this.authorization.enabled || assignment.isActive === true);
       if (!isAdmin && !isOwner) {
         throw new AppError(
           "You may not inspect another evaluator's individual Oral Examination Criteria.",
@@ -1059,8 +1071,13 @@ export class OfficialDefenseRecordService {
       };
     }
 
-    // Safe idempotent snapshot backfill for pre-CP7 FINALIZED rows.
+    // Preserve the legacy projection without writing or replacing a historical snapshot.
     let snapshot = (row.officialSnapshot ?? null) as OralExamScoreOfficialSnapshot | null;
+    if (snapshot && (snapshot.scheduleId !== scheduleId || snapshot.panelAssignmentId !== assignment.id ||
+        (snapshot.evaluatorUserId !== null && snapshot.evaluatorUserId !== assignment.userId) ||
+        snapshot.defenseType !== String(schedule.defenseType))) {
+      throw new AppError("The official Criteria snapshot does not belong to this exact evaluator and defense.", 409);
+    }
     if (!snapshot) {
       snapshot = {
         schemaVersion: 1,
@@ -1095,14 +1112,7 @@ export class OfficialDefenseRecordService {
         scoringVersion: scoringVersionOf(row),
         snapshotAt: new Date().toISOString(),
       };
-      // Never overwrite academic values during backfill.
-      await prisma.oralExamScore.updateMany({
-        where: {
-          id: row.id,
-          status: "FINALIZED",
-        },
-        data: { officialSnapshot: snapshot as never },
-      });
+      // Legacy compatibility is derived in memory only; reads never backfill history.
     }
 
     return {

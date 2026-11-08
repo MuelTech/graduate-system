@@ -472,7 +472,7 @@ describe("OfficialDefenseDocumentService.generateDefenseApplicationPdf", () => {
     const renderApplication = vi.fn().mockResolvedValue(Buffer.from("%PDF-1.7 app"));
     const service = new OfficialDefenseDocumentService({
       records: {
-        getOfficialCriteria: vi.fn(),
+        getOfficialCriteriaForPrint: vi.fn(),
         getOfficialSummaryDocumentSource: vi.fn(),
         getOfficialDefenseApplicationDocumentSource,
       },
@@ -521,7 +521,7 @@ describe("OfficialDefenseDocumentService.generateDefenseApplicationPdf", () => {
   it("maps renderer overflow to a controlled 422", async () => {
     const service = new OfficialDefenseDocumentService({
       records: {
-        getOfficialCriteria: vi.fn(),
+        getOfficialCriteriaForPrint: vi.fn(),
         getOfficialSummaryDocumentSource: vi.fn(),
         getOfficialDefenseApplicationDocumentSource: vi
           .fn()
@@ -550,7 +550,7 @@ describe("OfficialDefenseDocumentService.generateDefenseApplicationPdf", () => {
     for (const link of links) {
       const service = new OfficialDefenseDocumentService({
         records: {
-          getOfficialCriteria: vi.fn(),
+          getOfficialCriteriaForPrint: vi.fn(),
           getOfficialSummaryDocumentSource: vi.fn(),
           getOfficialDefenseApplicationDocumentSource: vi
             .fn()
@@ -570,7 +570,7 @@ describe("OfficialDefenseDocumentService.generateDefenseApplicationPdf", () => {
     ] as const) {
       const service = new OfficialDefenseDocumentService({
         records: {
-          getOfficialCriteria: vi.fn(),
+          getOfficialCriteriaForPrint: vi.fn(),
           getOfficialSummaryDocumentSource: vi.fn(),
           getOfficialDefenseApplicationDocumentSource: vi
             .fn()

@@ -33,8 +33,8 @@ function findRoute(path: string, method: string): StackLayer["route"] {
 function expectAdminOnlyRoute(path: string): void {
   const route = findRoute(path, "get");
   expect(route).toBeDefined();
-  // authenticateJWT + requireRole + controller handler
-  expect(route?.stack.length).toBe(3);
+  // authenticateJWT + requireRole + capability guard + controller handler
+  expect(route?.stack.length).toBe(4);
   expect(route?.stack[0]?.handle).toBe(authenticateJWT);
   expect(Object.keys(route?.methods ?? {})).toEqual(["get"]);
 
@@ -81,7 +81,7 @@ describe("FORM-INT-1 individual evaluation PDF route", () => {
       "get",
     );
     expect(jsonRoute).toBeDefined();
-    expect(jsonRoute?.stack.length).toBe(3);
+    expect(jsonRoute?.stack.length).toBe(4);
   });
 });
 
@@ -93,7 +93,7 @@ describe("FORM-INT-2 GS-011 Oral Examination Summary PDF route", () => {
   it("keeps the existing JSON Summary route ADMIN-only and intact", () => {
     const jsonRoute = findRoute("/defense/:scheduleId/records/summary", "get");
     expect(jsonRoute).toBeDefined();
-    expect(jsonRoute?.stack.length).toBe(3);
+    expect(jsonRoute?.stack.length).toBe(4);
     expect(jsonRoute?.stack[0]?.handle).toBe(authenticateJWT);
 
     const roleGuard = jsonRoute?.stack[1]?.handle as (req: any, res: any, next: any) => void;

@@ -298,14 +298,14 @@ describe("CP7 Oral Examination Summary", () => {
       oralExamSummary: {
         overallAverage: 80,
         finalRating: null,
-        snapshotData: { evaluators: [row], evaluatorCount: 1 },
+        snapshotData: { scheduleId: "sched-1", defenseType: "TITLE_DEFENSE", evaluators: [row], evaluatorCount: 1 },
         createdAt: new Date("2026-09-28T12:00:00Z"),
       },
     });
     prismaMock.panelAssignment.findMany.mockResolvedValue([{ id: "p1" }]);
     prismaMock.oralExamScore.count.mockResolvedValue(1);
 
-    const result = await svc.getSummaryReadModel("sched-1");
+    const result = await svc.getSummaryReadModel("sched-1", { userId: "admin", role: "ADMIN" });
     expect(result.ready).toBe(true);
     expect(result.defenseType).toBe("TITLE_DEFENSE");
     expect(result.evaluators).toHaveLength(1);
@@ -928,7 +928,7 @@ describe("CP7 official Criteria eligibility", () => {
       finalizedAt: null,
     });
 
-    const result = await svc.getOfficialCriteria("sched-1", "p1");
+    const result = await svc.getOfficialCriteria("sched-1", "p1", { userId: "admin", role: "ADMIN" });
     expect(result.available).toBe(false);
     expect(result.status).toBe("DRAFT");
   });
@@ -945,9 +945,9 @@ describe("CP7 official Criteria eligibility", () => {
     prismaMock.oralExamScore.findUnique.mockResolvedValue(finalizedScore("p1", 88));
     prismaMock.oralExamScore.updateMany.mockResolvedValue({ count: 1 });
 
-    const result = await svc.getOfficialCriteria("sched-1", "p1");
+    const result = await svc.getOfficialCriteria("sched-1", "p1", { userId: "admin", role: "ADMIN" });
     expect(result.available).toBe(true);
-    expect(result.signatureData).toContain("data:image/png");
+    expect(result).not.toHaveProperty("signatureData");
     expect(result.finalizedAt).toBeTruthy();
     expect(result.signedAt).toBeTruthy();
   });
@@ -967,11 +967,11 @@ describe("CP7 official Criteria eligibility", () => {
     prismaMock.oralExamScore.findUnique.mockResolvedValue(finalizedScore("p1", 88));
     prismaMock.oralExamScore.updateMany.mockResolvedValue({ count: 1 });
 
-    const result = await svc.getOfficialCriteria("sched-1", "p1");
+    const result = await svc.getOfficialCriteria("sched-1", "p1", { userId: "admin", role: "ADMIN" });
     expect(result.available).toBe(true);
     expect(result.defenseType).toBe("TITLE_DEFENSE");
     expect(result.functionalRole).toBe("PANELIST");
-    expect(result.signatureData).toContain("data:image/png");
+    expect(result).not.toHaveProperty("signatureData");
   });
 
   it("rejects non-evaluator panel assignment for Criteria", async () => {
@@ -983,7 +983,7 @@ describe("CP7 official Criteria eligibility", () => {
       role: "RAPPORTEUR",
       user: { id: "ur", firstName: "R", lastName: "P" },
     });
-    await expect(svc.getOfficialCriteria("sched-1", "pr")).rejects.toThrow(
+    await expect(svc.getOfficialCriteria("sched-1", "pr", { userId: "admin", role: "ADMIN" })).rejects.toThrow(
       /evaluator/i,
     );
   });
@@ -1024,7 +1024,7 @@ describe("CP7 official Criteria eligibility", () => {
     prismaMock.oralExamScore.findUnique.mockResolvedValue(finalizedScore("p1", 88));
     prismaMock.oralExamScore.updateMany.mockResolvedValue({ count: 1 });
 
-    const result = await svc.getOfficialCriteria("sched-1", "p1");
+    const result = await svc.getOfficialCriteria("sched-1", "p1", { userId: "admin", role: "ADMIN" });
     expect(result.officialSnapshot?.scoringVersion).toBe("LEGACY_POINTS_V1");
   });
 });

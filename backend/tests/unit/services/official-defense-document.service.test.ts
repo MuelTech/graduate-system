@@ -18,7 +18,7 @@ import {
   mapOfficialCriteriaToRenderInput,
 } from "../../../src/services/official-defense-document.service";
 import { loadOfficialFormLogos } from "../../../src/services/official-form-assets";
-import type { OfficialCriteriaDto, OralExamScoreOfficialSnapshot } from "../../../src/services/official-defense-record.service";
+import type { OfficialCriteriaPrintSource, OralExamScoreOfficialSnapshot } from "../../../src/services/official-defense-record.service";
 
 /** Valid 1x1 PNG (transparent). Used only as signature evidence in tests. */
 const PNG_SIGNATURE =
@@ -66,7 +66,7 @@ function v2Snapshot(): OralExamScoreOfficialSnapshot {
   };
 }
 
-function v2Record(overrides: Partial<OfficialCriteriaDto> = {}): OfficialCriteriaDto {
+function v2Record(overrides: Partial<OfficialCriteriaPrintSource> = {}): OfficialCriteriaPrintSource {
   const snapshot = v2Snapshot();
   return {
     available: true,
@@ -352,28 +352,28 @@ describe("mapOfficialCriteriaToRenderInput", () => {
 describe("OfficialDefenseDocumentService.generateIndividualEvaluationPdf", () => {
   beforeEach(() => vi.clearAllMocks());
 
-  function makeService(record: OfficialCriteriaDto) {
-    const getOfficialCriteria = vi.fn().mockResolvedValue(record);
+  function makeService(record: OfficialCriteriaPrintSource) {
+    const getOfficialCriteriaForPrint = vi.fn().mockResolvedValue(record);
     const render = vi.fn().mockResolvedValue(Buffer.from("%PDF-1.7 fake"));
     const service = new OfficialDefenseDocumentService({
       records: {
-        getOfficialCriteria,
+        getOfficialCriteriaForPrint,
         getOfficialSummaryDocumentSource: vi.fn(),
         getOfficialDefenseApplicationDocumentSource: vi.fn(),
       },
       loadLogos: async () => LOGOS,
       render,
     });
-    return { service, getOfficialCriteria, render };
+    return { service, getOfficialCriteriaForPrint, render };
   }
 
   it("generates for a finalized V2 PANELIST record and passes the actor through", async () => {
-    const { service, getOfficialCriteria, render } = makeService(v2Record());
+    const { service, getOfficialCriteriaForPrint, render } = makeService(v2Record());
 
     const pdf = await service.generateIndividualEvaluationPdf("sched-1", "p1", ADMIN);
 
     expect(Buffer.from(pdf).subarray(0, 5).toString()).toBe("%PDF-");
-    expect(getOfficialCriteria).toHaveBeenCalledWith("sched-1", "p1", ADMIN);
+    expect(getOfficialCriteriaForPrint).toHaveBeenCalledWith("sched-1", "p1", ADMIN);
     expect(render).toHaveBeenCalledTimes(1);
   });
 
@@ -391,7 +391,7 @@ describe("OfficialDefenseDocumentService.generateIndividualEvaluationPdf", () =>
   it("produces real PDF bytes through the accepted TEMPLATE-1 renderer", async () => {
     const record = v2Record();
     const service = new OfficialDefenseDocumentService({
-      records: { getOfficialCriteria: vi.fn().mockResolvedValue(record) },
+      records: { getOfficialCriteriaForPrint: vi.fn().mockResolvedValue(record) },
     });
 
     const pdf = await service.generateIndividualEvaluationPdf("sched-1", "p1", ADMIN);
@@ -401,7 +401,7 @@ describe("OfficialDefenseDocumentService.generateIndividualEvaluationPdf", () =>
   });
 
   it("denies non-Admin actors before reading the official record", async () => {
-    const { service, getOfficialCriteria } = makeService(v2Record());
+    const { service, getOfficialCriteriaForPrint } = makeService(v2Record());
     for (const actor of [
       { userId: "u1", role: "PANELIST" },
       { userId: "s1", role: "STUDENT" },
@@ -413,7 +413,7 @@ describe("OfficialDefenseDocumentService.generateIndividualEvaluationPdf", () =>
         expectAppError(error, 403, /admin/i);
       }
     }
-    expect(getOfficialCriteria).not.toHaveBeenCalled();
+    expect(getOfficialCriteriaForPrint).not.toHaveBeenCalled();
   });
 
   it("rejects a DRAFT / not-finalized evaluation", async () => {
@@ -455,7 +455,7 @@ describe("OfficialDefenseDocumentService.generateIndividualEvaluationPdf", () =>
   it("maps renderer content rejection to a controlled 422", async () => {
     const failing = new OfficialDefenseDocumentService({
       records: {
-        getOfficialCriteria: vi.fn().mockResolvedValue(v2Record()),
+        getOfficialCriteriaForPrint: vi.fn().mockResolvedValue(v2Record()),
         getOfficialSummaryDocumentSource: vi.fn(),
         getOfficialDefenseApplicationDocumentSource: vi.fn(),
       },

@@ -10,7 +10,7 @@ vi.mock("../../../src/config/database", () => ({ default: prismaMock }));
 import { AppError } from "../../../src/utils/AppError";
 import {
   OfficialDefenseRecordService,
-  type OfficialCriteriaDto,
+  type OfficialCriteriaPrintSource,
   type OfficialEvaluationBundleSource,
 } from "../../../src/services/official-defense-record.service";
 import { OfficialDefenseDocumentService } from "../../../src/services/official-defense-document.service";
@@ -53,8 +53,8 @@ function bundleSource(
 function v2Record(
   panelAssignmentId: string,
   evaluatorName: string,
-  overrides: Partial<OfficialCriteriaDto> = {},
-): OfficialCriteriaDto {
+  overrides: Partial<OfficialCriteriaPrintSource> = {},
+): OfficialCriteriaPrintSource {
   const snapshot = {
     schemaVersion: 1 as const,
     scheduleId: "sched-1",
@@ -144,19 +144,19 @@ async function pageTexts(bytes: Uint8Array): Promise<string[]> {
   }
 }
 
-function serviceFor(source: OfficialEvaluationBundleSource, records: OfficialCriteriaDto[]) {
+function serviceFor(source: OfficialEvaluationBundleSource, records: OfficialCriteriaPrintSource[]) {
   const byId = new Map(records.map((record) => [record.panelAssignmentId, record]));
-  const getOfficialCriteria = vi.fn(async (_scheduleId: string, panelAssignmentId: string) => {
+  const getOfficialCriteriaForPrint = vi.fn(async (_scheduleId: string, panelAssignmentId: string) => {
     const record = byId.get(panelAssignmentId);
     if (!record) throw new AppError("missing record", 404);
     return record;
   });
   const getOfficialEvaluationBundleSource = vi.fn().mockResolvedValue(source);
   return {
-    getOfficialCriteria,
+    getOfficialCriteriaForPrint,
     getOfficialEvaluationBundleSource,
     service: new OfficialDefenseDocumentService({
-      bundleRecords: { getOfficialCriteria, getOfficialEvaluationBundleSource },
+      bundleRecords: { getOfficialCriteriaForPrint, getOfficialEvaluationBundleSource },
       // The default production logo loader and TEMPLATE-1 renderer are used.
     }),
   };
@@ -482,7 +482,7 @@ describe("OfficialDefenseDocumentService.generateEvaluationBundlePdf", () => {
     const service = new OfficialDefenseDocumentService({
       bundleRecords: {
         getOfficialEvaluationBundleSource: vi.fn().mockResolvedValue(source),
-        getOfficialCriteria: vi.fn(async (_scheduleId: string, panelAssignmentId: string) =>
+        getOfficialCriteriaForPrint: vi.fn(async (_scheduleId: string, panelAssignmentId: string) =>
           byId.get(panelAssignmentId),
         ) as never,
       },
@@ -574,7 +574,7 @@ describe("OfficialDefenseDocumentService.generateEvaluationBundlePdf", () => {
     const service = new OfficialDefenseDocumentService({
       bundleRecords: {
         getOfficialEvaluationBundleSource: vi.fn().mockResolvedValue(source),
-        getOfficialCriteria: vi.fn(async (_scheduleId: string, panelAssignmentId: string) =>
+        getOfficialCriteriaForPrint: vi.fn(async (_scheduleId: string, panelAssignmentId: string) =>
           byId.get(panelAssignmentId),
         ) as never,
       },

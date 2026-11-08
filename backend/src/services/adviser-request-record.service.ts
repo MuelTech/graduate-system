@@ -1,3 +1,4 @@
+import { privateRecordAuthorization, PrivateRecordAuthorization } from "../access/private-record-authorization";
 import { ACADEMIC_ACCOUNT_ROLES, isAcademicAccountRole } from "../utils/academic-account";
 import type { AdviserRequestOfficialRecord, Prisma } from "@prisma/client";
 import prisma from "../config/database";
@@ -71,8 +72,15 @@ function snapshotOf(row: AdviserRequestOfficialRecord & { request: { status: str
 
 /** Read-only metadata and on-demand PDF; never rebuild a legacy request from current profiles. */
 export class AdviserRequestRecordService {
-  private async source(id: string, actor: AdviserRequestRecordActor): Promise<RecordSource> {
+  constructor(private readonly authorization: PrivateRecordAuthorization = privateRecordAuthorization) {}
+  private async currentActor(actor: AdviserRequestRecordActor) {
+    actor = await this.authorization.current(actor);
     assertActor(actor);
+    if (actor.role === "ADMIN") await this.authorization.admin(actor, "adviser.requests.view");
+    return actor;
+  }
+  private async source(id: string, actor: AdviserRequestRecordActor): Promise<RecordSource> {
+    actor = await this.currentActor(actor);
     const row = await prisma.adviserRequestOfficialRecord.findUnique({ where: { requestId: id }, select: RECORD_SELECT });
     if (!row || !(actor.role === "ADMIN" || (actor.role === "STUDENT" && row.studentUserId === actor.userId)
       || (isAcademicAccountRole(actor.role) && row.requestedAdviserId === actor.userId))) {
@@ -82,7 +90,7 @@ export class AdviserRequestRecordService {
   }
 
   async list(actor: AdviserRequestRecordActor) {
-    assertActor(actor);
+    actor = await this.currentActor(actor);
     const rows = await prisma.adviserRequestOfficialRecord.findMany({
       where: {
         ...(actor.role === "STUDENT" ? { studentUserId: actor.userId } : {}),
