@@ -2,7 +2,7 @@
 
 Date: 2026-11-09 (Asia/Manila). Branch: `feat/faculty-admin-access`.
 
-**Status: FACULTY-11 implemented / pending independent review. FACULTY-12 deferred / not started.** This is source readiness against the dormant FACULTY-10 backend, not a live Faculty Management rollout or acceptance.
+**Status: FACULTY-11 accepted for continuation** at `8c554405d39fc9685e71ba380512c4dd0bd9e03d` after independent remote commit-diff/source review. FACULTY-12 remains deferred / not started pending project-owner approval. This accepts source readiness against the dormant FACULTY-10 backend; it is not a live Faculty Management rollout.
 
 Starting local and actual remote HEAD: `630c5819bf4815e16da56073ecb0096ad8b5b260`; worktree clean. Verified before edits using `git branch --show-current`, `git rev-parse HEAD`, and `git ls-remote origin refs/heads/feat/faculty-admin-access`. The initial sandbox SSH attempt was denied; the authorized network retry verified the actual remote. The delivery commit contains this report; its exact SHA and final local/remote comparison are recorded in the delivery response.
 
@@ -129,3 +129,18 @@ This is automated browser interaction plus screenshot inspection, **not project-
 ## Stop and preserved boundaries
 
 No schema/migration, account conversion, live activation, production Faculty provisioning, email delivery, password-reset management, committee/Adviser assignment, load policy, Faculty portal/essay workflow, Administrators Management, generic permission-aware sidebar, or Custom Roles retirement was implemented. No merge to `main`. Stop after FACULTY-11; FACULTY-12 remains deferred / not started.
+
+
+## Independent-review acceptance — 2026-11-09 (Asia/Manila)
+
+Independent remote commit-diff/source review is complete for FACULTY-11 commit `8c554405d39fc9685e71ba380512c4dd0bd9e03d`. The live `feat/faculty-admin-access` branch was verified at that exact implementation SHA during review, and the pushed range was reconciled as one commit changing exactly 19 files.
+
+The review independently verified the new Faculty Management list/detail/create/edit flow, the User Management **Faculty** navigation label on the retained technical route, strict FACULTY-10 request mapping, Internal/External behavior, Internal-only Adviser availability, Essay Evaluation presentation, status confirmation, truthful loading/error/empty states and removal of legacy Panelist-account/password-reset behavior. The one-time temporary credential remains outside React Query/browser storage/URLs and is cleared when the handoff closes; ordinary Faculty read models do not contain the credential.
+
+The page-specific `GET /api/admin/panelists/management-context` support read was accepted as a bounded FACULTY-11 seam: it is registered before `/:id`, requires current Administrator plus `faculty.view`, reuses the accepted current OperationalAuthorization resolver, returns only `{ canManage: boolean }`, reads no Faculty/Student/Defense records, uses `Cache-Control: private, no-store`, and remains behind the same dormant Faculty-configuration gate. It does not expose raw grants/access levels or create the generic capability-aware Admin client reserved for later packages. Mutation APIs remain authoritative even when UI controls are hidden or disabled.
+
+Optional Faculty assignment summaries remain intentionally deferred. No safe bounded summary exists in the accepted FACULTY-10 DTO, and FACULTY-11 does not widen `faculty.view` into Student/Defense history solely for decoration.
+
+Evidence classes remain separate. Codex reported 20 focused frontend checks and 156 focused backend tests PASS, TypeScript/scoped ESLint PASS, frontend/backend builds PASS and diff checks PASS. Codex also reported three synthetic Chrome scenarios PASS with desktop/mobile screenshots visually inspected. The independent review inspected the pushed source/diff, tests and E2E source; it did not independently rerun those local commands or inspect the ignored screenshot artifacts. GitHub hosted CI/status workflows were not observed. Project-owner manual acceptance remains separate.
+
+**Acceptance checkpoint:** FACULTY-11 is accepted for continuation at `8c554405d39fc9685e71ba380512c4dd0bd9e03d`. Faculty Management remains code-owned/dormant with controlled 503 behavior; no schema/migration, data conversion, production provisioning, live permission activation, generic permission-aware Admin navigation or later Faculty package is accepted by this checkpoint. FACULTY-12 remains deferred / not started pending explicit project-owner approval.
