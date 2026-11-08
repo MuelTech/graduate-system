@@ -2,9 +2,11 @@
 
 **Project:** EARIST Graduate School Information System (GS-IS)
 **Date:** 2026-11-08
-**Package:** V2 Tasks 1–3 — accepted masthead/Hero foundation, Landing body, and public information/contact design preview.
-**Status:** Task 1 accepted by the owner for continuation; Task 2 treatments preserved. Task 3 is implemented for owner visual review. Temporary imagery, sample news, and source-review program/contact details are not final production content. Task 4 has not begun.
+**Package:** V2 Tasks 1–5 implementation; Task 6 asset/content reconciliation and verification.
+**Status:** Tasks 1–5 are complete for continuation under the owner's Task 6 instruction. Whole-site owner visual/content acceptance remains pending. Generated imagery, sample News, and unconfirmed contact/platform content are not production-ready. No new asset or application-source change is made by Task 6.
 **Authority:** [V2 specification](../specs/2026-11-08-landing-page-redesign-v2-design.md) and [V2 implementation plan](../plans/2026-11-08-landing-page-redesign-v2.md).
+
+**Current-state reading:** Sections 1–5 retain asset provenance. Sections 6–8 record historical package states and are superseded where noted by the owner refinement in section 9 and the assembled-state reconciliation in section 10. See the [Task 6 consolidated report](2026-11-08-landing-page-redesign-v2-report.md) for verification, owner-review status, and Repository limitations.
 
 ## 1. Hero review image
 
@@ -39,7 +41,7 @@ Use case: photorealistic-natural. Asset type: temporary photographic website Her
 - Reused browser/repository asset: `frontend/public/images/landing/earist-logo.jpg` (141 × 141 pixels).
 - Owner-supplied original and provenance: [official-form assets](../../../backend/assets/official-forms/README.md), `backend/assets/official-forms/earist-logo.jpg`.
 - Both copies retain SHA-256 `7b6fd94291f63a0931c7979253548dd71a7a8a899f42ece9a01ceee1c76fdff8`; bytes, aspect ratio, and colors are unchanged.
-- Masthead display after the accepted Task 1 refinements: 60 × 60 CSS pixels at desktop widths from 1200px; 64 × 64 at intermediate widths; 48 × 48 below 600px. Task 2 does not change the masthead. The existing Footer is deferred and unchanged.
+- Masthead display after the accepted Task 1 refinements: 60 × 60 CSS pixels at desktop widths from 1200px; 64 × 64 at intermediate widths; 48 × 48 below 600px. Task 2 did not change the masthead. The Footer was deferred at that historical stage; the current Task 3 Footer reuses the same seal at 56 × 56 CSS pixels.
 - No new or recreated seal, background removal, tracing, recoloring, or backend asset/consumer changes were made. No Graduate School seal copy or later-section asset is introduced in Task 1.
 
 ## 3. Required production replacement and review
@@ -48,7 +50,7 @@ Replace the Hero preview with an owner-approved real institutional photograph be
 
 Keep the image caption and page-level notice visible until their replacement conditions are met. A production build or branch push does not remove preview status. Remove or revise the page-level notice only after every unapproved image/sample on that page is replaced or omitted and the owner approves the production content. No frontend environment check, backend endpoint, database field, CMS, or public-data contract is introduced for this gate.
 
-Task 1 introduced the Hero image and reused the institutional seal. Task 2 added the Research/About images and provisional program snapshot below. Task 3 corrects program provenance, adds text-only sample News and Contact Us, and completes public navigation/Footer. It introduces no new images. Deeper-page redesigns remain later packages. This ledger is dedicated feature evidence; shared canonical documentation is unchanged.
+Task 1 introduced the Hero image and reused the institutional seal. Task 2 added the Research/About images and provisional program snapshot below. Task 3 corrected program provenance, added text-only sample News and Contact Us, and completed public navigation/Footer. Task 4 completed Programs/About, reusing the About image; Task 5 changed only Repository framing. Tasks 3–6 introduce no new images. This ledger is dedicated feature evidence; shared canonical documentation is unchanged.
 
 ## 4. Task 2 — Research review image
 
@@ -92,7 +94,9 @@ Use case: photorealistic-natural. Asset type: temporary Graduate Research websit
 Use case: photorealistic-natural. Asset type: temporary institutional About section image for website visual QA only. Create a realistic editorial photograph of a completely fictional graduate seminar room, with a modest arrangement of wooden tables and chairs, a plain blank writing board, tall windows admitting soft daylight and views of leafy tropical trees, warm plaster walls and restrained burgundy upholstered seating. Academic, welcoming, practical, contemporary but not luxurious. Landscape 3:2 image with believable architectural proportions and balanced composition, suitable for a 5:4 crop. Empty room: no people, no staged event, no signage, no text, no seals, logos, awards, watermarks or UI. This is an invented academic setting and must not depict or impersonate EARIST, a real campus, or any official event. No dramatic filters.
 ```
 
-## 6. Task 2 — Public content and execution boundaries
+## 6. Task 2 — Historical public content and execution boundaries
+
+The following records the Task 2 handoff, not the current rendered catalog or review-note treatment. Sections 9–10 supersede its curated list, public source-conflict note, and deferred-page status.
 
 - Task 2 originally used eight provisional seed-derived program titles. The inherited correction before Task 3 replaces that provenance with the two official EARIST pages in section 7. The Home selection uses shared degree names only, corrects the doctoral wording, and omits disputed majors. Its visible notice now reads **Official EARIST references differ on majors and wording; client confirmation is pending.** Both official references are linked next to the notice, which still describes both degree groups through `aria-describedby`. The accepted Programs layout is preserved. No counts, department claims, residency limits, admissions availability, deadlines, or program-specific application actions are introduced.
 - About copy is limited to existing institutional identity and public program/research/account pathways. No mission, vision, history, leadership, statistics, or outcomes are invented. No Graduate School seal copy is required by this package.
@@ -101,9 +105,9 @@ Use case: photorealistic-natural. Asset type: temporary institutional About sect
 - Research links to the existing `/repository` only. No publications, research statistics, new Home API reads, News, CMS, or backend integration are added. Public navigation destinations, Footer, deeper pages, authentication, authorization, chatbot, and shared canonical documents remain outside Task 2.
 - Both Task 2 generated outputs were visually inspected as fictional academic-context illustrations. Their captions and the existing public-page preview notice remain visible, with no environment-based suppression. The production replacement gate in section 3 applies to both images and to unconfirmed program content. At the Task 2 handoff, Task 3 had not been initiated; the current Task 3 state is recorded in section 8.
 
-## 7. Inherited Task 2 correction — official program references
+## 7. Inherited Task 2 correction — historical official program comparison
 
-Read on 2026-11-08 from the official [Graduate School reference 1](https://earist.edu.ph/graduate-school/) and [Graduate School reference 2](https://earist.edu.ph/graduate-school-2/). These are source-review references, not a client-reconciled current catalog. The unchanged two-column Home layout contains four selected master's degree names and four doctoral names common to both pages, with ordinary whitespace normalized only.
+Read on 2026-11-08 from the official [Graduate School reference 1](https://earist.edu.ph/graduate-school/) and [Graduate School reference 2](https://earist.edu.ph/graduate-school-2/). At this historical stage, Home used four selected master's degree names and four doctoral names common to both pages. The following table preserves that comparison and its then-current treatment. It does not govern today's complete working catalog, which uses reference 2 under the subsequent owner decision in section 9.
 
 | Difference | Reference 1 | Reference 2 | Home treatment / confirmation required |
 | --- | --- | --- | --- |
@@ -114,7 +118,9 @@ Read on 2026-11-08 from the official [Graduate School reference 1](https://earis
 
 The source-derived master's selection remains Mathematics, Industrial Psychology, Business Administration, and Public Administration. The Doctor of Philosophy in Industrial Psychology title is also shared. The official pages do not authorize inventing current admissions availability, residency limits, deadlines, or a total program count. Client confirmation remains visible; the deeper `/programs` route is a later package.
 
-## 8. Task 3 — News, navigation, Contact Us, and Footer
+## 8. Task 3 — Initial package history: News, navigation, Contact Us, and Footer
+
+This section preserves initial Task 3 decisions and verification. Section 9 supersedes its public audit notes, `/faq` promotion, and absence of an inquiry form; section 10 records the current assembled state.
 
 ### Scope and inherited correction
 
@@ -122,11 +128,11 @@ The package begins from verified local/live feature HEAD `eedfe2352a6a60f9bd82b6
 
 News is a text-only editorial composition with one featured sample and two smaller entries. Every item visibly states **Sample content — design review only**; the section also states that these are layout samples, not official announcements. Dates, Read More/View All actions, article routes, official events, admissions claims, and new publishing/API behavior are absent. No new photography or generated asset was needed.
 
-The Navbar now uses the final root-qualified Home anchors for Programs, News, About, and Contact, plus the dedicated `/repository` route. Sign In/Register retain their original routes. The institutional identity still links Home. `/faq` remains reachable through Home help and Footer. Accepted masthead geometry/identity, Hero, Research, About, and help treatments remain unchanged.
+The Navbar adopted root-qualified Home anchors for Programs, News, About, and Contact, plus the dedicated `/repository` route. Sign In/Register retained their original routes, and institutional identity linked Home. The initial Home help/Footer promotion of `/faq` was removed by the subsequent owner refinement in section 9. The compatibility route itself remains unchanged.
 
 ### Contact and platform provenance
 
-Contact Us appears before Footer with visible status **Official-source contact details — client confirmation pending.** It distinguishes institutional details from the earlier Graduate School listing rather than silently presenting them as one current office record.
+At the initial Task 3 handoff, Contact Us appeared before Footer with visible status **Official-source contact details — client confirmation pending.** It distinguished institutional details from the earlier Graduate School listing. Section 9 records removal of that public audit presentation while preserving provenance here.
 
 | Displayed reference | Source | Status / boundary |
 | --- | --- | --- |
@@ -139,7 +145,7 @@ Contact Us appears before Footer with visible status **Official-source contact d
 
 These outgoing URLs were read from the official pages on 2026-11-08. Automated target retrieval returned HTTP 403 for the Applicant Portal and a fetch/cache limitation for Facebook; the verified fact is their inclusion in official-site navigation, not successful authentication/service availability or a client endorsement. The current homepage also displays a different institutional phone from Graduate School reference 2; no additional phone from that page was introduced. The client must confirm current contact ownership/numbers and preferred social/platform destinations before production-content acceptance.
 
-There is no contact form, submission endpoint, ticketing workflow, office-hours claim, new email, invented social destination, or contact-data API. External links use ordinary same-tab anchors; mail/tel links do not send messages automatically.
+The initial Task 3 package had no contact form. Section 9 subsequently added the six-field frontend inquiry form without a submission endpoint or delivery integration. No ticketing workflow, office-hours claim, new email, invented social destination, or contact-data API was introduced. External links use ordinary same-tab anchors; mail/tel links do not send messages automatically.
 
 ### Footer and verification boundary
 
@@ -147,7 +153,7 @@ The Footer has four visual groups: real EARIST seal/identity, Study & Informatio
 
 Task 3 verification covers TypeScript, scoped ESLint, exact diff/whitespace, focused desktop/mobile Home review, section/anchor uniqueness, cross-route Navbar navigation from the four deeper public destinations, Footer/platform hrefs, mobile keyboard/disclosure/Escape/focus behavior, and mobile copyright clearance. Source/data checks keep the accepted Hero/Task 2 treatments and protected backend/auth/chatbot/deeper-page/canonical files intact. Browser/source checks and the owner approval decision remain separate; no hosted CI pass, production build rerun, production deployment, or final content approval is claimed.
 
-Remaining client decisions: reconcile the official program majors/wording; confirm current institutional versus Graduate School contact details and social destinations; replace sample news with approved content; replace the existing fictional images with authorized institutional photographs. Task 4 is not initiated by this package.
+At the initial handoff, client program/contact decisions and production photography/News remained open, and Task 4 had not begun. Subsequent owner decisions, Tasks 4–5, and current remaining dependencies are recorded in sections 9–10.
 
 ## 9. Task 3 owner refinement — complete catalog, Home help, scrolling, inquiry form
 
@@ -163,4 +169,30 @@ The new client-side inquiry form has only Full Name, Email Address, optional Con
 
 Inspection of backend routes/controllers and frontend API routes found no authorized public inquiry submission handler. Existing notifications/authentication mail paths were not repurposed. Accordingly, this is frontend UI/validation only: a persistent availability notice directs visitors to the existing institutional email; a valid Send Inquiry action explicitly reports that nothing has been sent and retains the entries. There is no fetch, submission endpoint, email dispatch, console logging of user input, local-storage persistence, or fake successful response. Required/email/privacy and whitespace-only text validation are enforced; optional phone can remain blank. Server-side submission, delivery/privacy controls, and the receiving-office workflow remain a separate authorized integration dependency.
 
-Focused verification includes TypeScript, scoped ESLint, exact diff/whitespace, desktop/mobile Home review, complete degree/major rendering, FAQ/Footer link removal, smooth-scroll progression and reduced-motion immediate target behavior, sticky offsets, and form validity/no-network/retained-entry checks. Accepted Hero, Research, About, News, masthead geometry, deeper pages, backend, auth, chatbot, and canonical documents remain unchanged. No production build or broad QA was repeated. Task 4 has not begun.
+Focused verification at this refinement's handoff included TypeScript, scoped ESLint, exact diff/whitespace, desktop/mobile Home review, complete degree/major rendering, FAQ/Footer link removal, smooth-scroll progression and reduced-motion immediate target behavior, sticky offsets, and form validity/no-network/retained-entry checks. Accepted Hero, Research, About, News, masthead geometry, deeper pages, backend, auth, chatbot, and canonical documents were preserved. No production build or broad QA was repeated at that stage. Task 4 had not begun then; its completed state follows.
+
+## 10. Tasks 3–6 — Current assembled asset and content state
+
+Task 6 verifies application source HEAD `4154da664047be8d0519915af8dbfbe172d7a0cb` against current main `045316540d97364214792c7d441ae20a1e426d4c`. It changes documentation only. Tasks 1–5 are complete for continuation, not final production-content acceptance.
+
+- Final Task 3 Programs polish (`a9c2d219d5fd025e1dd2e47fa7f020af66182cfa`) stacks full-width degree groups with two internal columns from 768px and one column below. The complete shared working catalog remains seven master's programs, four doctoral programs, and nine published majors. No offering was shortened or removed to balance the groups.
+- Task 4 (`432e8bda3ee84f4bf6f10fdf1cc930db8ffd6297`) makes `/programs` an informational directory using that same content object. Degree-group jump links replace inert search; no program-specific Apply action, invented catalog metadata, or detail route remains.
+- Task 4's `/about` introduces source-linked summaries of the three Graduate School Goals from [reference 1](https://earist.edu.ph/graduate-school/) and separately identifies EARIST-wide Goals summarized from [About EARIST](https://earist.edu.ph/about/). Reference 1 is not used to expand the selected reference-2 program catalog. These are adapted summaries, not verbatim policy quotations or software Mission/Vision.
+- `/about` reuses `about-preview.webp` beside the introduction on desktop, with a 3:2 frame; copy precedes it on smaller screens. The Home About section retains its existing 5:4 desktop / 16:9 narrow treatment. Both uses retain the same fictional-room alt text and adjacent placeholder caption.
+- Task 5 (`4154da664047be8d0519915af8dbfbe172d7a0cb`) changes only public Repository framing. No image, publication fixture, count/statistic, backend integration, or RepositoryBrowser change was added.
+- Home retains three visibly labelled News samples and the persistent inquiry-unavailable notice. The form is UI/validation only, explicitly reports an unsent inquiry, and retains entries. Delivery remains unauthorized/unimplemented.
+- Navbar/Footer and Home help no longer promote the legacy `/faq` route. The compatibility page and unchanged chatbot's legacy text remain outside the V2 content rewrite.
+
+### Task 6 tracked-asset verification
+
+All four runtime assets are explicitly tracked despite the image-directory ignore rule. Files, sizes, dimensions, and SHA-256 values in sections 1, 2, 4, and 5 remain valid. The three WebPs remain 1536 × 1024; the seal remains 141 × 141 and byte-identical to its backend provenance original. No Graduate School seal copy or News/Repository decoration image was introduced.
+
+Task 6 browser checks confirm loaded images, meaningful fictional-image alt text, visible adjacent captions, unchanged object-fit cover, and usable crops at desktop/tablet/mobile/320px and actual 200% browser zoom. The shared preview notice is still visible. The generated PNG session originals are historical provenance references; Task 6 verified the tracked runtime files, not the continued availability of those session originals.
+
+### Readiness and remaining dependencies
+
+**NOT production-content ready.** Required owner/client decisions remain: approved genuine EARIST photography with rights/source and crop/alt review; approved real News or an expressly accepted honest empty state; current contact/receiving-office/platform confirmation; authorized inquiry submission/delivery/privacy integration; and client corrections to the selected working program content if needed. Whole-site visual/copy acceptance is still pending and may lead to a separately authorized refinement pass; current styling is not permanently frozen.
+
+The public Repository currently returns a real empty catalog. Its page, guest discovery/search/reset UI, and outer framing were checked. Populated-publication filters, actual citation actions, manuscript preview/viewer, downloads/access enforcement, and authenticated Repository paths are **not operationally verified**. They require a separate follow-up functional workstream using real records and an authorized test account, without seeding fake data for this visual package.
+
+The unchanged chatbot's expanded 320px-wide panel extends 24 CSS pixels beyond the left edge at a 320px viewport. Task 6 records this inherited responsive limitation without editing the protected widget. Its legacy catalog/contact/FAQ guidance also remains outside this content reconciliation. Closed-launcher/Footer copyright clearance passed. Neither a widget refinement nor the separate Repository functional follow-up has begun.
