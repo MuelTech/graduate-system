@@ -2,7 +2,7 @@
 
 Date: 2026-11-09 (Asia/Manila). Branch: `feat/faculty-admin-access`.
 
-**Status: FACULTY-13 implemented / pending independent review. FACULTY-14 deferred / not started.**
+**Status: FACULTY-13 accepted for continuation** at `584360296c43a63c74045d6eacc111a05bcf548c` after independent remote commit-diff/source review. FACULTY-14 remains deferred / not started pending project-owner approval.
 
 Starting local and actual remote HEAD: `7e76882bd6628ed6a340d0308369b5051fad887c`. Worktree was clean. Before edits, verified branch, local HEAD and `git ls-remote origin refs/heads/feat/faculty-admin-access`. The sandbox SSH attempt was denied; the authorized network retry verified the actual remote. Ending commit and final local/remote comparison are reported at delivery, avoiding a self-referential commit hash here.
 
@@ -123,4 +123,27 @@ Documentation (3):
 
 ## Preserved scope and stop
 
-No schema, migration, frontend, login/redirect/sidebar/dashboard change, FACULTY-14+ implementation, scoring/review/GS-020 transition change, operational dashboard aggregate, account conversion/provisioning, real grant, live enforcement, environment/request/database activation switch, deployment or merge to main. FACULTY-10/12 and direct-access activation constants remain false. No real-DB readiness gate was closed. Independent remote source review remains pending. Stop after FACULTY-13.
+No schema, migration, frontend, login/redirect/sidebar/dashboard change, FACULTY-14+ implementation, scoring/review/GS-020 transition change, operational dashboard aggregate, account conversion/provisioning, real grant, live enforcement, environment/request/database activation switch, deployment or merge to main. FACULTY-10/12 and direct-access activation constants remain false. No real-DB readiness gate was closed. Independent remote commit-diff/source review is complete. The live `feat/faculty-admin-access` branch was verified at `584360296c43a63c74045d6eacc111a05bcf548c` during review. Stop after FACULTY-13; FACULTY-14 remains deferred / not started pending explicit project-owner approval.
+
+
+## Independent-review acceptance — 2026-11-09 (Asia/Manila)
+
+Independent remote commit-diff/source review is complete for FACULTY-13 commit `584360296c43a63c74045d6eacc111a05bcf548c`. The live `feat/faculty-admin-access` branch was verified at that exact implementation SHA, and the pushed range from `7e76882bd6628ed6a340d0308369b5051fad887c` was reconciled as one commit changing exactly 11 files.
+
+The review verified that `GET /api/auth/me` remains the single generic self-access endpoint and preserves its existing `user`, `configuredAccess`, and `directAccessEnforcementEnabled` fields while additively returning only a minimized `facultyWork` projection. The response is derived from the fresh persisted current account established by authentication, never from stale JWT role/capability claims or a matched alternate account.
+
+Faculty work is populated only for a resolved academic account. Required password change, inactive account/profile, malformed configured access, wrong-category/duplicate/unknown grants and other invalid authority states do not expose usable work. A valid academic account with genuinely no work receives a truthful all-false/all-zero summary; a workflow read/integrity failure returns a controlled error rather than silently fabricating empty work. `Cache-Control: no-store` remains in force, including authentication/read failures on the self-access route.
+
+Essay Evaluation relevance comes only from the current resolved `essay.evaluate` grant, including valid External Faculty and valid zero-pending-work states; FACULTY-12 queue/B7 eligibility is not duplicated or queried for navigation. My Advisees relevance is reduced from the accepted sole-active-Adviser invariant, exact addressed GS-020 ownership and exact own-issued GS-017 issuer scope. Pending addressed requests remain represented before assignment/Dean approval, and historical addressed/issuer context is not erased by availability, later External classification or an invented recency cutoff. Multiple-active-Adviser corruption preserves the existing fail-closed conflict instead of being normalized into an ordinary count.
+
+My Defenses uses the same current exact `PanelAssignment.userId + isActive=true` read predicate used by the Panelist dashboard and the current-schedule Defense History entry authority. There is no date/session-status cutoff, so legitimately readable concluded assignment context remains represented; corrected inactive assignments do not. Adviser work, Essay Evaluation access and aggregate pending-task counts do not fabricate Defense relevance, and committee roles remain contextual rather than account permissions.
+
+The added self-access data consists only of booleans and nonnegative counts. The review found no new Student numbers/IDs, Applicant IDs, thesis/schedule/request/document/certification IDs, signatures, manuscript data, evaluator drafts, grades, verdicts, other-user email, audit rows or credentials in the Faculty work projection. The projection is explicitly presentation-only: exact Essay, Adviser and Defense APIs continue to reauthorize guessed/deep-linked resources independently.
+
+Admin behavior remains current-account-only. Full and Restricted Administrator access continues through the accepted configured-access resolver; a valid Restricted Admin with zero grants remains authenticated with a resolved empty capability list and `facultyWork=null`. FACULTY-13 does not search for a matching Faculty account by name/email or query Admin operational dashboard aggregates.
+
+No acceptance-blocking authorization, privacy, read-model or scope issue remained. No schema/migration, frontend, login/redirect/sidebar/dashboard change, grant provisioning, live enforcement, activation switch or FACULTY-14+ implementation was included.
+
+Evidence classes remain separate. Codex reported 30 affected files / 922 tests passed, a final focused 72-test suite PASS, backend build PASS and repository-root diff check PASS. The independent review inspected the pushed production source, focused tests and underlying Adviser/Defense ownership rules; it did not rerun those local commands. GitHub hosted CI was not observed, and browser/manual QA was not executed because this package changed no frontend. FACULTY-13 introduced no new lock/transaction behavior, so no new real-DB contention run is required for this package. The previously recorded FACULTY-12 five-case isolated MariaDB contention gate remains open and is not closed by this acceptance.
+
+**Acceptance checkpoint:** FACULTY-13 is accepted for continuation at `584360296c43a63c74045d6eacc111a05bcf548c`. The effective-access/work projection remains a read-only presentation seam; no live Faculty/Admin enforcement is activated. FACULTY-14 remains deferred / not started pending explicit project-owner approval.
