@@ -3,7 +3,7 @@
 **Project:** EARIST Graduate School Information System (GS-IS)
 **Date:** 2026-11-08
 **Repository / branch:** `MuelTech/graduate-system` / `feat/landing-page-redesign`
-**Status:** Owner-authorized specification of the working V2 direction; implementation NOT STARTED. This document does not authorize source changes or establish owner visual acceptance.
+**Status:** Working V2 design authority. Tasks 1–2 have been implemented on the feature branch and reviewed for continuation; Task 3 has not begun. Owner clarifications recorded before Task 3 include official program-source references, a Home Contact Us section, and review-status contact/platform content. This document still does not establish final whole-site visual or production-content acceptance.
 **Verified documentation starting HEAD:** `ab6086026ec68715035f36be91663b6e306af2fd`
 **Verified current main / merge base:** `045316540d97364214792c7d441ae20a1e426d4c`
 
@@ -44,10 +44,11 @@ Do not add a public news feed, expose authenticated memos, or create news archiv
 | Research Repository | `/repository` | Dedicated repeat-use discovery resource. |
 | News | `/#news` | Home News & Announcements feature. |
 | About | `/#about` | Home institutional introduction. |
+| Contact | `/#contact` | Home contact and official-platform section. |
 | Sign In | `/login` | Existing account access. |
 | Register | `/register` | Existing registration entry; no behavior change. |
 
-Use root-qualified anchors so the shared Navbar also works from deeper routes. FAQ belongs in Home help and Footer, with `/faq` retained. `/programs` remains the deeper directory and `/about` remains a deeper institutional destination. Research remains a primary route because search, filtering, abstracts, citations, and document access are functional public-resource tasks.
+Use root-qualified anchors so the shared Navbar also works from deeper routes. FAQ belongs in Home help and Footer, with `/faq` retained. `/programs` remains the deeper directory and `/about` remains a deeper institutional destination. Research remains a primary route because search, filtering, abstracts, citations, and document access are functional public-resource tasks. Contact is a Home section rather than a new route; Footer and relevant calls to action may also target `/#contact`.
 
 ### 3.2 Exact Home order
 
@@ -58,13 +59,14 @@ Use root-qualified anchors so the shared Navbar also works from deeper routes. F
 5. Graduate Research (`graduate-research`).
 6. About the Graduate School (`about`).
 7. Getting Started & FAQ (`getting-started`; FAQ subsection `faq`).
-8. Institutional Footer.
+8. Contact Us (`contact`), including official-source contact and platform destinations with client-confirmation status where needed.
+9. Institutional Footer.
 
 Keep the old `graduate-study` anchor as an unobtrusive compatibility target at the Programs section if practical; it must not duplicate a section or confuse heading order. `graduate-research` already has a useful existing target.
 
 ## 4. Masthead and institutional identity
 
-Use a solid warm-white masthead with a fine burgundy/gold detail, aligned to the page's content gutter. The desktop composition is identity left, four public links in the middle/right, and separated account actions at the end. Avoid a translucent SaaS toolbar treatment.
+Use a solid warm-white masthead with a fine burgundy/gold detail, aligned to the page's content gutter. The desktop composition is identity left, five public links in the middle/right, and separated account actions at the end. Avoid a translucent SaaS toolbar treatment.
 
 Render the actual EARIST seal, unchanged, at approximately 60–64 CSS pixels on desktop. Pair it with a clear EARIST / Graduate School word lockup and the full name, Eulogio "Amang" Rodriguez Institute of Science and Technology, at a subordinate readable size. A two-row masthead is preferable to squeezing a long identity into one crowded row. Desktop height is approximately 88–96px, allowed to grow with text/zoom.
 
@@ -72,7 +74,7 @@ Sign In is a quiet text action. Register is a compact outlined burgundy action. 
 
 Use the existing mobile disclosure semantics and improve rather than discard them: native trigger, `aria-expanded`, controlled panel, hidden collapsed links, Escape dismissal, focus return, and close after navigation. Collapse before identity/navigation crowding occurs, initially around 1200px and adjusted from actual fit rather than retaining `md` by habit. No role selector, portal menu, or session-driven account behavior is introduced.
 
-On mobile, retain a 44–48px seal, short EARIST / Graduate School identity, and menu trigger. Put the full institutional name in the Hero/Footer rather than reducing it to illegible masthead text.
+On mobile, retain a 44–48px seal, the accepted compact institutional-name lockup, and menu trigger. Preserve the current Task 1 masthead hierarchy rather than reintroducing the removed duplicate Graduate School line.
 
 ## 5. Hero composition, message, and actions
 
@@ -98,9 +100,13 @@ Home must show useful study options rather than only a heading and outbound link
 
 Use **View All Graduate Programs** → `/programs`. Home entries can be non-interactive directory rows; do not give them false program-specific Apply links or invent detail routes. A program list must not change or preselect registration state.
 
-This visual-first iteration uses a small local frontend content snapshot, shared with a later deeper directory treatment. It does not connect Home to a new endpoint or change the existing program contract. The current `/programs` hard-coded list and `backend/prisma/seed.ts` disagree; neither establishes current public offerings. Only owner-confirmed names/degree groups may appear as authoritative offerings. Until confirmation, source-derived provisional titles must carry the visible group-level label **Program listing for design review — offerings require confirmation.** Do not invent new degrees. Omit unverified departments, descriptions, residency limits, admissions availability, and deadlines.
+The official EARIST Graduate School pages are now the public content references for program names and degree groupings:
+- https://earist.edu.ph/graduate-school/
+- https://earist.edu.ph/graduate-school-2/
 
-`/programs` remains the full visual directory. Its later refinement uses the same local review/approval status and grouped typography. Any displayed search/type controls must actually filter that local list; otherwise omit them. This is frontend presentation only, not program administration or admissions integration.
+The two official pages are not identical: they differ in some majors and wording. Therefore they are **official-source review references, not yet a reconciled final catalog**. Home may use a curated subset drawn from those pages, and `/programs` may later present the fuller directory, but visible review status remains until the client confirms which differing entries/wording are current. Do not silently merge conflicting majors or treat the seed/current hard-coded page as a higher authority. Do not invent new degrees, departments, descriptions, residency limits, admissions availability, or deadlines.
+
+`/programs` remains the full visual directory. Its later refinement uses the same official-source/client-confirmation status and grouped typography. Any displayed search/type controls must actually filter that local list; otherwise omit them. This is frontend presentation only, not program administration or admissions integration.
 
 ## 7. News & Announcements
 
@@ -130,20 +136,37 @@ Getting Started is a concise, reading-oriented help section with an introductory
 
 Use native details/summary or an accessible existing accordion approach. Answers remain available by keyboard with visible focus; headings and controls must not be confused. Detailed examination, enrollment, thesis, and account-policy answers belong on `/faq` after canonical verification, not in Home's promotional composition.
 
-## 10. Institutional Footer
+## 10. Contact Us and Institutional Footer
+
+### 10.1 Contact Us section
+
+Add a distinct Home **Contact Us** section before the Footer with anchor `contact`. It should be useful without becoming another portal dashboard. Use a restrained institutional layout that can show the campus location, email/phone, Graduate School-specific reference details, and official platform destinations.
+
+Current official-source review content:
+- Newer official EARIST Graduate School page: **Nagtahan St, Sampaloc, Manila, 1008 Metro Manila**; **earistofficial1945@gmail.com**; **(02) 7738 5059**.
+- Older official Graduate School page: **EARIST-Graduate School**, **(02) 7154914**, and Facebook/Twitter handle **earistgraduateschool**.
+- Official EARIST website: **https://earist.edu.ph/**.
+- Official-site-linked Applicants Access Module / Apply Online: **https://earistweb.pinnacle.com.ph/aims/applicants/**.
+- The official EARIST site also links an Applicant's Inquiry Facebook destination. Treat external social destinations as official-site-linked review content; client confirmation may replace/update them.
+
+Because the two official pages expose different-age contact information, display these details for design/client review without claiming they are final production contacts. The client may confirm, correct, remove, or replace individual details. Do not use the older `www.earist-edu.ph` string as the canonical website when the current official site is `earist.edu.ph`.
+
+The section may include clear actions such as **Open EARIST Website**, **Applicant Portal**, and **Contact Graduate School** only when their destination is real. Do not invent a contact form submission backend, ticket workflow, office hours, social URLs, or email address.
+
+### 10.2 Institutional Footer
 
 Use a deep burgundy surface, thin gold top rule, and balanced aligned groups rather than identity beside one tall Quick Links list.
 
 | Group | Content |
 | --- | --- |
 | Identity | Actual EARIST seal, Graduate School name, full institution name. |
-| Study & Information | `/programs`, `/#getting-started`, `/faq`, `/about`. |
-| Research & Access | `/repository`, `/#news`, `/login` labelled Sign In, `/register` labelled Register. |
-| Verified Contact, when supplied | Approved office address/hours, email, phone, and real official social destinations. |
+| Study & Information | `/#programs`, `/#getting-started`, `/faq`, `/#about`. |
+| Research & Updates | `/repository`, `/#news`. |
+| Contact & Access | `/#contact`, official EARIST website/applicant platform links, `/login` labelled Sign In, `/register` labelled Register. |
 
-Without verified contacts, use three balanced columns; allocate useful width to identity and navigation rather than reserving an empty fourth column. When verified contact details arrive, introduce the fourth group without making the Footer taller than its content warrants. Existing FAQ/chatbot contact strings are not proof of institutional verification.
+Use a balanced four-group Footer now that official-source contact/platform references are available. Keep detailed address/phone/email content primarily in Contact Us so the Footer stays compact; it may repeat one concise contact line if useful. Social/platform links must resolve to real destinations and remain subject to client confirmation where the official pages are inconsistent.
 
-Use roughly 48–64px desktop vertical padding, 16–24px within groups, and a compact lower copyright row. Add privacy/terms/social links only when real approved destinations exist. Do not show disabled social icons, `#` links, invented addresses, or public-facing "contact details pending" filler. Small meaningful seals need their original white backing, not recoloring or background-removal artifacts.
+Use roughly 48–64px desktop vertical padding, 16–24px within groups, and a compact lower copyright row. Add privacy/terms links only when real approved destinations exist. Do not show disabled social icons, `#` links, invented addresses, or public-facing "contact details pending" filler. Small meaningful seals need their original white backing, not recoloring or background-removal artifacts.
 
 ## 11. Visual system and page rhythm
 
@@ -161,7 +184,7 @@ These are responsive public design targets, not global CSS token replacements or
 
 Reuse EARIST burgundy `#8B1A1A`, secondary red `#A83240`, gold `#D4A843`, cream `#FFF8EC`, white, and body neutral `#4A4A5A`. Gold is an accent/rule or controlled button treatment, not small text on white. Contrast must be checked for actual combinations. Explicitly set light text in Research/Footer so global paragraph/heading styles cannot defeat contrast.
 
-Rhythm: warm-white photographic opening → readable program directory → white editorial news → full burgundy Research → warm institutional About → quiet help → burgundy Footer. Vary image, list, text, and color treatments. Use restrained corners and light borders; avoid putting every paragraph in a panel, deep repeated shadows, pills, KPI tiles, glow, blobs, generic gradient hero, or decorative seal watermarks.
+Rhythm: warm-white photographic opening → readable program directory → white editorial news → full burgundy Research → warm institutional About → quiet help → practical Contact Us → burgundy Footer. Vary image, list, text, and color treatments. Use restrained corners and light borders; avoid putting every paragraph in a panel, deep repeated shadows, pills, KPI tiles, glow, blobs, generic gradient hero, or decorative seal watermarks.
 
 Use existing React/Next/Tailwind primitives. Keep any new public CSS under an `.earist-public` wrapper and narrowly named component classes. Do not change root layout, global fonts/tokens, shared UI primitives, or portal styles. Scope must not restyle RepositoryBrowser or the chatbot through broad descendant rules. Functional hover/menu/accordion transitions may last around 120–180ms; no entrance delays, parallax, autoplay, or animation needed to discover content.
 
