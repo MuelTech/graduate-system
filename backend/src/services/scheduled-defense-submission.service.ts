@@ -1,3 +1,4 @@
+import { defenseAdviserAuthorization, DefenseAdviserAuthorization } from "../access/defense-adviser-authorization";
 import prisma from "../config/database";
 import { AppError } from "../utils/AppError";
 import { resolveAdviserBoundAcademicManuscript } from "./adviser-document.rules";
@@ -28,9 +29,11 @@ export class ScheduledDefenseSubmissionService {
       OfficialDefenseDocumentService,
       "listAdviserCertifications"
     > = new OfficialDefenseDocumentService(),
+    private readonly administration: DefenseAdviserAuthorization = defenseAdviserAuthorization,
   ) {}
 
   async getSubmission(scheduleId: string, actor: OfficialDefenseDocumentActor) {
+    await this.administration.assert(actor.userId, "defense.schedules.view");
     if (actor.role !== "ADMIN" || !actor.userId)
       throw new AppError("Admin access is required.", 403);
     const schedule = await this.db.defenseSchedule.findUnique({

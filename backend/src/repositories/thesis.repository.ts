@@ -1,3 +1,6 @@
+import { assertManualDefenseParticipants } from "../services/defense-participant-identity";
+import { mapProgramType, type CommitteeAssignmentInput } from "../interfaces/defense-committee.interfaces";
+import { defenseAdviserAuthorization, DefenseAdviserAuthorization } from "../access/defense-adviser-authorization";
 import { academicAccountRoleFilter } from "../utils/academic-account";
 import prisma from "../config/database";
 import { canCreateDefenseSchedule } from "../services/defense-application-workflow";
@@ -47,7 +50,13 @@ function toDocumentData(
   };
 }
 
+// Administrative identity/profile only, without credentials or account-management metadata.
+const DEFENSE_ADMIN_USER_SELECT = { id: true, firstName: true, lastName: true, email: true } as const;
+const DEFENSE_ADMIN_PROFILE_SELECT = { specialization: true, officeAffiliation: true,
+  isExternal: true, isActive: true, isAvailableAsAdviser: true } as const;
+
 export class ThesisRepository {
+  constructor(private readonly administration: DefenseAdviserAuthorization = defenseAdviserAuthorization) {}
   async getStudentByUserId(userId: string) {
     return prisma.student.findUnique({ where: { userId } });
   }
@@ -146,10 +155,10 @@ export class ThesisRepository {
         status: "PENDING",
       },
       include: {
-        student: { include: { user: true } },
+        student: { include: { user: { select: DEFENSE_ADMIN_USER_SELECT } } },
         thesisTitles: true,
         thesisDocuments: true,
-        assignment: { include: { adviser: true } },
+        assignment: { include: { adviser: { select: DEFENSE_ADMIN_USER_SELECT } } },
       },
     });
   }
@@ -162,10 +171,10 @@ export class ThesisRepository {
         status: "APPROVED",
       },
       include: {
-        student: { include: { user: true } },
+        student: { include: { user: { select: DEFENSE_ADMIN_USER_SELECT } } },
         thesisTitles: true,
         thesisDocuments: true,
-        assignment: { include: { adviser: true } },
+        assignment: { include: { adviser: { select: DEFENSE_ADMIN_USER_SELECT } } },
       },
     });
   }
@@ -309,10 +318,10 @@ export class ThesisRepository {
   async getAllDefenses() {
     return prisma.thesisRecord.findMany({
       include: {
-        student: { include: { user: true } },
+        student: { include: { user: { select: DEFENSE_ADMIN_USER_SELECT } } },
         thesisTitles: true,
         thesisDocuments: true,
-        assignment: { include: { adviser: true } },
+        assignment: { include: { adviser: { select: DEFENSE_ADMIN_USER_SELECT } } },
       },
       orderBy: { createdAt: "desc" },
     });
@@ -344,8 +353,8 @@ export class ThesisRepository {
   async getAllAdviserRequests() {
     return prisma.adviserRequest.findMany({
       include: {
-        student: { include: { user: true, program: true } },
-        requestedAdviser: true,
+        student: { include: { user: { select: DEFENSE_ADMIN_USER_SELECT }, program: true } },
+        requestedAdviser: { select: DEFENSE_ADMIN_USER_SELECT },
       },
       orderBy: { requestDate: "desc" },
     });
@@ -355,8 +364,8 @@ export class ThesisRepository {
     return prisma.adviserAssignment.findMany({
       where: { isActive: true },
       include: {
-        student: { include: { user: true, program: true } },
-        adviser: { include: { panelist: true } },
+        student: { include: { user: { select: DEFENSE_ADMIN_USER_SELECT }, program: true } },
+        adviser: { select: { ...DEFENSE_ADMIN_USER_SELECT, panelist: { select: DEFENSE_ADMIN_PROFILE_SELECT } } },
         thesisRecords: { orderBy: { createdAt: "desc" }, take: 1 },
       },
       orderBy: { assignedDate: "desc" },
@@ -375,7 +384,7 @@ export class ThesisRepository {
         isActive: true,
         panelist: { isActive: true },
       },
-      include: { panelist: true },
+      select: { ...DEFENSE_ADMIN_USER_SELECT, panelist: { select: DEFENSE_ADMIN_PROFILE_SELECT } },
       orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
     });
   }
@@ -820,6 +829,7 @@ export class ThesisRepository {
   }) {
     const { thesisId, actorId, reason, stage } = params;
     return prisma.$transaction(async (tx) => {
+      await this.administration.assertInTransaction(tx, actorId as string, "defense.applications.review");
       const claimed = await tx.thesisRecord.updateMany({
         where: { id: thesisId, status: "PENDING", stage },
         data: { status: "REJECTED", rejectionReason: reason },
@@ -857,6 +867,7 @@ export class ThesisRepository {
   }) {
     const { thesisId, actorId, stage } = params;
     return prisma.$transaction(async (tx) => {
+      await this.administration.assertInTransaction(tx, actorId as string, "defense.applications.review");
       const claimed = await tx.thesisRecord.updateMany({
         where: { id: thesisId, status: "PENDING", stage },
         data: { status: "APPROVED", rejectionReason: null },
@@ -902,6 +913,7 @@ export class ThesisRepository {
     },
   ) {
     return prisma.$transaction(async (tx) => {
+      await this.administration.assertInTransaction(tx, adminId as string, "defense.schedules.manage");
       const defenseType = data.defenseType.toUpperCase() as
         | "TITLE_DEFENSE"
         | "PROPOSAL_DEFENSE"
@@ -929,6 +941,7 @@ export class ThesisRepository {
       const thesisForBinding = await tx.thesisRecord.findUnique({
         where: { id: thesisId },
         select: {
+          student: { select: { id: true, program: { select: { programType: true } } } },
           thesisDocuments: {
             select: {
               id: true,
@@ -966,6 +979,28 @@ export class ThesisRepository {
         );
       }
 
+      const submitted = data.assignments;
+      if (submitted.filter(row => row.role === "ADVISER").length > 1) throw new AppError("Duplicate Adviser seats are invalid.", 400);
+      let assignments = submitted;
+      let adviserUserId: string | null = null;
+      if (defenseType !== "TITLE_DEFENSE") {
+        const studentId = thesisForBinding?.student?.id;
+        if (!studentId) throw new AppError("Active Adviser relationship could not be resolved.", 409);
+        const active = requireSingleActiveAdviser(await tx.adviserAssignment.findMany({
+          where: { studentId, isActive: true }, select: { id: true, adviserId: true },
+        }));
+        if (!active) throw new AppError("Proposal/Final requires an active Adviser relationship.", 400);
+        adviserUserId = active.adviserId;
+        if (submitted.some(row => row.role === "ADVISER" && row.userId !== adviserUserId)) {
+          throw new AppError("The Adviser must match the active AdviserAssignment.", 400);
+        }
+        assignments = [...submitted.filter(row => row.role !== "ADVISER"), { userId: adviserUserId, role: "ADVISER" }];
+      }
+      const validation = new DefenseCommitteePolicy().validateAssignments(defenseType,
+        mapProgramType(thesisForBinding?.student?.program?.programType), assignments as CommitteeAssignmentInput[], { adviserUserId });
+      if (!validation.valid) throw new AppError(validation.errors.join(" "), 400);
+      await assertManualDefenseParticipants(tx, assignments);
+
       const schedule = await tx.defenseSchedule.create({
         data: {
           thesisId,
@@ -978,9 +1013,9 @@ export class ThesisRepository {
         },
       });
 
-      // Dynamic Defense Committee â€” validated before this transaction.
+      // Persist the committee revalidated inside this transaction.
       await tx.panelAssignment.createMany({
-        data: data.assignments.map((a) => ({
+        data: assignments.map((a) => ({
           scheduleId: schedule.id,
           userId: a.userId,
           role: a.role as

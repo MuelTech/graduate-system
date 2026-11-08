@@ -1,3 +1,4 @@
+import { defenseAdviserAuthorization, DefenseAdviserAuthorization } from "../access/defense-adviser-authorization";
 import { AppError } from "../utils/AppError";
 import {
   STAGE_EVIDENCE_SLOTS,
@@ -180,6 +181,7 @@ function parseReplacements(value: unknown): DefenseResubmitReplacement[] | null 
 export class DefenseApplicationDocumentHistoryService {
   constructor(
     private readonly repo = new DefenseApplicationDocumentHistoryRepository(),
+    private readonly administration: DefenseAdviserAuthorization = defenseAdviserAuthorization,
   ) {}
 
   /** Read only stage evidence; does not resolve a latest schedule or mutable application. */
@@ -192,7 +194,9 @@ export class DefenseApplicationDocumentHistoryService {
   async getDocumentHistory(
     thesisId: string,
     rawStage: string,
+    actorId?: string,
   ): Promise<DefenseDocumentHistoryDto> {
+    await this.administration.assert(actorId as string, "defense.applications.view");
     const stage = String(rawStage || "").toUpperCase() as DefenseHistoryStage;
     if (!STAGES.includes(stage)) {
       throw new AppError("Invalid defense stage.", 400);

@@ -1,3 +1,4 @@
+import { requireDefenseAdviserCapability, excludeDefenseAdviserAdministration } from "../middlewares/defense-adviser-capability.middleware";
 import { ACADEMIC_ACCOUNT_ROLES } from "../utils/academic-account";
 import { Router } from "express";
 import { ThesisController } from "../controllers/thesis.controller";
@@ -12,8 +13,8 @@ const defenseCollaborationController = new DefenseCollaborationController();
 const defenseHistoryController = new DefenseHistoryController();
 
 // GS-017: role gates are coarse; the service proves issuer/Student ownership.
-router.get("/adviser-certifications", authenticateJWT, requireRole(["STUDENT", ...ACADEMIC_ACCOUNT_ROLES, "ADMIN"]), thesisController.listAdviserCertifications);
-router.get("/adviser-certifications/:certificationId/pdf", authenticateJWT, requireRole(["STUDENT", ...ACADEMIC_ACCOUNT_ROLES, "ADMIN"]), thesisController.getAdviserCertificationPdf);
+router.get("/adviser-certifications", authenticateJWT, requireRole(["STUDENT", ...ACADEMIC_ACCOUNT_ROLES, "ADMIN"]), excludeDefenseAdviserAdministration(true), thesisController.listAdviserCertifications);
+router.get("/adviser-certifications/:certificationId/pdf", authenticateJWT, requireRole(["STUDENT", ...ACADEMIC_ACCOUNT_ROLES, "ADMIN"]), excludeDefenseAdviserAdministration(true), thesisController.getAdviserCertificationPdf);
 
 // STUDENT ONLY: Title Defense — one combined Title Defense Proposal Package +
 // Current Semester COR + Defense-fee Proof of Payment. Structured proposed titles
@@ -176,14 +177,15 @@ router.post(
 );
 
 // Finalized official records: exact ownership is also checked inside the record service.
-router.get("/adviser/requests/records", authenticateJWT, requireRole(["STUDENT", ...ACADEMIC_ACCOUNT_ROLES, "ADMIN"]), thesisController.listAdviserRequestRecords);
-router.get("/adviser/requests/:id/pdf", authenticateJWT, requireRole(["STUDENT", ...ACADEMIC_ACCOUNT_ROLES, "ADMIN"]), thesisController.getAdviserRequestPdf);
+router.get("/adviser/requests/records", authenticateJWT, requireRole(["STUDENT", ...ACADEMIC_ACCOUNT_ROLES, "ADMIN"]), excludeDefenseAdviserAdministration(true), thesisController.listAdviserRequestRecords);
+router.get("/adviser/requests/:id/pdf", authenticateJWT, requireRole(["STUDENT", ...ACADEMIC_ACCOUNT_ROLES, "ADMIN"]), excludeDefenseAdviserAdministration(true), thesisController.getAdviserRequestPdf);
 
 // ADMIN: Get all adviser requests
 router.get(
   "/adviser/requests",
   authenticateJWT,
   requireRole(["ADMIN"]),
+  requireDefenseAdviserCapability("adviser.requests.view"),
   thesisController.getAdviserRequests,
 );
 
@@ -226,6 +228,7 @@ router.get(
   "/adviser/requests/dean-review",
   authenticateJWT,
   requireRole(["ADMIN"]),
+  requireDefenseAdviserCapability("adviser.requests.view"),
   thesisController.getDeanReviewRequests,
 );
 
@@ -234,6 +237,7 @@ router.post(
   "/adviser/requests/:id/dean-response",
   authenticateJWT,
   requireRole(["ADMIN"]),
+  requireDefenseAdviserCapability("adviser.requests.review"),
   thesisController.deanRespondAdviserRequest,
 );
 
@@ -242,6 +246,7 @@ router.get(
   "/adviser/assignments",
   authenticateJWT,
   requireRole(["ADMIN"]),
+  requireDefenseAdviserCapability("adviser.requests.view"),
   thesisController.getActiveAssignments,
 );
 
@@ -250,6 +255,7 @@ router.get(
   "/adviser/available",
   authenticateJWT,
   requireRole(["ADMIN", "STUDENT"]),
+  excludeDefenseAdviserAdministration(true),
   thesisController.getAvailableAdvisers,
 );
 
@@ -258,6 +264,7 @@ router.post(
   "/adviser/assign",
   authenticateJWT,
   requireRole(["ADMIN"]),
+  requireDefenseAdviserCapability("adviser.requests.review"),
   thesisController.assignAdviser,
 );
 
@@ -266,6 +273,7 @@ router.put(
   "/defense/:id/status",
   authenticateJWT,
   requireRole(["ADMIN"]),
+  requireDefenseAdviserCapability("defense.applications.review"),
   thesisController.updateStatus,
 );
 
@@ -274,6 +282,7 @@ router.put(
   "/defense/:id/reject",
   authenticateJWT,
   requireRole(["ADMIN"]),
+  requireDefenseAdviserCapability("defense.applications.review"),
   thesisController.rejectApplication,
 );
 
@@ -283,6 +292,7 @@ router.get(
   "/defense/applications/:thesisId/document-history",
   authenticateJWT,
   requireRole(["ADMIN"]),
+  requireDefenseAdviserCapability("defense.applications.view"),
   thesisController.getDefenseApplicationDocumentHistory,
 );
 
@@ -313,6 +323,7 @@ router.get(
   "/panelist-candidates",
   authenticateJWT,
   requireRole(["ADMIN"]),
+  requireDefenseAdviserCapability("defense.schedules.view"),
   thesisController.getActivePanelistCandidates,
 );
 
@@ -321,6 +332,7 @@ router.get(
   "/defense/approved-applications",
   authenticateJWT,
   requireRole(["ADMIN"]),
+  requireDefenseAdviserCapability("defense.schedules.view"),
   thesisController.getApprovedApplicationsPaginated,
 );
 
@@ -329,6 +341,7 @@ router.get(
   "/panelist-search",
   authenticateJWT,
   requireRole(["ADMIN"]),
+  requireDefenseAdviserCapability("defense.schedules.view"),
   thesisController.searchActivePanelists,
 );
 
@@ -336,6 +349,7 @@ router.get(
 router.get(
   "/eligibility/:defenseType",
   authenticateJWT,
+  excludeDefenseAdviserAdministration(true),
   thesisController.getMyEligibility,
 );
 
@@ -344,6 +358,7 @@ router.get(
   "/committee-policy",
   authenticateJWT,
   requireRole(["ADMIN"]),
+  requireDefenseAdviserCapability("defense.schedules.view"),
   thesisController.getCommitteePolicy,
 );
 
@@ -352,6 +367,7 @@ router.post(
   "/defense/:id/schedule",
   authenticateJWT,
   requireRole(["ADMIN"]),
+  requireDefenseAdviserCapability("defense.schedules.manage"),
   thesisController.scheduleDefense,
 );
 
@@ -361,6 +377,7 @@ router.patch(
   "/defense/schedules/:scheduleId",
   authenticateJWT,
   requireRole(["ADMIN"]),
+  requireDefenseAdviserCapability("defense.schedules.manage"),
   thesisController.correctScheduledDefense,
 );
 
@@ -369,6 +386,7 @@ router.get(
   "/defense/pending",
   authenticateJWT,
   requireRole(["ADMIN"]),
+  requireDefenseAdviserCapability("defense.applications.view"),
   thesisController.getPendingDefenses,
 );
 
@@ -377,6 +395,7 @@ router.get(
   "/defense/approved",
   authenticateJWT,
   requireRole(["ADMIN"]),
+  requireDefenseAdviserCapability("defense.applications.view"),
   thesisController.getApprovedDefenses,
 );
 
@@ -385,6 +404,7 @@ router.get(
   "/defense/applications",
   authenticateJWT,
   requireRole(["ADMIN"]),
+  requireDefenseAdviserCapability("defense.applications.view"),
   thesisController.getDefenseApplicationsPaginated,
 );
 
@@ -393,6 +413,7 @@ router.get(
   "/defense/applications/summary",
   authenticateJWT,
   requireRole(["ADMIN"]),
+  requireDefenseAdviserCapability("defense.applications.view"),
   thesisController.getDefenseWorkflowSummary,
 );
 
@@ -403,6 +424,7 @@ router.get(
   "/defense/applications/:thesisId",
   authenticateJWT,
   requireRole(["ADMIN"]),
+  requireDefenseAdviserCapability("defense.applications.view"),
   thesisController.getDefenseApplicationDetail,
 );
 
@@ -411,6 +433,7 @@ router.get(
   "/defense/all",
   authenticateJWT,
   requireRole(["ADMIN"]),
+  requireDefenseAdviserCapability("defense.applications.view"),
   thesisController.getAllDefenses,
 );
 
@@ -494,7 +517,7 @@ router.put(
 );
 
 // Legacy lobby — compatibility only
-router.get("/defense/:scheduleId/lobby", authenticateJWT, thesisController.getLobbyStatus);
+router.get("/defense/:scheduleId/lobby", authenticateJWT, excludeDefenseAdviserAdministration(true), thesisController.getLobbyStatus);
 // Legacy notes — same Rapporteur authorization as workspace notes
 router.put(
   "/defense/:scheduleId/notes",
@@ -612,6 +635,7 @@ router.get(
   "/defense/:scheduleId/records/criteria/:panelAssignmentId",
   authenticateJWT,
   requireRole(["ADMIN", ...ACADEMIC_ACCOUNT_ROLES]),
+  excludeDefenseAdviserAdministration(true),
   thesisController.getOfficialCriteria,
 );
 
@@ -620,6 +644,7 @@ router.get(
   "/defense/:scheduleId/records/criteria/:panelAssignmentId/pdf",
   authenticateJWT,
   requireRole(["ADMIN"]),
+  excludeDefenseAdviserAdministration(),
   thesisController.getOfficialCriteriaPdf,
 );
 
@@ -628,6 +653,7 @@ router.get(
   "/defense/:scheduleId/records/summary/pdf",
   authenticateJWT,
   requireRole(["ADMIN"]),
+  excludeDefenseAdviserAdministration(),
   thesisController.getOralExamSummaryPdf,
 );
 
@@ -648,6 +674,7 @@ router.get(
   "/defense/schedules/:scheduleId/submission",
   authenticateJWT,
   requireRole(["ADMIN"]),
+  requireDefenseAdviserCapability("defense.schedules.view"),
   thesisController.getScheduledDefenseSubmission,
 );
 
@@ -656,6 +683,7 @@ router.get(
   "/defense/:scheduleId/records/application/pdf",
   authenticateJWT,
   requireRole(["ADMIN"]),
+  excludeDefenseAdviserAdministration(),
   thesisController.getDefenseApplicationPdf,
 );
 
@@ -664,6 +692,7 @@ router.get(
   "/defense/:scheduleId/records/evaluations/pdf",
   authenticateJWT,
   requireRole(["ADMIN"]),
+  excludeDefenseAdviserAdministration(),
   thesisController.getOfficialEvaluationBundlePdf,
 );
 
@@ -673,6 +702,7 @@ router.get(
   "/defense/:scheduleId/records/summary",
   authenticateJWT,
   requireRole(["ADMIN"]),
+  excludeDefenseAdviserAdministration(),
   thesisController.getOralExamSummary,
 );
 
@@ -681,12 +711,14 @@ router.get(
   "/defense/records",
   authenticateJWT,
   requireRole(["ADMIN"]),
+  requireDefenseAdviserCapability("defense.records.view"),
   thesisController.getAdminDefenseRecords,
 );
 router.get(
   "/defense/:scheduleId/records",
   authenticateJWT,
   requireRole(["ADMIN"]),
+  requireDefenseAdviserCapability("defense.records.view"),
   thesisController.getAdminDefenseRecordDetail,
 );
 
@@ -696,6 +728,7 @@ router.get(
   "/defense/schedules/:scheduleId",
   authenticateJWT,
   requireRole(["ADMIN"]),
+  requireDefenseAdviserCapability("defense.schedules.view"),
   thesisController.getScheduledDefenseDetail,
 );
 
@@ -712,6 +745,7 @@ router.get(
   "/defense/rap-reports/all",
   authenticateJWT,
   requireRole(["ADMIN"]),
+  requireDefenseAdviserCapability("defense.records.view"),
   thesisController.getAllRapReports,
 );
 
@@ -726,6 +760,7 @@ router.post(
   "/defense/rap-reports/:rapId/remind",
   authenticateJWT,
   requireRole(["ADMIN"]),
+  excludeDefenseAdviserAdministration(),
   thesisController.remindRapReportPanelists,
 );
 

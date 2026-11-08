@@ -1,3 +1,4 @@
+import { defenseAdviserAuthorization, DefenseAdviserAuthorization } from "../access/defense-adviser-authorization";
 /**
  * CP7 — Official defense record generation and read models.
  *
@@ -235,6 +236,7 @@ export interface OralExamScoreOfficialSnapshot {
 }
 
 export class OfficialDefenseRecordService {
+  constructor(private readonly administration: DefenseAdviserAuthorization = defenseAdviserAuthorization) {}
   /**
    * Idempotent, race-safe Oral Examination Summary generation.
    * Uses OralExamSummary.scheduleId uniqueness as the convergence point.
@@ -1228,7 +1230,8 @@ export class OfficialDefenseRecordService {
     search?: string;
     defenseType?: string;
     recordStatus?: string;
-  }) {
+  }, actorId?: string) {
+    await this.administration.assert(actorId as string, "defense.records.view");
     const page = Math.max(1, Number(params?.page ?? 1) || 1);
     const pageSize = Math.min(
       100,
@@ -1379,7 +1382,8 @@ export class OfficialDefenseRecordService {
    * CP7 Admin Defense Records detail — read-only official outputs metadata.
    * Does not expose score-edit or Chairman-result mutation actions.
    */
-  async getAdminDefenseRecordDetail(scheduleId: string) {
+  async getAdminDefenseRecordDetail(scheduleId: string, actorId?: string) {
+    await this.administration.assert(actorId as string, "defense.records.view");
     // RAP-1 FIX-2: reconcile OPEN RAP signature slots against the canonical
     // stage-aware policy before reading them, so pre-RAP-1 records show the
     // authoritative committee signers. Idempotent and a strict no-op for

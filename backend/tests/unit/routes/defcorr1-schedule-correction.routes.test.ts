@@ -26,7 +26,7 @@ describe("DEF-CORR-1 Admin schedule correction route", () => {
     )?.route;
 
     expect(route).toBeDefined();
-    expect(route?.stack).toHaveLength(3);
+    expect(route?.stack).toHaveLength(4);
     expect(route?.stack[0]?.handle).toBe(authenticateJWT);
   });
 

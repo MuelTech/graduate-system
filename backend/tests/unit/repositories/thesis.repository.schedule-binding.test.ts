@@ -1,6 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const tx = {
+  user: { findMany: vi.fn() },
+  adviserAssignment: { findMany: vi.fn() },
   defenseSchedule: {
     findMany: vi.fn(),
     create: vi.fn(),
@@ -22,6 +24,7 @@ import { ThesisRepository } from "../../../src/repositories/thesis.repository";
 
 function thesisWithDocs(docs: Array<Record<string, unknown>>, certs: Array<Record<string, unknown>> = []) {
   return {
+    student: { id: "student-1", program: { programType: "MASTERS" } },
     thesisDocuments: docs.map((d) => ({
       id: d.id,
       thesisId: d.thesisId ?? "thesis-1",
@@ -40,6 +43,8 @@ describe("ThesisRepository.scheduleDefense — exact attempt manuscript binding"
 
   beforeEach(() => {
     vi.clearAllMocks();
+    tx.user.findMany.mockImplementation(async ({ where }) => where.id.in.map((id: string) => ({ id, role: "PANELIST", isActive: true, panelist: { isActive: true } })));
+    tx.adviserAssignment.findMany.mockResolvedValue([{ id: "adviser-asg", adviserId: "adviser" }]);
     prismaMock.$transaction.mockImplementation(async (fn: (t: typeof tx) => unknown) => fn(tx));
     tx.defenseSchedule.findMany.mockResolvedValue([]);
     tx.defenseSchedule.create.mockImplementation(async (args: { data: Record<string, unknown> }) => {
@@ -67,7 +72,7 @@ describe("ThesisRepository.scheduleDefense — exact attempt manuscript binding"
   }] = [
     "thesis-1",
     "admin-1",
-    { defenseDate: "2026-10-20", defenseTime: "09:00", venueOrLink: "Room 201", defenseType: "TITLE_DEFENSE", assignments: [{ userId: "u1", role: "CHAIRMAN" }] },
+    { defenseDate: "2026-10-20", defenseTime: "09:00", venueOrLink: "Room 201", defenseType: "TITLE_DEFENSE", assignments: [{ userId: "u1", role: "CHAIRMAN" }, ...["p1", "p2", "p3", "p4"].map(userId => ({ userId, role: "PANELIST" })), { userId: "fac", role: "FACILITATOR" }, { userId: "rap", role: "RAPPORTEUR" }] },
   ];
 
   function expectNoPartialPersistence() {
@@ -108,7 +113,7 @@ describe("ThesisRepository.scheduleDefense — exact attempt manuscript binding"
         [{ status: "ISSUED", defenseStage: "PROPOSAL_DEFENSE", reviewedDocumentId: "doc-A" }],
       ),
     );
-    await repo.scheduleDefense("thesis-1", "admin-1", { ...baseArgs[2], defenseType: "PROPOSAL_DEFENSE" });
+    await repo.scheduleDefense("thesis-1", "admin-1", { ...baseArgs[2], defenseType: "PROPOSAL_DEFENSE", assignments: baseArgs[2].assignments.filter(a => a.userId !== "p4") });
     expect(createdData.manuscriptDocumentId).toBe("doc-A");
   });
 
@@ -119,7 +124,7 @@ describe("ThesisRepository.scheduleDefense — exact attempt manuscript binding"
         [{ status: "ISSUED", defenseStage: "FINAL_DEFENSE", reviewedDocumentId: "doc-F" }],
       ),
     );
-    await repo.scheduleDefense("thesis-1", "admin-1", { ...baseArgs[2], defenseType: "FINAL_DEFENSE" });
+    await repo.scheduleDefense("thesis-1", "admin-1", { ...baseArgs[2], defenseType: "FINAL_DEFENSE", assignments: baseArgs[2].assignments.filter(a => a.userId !== "p4") });
     expect(createdData.manuscriptDocumentId).toBe("doc-F");
   });
 
@@ -144,7 +149,7 @@ describe("ThesisRepository.scheduleDefense — exact attempt manuscript binding"
       thesisWithDocs([{ id: "doc-A", docType: "PROPOSAL_CHAPTERS", defenseStage: "PROPOSAL" }]),
     );
     await expect(
-      repo.scheduleDefense("thesis-1", "admin-1", { ...baseArgs[2], defenseType: "PROPOSAL_DEFENSE" }),
+      repo.scheduleDefense("thesis-1", "admin-1", { ...baseArgs[2], defenseType: "PROPOSAL_DEFENSE", assignments: baseArgs[2].assignments.filter(a => a.userId !== "p4") }),
     ).rejects.toMatchObject({ statusCode: 409 });
     expectNoPartialPersistence();
   });
@@ -154,7 +159,7 @@ describe("ThesisRepository.scheduleDefense — exact attempt manuscript binding"
       thesisWithDocs([{ id: "doc-F", docType: "FINAL_MANUSCRIPT", defenseStage: "FINAL" }]),
     );
     await expect(
-      repo.scheduleDefense("thesis-1", "admin-1", { ...baseArgs[2], defenseType: "FINAL_DEFENSE" }),
+      repo.scheduleDefense("thesis-1", "admin-1", { ...baseArgs[2], defenseType: "FINAL_DEFENSE", assignments: baseArgs[2].assignments.filter(a => a.userId !== "p4") }),
     ).rejects.toMatchObject({ statusCode: 409 });
     expectNoPartialPersistence();
   });
@@ -167,7 +172,7 @@ describe("ThesisRepository.scheduleDefense — exact attempt manuscript binding"
       ),
     );
     await expect(
-      repo.scheduleDefense("thesis-1", "admin-1", { ...baseArgs[2], defenseType: "PROPOSAL_DEFENSE" }),
+      repo.scheduleDefense("thesis-1", "admin-1", { ...baseArgs[2], defenseType: "PROPOSAL_DEFENSE", assignments: baseArgs[2].assignments.filter(a => a.userId !== "p4") }),
     ).rejects.toMatchObject({ statusCode: 409 });
     expectNoPartialPersistence();
   });
@@ -182,14 +187,7 @@ describe("ThesisRepository.scheduleDefense — exact attempt manuscript binding"
     await repo.scheduleDefense(...baseArgs);
 
     expect(tx.panelAssignment.createMany).toHaveBeenCalledWith({
-      data: [
-        {
-          scheduleId: "sched-1",
-          userId: "u1",
-          role: "CHAIRMAN",
-          isActive: true,
-        },
-      ],
+      data: baseArgs[2].assignments.map(row => ({ ...row, scheduleId: "sched-1", isActive: true })),
     });
     expect(tx.panelAssignment.findMany).toHaveBeenCalledWith(
       expect.objectContaining({

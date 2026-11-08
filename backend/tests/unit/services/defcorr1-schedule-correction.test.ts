@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const prismaMock = vi.hoisted(() => ({
+  user: { findMany: vi.fn() },
   $transaction: vi.fn(),
   $queryRaw: vi.fn(),
   defenseSchedule: { findUnique: vi.fn(), update: vi.fn() },
@@ -122,6 +123,7 @@ describe("DEF-CORR-1 DefenseScheduleCorrectionService", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    prismaMock.user.findMany.mockImplementation(async ({ where }) => where.id.in.map((id: string) => ({ id, role: "FACULTY", isActive: true, panelist: { isActive: true } })));
     prismaMock.$transaction.mockImplementation(
       async (fn: (tx: typeof prismaMock) => unknown) => fn(prismaMock),
     );

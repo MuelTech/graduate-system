@@ -1,3 +1,5 @@
+import { assertManualDefenseParticipants } from "./defense-participant-identity";
+import { defenseAdviserAuthorization, DefenseAdviserAuthorization } from "../access/defense-adviser-authorization";
 import prisma from "../config/database";
 import type {
   CommitteeAssignmentInput,
@@ -86,6 +88,7 @@ function normalizeAssignments(value: unknown): CommitteeAssignmentInput[] {
 }
 
 export class DefenseScheduleCorrectionService {
+  constructor(private readonly administration: DefenseAdviserAuthorization = defenseAdviserAuthorization) {}
   private readonly committeePolicy = new DefenseCommitteePolicy();
   private readonly notifications = new NotificationService();
 
@@ -94,6 +97,7 @@ export class DefenseScheduleCorrectionService {
     adminId: string,
     input: CorrectScheduledDefenseInput,
   ): Promise<DefenseScheduleAuditSnapshot> {
+    await this.administration.assert(adminId, "defense.schedules.manage");
     if (!scheduleId) throw new AppError("Defense schedule not found.", 404);
     if (!adminId) throw new AppError("Admin access is required.", 403);
 
@@ -103,6 +107,7 @@ export class DefenseScheduleCorrectionService {
     const submitted = normalizeAssignments(input?.assignments);
 
     const committed = await prisma.$transaction(async (tx) => {
+      await this.administration.assertInTransaction(tx, adminId, "defense.schedules.manage");
       await tx.$queryRaw`SELECT schedule_id FROM defense_schedules WHERE schedule_id = ${scheduleId} FOR UPDATE`;
 
       const schedule = await tx.defenseSchedule.findUnique({
@@ -183,6 +188,8 @@ export class DefenseScheduleCorrectionService {
       if (!validation.valid) {
         throw new AppError(validation.errors.join(" "), 400);
       }
+
+      await assertManualDefenseParticipants(tx, submitted);
 
       const activeBefore = schedule.panelAssignments.filter(
         (assignment) => assignment.isActive,

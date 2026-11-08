@@ -4,6 +4,7 @@ import { REVIEW_CONTEXT, STUDENT_SIGNATURE, signedRequestEvidence } from "../../
 
 const prismaMock = vi.hoisted(() => {
   const tx = {
+    user: { findUnique: vi.fn().mockResolvedValue({ id: "adv-user", role: "FACULTY", isActive: true }) },
     adviserRequest: {
       findUnique: vi.fn(),
       updateMany: vi.fn(),
@@ -580,7 +581,7 @@ describe("AdviserRequestService (WP4 Dean decision)", () => {
     (tx as any).panelist = {
       findUnique: vi
         .fn()
-        .mockResolvedValue({ userId: "adv-user", isExternal: false }),
+        .mockResolvedValue({ userId: "adv-user", isExternal: false, isActive: true, isAvailableAsAdviser: true }),
     };
     tx.$queryRaw.mockResolvedValue([{ student_id: "student-1" }]);
   });
@@ -729,7 +730,7 @@ describe("AdviserRequestService (WP4 Dean decision)", () => {
 
   it("blocks duplicate active AdviserAssignment after per-student lock", async () => {
     (tx as any).panelist = {
-      findUnique: vi.fn().mockResolvedValue({ userId: "adv-user", isExternal: false }),
+      findUnique: vi.fn().mockResolvedValue({ userId: "adv-user", isExternal: false, isActive: true, isAvailableAsAdviser: true }),
     };
     const order: string[] = [];
     tx.$queryRaw.mockImplementation(async () => {

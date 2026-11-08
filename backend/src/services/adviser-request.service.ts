@@ -1,3 +1,5 @@
+import { isAcademicAccountRole } from "../utils/academic-account";
+import { defenseAdviserAuthorization, DefenseAdviserAuthorization } from "../access/defense-adviser-authorization";
 /**
  * GS-020 Adviser Request domain (WP2–WP4).
  *
@@ -76,6 +78,7 @@ export interface PassedTitleDefenseContext {
 }
 
 export class AdviserRequestService {
+  constructor(private readonly administration: DefenseAdviserAuthorization = defenseAdviserAuthorization) {}
   /**
    * Authoritative source: DefenseConclusion.outcome = PASSED (Title) with a
    * finalized same-session Title RAP. Never derive from ThesisRecord.status
@@ -472,7 +475,8 @@ export class AdviserRequestService {
    * WP4: Dean/Admin review queue — CONFORMED + Dean PENDING only.
    * Shows the actual requested adviser; no replacement picker data.
    */
-  async listDeanReviewRequests() {
+  async listDeanReviewRequests(actorId?: string) {
+    await this.administration.assert(actorId as string, "adviser.requests.view");
     const rows = await prisma.adviserRequest.findMany({
       where: {
         status: "PENDING",
@@ -569,6 +573,7 @@ export class AdviserRequestService {
     requestId: string,
     input: DeanResponseInput,
   ) {
+    await this.administration.assert(deanUserId, "adviser.requests.review");
     const existing = await prisma.adviserRequest.findUnique({
       where: { id: requestId },
     });
@@ -591,8 +596,9 @@ export class AdviserRequestService {
 
     try {
       return await prisma.$transaction(async (tx) => {
-        // Lock before any consistent read so MySQL's transaction snapshot sees
-        // an earlier decision's assignment after waiting for this Student lock.
+        await this.administration.assertInTransaction(tx, deanUserId, "adviser.requests.review");
+        // Keep the existing Student lock after the shared access fence and
+        // before workflow reads. The conditional claim still protects the exact decision.
         await tx.$queryRaw`SELECT student_id FROM students WHERE student_id = ${existing.studentId} FOR UPDATE`;
         // Re-read + conditional state protection inside the transaction.
         const current = await tx.adviserRequest.findUnique({
@@ -633,6 +639,12 @@ export class AdviserRequestService {
               "External panelists cannot be assigned as thesis/dissertation advisers.",
               409,
             );
+          }
+          const requestedUser = await tx.user.findUnique({ where: { id: current.requestedAdviserId },
+            select: { id: true, role: true, isActive: true } });
+          if (!requestedUser || !isAcademicAccountRole(requestedUser.role) || requestedUser.isActive !== true ||
+              requestedPanelist.isActive !== true || requestedPanelist.isAvailableAsAdviser !== true) {
+            throw new AppError("The requested Adviser is no longer eligible for a new assignment.", 409);
           }
         }
 

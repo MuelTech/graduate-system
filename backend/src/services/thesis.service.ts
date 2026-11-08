@@ -1,3 +1,4 @@
+import { defenseAdviserAuthorization, DefenseAdviserAuthorization } from "../access/defense-adviser-authorization";
 import { ThesisRepository } from '../repositories/thesis.repository';
 import { DefenseApplicationsRepository } from '../repositories/defense-applications.repository';
 import { DefenseEligibilityRepository } from '../repositories/defense-eligibility.repository';
@@ -51,9 +52,10 @@ export interface ScheduleDefenseInput {
 }
 
 export class ThesisService {
-  private scheduledSubmission = new ScheduledDefenseSubmissionService();
+  constructor(private readonly administration: DefenseAdviserAuthorization = defenseAdviserAuthorization) {}
+  private scheduledSubmission = new ScheduledDefenseSubmissionService(undefined, undefined, undefined, this.administration);
 
-  getScheduledDefenseSubmission(scheduleId: string, actor: { userId: string; role: string }) {
+  async getScheduledDefenseSubmission(scheduleId: string, actor: { userId: string; role: string }) {
     return this.scheduledSubmission.getSubmission(scheduleId, actor);
   }
 
@@ -64,25 +66,27 @@ export class ThesisService {
   generateStudentDefenseApplicationPdf(scheduleId: string, actor: { userId: string; role: string }) {
     return this.officialDocuments.generateStudentDefenseApplicationPdf(scheduleId, actor);
   }
-  private thesisRepo = new ThesisRepository();
+  private thesisRepo = new ThesisRepository(this.administration);
   private oralEvaluation = new OralEvaluationService();
   private defenseAppsRepo = new DefenseApplicationsRepository();
   private eligibilityRepo = new DefenseEligibilityRepository();
   private eligibility = new DefenseEligibilityService();
   private committeePolicy = new DefenseCommitteePolicy();
-  private adviserRequestService = new AdviserRequestService();
+  private adviserRequestService = new AdviserRequestService(this.administration);
   private conclusion = new DefenseConclusionService();
-  private officialRecords = new OfficialDefenseRecordService();
+  private officialRecords = new OfficialDefenseRecordService(this.administration);
   private officialDocuments = new OfficialDefenseDocumentService();
   private rapporteurFinalization = new RapporteurFinalizationService();
   private rapReports = new RapReportService();
-  private scheduleCorrection = new DefenseScheduleCorrectionService();
+  private scheduleCorrection = new DefenseScheduleCorrectionService(this.administration);
 
-  async getPendingDefenses() {
+  async getPendingDefenses(actorId?: string) {
+    await this.administration.assert(actorId as string, "defense.applications.view");
     return this.thesisRepo.getPendingDefenses();
   }
 
-  async getApprovedDefenses() {
+  async getApprovedDefenses(actorId?: string) {
+    await this.administration.assert(actorId as string, "defense.applications.view");
     return this.thesisRepo.getApprovedDefenses();
   }
 
@@ -92,7 +96,8 @@ export class ThesisService {
     search?: string;
     defenseType?: string;
     programId?: string;
-  }) {
+  }, actorId?: string) {
+    await this.administration.assert(actorId as string, "defense.schedules.view");
     const page = Math.max(1, Number(params.page) || 1);
     const pageSize = Math.min(50, Math.max(1, Number(params.pageSize) || 10));
     // Scheduling candidates share Defense Applications READY semantics.
@@ -119,7 +124,8 @@ export class ThesisService {
     page?: number;
     pageSize?: number;
     search?: string;
-  }) {
+  }, actorId?: string) {
+    await this.administration.assert(actorId as string, "defense.schedules.view");
     const page = Math.max(1, Number(params.page) || 1);
     const pageSize = Math.min(50, Math.max(1, Number(params.pageSize) || 20));
     return this.thesisRepo.searchActivePanelists({
@@ -173,7 +179,8 @@ export class ThesisService {
   }
 
   /** Expose committee policy so the UI does not duplicate role rules. */
-  getCommitteePolicy(defenseType: string, programType?: string) {
+  async getCommitteePolicy(defenseType: string, programType?: string, actorId?: string) {
+    await this.administration.assert(actorId as string, "defense.schedules.view");
     if (
       !["TITLE_DEFENSE", "PROPOSAL_DEFENSE", "FINAL_DEFENSE"].includes(defenseType)
     ) {
@@ -186,7 +193,8 @@ export class ThesisService {
     );
   }
 
-  async getAllDefenses() {
+  async getAllDefenses(actorId?: string) {
+    await this.administration.assert(actorId as string, "defense.applications.view");
     return this.thesisRepo.getAllDefenses();
   }
 
@@ -198,7 +206,8 @@ export class ThesisService {
     status?: string;
     bucket?: string;
     programId?: string;
-  }) {
+  }, actorId?: string) {
+    await this.administration.assert(actorId as string, "defense.applications.view");
     const page = Math.max(1, Number(params.page) || 1);
     const pageSize = Math.min(50, Math.max(1, Number(params.pageSize) || 10));
     return this.defenseAppsRepo.getDefenseApplicationsPaginated({
@@ -212,7 +221,8 @@ export class ThesisService {
     });
   }
 
-  async getDefenseApplicationDetail(thesisId: string) {
+  async getDefenseApplicationDetail(thesisId: string, actorId?: string) {
+    await this.administration.assert(actorId as string, "defense.applications.view");
     return this.defenseAppsRepo.getDefenseApplicationById(thesisId);
   }
 
@@ -220,7 +230,8 @@ export class ThesisService {
    * UIUX-2L FIX-3: exact scheduled-defense read model for the Scheduling
    * read-only mode. Read-only; no mutation or academic authority.
    */
-  async getScheduledDefenseDetail(scheduleId: string) {
+  async getScheduledDefenseDetail(scheduleId: string, actorId?: string) {
+    await this.administration.assert(actorId as string, "defense.schedules.view");
     return this.defenseAppsRepo.getScheduledDefenseById(scheduleId);
   }
 
@@ -229,24 +240,29 @@ export class ThesisService {
     stage?: string;
     programId?: string;
     status?: string;
-  }) {
+  }, actorId?: string) {
+    await this.administration.assert(actorId as string, "defense.applications.view");
     return this.defenseAppsRepo.getDefenseWorkflowSummary(params);
   }
 
-  async getAllAdviserRequests() {
+  async getAllAdviserRequests(actorId?: string) {
+    await this.administration.assert(actorId as string, "adviser.requests.view");
     return this.thesisRepo.getAllAdviserRequests();
   }
 
-  async getAllActiveAssignments() {
+  async getAllActiveAssignments(actorId?: string) {
+    await this.administration.assert(actorId as string, "adviser.requests.view");
     return this.thesisRepo.getAllActiveAssignments();
   }
 
-  async getAvailableAdvisers() {
+  async getAvailableAdvisers(actorId?: string) {
+    await this.administration.assertAvailableAdvisers(actorId as string);
     return this.thesisRepo.getAvailableAdvisers();
   }
 
   /** Defense committee candidates: active PANELIST users (not adviser-availability filtered). */
-  async getActivePanelistCandidates() {
+  async getActivePanelistCandidates(actorId?: string) {
+    await this.administration.assert(actorId as string, "defense.schedules.view");
     return this.thesisRepo.getActivePanelistCandidates();
   }
 
@@ -255,6 +271,7 @@ export class ThesisService {
     reason: string,
     actorId: string | null = null,
   ) {
+    await this.administration.assert(actorId as string, "defense.applications.review");
     if (!reason || !reason.trim()) {
       throw new AppError('Rejection reason is required.', 400);
     }
@@ -568,8 +585,8 @@ export class ThesisService {
   }
 
   /** WP4: Dean review queue (CONFORMED + Dean PENDING). */
-  async listDeanReviewRequests() {
-    return this.adviserRequestService.listDeanReviewRequests();
+  async listDeanReviewRequests(actorId?: string) {
+    return this.adviserRequestService.listDeanReviewRequests(actorId);
   }
 
   /** WP4: Dean APPROVE / REJECT — only path that creates AdviserAssignment. */
@@ -596,7 +613,8 @@ export class ThesisService {
    * @deprecated Use deanDecideAdviserRequest instead.
    */
   async assignAdviser(adminId: string, data: any) {
-    const requestId = String(data?.requestId || data?.id || "").trim();
+    await this.administration.assert(adminId as string, "adviser.requests.review");
+    const requestId = String(data?.requestId || "").trim();
     if (!requestId) {
       throw new AppError("requestId is required.", 400);
     }
@@ -614,6 +632,7 @@ export class ThesisService {
     data: { status: string },
     actorId: string | null = null,
   ) {
+    await this.administration.assert(actorId as string, "defense.applications.review");
     const status = String(data.status || '').toUpperCase();
     // DL-8: rejection must go through the canonical reason + AuditLog operation.
     if (status === 'REJECTED') {
@@ -666,6 +685,7 @@ export class ThesisService {
   }
 
   async scheduleDefense(thesisId: string, adminId: string, data: ScheduleDefenseInput) {
+    await this.administration.assert(adminId as string, "defense.schedules.manage");
     const snap = await this.eligibilityRepo.loadForThesis(thesisId);
     const defenseType = String(data.defenseType || '').toUpperCase() as DefenseTypeName;
 
@@ -925,6 +945,7 @@ export class ThesisService {
     actor: { userId: string; role: string },
   ) {
     // CP7-FIX1 Issue 8: authorization happens inside the service BEFORE any backfill.
+    if (actor.role === "ADMIN") this.administration.assertExcluded();
     return this.officialRecords.getOfficialCriteria(
       scheduleId,
       panelAssignmentId,
@@ -995,6 +1016,7 @@ export class ThesisService {
     scheduleId: string,
     actor: { userId: string; role: string },
   ) {
+    this.administration.assertExcluded();
     return this.officialRecords.getSummaryReadModel(scheduleId, actor);
   }
 
@@ -1008,19 +1030,20 @@ export class ThesisService {
     search?: string;
     defenseType?: string;
     recordStatus?: string;
-  }) {
-    return this.officialRecords.listAdminDefenseRecords(params);
+  }, actorId?: string) {
+    return this.officialRecords.listAdminDefenseRecords(params, actorId);
   }
 
-  async getAdminDefenseRecordDetail(scheduleId: string) {
-    return this.officialRecords.getAdminDefenseRecordDetail(scheduleId);
+  async getAdminDefenseRecordDetail(scheduleId: string, actorId?: string) {
+    return this.officialRecords.getAdminDefenseRecordDetail(scheduleId, actorId);
   }
 
   private async resolveSessionAssignments(scheduleId: string, userId: string) {
     return this.thesisRepo.getSessionPanelAssignments(scheduleId, userId);
   }
 
-  async getAllRapReports() {
+  async getAllRapReports(actorId?: string) {
+    await this.administration.assert(actorId as string, "defense.records.view");
     return this.thesisRepo.getAllRapReports();
   }
 
@@ -1029,6 +1052,7 @@ export class ThesisService {
   }
 
   async getMissingSignaturesForRap(rapId: string) {
+    this.administration.assertExcluded();
     return this.thesisRepo.getMissingSignaturesForRap(rapId);
   }
 }

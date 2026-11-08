@@ -11,6 +11,7 @@ import {
   vi,
 } from "vitest";
 const mocks = vi.hoisted(() => ({
+  account: null as any,
   submission: vi.fn(),
   availability: vi.fn(),
   studentPdf: vi.fn(),
@@ -18,7 +19,7 @@ const mocks = vi.hoisted(() => ({
   filename: vi.fn(),
   detail: vi.fn(),
 }));
-vi.mock("../../../src/config/database", () => ({ default: {} }));
+vi.mock("../../../src/config/database", () => ({ default: { user: { findUnique: async () => mocks.account } } }));
 vi.mock("../../../src/services/thesis.service", () => ({
   ThesisService: class {
     getScheduledDefenseSubmission = mocks.submission;
@@ -74,6 +75,9 @@ describe("PREDEF-2 authenticated read-only routes", () => {
     mocks.detail.mockResolvedValue({ scheduleId: "exact-schedule" });
   });
   function request(path: string, role?: string, method = "GET") {
+    // FACULTY-2 authentication resolves the current database account independently of JWT claims.
+    mocks.account = role ? { id: "actor", role, email: "actor@example.test", isActive: true, mustChangePassword: false,
+      panelist: role === "PANELIST" ? { isActive: true } : null, administratorAccess: null, capabilityGrants: [] } : null;
     return fetch(origin + path, {
       method,
       headers: role

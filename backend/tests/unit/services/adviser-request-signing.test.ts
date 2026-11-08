@@ -5,6 +5,7 @@ import { assertSignedAdviserRequest, validateStudentRequestSignature } from "../
 
 const db = vi.hoisted(() => {
   const tx = {
+    user: { findUnique: vi.fn().mockResolvedValue({ id: "adv-user", role: "FACULTY", isActive: true }) },
     $queryRaw: vi.fn(), adviserRequest: { findUnique: vi.fn(), updateMany: vi.fn(), findFirst: vi.fn(), create: vi.fn() },
     adviserAssignment: { findFirst: vi.fn(), create: vi.fn() }, panelist: { findUnique: vi.fn() },
     adviserRequestSignedState: { findUnique: vi.fn() }, adviserRequestOfficialRecord: { create: vi.fn() },
@@ -45,7 +46,8 @@ describe("GS020-1B exact Student signing and atomic finalization", () => {
     db.tx.adviserRequest.findUnique.mockResolvedValue(request());
     db.tx.adviserRequest.updateMany.mockResolvedValue({ count: 1 });
     db.tx.adviserAssignment.findFirst.mockResolvedValue(null);
-    db.tx.panelist.findUnique.mockResolvedValue({ isExternal: false });
+    db.tx.panelist.findUnique.mockResolvedValue({ isExternal: false, isActive: true, isAvailableAsAdviser: true });
+    db.tx.user.findUnique.mockResolvedValue({ id: "adv-user", role: "FACULTY", isActive: true });
     db.tx.adviserRequestSignedState.findUnique.mockResolvedValue(signedRequestEvidence(request() as never));
     db.$transaction.mockImplementation(async fn => fn(db.tx));
   });

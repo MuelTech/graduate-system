@@ -131,28 +131,28 @@ export class ThesisController {
 
   getPendingDefenses = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
-      const result = await this.thesisService.getPendingDefenses();
+      const result = await this.thesisService.getPendingDefenses(req.user?.userId);
       res.status(200).json(result);
     } catch (error: any) {
-      res.status(400).json({ error: error.message });
+      res.status(error?.statusCode || 400).json({ error: error.message });
     }
   };
 
   getApprovedDefenses = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
-      const result = await this.thesisService.getApprovedDefenses();
+      const result = await this.thesisService.getApprovedDefenses(req.user?.userId);
       res.status(200).json(result);
     } catch (error: any) {
-      res.status(400).json({ error: error.message });
+      res.status(error?.statusCode || 400).json({ error: error.message });
     }
   };
 
   getAllDefenses = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
-      const result = await this.thesisService.getAllDefenses();
+      const result = await this.thesisService.getAllDefenses(req.user?.userId);
       res.status(200).json(result);
     } catch (error: any) {
-      res.status(400).json({ error: error.message });
+      res.status(error?.statusCode || 400).json({ error: error.message });
     }
   };
 
@@ -169,10 +169,10 @@ export class ThesisController {
         status: req.query.status as string | undefined,
         bucket: req.query.bucket as string | undefined,
         programId: req.query.programId as string | undefined,
-      });
+      }, req.user?.userId);
       res.status(200).json(result);
     } catch (error: any) {
-      res.status(400).json({ error: error.message });
+      res.status(error?.statusCode || 400).json({ error: error.message });
     }
   };
 
@@ -186,10 +186,10 @@ export class ThesisController {
         stage: req.query.stage as string | undefined,
         programId: req.query.programId as string | undefined,
         status: req.query.status as string | undefined,
-      });
+      }, req.user?.userId);
       res.status(200).json(result);
     } catch (error: any) {
-      res.status(400).json({ error: error.message });
+      res.status(error?.statusCode || 400).json({ error: error.message });
     }
   };
 
@@ -200,15 +200,14 @@ export class ThesisController {
     try {
       const { thesisId } = req.params;
       const result = await this.thesisService.getDefenseApplicationDetail(
-        thesisId as string,
-      );
+        thesisId as string, req.user?.userId);
       if (!result) {
         res.status(404).json({ error: "Defense application not found." });
         return;
       }
       res.status(200).json(result);
     } catch (error: any) {
-      res.status(400).json({ error: error.message });
+      res.status(error?.statusCode || 400).json({ error: error.message });
     }
   };
 
@@ -221,42 +220,41 @@ export class ThesisController {
     try {
       const { scheduleId } = req.params;
       const result = await this.thesisService.getScheduledDefenseDetail(
-        scheduleId as string,
-      );
+        scheduleId as string, req.user?.userId);
       if (!result) {
         res.status(404).json({ error: "Defense session not found." });
         return;
       }
       res.status(200).json(result);
     } catch (error: any) {
-      res.status(400).json({ error: error.message });
+      res.status(error?.statusCode || 400).json({ error: error.message });
     }
   };
 
   getAdviserRequests = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
-      const result = await this.thesisService.getAllAdviserRequests();
+      const result = await this.thesisService.getAllAdviserRequests(req.user?.userId);
       res.status(200).json(result);
     } catch (error: any) {
-      res.status(400).json({ error: error.message });
+      res.status(error?.statusCode || 400).json({ error: error.message });
     }
   };
 
   getActiveAssignments = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
-      const result = await this.thesisService.getAllActiveAssignments();
+      const result = await this.thesisService.getAllActiveAssignments(req.user?.userId);
       res.status(200).json(result);
     } catch (error: any) {
-      res.status(400).json({ error: error.message });
+      res.status(error?.statusCode || 400).json({ error: error.message });
     }
   };
 
   getAvailableAdvisers = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
-      const result = await this.thesisService.getAvailableAdvisers();
+      const result = await this.thesisService.getAvailableAdvisers(req.user?.userId);
       res.status(200).json(result);
     } catch (error: any) {
-      res.status(400).json({ error: error.message });
+      res.status(error?.statusCode || 400).json({ error: error.message });
     }
   };
 
@@ -473,14 +471,14 @@ export class ThesisController {
   /** ADMIN/Dean: review queue (CONFORMED + Dean PENDING). */
   getDeanReviewRequests = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
-      const result = await this.thesisService.listDeanReviewRequests();
+      const result = await this.thesisService.listDeanReviewRequests(req.user?.userId);
       res.status(200).json(result);
     } catch (error: any) {
       if (error instanceof AppError) {
         res.status(error.statusCode).json({ error: error.message });
         return;
       }
-      res.status(400).json({ error: error.message });
+      res.status(error?.statusCode || 400).json({ error: error.message });
     }
   };
 
@@ -529,7 +527,7 @@ export class ThesisController {
       );
       res.status(200).json({ message: 'Thesis status updated', result });
     } catch (error: any) {
-      res.status(400).json({ error: error.message });
+      res.status(error?.statusCode || 400).json({ error: error.message });
     }
   };
 
@@ -543,7 +541,7 @@ export class ThesisController {
       );
       res.status(200).json({ message: 'Application rejected', result });
     } catch (error: any) {
-      res.status(400).json({ error: error.message });
+      res.status(error?.statusCode || 400).json({ error: error.message });
     }
   };
 
@@ -562,6 +560,7 @@ export class ThesisController {
       const result = await this.defenseDocumentHistory.getDocumentHistory(
         thesisId,
         stage,
+        req.user?.userId,
       );
       res.status(200).json(result);
     } catch (error: any) {
@@ -611,12 +610,12 @@ export class ThesisController {
     }
   };
 
-  getActivePanelistCandidates = async (_req: AuthenticatedRequest, res: Response): Promise<void> => {
+  getActivePanelistCandidates = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
-      const result = await this.thesisService.getActivePanelistCandidates();
+      const result = await this.thesisService.getActivePanelistCandidates(req.user?.userId);
       res.status(200).json(result);
     } catch (error: any) {
-      res.status(400).json({ error: error.message });
+      res.status(error?.statusCode || 400).json({ error: error.message });
     }
   };
 
@@ -631,10 +630,10 @@ export class ThesisController {
         search: req.query.search as string | undefined,
         defenseType: req.query.defenseType as string | undefined,
         programId: req.query.programId as string | undefined,
-      });
+      }, req.user?.userId);
       res.status(200).json(result);
     } catch (error: any) {
-      res.status(400).json({ error: error.message });
+      res.status(error?.statusCode || 400).json({ error: error.message });
     }
   };
 
@@ -647,10 +646,10 @@ export class ThesisController {
         page: Number(req.query.page),
         pageSize: Number(req.query.pageSize),
         search: req.query.search as string | undefined,
-      });
+      }, req.user?.userId);
       res.status(200).json(result);
     } catch (error: any) {
-      res.status(400).json({ error: error.message });
+      res.status(error?.statusCode || 400).json({ error: error.message });
     }
   };
 
@@ -673,10 +672,10 @@ export class ThesisController {
       const programType = req.query.programType
         ? String(req.query.programType)
         : undefined;
-      const result = this.thesisService.getCommitteePolicy(defenseType, programType);
+      const result = await this.thesisService.getCommitteePolicy(defenseType, programType, req.user?.userId);
       res.status(200).json(result);
     } catch (error: any) {
-      res.status(400).json({ error: error.message });
+      res.status(error?.statusCode || 400).json({ error: error.message });
     }
   };
 
@@ -1237,7 +1236,7 @@ export class ThesisController {
 
   /** CP7: Admin Defense Records list (read-only). */
   public getAdminDefenseRecords = async (
-    req: Request,
+    req: AuthenticatedRequest,
     res: Response,
   ): Promise<void> => {
     try {
@@ -1247,7 +1246,7 @@ export class ThesisController {
         search: (req.query.search as string) ?? undefined,
         defenseType: (req.query.defenseType as string) ?? undefined,
         recordStatus: (req.query.recordStatus as string) ?? undefined,
-      });
+      }, req.user?.userId);
       res.status(200).json(result);
     } catch (error: any) {
       sendEligibilityError(res, error);
@@ -1256,25 +1255,24 @@ export class ThesisController {
 
   /** CP7: Admin Defense Record detail (read-only). */
   public getAdminDefenseRecordDetail = async (
-    req: Request,
+    req: AuthenticatedRequest,
     res: Response,
   ): Promise<void> => {
     try {
       const result = await this.thesisService.getAdminDefenseRecordDetail(
-        req.params.scheduleId as string,
-      );
+        req.params.scheduleId as string, req.user?.userId);
       res.status(200).json(result);
     } catch (error: any) {
       sendEligibilityError(res, error);
     }
   };
 
-  public getAllRapReports = async (req: Request, res: Response): Promise<void> => {
+  public getAllRapReports = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
-      const reports = await this.thesisService.getAllRapReports();
+      const reports = await this.thesisService.getAllRapReports(req.user?.userId);
       res.status(200).json(reports);
     } catch (error: any) {
-      res.status(400).json({ error: error.message });
+      res.status(error?.statusCode || 400).json({ error: error.message });
     }
   };
 
@@ -1306,7 +1304,7 @@ export class ThesisController {
 
       res.status(200).json({ success: true, remindedCount: missingSignatures.length });
     } catch (error: any) {
-      res.status(400).json({ error: error.message });
+      res.status(error?.statusCode || 400).json({ error: error.message });
     }
   };
   // ── CP6 Defense Workspace ───────────────────────────────────────
