@@ -4,17 +4,19 @@ import { Prisma, PrismaClient } from '@prisma/client';
 import { AppError } from '../utils/AppError';
 import { scheduleIdentifier } from '../services/exam-schedule.rules';
 import { essayScoreValue } from '../services/exam-essay-evaluation.rules';
-import { essayReviewProjection, requireEssayReview, evaluationAuthoritySelect, evaluationScoreSelect } from './exam-essay-evaluation.projection';
+import { essayReviewProjection, evaluationAuthoritySelect, evaluationScoreSelect } from './exam-essay-evaluation.projection';
 import { scoreLockedApplication } from './exam-result.repository';
 import { hasEffectiveExamPass } from "../services/exam-effective-result.rules";
 import { completedResultStatus } from '../services/exam-result.rules';
 import { amendmentInclude } from './exam-amendment.repository';
+import { writeLockedEssayEvaluation } from './exam-essay-evaluation.writer';
+import { facultyEssayAuthorization } from '../access/faculty-essay-authorization';
 
 // Type for the transaction client that Prisma provides inside $transaction
 type TransactionClient = Omit<PrismaClient, '$connect' | '$disconnect' | '$on' | '$transaction' | '$use' | '$extends'>;
 
 export class ExamRepository {
-    constructor(private readonly access = examAdministrationAuthorization) {}
+    constructor(private readonly access = examAdministrationAuthorization, private readonly essayAccess = facultyEssayAuthorization) {}
     async createSlot(data: Prisma.ExamSlotUncheckedCreateInput) {
         return prisma.examSlot.create({ data });
     }
@@ -362,6 +364,7 @@ export class ExamRepository {
     }
 
     async gradeEssay(applicationId: string, essayScore: number, adminId: string) {
+        this.essayAccess.assertLegacyAdminGrading();
         this.access.assertExcluded("ESSAY_EVALUATION");
         const id = scheduleIdentifier(applicationId, "applicationId");
         essayScoreValue(essayScore);
@@ -376,18 +379,7 @@ export class ExamRepository {
             if (!application) throw new AppError("Exam record not found.", 404);
             const admin = await tx.user.findUnique({ where: { id: adminId }, select: { role: true, isActive: true } });
             if (admin?.role !== "ADMIN" || !admin.isActive) throw new AppError("Only an active Admin may evaluate this essay.", 403);
-            const evaluation = await requireEssayReview(tx, application);
-            if (evaluation.status === "COMPLETED") throw new AppError("This essay has already been evaluated. Direct regrading is unavailable.", 409);
-            if (essayScore > evaluation.maximumScore) throw new AppError(`Essay score cannot exceed the recorded maximum of ${evaluation.maximumScore}.`, 400);
-            // The existing score column is DECIMAL(65,30). Reject loss of precision
-            // rather than silently letting the database round a submitted value.
-            if (new Prisma.Decimal(essayScore).decimalPlaces() > 30) throw new AppError("Essay score exceeds the supported decimal precision.", 400);
-            const score = await tx.entranceExamScore.update({ where: { applicationId: id }, data: {
-                essayScore, gradedById: adminId, essayEvaluatedAt: new Date(),
-            }, select: evaluationScoreSelect });
-            const evaluated = await requireEssayReview(tx, { ...application, score });
-            const result = await scoreLockedApplication(tx, id);
-            return { ...evaluated, result };
+            return writeLockedEssayEvaluation(tx, application, essayScore, adminId);
         }, { isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted });
     }
 

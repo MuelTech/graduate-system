@@ -20,6 +20,7 @@ import router from "../../../src/routes/exam.routes";
 import { ExamRepository } from "../../../src/repositories/exam.repository";
 import { essayScoreValue } from "../../../src/services/exam-essay-evaluation.rules";
 let server: Server, base: string, app: any, revision: any, answer: any;
+let currentRole = "ADMIN", lockedEvaluator: { role: string; isActive: boolean };
 const secret = "b7-synthetic-http-secret";
 beforeAll(async () => {
   const http = express(); http.use(express.json()); http.use(router); server = createServer(http);
@@ -42,10 +43,17 @@ beforeEach(() => {
     return rows;
   });
   db.entranceExamApplication.update.mockImplementation(({ data }) => Object.assign(app, data));
-  db.user.findUnique.mockResolvedValue({ role: "ADMIN", isActive: true });
+  currentRole = "ADMIN"; lockedEvaluator = { role: "ADMIN", isActive: true };
+  // FACULTY-2 current-account load is separate from the post-lock evaluator fixture.
+  db.user.findUnique.mockImplementation(async ({ where, select }) => select?.mustChangePassword ? {
+    id: where.id, role: currentRole, email: "synthetic@example.invalid", isActive: true, mustChangePassword: false,
+    panelist: ["FACULTY", "PANELIST"].includes(currentRole) ? { isActive: true } : null,
+    administratorAccess: null, capabilityGrants: [],
+  } : lockedEvaluator);
   db.entranceExamScore.update.mockImplementation(({ data }) => Object.assign(app.score, data, { gradedBy: { id: app.score.gradedById ?? data.gradedById, firstName: "Admin", lastName: "Fixture" } }));
 });
 function request(body: unknown = { essayScore: 18 }, role: string | null = "ADMIN", id = ids.app, method = "POST", suffix = "grade") {
+  currentRole = role ?? "ADMIN";
   const token = role === "invalid" ? "invalid" : role ? jwt.sign({ userId: ids.admin, role }, secret) : null;
   return fetch(`${base}${method === "GET" ? `/applications/${id}` : `/scores/${id}/${suffix}`}`, {
     method, headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
@@ -66,7 +74,7 @@ describe("B7 actual HTTP/transaction authority", () => {
     { role: "ADMIN", isActive: false },
     { role: "PANELIST", isActive: true },
   ])("B10 Finalize Result rejects current actor $role/$isActive", async actor => {
-    db.user.findUnique.mockResolvedValue(actor);
+    lockedEvaluator = actor;
     expect((await request({}, "ADMIN", ids.app, "POST", "finalize")).status).toBe(403);
     noWrites();
   });
@@ -87,7 +95,7 @@ describe("B7 actual HTTP/transaction authority", () => {
     expect(db.entranceExamScore.update).toHaveBeenCalledTimes(writes);
     expect(app.score.essayEvaluatedAt).toBeInstanceOf(Date);
   });
-  it.each([[null, 401], ["invalid", 403], ["APPLICANT", 403], ["STUDENT", 403], ["PANELIST", 403]])("denies %s before DB access", async (role, status) => {
+  it.each([[null, 401], ["invalid", 401], ["APPLICANT", 403], ["STUDENT", 403], ["PANELIST", 403]])("denies %s before DB access", async (role, status) => {
     expect((await request(undefined, role as string | null)).status).toBe(status); expect(db.$transaction).not.toHaveBeenCalled();
   });
   it.each([null, "", "0", [], {}, { essayScore: null }, { essayScore: "18" }, { essayScore: "" }, { essayScore: -1 }, { essayScore: 18, totalScore: 20 }, { essayScore: 26 }, { essayScore: 1e-31 }])("rejects malformed/unsupported/out-of-bound input %#", async body => {
@@ -122,15 +130,15 @@ describe("B7 actual HTTP/transaction authority", () => {
   it("requires an existing pending score and current active ADMIN", async () => {
     app.score = null; expect((await request()).status).toBe(409); app = evaluationApplication(); app.score.status = "PASSED";
     expect((await request()).status).toBe(409); app.score.status = "PENDING";
-    db.user.findUnique.mockResolvedValue({ role: "PANELIST", isActive: true }); expect((await request()).status).toBe(403); noWrites();
+    lockedEvaluator = { role: "PANELIST", isActive: true }; expect((await request()).status).toBe(403); noWrites();
   });
   it("validates exact identity and missing record", async () => {
     expect((await request({}, "ADMIN", "bad")).status).toBe(400);
     db.$queryRaw.mockResolvedValue([]); expect((await request()).status).toBe(404); noWrites();
   });
   it("rejects inactive evaluator, non-null total, missing revision and bounded unexpected errors", async () => {
-    db.user.findUnique.mockResolvedValue({ role: "ADMIN", isActive: false }); expect((await request()).status).toBe(403);
-    db.user.findUnique.mockResolvedValue({ role: "ADMIN", isActive: true }); app.score.totalScore = 10; expect((await request()).status).toBe(409);
+    lockedEvaluator = { role: "ADMIN", isActive: false }; expect((await request()).status).toBe(403);
+    lockedEvaluator = { role: "ADMIN", isActive: true }; app.score.totalScore = 10; expect((await request()).status).toBe(409);
     app.score.totalScore = null; db.examContentRevision.findUnique.mockResolvedValue(null); expect((await request()).status).toBe(404); noWrites();
     db.$transaction.mockRejectedValue(new Error("secret-database-detail"));
     const response = await request(); expect(response.status).toBe(500); expect(await response.text()).not.toContain("secret-database-detail");
@@ -169,6 +177,7 @@ describe("B7 actual HTTP/transaction authority", () => {
   });
   it("B0B Applicant result and result email remain unavailable before evaluation", async () => { expect((await request({}, "ADMIN", ids.app, "POST", "send-email")).status).toBe(409); expect(email).not.toHaveBeenCalled();
     const token = jwt.sign({ userId: ids.user, role: "APPLICANT" }, secret);
+    currentRole = "APPLICANT";
     const response = await fetch(`${base}/result`, { headers: { Authorization: `Bearer ${token}` } });
     expect(response.status).toBe(409); expect(await response.json()).toMatchObject({ error: expect.stringContaining("not yet available") });
   });

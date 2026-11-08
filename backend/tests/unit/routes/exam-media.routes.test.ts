@@ -7,7 +7,11 @@ import { EXAM_PNG, EXAM_JPEG } from "../../fixtures/exam-images";
 import { AppError } from "../../../src/utils/AppError";
 
 const content = vi.hoisted(() => vi.fn());
-vi.mock("../../../src/config/database", () => ({ default: {} }));
+const currentActor = vi.hoisted(() => ({ role: "ADMIN" }));
+vi.mock("../../../src/config/database", () => ({ default: { user: { findUnique: async ({ where }: any) => ({
+  id: where.id, role: currentActor.role, email: "synthetic@example.invalid", isActive: true, mustChangePassword: false,
+  panelist: currentActor.role === "PANELIST" ? { isActive: true } : null, administratorAccess: null, capabilityGrants: [],
+}) } } }));
 vi.mock("../../../src/services/exam-media.service", () => ({ ExamMediaService: class { getContent = content; } }));
 vi.mock("../../../src/utils/jwt", () => ({
   JwtConfigurationError: class extends Error {},
@@ -38,7 +42,7 @@ beforeEach(() => {
   content.mockReset();
   content.mockResolvedValue({ bytes: EXAM_PNG, mimeType: "image/png" });
 });
-function get(role?: string) { return fetch(url, { headers: role ? { Authorization: `Bearer ${role}` } : {} }); }
+function get(role?: string) { currentActor.role = role ?? "ADMIN"; return fetch(url, { headers: role ? { Authorization: `Bearer ${role}` } : {} }); }
 
 describe("authenticated private image HTTP contract", () => {
   it.each(["ADMIN", "APPLICANT"])("returns validated image bytes for authenticated %s with confidential headers", async role => {
@@ -62,7 +66,7 @@ describe("authenticated private image HTTP contract", () => {
     expect(Buffer.from(await response.arrayBuffer())).toEqual(EXAM_JPEG);
   });
 
-  it.each([[undefined, 401], ["invalid", 403], ["STUDENT", 403], ["PANELIST", 403]] as const)("rejects missing/invalid/disallowed credentials: %s", async (role, status) => {
+  it.each([[undefined, 401], ["invalid", 401], ["STUDENT", 403], ["PANELIST", 403]] as const)("rejects missing/invalid/disallowed credentials: %s", async (role, status) => {
     const response = await get(role);
     expect(response.status).toBe(status);
     expect(response.headers.get("cache-control")).toBe("private, no-store");

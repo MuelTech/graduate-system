@@ -10,6 +10,7 @@ import { essayScoreValue } from "./exam-essay-evaluation.rules";
 import { completedResultStatus, resultProjection, validatedResultBasis } from "./exam-result.rules";
 import { canAmendAppointment, requireMissedDate } from "./exam-amendment.rules";
 import { institutionalProjection } from "./exam-effective-result.rules";
+import { facultyEssayAuthorization } from "../access/faculty-essay-authorization";
 
 function assignmentBlockReason(student: {
   admissionStatus: string; pinnacleApplicantId: string | null; alignmentStatus: string | null;
@@ -28,8 +29,8 @@ function assignmentBlockReason(student: {
 }
 
 export class ExamService {
-  constructor(private readonly access = examAdministrationAuthorization) {}
-  private examRepo = new ExamRepository(this.access);
+  constructor(private readonly access = examAdministrationAuthorization, private readonly essayAccess = facultyEssayAuthorization) {}
+  private examRepo = new ExamRepository(this.access, this.essayAccess);
 
   async createSlot(input: unknown, actorId: string) {
     await this.access.assert(actorId, "exam.schedules.manage");
@@ -376,6 +377,7 @@ export class ExamService {
     essayScore: number,
     adminId: string
   ) {
+    this.essayAccess.assertLegacyAdminGrading();
     this.access.assertExcluded("ESSAY_EVALUATION");
     return this.examRepo.gradeEssay(applicationId, essayScoreValue(essayScore), adminId);
   }

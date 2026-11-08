@@ -14,6 +14,7 @@ import { calculateSha256, DEFAULT_CHECKSUM_ALGORITHM } from "../utils/checksum";
 import { AppError } from "../utils/AppError";
 import { examMediaId } from "./exam-content.rules";
 import { ExamEngineService } from "./exam-engine.service";
+import { FacultyEssayEvaluationRepository } from "../repositories/faculty-essay-evaluation.repository";
 
 interface MediaActor { userId: string; role: string }
 export interface ExamImageContent { bytes: Buffer; mimeType: "image/png" | "image/jpeg" }
@@ -26,6 +27,7 @@ export class ExamMediaService {
     private readonly provider: StorageProvider = storageProvider,
     private readonly examAccess: Pick<ExamEngineService, "assertApplicantQuestionAccess"> = new ExamEngineService(),
     private readonly access = examAdministrationAuthorization,
+    private readonly essayAccess: Pick<FacultyEssayEvaluationRepository, "mediaContext"> = new FacultyEssayEvaluationRepository(),
   ) {}
 
   /** Register the secure-upload pipeline's existing object; never promote twice. */
@@ -129,6 +131,18 @@ export class ExamMediaService {
       : await this.repo.findForApplicant(id, revisionId!);
     if (!media) throw unavailable();
 
+    return this.readContent(media);
+  }
+
+  /** Faculty helper: only the exact image on the exact currently pending frozen essay. */
+  async getEssayContent(id: string, applicationId: string, actorId: string): Promise<ExamImageContent> {
+    const revisionId = await this.essayAccess.mediaContext(applicationId, id, actorId);
+    const media = await this.repo.findForApplicant(id, revisionId);
+    if (!media) throw unavailable();
+    return this.readContent(media);
+  }
+
+  private async readContent(media: NonNullable<Awaited<ReturnType<ExamMediaRepository["findForAdmin"]>>>): Promise<ExamImageContent> {
     const policy = getUploadPolicy("exam-media");
     if (media.storageProvider !== this.provider.name ||
         !policy.allowedMimeTypes?.includes(media.verifiedMimeType) ||

@@ -13,6 +13,11 @@ const revisionSummary = { id: true, publishedAt: true, _count: { select: { quest
 
 /** Validate the generic Phase A schema, retaining exact stored order, including legacy ties. */
 function checkedContent(value: unknown): AdminExamQuestion {
+  if (!value || typeof value !== "object" || Array.isArray(value) ||
+      !Array.isArray((value as { options?: unknown }).options) ||
+      (value as { options: unknown[] }).options.some(option => !option || typeof option !== "object" || Array.isArray(option))) {
+    throw new AppError("Published question content requires staff review.", 409);
+  }
   const row = value as Prisma.ExamQuestionGetPayload<{ select: typeof adminQuestionSelect }>;
   const content = toAdminQuestion(row);
   const { id: _id, options, ...question } = content;

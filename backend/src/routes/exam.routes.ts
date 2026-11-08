@@ -3,10 +3,12 @@ import { Router } from "express";
 import { ExamController } from "../controllers/exam.controller";
 import { ExamAmendmentController } from "../controllers/exam-amendment.controller";
 import { authenticateJWT, requireRole } from "../middlewares/auth.middleware";
+import facultyEssayEvaluationRoutes from "./faculty-essay-evaluation.routes";
 
 const router = Router();
 const examController = new ExamController();
 const amendments = new ExamAmendmentController();
+router.use('/essay-evaluations', facultyEssayEvaluationRoutes);
 router.post('/applications/:id/missed-appeal', authenticateJWT, requireRole(['APPLICANT']), amendments.action('MISSED_APPEAL'));
 router.post('/applications/:id/missed-appeal/approve', authenticateJWT, requireRole(['ADMIN']), requireExamAdministrationCapability("exam.schedules.manage"), amendments.action('APPROVE_APPEAL'));
 router.post('/applications/:id/missed-appeal/reject', authenticateJWT, requireRole(['ADMIN']), requireExamAdministrationCapability("exam.schedules.manage"), amendments.action('REJECT_APPEAL'));

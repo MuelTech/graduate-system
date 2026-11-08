@@ -5,7 +5,7 @@ import type { AddressInfo } from "node:net";
 import jwt from "jsonwebtoken";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
-const db = vi.hoisted(() => ({ $transaction: vi.fn(), $queryRaw: vi.fn(), entranceExamScore: { update: vi.fn() }, entranceExamApplication: { findFirst: vi.fn(), findUnique: vi.fn() }, examQuestion: { count: vi.fn() } }));
+const db = vi.hoisted(() => ({ user: { findUnique: vi.fn() }, $transaction: vi.fn(), $queryRaw: vi.fn(), entranceExamScore: { update: vi.fn() }, entranceExamApplication: { findFirst: vi.fn(), findUnique: vi.fn() }, examQuestion: { count: vi.fn() } }));
 const sendEmail = vi.hoisted(() => vi.fn());
 vi.mock("../../../src/config/database", () => ({ default: db }));
 vi.mock("../../../src/services/email.service", () => ({ EmailService: { sendTemplateEmail: sendEmail } }));
@@ -15,6 +15,7 @@ import router from "../../../src/routes/exam.routes";
 const secret = "b0b-synthetic-authentication-test-secret";
 let server: Server;
 let baseUrl: string;
+let currentRole = "ADMIN";
 function application(status = "PASSED", scoreStatus = status) {
   return { id: ids.app, status, score: { id: ids.app, scoredAt: null, scoringBasis: null, resultEmailQueuedAt: null, resultEmailTemplateKey: null, status: scoreStatus, multipleChoiceScore: 63, essayScore: scoreStatus === "PENDING" ? null : 20, totalScore: scoreStatus === "PENDING" ? null : 83 },
     student: { user: { firstName: "Synthetic", email: "record-owner@example.invalid" } },
@@ -22,6 +23,7 @@ function application(status = "PASSED", scoreStatus = status) {
   };
 }
 function request(path: string, role?: string, options: RequestInit = {}) {
+  currentRole = role ?? "ADMIN";
   const token = role === "invalid" ? role : role ? jwt.sign({ userId: "authenticated-user", role }, secret) : undefined;
   return fetch(`${baseUrl}${path}`, { ...options, headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) } });
 }
@@ -48,11 +50,15 @@ beforeEach(() => {
   db.entranceExamApplication.findFirst.mockResolvedValue(application());
   db.entranceExamApplication.findUnique.mockResolvedValue(application());
   db.examQuestion.count.mockResolvedValue(72);
+  db.user.findUnique.mockImplementation(async ({ where }) => ({
+    id: where.id, role: currentRole, email: "synthetic@example.invalid", isActive: true, mustChangePassword: false,
+    panelist: currentRole === "PANELIST" ? { isActive: true } : null, administratorAccess: null, capabilityGrants: [],
+  }));
 });
 afterEach(() => vi.unstubAllEnvs());
 
 describe("B0B actual routes, authentication, controllers and services", () => {
-  it.each([[undefined, 401], ["invalid", 403], ["APPLICANT", 403], ["STUDENT", 403], ["PANELIST", 403]] as const)("rejects email actor %s before lookup/queue", async (role, expected) => {
+  it.each([[undefined, 401], ["invalid", 401], ["APPLICANT", 403], ["STUDENT", 403], ["PANELIST", 403]] as const)("rejects email actor %s before lookup/queue", async (role, expected) => {
     const response = await request(`/scores/${ids.app}/send-email`, role, { method: "POST" });
     expect(response.status).toBe(expected);
     expect(db.entranceExamApplication.findUnique).not.toHaveBeenCalled();
@@ -117,7 +123,7 @@ describe("B0B actual routes, authentication, controllers and services", () => {
     expect(await response.json()).toEqual({ error: "Could not load examination results." });
   });
 
-  it.each([[undefined, 401], ["invalid", 403], ["ADMIN", 403]] as const)("retains Applicant-only result access for %s", async (role, status) => {
+  it.each([[undefined, 401], ["invalid", 401], ["ADMIN", 403]] as const)("retains Applicant-only result access for %s", async (role, status) => {
     expect((await request("/result", role)).status).toBe(status);
     expect(db.entranceExamApplication.findFirst).not.toHaveBeenCalled();
   });

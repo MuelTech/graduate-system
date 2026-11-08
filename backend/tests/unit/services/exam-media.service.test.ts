@@ -7,6 +7,7 @@ import { EXAM_PNG, EXAM_JPEG } from "../../fixtures/exam-images";
 import { LocalStorageProvider } from "../../../src/storage/local-storage.provider";
 import { getUploadPolicy } from "../../../src/storage/upload-policy";
 import { calculateSha256 } from "../../../src/utils/checksum";
+import { AppError } from "../../../src/utils/AppError";
 import type { ExamMediaRepository } from "../../../src/repositories/exam-media.repository";
 
 vi.mock("../../../src/config/database", () => ({ default: {} }));
@@ -22,6 +23,37 @@ const repo = { create: vi.fn(), findForAdmin: vi.fn(), findForApplicant: vi.fn()
 const access = { assertApplicantQuestionAccess: vi.fn() };
 const admin = { userId: "admin1", role: "ADMIN" };
 const applicant = { userId: "applicant1", role: "APPLICANT" };
+
+describe("FACULTY-12 exact pending essay image helper", () => {
+  const essay = { mediaContext: vi.fn() };
+  const facultyService = () => new ExamMediaService(repo, provider, access, undefined, essay);
+  it("reuses revision membership and the existing full byte-integrity contract", async () => {
+    const { id } = await service.createImage(EXAM_PNG); attached = true;
+    essay.mediaContext.mockResolvedValue("exact-frozen-revision");
+    expect(await facultyService().getEssayContent(id, "exact-app", "academic")).toEqual({ bytes: EXAM_PNG, mimeType: "image/png" });
+    expect(essay.mediaContext).toHaveBeenLastCalledWith("exact-app", id, "academic");
+    expect(repo.findForApplicant).toHaveBeenLastCalledWith(id, "exact-frozen-revision");
+    expect(repo.findForAdmin).not.toHaveBeenCalled();
+    // This academic entitlement does not alter the generic image reader.
+    await expect(service.getContent(id, { userId: "academic", role: "FACULTY" })).rejects.toMatchObject({ statusCode: 403 });
+  });
+  it("denies unauthorized context before metadata/storage reads", async () => {
+    essay.mediaContext.mockRejectedValue(new AppError("Denied", 403));
+    await expect(facultyService().getEssayContent("image", "app", "academic")).rejects.toMatchObject({ statusCode: 403 });
+    expect(repo.findForApplicant).not.toHaveBeenCalled();
+  });
+  it("conceals missing revision-bound media", async () => {
+    essay.mediaContext.mockResolvedValue("exact-frozen-revision");
+    await expect(facultyService().getEssayContent("image", "app", "academic")).rejects.toMatchObject({ statusCode: 404 });
+  });
+  it("does not bypass checksum validation for an authorized evaluator", async () => {
+    const { id } = await service.createImage(EXAM_PNG); attached = true;
+    essay.mediaContext.mockResolvedValue("exact-frozen-revision");
+    const corrupted = Buffer.from(EXAM_PNG); corrupted[corrupted.length - 1] ^= 1;
+    await writeFile(await provider.resolveStorageKeyReadPath(saved!.storageKey), corrupted);
+    await expect(facultyService().getEssayContent(id, "app", "academic")).rejects.toMatchObject({ statusCode: 404 });
+  });
+});
 
 beforeEach(async () => {
   vi.resetAllMocks();
