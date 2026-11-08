@@ -34,7 +34,19 @@ export function ProgramsSection() {
           </div>
         </div>
         <p id="programs-review-note" className="public-programs__review-note">
-          {publicSiteContent.programs.reviewNote}
+          {publicSiteContent.programs.reviewNote}{" "}
+          {publicSiteContent.programs.sources.map((source, index) => (
+            <span key={source.href}>
+              {index > 0 && " · "}
+              <a
+                href={source.href}
+                aria-label={`Official EARIST Graduate School ${source.label.toLowerCase()}`}
+                className="underline underline-offset-2"
+              >
+                {source.label}
+              </a>
+            </span>
+          ))}
         </p>
         <div className="public-programs__directory">
           {publicSiteContent.programs.groups.map((group) => (

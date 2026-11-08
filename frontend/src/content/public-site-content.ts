@@ -24,9 +24,16 @@ export const publicSiteContent = {
   },
   programs: {
     reviewNote:
-      "Program listing for design review — offerings require confirmation.",
-    // Provisional titles transcribed from backend/prisma/seed.ts, not verified
-    // current offerings. No runtime backend import, availability, or policy data.
+      "Official EARIST references differ on majors and wording; client confirmation is pending.",
+    sources: [
+      { label: "Reference 1", href: "https://earist.edu.ph/graduate-school/" },
+      {
+        label: "Reference 2",
+        href: "https://earist.edu.ph/graduate-school-2/",
+      },
+    ],
+    // Curated degree names shared by both official pages above. Conflicting
+    // major lists are intentionally omitted, not combined into a final catalog.
     groups: [
       {
         id: "masters",
@@ -43,9 +50,9 @@ export const publicSiteContent = {
         title: "Doctoral Programs",
         entries: [
           "Doctor of Philosophy in Industrial Psychology",
-          "Doctor of Education Major in Educational Management",
-          "Doctor in Business Administration",
-          "Doctor in Public Administration",
+          "Doctor of Education",
+          "Doctor of Business Administration",
+          "Doctor of Public Administration",
         ],
       },
     ],
