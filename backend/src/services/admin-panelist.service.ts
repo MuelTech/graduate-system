@@ -54,6 +54,11 @@ export class AdminPanelistService {
         await this.authorize(actorId, "faculty.view");
         return (await this.repository.findAll()).map(row => summary(target(row)));
     }
+    async getManagementContext(actorId = "") {
+        await this.authorize(actorId, "faculty.view");
+        const capabilities = await this.authorization.capabilities(actorId);
+        return { canManage: capabilities.includes("faculty.manage") };
+    }
     async getPanelistById(id: string, actorId = "") {
         await this.authorize(actorId, "faculty.view");
         return summary(target(await this.repository.findById(facultyId(id)), id));

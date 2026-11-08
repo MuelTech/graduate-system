@@ -38,7 +38,7 @@ const navItems = [
     children: [
       { href: "/admin/users/applicants", label: "Applicants" },
       { href: "/admin/users/students", label: "Students" },
-      { href: "/admin/users/panelists", label: "Panelists" },
+      { href: "/admin/users/panelists", label: "Faculty" },
       { href: "/admin/users/roles", label: "Custom Roles" },
     ],
   },

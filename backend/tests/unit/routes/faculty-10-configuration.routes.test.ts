@@ -37,10 +37,16 @@ const request = (method: string, path: string, claim = "ADMIN") => fetch(base + 
   Authorization: `Bearer ${jwt.sign({ userId: "actor", role: claim, capabilityKeys: ["faculty.manage"] }, process.env.JWT_SECRET!)}`,
 } });
 const endpoints = [
+  ["GET", "/admin/panelists/management-context", "faculty.view"],
   ["GET", "/admin/panelists", "faculty.view"], ["GET", "/admin/panelists/profile", "faculty.view"],
   ["POST", "/admin/panelists", "faculty.manage"], ["PUT", "/admin/panelists/profile", "faculty.manage"],
 ] as const;
 describe("FACULTY-10 management HTTP boundaries", () => {
+  it("page context is routed before the profile-id reader", async () => {
+    account(["faculty.view"]);
+    expect((await request("GET", "/admin/panelists/management-context")).status).toBe(200);
+    expect(fixture.work).toHaveBeenCalledWith("getManagementContext", expect.objectContaining({ userId: "actor" }));
+  });
   it.each(endpoints)("%s %s requires %s", async (method, path, key) => {
     account([key]); expect((await request(method, path)).status).toBe(200);
     account([], { administratorAccess: { level: "FULL" } }); expect((await request(method, path)).status).toBe(200);

@@ -10,6 +10,7 @@ const controller = new AdminPanelistController();
 router.use(authenticateJWT);
 
 // Admin-only CRUD routes
+router.get("/management-context", requireRole(["ADMIN"]), requireFacultyCapability("faculty.view"), controller.getManagementContext.bind(controller));
 router.get("/", requireRole(["ADMIN"]), requireFacultyCapability("faculty.view"), controller.getAllPanelists.bind(controller));
 router.get("/:id", requireRole(["ADMIN"]), requireFacultyCapability("faculty.view"), controller.getPanelistById.bind(controller));
 router.post("/", requireRole(["ADMIN"]), requireFacultyCapability("faculty.manage"), controller.createPanelist.bind(controller));

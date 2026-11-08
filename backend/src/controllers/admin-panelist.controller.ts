@@ -6,6 +6,15 @@ import { AppError } from "../utils/AppError";
 const adminPanelistService = new AdminPanelistService();
 
 export class AdminPanelistController {
+    async getManagementContext(req: AuthenticatedRequest, res: Response) {
+        res.setHeader("Cache-Control", "private, no-store");
+        try {
+            res.json(await adminPanelistService.getManagementContext(req.user?.userId));
+        } catch (error: unknown) {
+            if (error instanceof AppError) res.status(error.statusCode).json({ error: error.message });
+            else res.status(500).json({ error: "Faculty configuration is unavailable." });
+        }
+    }
     async getAllPanelists(req: AuthenticatedRequest, res: Response) {
         try {
             const panelists = await adminPanelistService.getAllPanelists(req.user?.userId);
@@ -26,7 +35,7 @@ export class AdminPanelistController {
             const id = req.params.id as string;
             const panelist = await adminPanelistService.getPanelistById(id, req.user?.userId);
             if (!panelist) {
-                res.status(404).json({ error: "Panelist not found" });
+                res.status(404).json({ error: "Faculty account not found." });
                 return;
             }
             res.json(panelist);

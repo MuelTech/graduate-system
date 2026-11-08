@@ -1,1286 +1,346 @@
 "use client";
 
 import { useState } from "react";
-import { PanelistResponse } from "@/types";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Plus } from "lucide-react";
+import { toast } from "sonner";
+import { useSession } from "next-auth/react";
+import { apiClientRequest } from "@/lib/api.client";
+import {
+  FACULTY_API,
+  FACULTY_QUERY_KEY,
+  facultyError,
+  facultyName,
+  filterFaculty,
+  mapFaculty,
+} from "@/lib/faculty-management";
+import type { Faculty, FacultyResponse } from "@/types/faculty";
+import { FacultyDetailDialog } from "@/components/admin/faculty/faculty-detail";
+import { FacultyFormDialog } from "@/components/admin/faculty/faculty-form";
+import {
+  TemporaryCredentialDialog,
+  type TemporaryCredential,
+} from "@/components/admin/faculty/temporary-credential";
+import { PageHeader } from "@/components/ui/page-header";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { toast } from "sonner";
-import {
-  Search,
-  Filter,
-  Plus,
-  Eye,
-  Edit,
-  Power,
-  X,
-  Loader2,
-  UserCheck,
-  UserX,
-  Info,
-} from "lucide-react";
-import {
-  Pagination,
-  PaginationContent,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
-} from "@/components/ui/pagination";
-import { Switch } from "@/components/ui/switch";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { apiClientRequest } from "@/lib/api.client";
-
-const TITLE_OPTIONS = ["Dr.", "Prof.", "Mr.", "Ms.", "Mrs.", "Engr.", "Atty.", ""];
-const SUFFIX_OPTIONS = ["Jr.", "Sr.", "II", "III", "IV", ""];
-const QUALIFICATION_OPTIONS = [
-  "Doctorate Degree",
-  "Master's Degree",
-  "Bachelor's Degree",
-];
-const AFFILIATION_OPTIONS = [
-  "College of Education",
-  "College of Business Administration",
-  "College of Arts and Sciences",
-  "College of Engineering",
-  "College of Computer and Information Sciences",
-  "College of Public Administration",
-  "External/Other",
-];
-const SPECIALIZATION_OPTIONS = [
-  "Education Management",
-  "Business Administration",
-  "Information Technology",
-  "Computer Science",
-  "Engineering",
-  "Arts and Sciences",
-  "Guidance and Counseling",
-  "Public Administration",
-  "Other",
-];
+import { Skeleton } from "@/components/ui/skeleton";
 
 const selectClass =
-  "w-full rounded-lg border border-(--earist-border-gray) bg-white px-3 py-2 text-sm text-(--earist-body-text) focus:border-(--earist-primary) focus:outline-none";
+  "h-9 w-full rounded-md border bg-background px-3 text-sm focus-visible:outline-2 focus-visible:outline-ring";
+const PAGE_SIZE = 10;
 
-interface PanelistFormData {
-  title: string;
-  firstName: string;
-  lastName: string;
-  suffix: string;
-  email: string;
-  qualification: string;
-  affiliation: string;
-  specialization: string;
-  isExternal: boolean;
-  isAvailableAsAdviser: boolean;
-}
-
-interface PanelistEditData extends PanelistFormData {
-  isActive: boolean;
-  newPassword: string;
-}
-
-const emptyCreateForm: PanelistFormData = {
-  title: "",
-  firstName: "",
-  lastName: "",
-  suffix: "",
-  email: "",
-  qualification: "",
-  affiliation: "",
-  specialization: "",
-  isExternal: false,
-  isAvailableAsAdviser: true,
-};
-
-type PanelistRow = {
-  id: string;
-  title: string;
-  firstName: string;
-  lastName: string;
-  suffix: string;
-  email: string;
-  qualification: string;
-  affiliation: string;
-  specialization: string;
-  isExternal: boolean;
-  isActive: boolean;
-  isAvailableAsAdviser: boolean;
-  createdAt: string;
-  userCreatedAt: string;
-  userUpdatedAt: string;
-  createdByName?: string;
-  updatedByName?: string;
-};
-
-function formatDisplayName(p: PanelistRow) {
-  const parts = [p.title, p.firstName, p.lastName, p.suffix].filter(Boolean);
-  return parts.join(" ") || p.firstName + " " + p.lastName;
-}
-
-function mapPanelist(p: PanelistResponse): PanelistRow {
-  return {
-    id: p.id,
-    title: p.user.title || "",
-    firstName: p.user.firstName,
-    lastName: p.user.lastName,
-    suffix: p.user.suffix || "",
-    email: p.user.email,
-    qualification: p.highestEducationalAttainment || "N/A",
-    affiliation: p.officeAffiliation || "N/A",
-    specialization: p.specialization || "N/A",
-    isExternal: p.isExternal,
-    isActive: p.user.isActive,
-    isAvailableAsAdviser: p.isAvailableAsAdviser,
-    createdAt: p.createdAt,
-    userCreatedAt: p.user.createdAt,
-    userUpdatedAt: p.user.updatedAt || p.user.createdAt,
-    createdByName: p.user?.createdBy ? `${p.user.createdBy.firstName} ${p.user.createdBy.lastName}` : undefined,
-    updatedByName: p.user?.updatedBy ? `${p.user.updatedBy.firstName} ${p.user.updatedBy.lastName}` : undefined,
-  };
-}
-
-export default function AdminPanelistsPage() {
-  const [searchQuery, setSearchQuery] = useState("");
-  const [typeFilter, setTypeFilter] = useState("all");
+export default function FacultyManagementPage() {
+  const { data: session } = useSession();
+  const accountId = session?.user?.id ?? "";
+  const client = useQueryClient();
+  const [search, setSearch] = useState("");
+  const [classification, setClassification] = useState("all");
+  const [status, setStatus] = useState("all");
   const [page, setPage] = useState(1);
-  const pageSize = 10;
-
-  const [showCreateModal, setShowCreateModal] = useState(false);
-  const [showEditModal, setShowEditModal] = useState(false);
-  const [showViewModal, setShowViewModal] = useState(false);
-  const [selectedPanelist, setSelectedPanelist] = useState<PanelistRow | null>(null);
-
-  const [createForm, setCreateForm] = useState<PanelistFormData>({ ...emptyCreateForm });
-  const [editForm, setEditForm] = useState<PanelistEditData>({
-    ...emptyCreateForm,
-    isAvailableAsAdviser: false,
-    isActive: true,
-    newPassword: "",
-  });
-
-  const queryClient = useQueryClient();
-
-  const { data: panelists = [], isLoading } = useQuery({
-    queryKey: ["adminPanelists"],
-    queryFn: async () => {
-      const res = await apiClientRequest("/admin/panelists");
-      return (Array.isArray(res) ? res : []).map(mapPanelist);
-    },
-  });
-
-  const createMutation = useMutation({
-    mutationFn: async (data: PanelistFormData) => {
-      return apiClientRequest("/admin/panelists", {
-        method: "POST",
-        body: JSON.stringify({
-          title: data.title || undefined,
-          firstName: data.firstName,
-          lastName: data.lastName,
-          suffix: data.suffix || undefined,
-          email: data.email,
-          officeAffiliation: data.affiliation,
-          highestEducationalAttainment: data.qualification,
-          specialization: data.specialization,
-          isExternal: data.isExternal,
-          isAvailableAsAdviser: data.isExternal
-            ? false
-            : data.isAvailableAsAdviser,
-        }),
-      });
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["adminPanelists"] });
-      setShowCreateModal(false);
-      setCreateForm({ ...emptyCreateForm });
-      toast.success("Panelist created successfully!", {
-        description: "Default password is the panelist's LAST NAME in all caps.",
-      });
-    },
-    onError: (error: Error) => {
-      toast.error(error.message || "Failed to create panelist.");
-    },
-  });
-
-  const updateMutation = useMutation({
-    mutationFn: async ({ id, isActive }: { id: string; isActive: boolean }) => {
-      return apiClientRequest(`/admin/panelists/${id}`, {
-        method: "PUT",
-        body: JSON.stringify({ isActive }),
-      });
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["adminPanelists"] });
-      toast.success("Account status updated.");
-    },
-    onError: (error: Error) => {
-      toast.error(error.message || "Failed to update status.");
-    },
-  });
-
-  const editMutation = useMutation({
-    mutationFn: async ({ id, data }: { id: string; data: PanelistEditData }) => {
-      const payload: Record<string, unknown> = {
-        title: data.title || null,
-        firstName: data.firstName,
-        lastName: data.lastName,
-        suffix: data.suffix || null,
-        email: data.email,
-        officeAffiliation: data.affiliation,
-        highestEducationalAttainment: data.qualification,
-        specialization: data.specialization,
-        isExternal: data.isExternal,
-        isAvailableAsAdviser: data.isExternal
-          ? false
-          : data.isAvailableAsAdviser,
-        isActive: data.isActive,
-      };
-      if (data.newPassword.trim()) {
-        payload.password = data.newPassword.trim();
-      }
-      return apiClientRequest(`/admin/panelists/${id}`, {
-        method: "PUT",
-        body: JSON.stringify(payload),
-      });
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["adminPanelists"] });
-      setShowEditModal(false);
-      setSelectedPanelist(null);
-      toast.success("Panelist updated successfully.");
-    },
-    onError: (error: Error) => {
-      toast.error(error.message || "Failed to update panelist.");
-    },
-  });
-
-  const filteredPanelists = panelists.filter((p) => {
-    const searchLower = searchQuery.toLowerCase();
-    const matchesSearch =
-      formatDisplayName(p).toLowerCase().includes(searchLower) ||
-      p.email.toLowerCase().includes(searchLower) ||
-      p.specialization.toLowerCase().includes(searchLower) ||
-      p.affiliation.toLowerCase().includes(searchLower);
-
-    if (!matchesSearch) return false;
-
-    if (typeFilter === "internal") return !p.isExternal;
-    if (typeFilter === "external") return p.isExternal;
-    if (typeFilter === "active") return p.isActive;
-    if (typeFilter === "inactive") return !p.isActive;
-    return true;
-  });
-
-  const totalPages = Math.ceil(filteredPanelists.length / pageSize);
-  const paginatedPanelists = filteredPanelists.slice(
-    (page - 1) * pageSize,
-    page * pageSize
+  const [detailId, setDetailId] = useState<string | null>(null);
+  const [editor, setEditor] = useState<{ faculty?: Faculty } | null>(null);
+  const [credential, setCredential] = useState<TemporaryCredential | null>(
+    null,
   );
-
-  const activeCount = panelists.filter((p) => p.isActive).length;
-  const internalCount = panelists.filter((p) => !p.isExternal).length;
-  const externalCount = panelists.filter((p) => p.isExternal).length;
-  const adviserCount = panelists.filter(
-    (p) => !p.isExternal && p.isAvailableAsAdviser,
-  ).length;
-
-  function openViewModal(panelist: PanelistRow) {
-    setSelectedPanelist(panelist);
-    setShowViewModal(true);
+  const query = useQuery({
+    queryKey: [...FACULTY_QUERY_KEY, accountId, "list"],
+    retry: false,
+    enabled: Boolean(accountId),
+    staleTime: 0,
+    refetchOnMount: "always",
+    refetchOnWindowFocus: true,
+    queryFn: async () => {
+      const [rows, context] = await Promise.all([
+        apiClientRequest(FACULTY_API),
+        apiClientRequest(`${FACULTY_API}/management-context`, {
+          cache: "no-store",
+        }),
+      ]);
+      if (!Array.isArray(rows) || typeof context?.canManage !== "boolean")
+        throw new Error("Invalid Faculty response");
+      return {
+        rows: rows.map((row: FacultyResponse) => mapFaculty(row)),
+        canManage: context.canManage as boolean,
+      };
+    },
+  });
+  const canManage =
+    query.data?.canManage === true && !query.isError && !query.isFetching;
+  const rows = query.data?.rows ?? [];
+  const filtered = filterFaculty(rows, search, classification, status);
+  const pages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const currentPage = Math.min(page, pages);
+  const visibleRows = filtered.slice(
+    (currentPage - 1) * PAGE_SIZE,
+    currentPage * PAGE_SIZE,
+  );
+  const hasFilters =
+    Boolean(search.trim()) || classification !== "all" || status !== "all";
+  function clearFilters() {
+    setSearch("");
+    setClassification("all");
+    setStatus("all");
+    setPage(1);
   }
-
-  function openEditModal(panelist: PanelistRow) {
-    setSelectedPanelist(panelist);
-    setEditForm({
-      title: panelist.title,
-      firstName: panelist.firstName,
-      lastName: panelist.lastName,
-      suffix: panelist.suffix,
-      email: panelist.email,
-      qualification: panelist.qualification,
-      affiliation: panelist.affiliation,
-      specialization: panelist.specialization,
-      isExternal: panelist.isExternal,
-      isAvailableAsAdviser: panelist.isAvailableAsAdviser,
-      isActive: panelist.isActive,
-      newPassword: "",
-    });
-    setShowEditModal(true);
+  async function refresh() {
+    await client.invalidateQueries({ queryKey: FACULTY_QUERY_KEY });
   }
-
-  const labelClass = "mb-1 block text-xs font-medium text-(--earist-secondary)";
 
   return (
-    <div className="space-y-4">
-      {/* Page Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2
-            className="text-2xl font-bold text-(--earist-primary)"
-            style={{ fontFamily: '"Calibri", sans-serif' }}
-          >
-            Panelist Management
-          </h2>
-          <p className="text-sm text-(--earist-body-text)">
-            Manage faculty and external panelist accounts
-          </p>
-        </div>
-        <Button
-          onClick={() => setShowCreateModal(true)}
-          className="bg-(--earist-primary) text-white hover:bg-(--earist-primary)/90"
-        >
-          <Plus className="mr-1 h-4 w-4" />
-          Add Panelist
-        </Button>
-      </div>
-
-      {/* Summary Cards */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <Card>
-          <CardContent className="p-3">
-            <p className="text-xs text-(--earist-body-text)">Active</p>
-            <p className="text-lg font-bold text-(--earist-primary)">{activeCount}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-3">
-            <p className="text-xs text-(--earist-body-text)">Internal</p>
-            <p className="text-lg font-bold text-(--earist-primary)">{internalCount}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-3">
-            <p className="text-xs text-(--earist-body-text)">External</p>
-            <p className="text-lg font-bold text-(--earist-primary)">{externalCount}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-3">
-            <p className="text-xs text-(--earist-body-text)">Available as Adviser</p>
-            <p className="text-lg font-bold text-(--earist-primary)">{adviserCount}</p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Search & Filters */}
+    <div className="space-y-6">
+      <PageHeader
+        title="Faculty Management"
+        description="Manage Faculty accounts, access, and adviser availability."
+        actions={
+          canManage ? (
+            <Button id="faculty-create" onClick={() => setEditor({})}>
+              <Plus aria-hidden="true" />
+              Create Faculty
+            </Button>
+          ) : undefined
+        }
+      />
       <Card>
-        <CardContent className="py-4">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-            <div className="relative flex-1">
-              <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-(--earist-body-text)" />
+        <CardContent className="space-y-4 pt-4">
+          <div className="grid gap-4 lg:grid-cols-[2fr_1fr_1fr]">
+            <div className="min-w-0 space-y-2">
+              <Label htmlFor="faculty-search">Search Faculty</Label>
               <Input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => {
-                  setSearchQuery(e.target.value);
+                id="faculty-search"
+                placeholder="Name, email, affiliation, or specialization"
+                value={search}
+                onChange={(event) => {
+                  setSearch(event.target.value);
                   setPage(1);
                 }}
-                placeholder="Search by name, email, specialization, or affiliation..."
-                className="pl-10"
               />
             </div>
-            <div className="flex items-center gap-2">
-              <Filter className="h-4 w-4 text-(--earist-body-text)" />
+            <div className="space-y-2">
+              <Label htmlFor="faculty-type-filter">Classification</Label>
               <select
-                value={typeFilter}
-                onChange={(e) => {
-                  setTypeFilter(e.target.value);
+                id="faculty-type-filter"
+                className={selectClass}
+                value={classification}
+                onChange={(event) => {
+                  setClassification(event.target.value);
                   setPage(1);
                 }}
-                className="rounded-lg border border-(--earist-border-gray) px-3 py-2 text-sm text-(--earist-body-text) focus:border-(--earist-primary) focus:outline-none"
               >
-                <option value="all">All Panelists</option>
-                <option value="internal">Internal (Faculty)</option>
+                <option value="all">All Faculty</option>
+                <option value="internal">Internal</option>
                 <option value="external">External</option>
+              </select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="faculty-status-filter">Account status</Label>
+              <select
+                id="faculty-status-filter"
+                className={selectClass}
+                value={status}
+                onChange={(event) => {
+                  setStatus(event.target.value);
+                  setPage(1);
+                }}
+              >
+                <option value="all">All statuses</option>
                 <option value="active">Active</option>
                 <option value="inactive">Inactive</option>
               </select>
             </div>
           </div>
-        </CardContent>
-      </Card>
-
-      {/* Panelists Table */}
-      <Card>
-        <CardContent className="p-0">
-          {isLoading ? (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="h-6 w-6 animate-spin text-(--earist-primary)" />
-              <span className="ml-2 text-sm text-(--earist-body-text)">
-                Loading panelists...
-              </span>
+          {query.isPending ? (
+            <div aria-label="Loading Faculty" className="space-y-3">
+              {[1, 2, 3, 4].map((key) => (
+                <Skeleton key={key} className="h-16 w-full" />
+              ))}
             </div>
-          ) : paginatedPanelists.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-12 text-center">
-              <UserX className="mb-4 h-12 w-12 text-gray-300" />
-              <p className="text-sm text-(--earist-body-text)">No panelists found</p>
+          ) : query.isError ? (
+            <div role="alert" className="space-y-3 py-8 text-center">
+              <p>{facultyError(query.error)}</p>
+              <Button variant="outline" onClick={() => void query.refetch()}>
+                Retry
+              </Button>
+            </div>
+          ) : rows.length === 0 ? (
+            <div className="space-y-2 py-12 text-center">
+              <h2 className="font-semibold">No Faculty accounts yet.</h2>
+              {canManage && (
+                <Button variant="outline" onClick={() => setEditor({})}>
+                  Create Faculty
+                </Button>
+              )}
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-(--earist-border-gray) bg-(--earist-surface-gray)">
-                    <th className="px-4 py-3 text-left font-semibold text-(--earist-secondary)">
-                      Name
-                    </th>
-                    <th className="px-4 py-3 text-left font-semibold text-(--earist-secondary)">
-                      Email
-                    </th>
-                    <th className="px-4 py-3 text-left font-semibold text-(--earist-secondary)">
-                      Qualification
-                    </th>
-                    <th className="px-4 py-3 text-left font-semibold text-(--earist-secondary)">
-                      Affiliation
-                    </th>
-                    <th className="px-4 py-3 text-center font-semibold text-(--earist-secondary)">
-                      Type
-                    </th>
-                    <th className="px-4 py-3 text-center font-semibold text-(--earist-secondary)">
-                      Status
-                    </th>
-                    <th className="px-4 py-3 text-right font-semibold text-(--earist-secondary)">
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {paginatedPanelists.map((panelist) => (
-                    <tr
-                      key={panelist.id}
-                      className="border-b border-(--earist-border-gray) last:border-0 hover:bg-gray-50"
-                    >
-                      <td className="px-4 py-3">
-                        <p className="font-medium text-(--earist-primary)">
-                          {formatDisplayName(panelist)}
-                        </p>
-                      </td>
-                      <td className="px-4 py-3 text-xs text-(--earist-body-text)">
-                        {panelist.email}
-                      </td>
-                      <td className="px-4 py-3 text-xs text-(--earist-body-text)">
-                        {panelist.qualification}
-                      </td>
-                      <td className="px-4 py-3 text-xs text-(--earist-body-text)">
-                        {panelist.affiliation}
-                      </td>
-                      <td className="px-4 py-3 text-center">
-                        <Badge
-                          className={
-                            panelist.isExternal
-                              ? "bg-purple-100 text-purple-700"
-                              : "bg-blue-100 text-blue-700"
-                          }
-                        >
-                          {panelist.isExternal ? "External" : "Internal"}
-                        </Badge>
-                      </td>
-                      <td className="px-4 py-3 text-center">
-                        <Badge
-                          className={
-                            panelist.isActive
-                              ? "bg-green-100 text-green-700"
-                              : "bg-gray-100 text-gray-500"
-                          }
-                        >
-                          {panelist.isActive ? "Active" : "Inactive"}
-                        </Badge>
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="flex justify-end gap-1">
-                          <button
-                            onClick={() => openViewModal(panelist)}
-                            className="rounded p-1.5 text-(--earist-body-text) hover:bg-(--earist-surface-gray)"
-                            title="View"
+            <>
+              <div className="flex flex-wrap items-center justify-between gap-2 text-sm text-muted-foreground">
+                <p role="status">
+                  {filtered.length} Faculty
+                  {query.isFetching ? " · Refreshing…" : ""}
+                </p>
+                {hasFilters && (
+                  <Button variant="ghost" size="sm" onClick={clearFilters}>
+                    Clear filters
+                  </Button>
+                )}
+              </div>
+              {filtered.length === 0 ? (
+                <div className="space-y-3 py-12 text-center">
+                  <h2 className="font-semibold">No matching Faculty.</h2>
+                  <Button variant="outline" onClick={clearFilters}>
+                    Clear filters
+                  </Button>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full min-w-3xl text-left text-sm">
+                    <caption className="sr-only">
+                      Faculty accounts and configuration
+                    </caption>
+                    <thead className="border-b text-xs text-muted-foreground">
+                      <tr>
+                        <th scope="col" className="w-1/3 px-3 py-3">
+                          Faculty
+                        </th>
+                        <th scope="col" className="px-3 py-3">
+                          Classification
+                        </th>
+                        <th scope="col" className="px-3 py-3">
+                          Account status
+                        </th>
+                        <th scope="col" className="px-3 py-3">
+                          Essay Evaluation
+                        </th>
+                        <th scope="col" className="px-3 py-3">
+                          Available as Adviser
+                        </th>
+                        <th scope="col" className="px-3 py-3">
+                          Actions
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {visibleRows.map((faculty) => (
+                        <tr key={faculty.id} className="border-b last:border-0">
+                          <th
+                            scope="row"
+                            className="max-w-xs px-3 py-4 font-normal"
                           >
-                            <Eye className="h-4 w-4" />
-                          </button>
-                          <button
-                            onClick={() => openEditModal(panelist)}
-                            className="rounded p-1.5 text-(--earist-body-text) hover:bg-(--earist-surface-gray)"
-                            title="Edit"
-                          >
-                            <Edit className="h-4 w-4" />
-                          </button>
-                          <button
-                            onClick={() =>
-                              updateMutation.mutate({
-                                id: panelist.id,
-                                isActive: !panelist.isActive,
-                              })
-                            }
-                            disabled={updateMutation.isPending}
-                            className={`rounded p-1.5 transition-colors ${
-                              panelist.isActive
-                                ? "text-red-600 hover:bg-red-50"
-                                : "text-green-600 hover:bg-green-50"
-                            } ${updateMutation.isPending ? "opacity-50 cursor-not-allowed" : ""}`}
-                            title={panelist.isActive ? "Deactivate" : "Activate"}
-                          >
-                            <Power className="h-4 w-4" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-
-          {/* Pagination */}
-          {totalPages > 1 && (
-            <div className="flex items-center justify-between border-t border-(--earist-border-gray) px-4 py-3">
-              <p className="text-xs text-(--earist-body-text)">
-                Showing {(page - 1) * pageSize + 1}–
-                {Math.min(page * pageSize, filteredPanelists.length)} of{" "}
-                {filteredPanelists.length} panelists
-              </p>
-              <Pagination>
-                <PaginationContent>
-                  <PaginationItem>
-                    <PaginationPrevious
-                      onClick={() => setPage((p) => Math.max(1, p - 1))}
-                      className={
-                        page === 1
-                          ? "pointer-events-none opacity-50"
-                          : "cursor-pointer"
-                      }
-                    />
-                  </PaginationItem>
-                  {Array.from({ length: totalPages }, (_, i) => i + 1).map(
-                    (pageNum) => (
-                      <PaginationItem key={pageNum}>
-                        <PaginationLink
-                          onClick={() => setPage(pageNum)}
-                          isActive={pageNum === page}
-                          className="cursor-pointer"
-                        >
-                          {pageNum}
-                        </PaginationLink>
-                      </PaginationItem>
-                    )
-                  )}
-                  <PaginationItem>
-                    <PaginationNext
-                      onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                      className={
-                        page === totalPages
-                          ? "pointer-events-none opacity-50"
-                          : "cursor-pointer"
-                      }
-                    />
-                  </PaginationItem>
-                </PaginationContent>
-              </Pagination>
-            </div>
+                            <p className="break-words font-medium">
+                              {facultyName(faculty)}
+                            </p>
+                            <p className="break-all text-muted-foreground">
+                              {faculty.email}
+                            </p>
+                          </th>
+                          <td className="px-3 py-4">
+                            {faculty.isExternal ? "External" : "Internal"}
+                          </td>
+                          <td className="px-3 py-4">
+                            <Badge
+                              variant={
+                                faculty.isActive ? "secondary" : "outline"
+                              }
+                            >
+                              {faculty.isActive ? "Active" : "Inactive"}
+                            </Badge>
+                          </td>
+                          <td className="px-3 py-4">
+                            {faculty.essayEvaluation
+                              ? "Enabled"
+                              : "Not enabled"}
+                          </td>
+                          <td className="px-3 py-4">
+                            {faculty.isExternal
+                              ? "Not applicable"
+                              : faculty.isAvailableAsAdviser
+                                ? "Yes"
+                                : "No"}
+                          </td>
+                          <td className="px-3 py-4">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              aria-label={`View ${facultyName(faculty)}`}
+                              onClick={() => setDetailId(faculty.id)}
+                            >
+                              View
+                            </Button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+              <nav
+                aria-label="Faculty pagination"
+                className="flex flex-wrap items-center justify-end gap-3"
+              >
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={currentPage <= 1}
+                  onClick={() => setPage(currentPage - 1)}
+                >
+                  Previous
+                </Button>
+                <span className="text-sm">
+                  Page {currentPage} of {pages}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={currentPage >= pages}
+                  onClick={() => setPage(currentPage + 1)}
+                >
+                  Next
+                </Button>
+              </nav>
+            </>
           )}
         </CardContent>
       </Card>
-
-      {/* ======================== */}
-      {/* CREATE PANELIST MODAL    */}
-      {/* ======================== */}
-      {showCreateModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-xl bg-white p-6 shadow-xl">
-            <div className="mb-4 flex items-center justify-between">
-              <h3 className="text-lg font-bold text-(--earist-primary)">
-                Add New Panelist
-              </h3>
-              <button
-                onClick={() => setShowCreateModal(false)}
-                className="rounded-full p-1 text-(--earist-body-text) hover:bg-(--earist-surface-gray)"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-
-            {/* Default Password Info Banner */}
-            <div className="mb-4 flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3">
-              <Info className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
-              <div className="text-sm text-amber-800">
-                <p className="font-semibold">Default Password</p>
-                <p>
-                  The panelist&apos;s default password is their{" "}
-                  <strong>LAST NAME in ALL CAPS</strong> (e.g., &quot;Marcial&quot; →{" "}
-                  <code className="rounded bg-amber-100 px-1 py-0.5 font-mono text-xs">
-                    MARCIAL
-                  </code>
-                  ). The panelist will be required to change this password upon
-                  first login.
-                </p>
-              </div>
-            </div>
-
-            <div className="space-y-3">
-              {/* Title + Suffix */}
-              <div className="grid grid-cols-3 gap-3">
-                <div>
-                  <Label className={labelClass}>Title</Label>
-                  <select
-                    value={createForm.title}
-                    onChange={(e) =>
-                      setCreateForm({ ...createForm, title: e.target.value })
-                    }
-                    className={selectClass}
-                  >
-                    <option value="">None</option>
-                    {TITLE_OPTIONS.filter(Boolean).map((t) => (
-                      <option key={t} value={t}>
-                        {t}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <Label className={labelClass}>First Name *</Label>
-                  <Input
-                    type="text"
-                    value={createForm.firstName}
-                    onChange={(e) =>
-                      setCreateForm({ ...createForm, firstName: e.target.value })
-                    }
-                    placeholder="First Name"
-                  />
-                </div>
-                <div>
-                  <Label className={labelClass}>Suffix</Label>
-                  <select
-                    value={createForm.suffix}
-                    onChange={(e) =>
-                      setCreateForm({ ...createForm, suffix: e.target.value })
-                    }
-                    className={selectClass}
-                  >
-                    <option value="">None</option>
-                    {SUFFIX_OPTIONS.filter(Boolean).map((s) => (
-                      <option key={s} value={s}>
-                        {s}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              {/* Last Name */}
-              <div>
-                <Label className={labelClass}>Last Name *</Label>
-                <Input
-                  type="text"
-                  value={createForm.lastName}
-                  onChange={(e) =>
-                    setCreateForm({ ...createForm, lastName: e.target.value })
-                  }
-                  placeholder="Last Name"
-                />
-              </div>
-
-              {/* Email */}
-              <div>
-                <Label className={labelClass}>Email *</Label>
-                <Input
-                  type="email"
-                  value={createForm.email}
-                  onChange={(e) =>
-                    setCreateForm({ ...createForm, email: e.target.value })
-                  }
-                  placeholder="panelist@example.com"
-                />
-              </div>
-
-              {/* Qualification */}
-              <div>
-                <Label className={labelClass}>Qualification</Label>
-                <select
-                  value={createForm.qualification}
-                  onChange={(e) =>
-                    setCreateForm({
-                      ...createForm,
-                      qualification: e.target.value,
-                    })
-                  }
-                  className={selectClass}
-                >
-                  <option value="">Select qualification</option>
-                  {QUALIFICATION_OPTIONS.map((q) => (
-                    <option key={q} value={q}>
-                      {q}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Affiliation */}
-              <div>
-                <Label className={labelClass}>Affiliation</Label>
-                <select
-                  value={createForm.affiliation}
-                  onChange={(e) =>
-                    setCreateForm({
-                      ...createForm,
-                      affiliation: e.target.value,
-                    })
-                  }
-                  className={selectClass}
-                >
-                  <option value="">Select affiliation</option>
-                  {AFFILIATION_OPTIONS.map((a) => (
-                    <option key={a} value={a}>
-                      {a}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Specialization */}
-              <div>
-                <Label className={labelClass}>Specialization</Label>
-                <select
-                  value={createForm.specialization}
-                  onChange={(e) =>
-                    setCreateForm({
-                      ...createForm,
-                      specialization: e.target.value,
-                    })
-                  }
-                  className={selectClass}
-                >
-                  <option value="">Select specialization</option>
-                  {SPECIALIZATION_OPTIONS.map((s) => (
-                    <option key={s} value={s}>
-                      {s}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Is External */}
-              <div className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  id="create-isExternal"
-                  checked={createForm.isExternal}
-                  onChange={(e) => {
-                    const isExternal = e.target.checked;
-                    setCreateForm({
-                      ...createForm,
-                      isExternal,
-                      // External panelists cannot serve as advisers.
-                      isAvailableAsAdviser: isExternal
-                        ? false
-                        : createForm.isAvailableAsAdviser,
-                    });
-                  }}
-                  className="h-4 w-4 rounded border-(--earist-border-gray) text-(--earist-primary) focus:ring-(--earist-primary)"
-                />
-                <Label
-                  htmlFor="create-isExternal"
-                  className="text-sm text-(--earist-body-text)"
-                >
-                  External Panelist
-                </Label>
-              </div>
-
-              <div className="border-t border-(--earist-border-gray) pt-3">
-                <div className="flex items-center justify-between">
-                  <Label className="text-sm text-(--earist-body-text)">
-                    Available as Adviser
-                  </Label>
-                  <div className="flex items-center gap-2">
-                    <Switch
-                      checked={createForm.isAvailableAsAdviser}
-                      disabled={createForm.isExternal}
-                      onCheckedChange={(checked) =>
-                        setCreateForm({
-                          ...createForm,
-                          isAvailableAsAdviser: checked,
-                        })
-                      }
-                    />
-                    <span className="text-xs text-(--earist-body-text)">
-                      {createForm.isAvailableAsAdviser ? "Yes" : "No"}
-                    </span>
-                  </div>
-                </div>
-                {createForm.isExternal && (
-                  <p className="mt-1 text-xs text-(--earist-body-text)">
-                    External panelists cannot serve as thesis/dissertation
-                    advisers.
-                  </p>
-                )}
-              </div>
-            </div>
-
-            <div className="mt-4 flex gap-3">
-              <Button
-                variant="outline"
-                onClick={() => setShowCreateModal(false)}
-                className="flex-1"
-              >
-                Cancel
-              </Button>
-              <Button
-                disabled={
-                  createMutation.isPending ||
-                  !createForm.firstName.trim() ||
-                  !createForm.lastName.trim() ||
-                  !createForm.email.trim()
-                }
-                onClick={() => createMutation.mutate(createForm)}
-                className="flex-1 bg-(--earist-primary) text-white hover:bg-(--earist-primary)/90"
-              >
-                {createMutation.isPending && (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                )}
-                Add Panelist
-              </Button>
-            </div>
-          </div>
-        </div>
+      {detailId && (
+        <FacultyDetailDialog
+          key={detailId}
+          id={detailId}
+          accountId={accountId}
+          canManage={canManage}
+          onClose={() => setDetailId(null)}
+          onEdit={(faculty) => {
+            setDetailId(null);
+            setEditor({ faculty });
+          }}
+        />
       )}
-
-      {/* ======================== */}
-      {/* EDIT PANELIST MODAL      */}
-      {/* ======================== */}
-      {showEditModal && selectedPanelist && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-xl bg-white p-6 shadow-xl">
-            <div className="mb-4 flex items-center justify-between">
-              <h3 className="text-lg font-bold text-(--earist-primary)">
-                Edit Panelist
-              </h3>
-              <button
-                onClick={() => {
-                  setShowEditModal(false);
-                  setSelectedPanelist(null);
-                }}
-                className="rounded-full p-1 text-(--earist-body-text) hover:bg-(--earist-surface-gray)"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-
-            <div className="space-y-3">
-              {/* Title + Suffix */}
-              <div className="grid grid-cols-3 gap-3">
-                <div>
-                  <Label className={labelClass}>Title</Label>
-                  <select
-                    value={editForm.title}
-                    onChange={(e) =>
-                      setEditForm({ ...editForm, title: e.target.value })
-                    }
-                    className={selectClass}
-                  >
-                    <option value="">None</option>
-                    {TITLE_OPTIONS.filter(Boolean).map((t) => (
-                      <option key={t} value={t}>
-                        {t}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <Label className={labelClass}>First Name *</Label>
-                  <Input
-                    type="text"
-                    value={editForm.firstName}
-                    onChange={(e) =>
-                      setEditForm({ ...editForm, firstName: e.target.value })
-                    }
-                    placeholder="First Name"
-                  />
-                </div>
-                <div>
-                  <Label className={labelClass}>Suffix</Label>
-                  <select
-                    value={editForm.suffix}
-                    onChange={(e) =>
-                      setEditForm({ ...editForm, suffix: e.target.value })
-                    }
-                    className={selectClass}
-                  >
-                    <option value="">None</option>
-                    {SUFFIX_OPTIONS.filter(Boolean).map((s) => (
-                      <option key={s} value={s}>
-                        {s}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              {/* Last Name */}
-              <div>
-                <Label className={labelClass}>Last Name *</Label>
-                <Input
-                  type="text"
-                  value={editForm.lastName}
-                  onChange={(e) =>
-                    setEditForm({ ...editForm, lastName: e.target.value })
-                  }
-                  placeholder="Last Name"
-                />
-              </div>
-
-              {/* Email */}
-              <div>
-                <Label className={labelClass}>Email *</Label>
-                <Input
-                  type="email"
-                  value={editForm.email}
-                  onChange={(e) =>
-                    setEditForm({ ...editForm, email: e.target.value })
-                  }
-                  placeholder="panelist@example.com"
-                />
-              </div>
-
-              {/* Qualification */}
-              <div>
-                <Label className={labelClass}>Qualification</Label>
-                <select
-                  value={editForm.qualification}
-                  onChange={(e) =>
-                    setEditForm({ ...editForm, qualification: e.target.value })
-                  }
-                  className={selectClass}
-                >
-                  <option value="">Select qualification</option>
-                  {QUALIFICATION_OPTIONS.map((q) => (
-                    <option key={q} value={q}>
-                      {q}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Affiliation */}
-              <div>
-                <Label className={labelClass}>Affiliation</Label>
-                <select
-                  value={editForm.affiliation}
-                  onChange={(e) =>
-                    setEditForm({ ...editForm, affiliation: e.target.value })
-                  }
-                  className={selectClass}
-                >
-                  <option value="">Select affiliation</option>
-                  {AFFILIATION_OPTIONS.map((a) => (
-                    <option key={a} value={a}>
-                      {a}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Specialization */}
-              <div>
-                <Label className={labelClass}>Specialization</Label>
-                <select
-                  value={editForm.specialization}
-                  onChange={(e) =>
-                    setEditForm({ ...editForm, specialization: e.target.value })
-                  }
-                  className={selectClass}
-                >
-                  <option value="">Select specialization</option>
-                  {SPECIALIZATION_OPTIONS.map((s) => (
-                    <option key={s} value={s}>
-                      {s}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Is External */}
-              <div className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  id="edit-isExternal"
-                  checked={editForm.isExternal}
-                  onChange={(e) => {
-                    const isExternal = e.target.checked;
-                    setEditForm({
-                      ...editForm,
-                      isExternal,
-                      isAvailableAsAdviser: isExternal
-                        ? false
-                        : editForm.isAvailableAsAdviser,
-                    });
-                  }}
-                  className="h-4 w-4 rounded border-(--earist-border-gray) text-(--earist-primary) focus:ring-(--earist-primary)"
-                />
-                <Label
-                  htmlFor="edit-isExternal"
-                  className="text-sm text-(--earist-body-text)"
-                >
-                  External Panelist
-                </Label>
-              </div>
-
-              <div className="border-t border-(--earist-border-gray) pt-3">
-                {/* Is Available as Adviser */}
-                <div className="flex items-center justify-between">
-                  <Label className="text-sm text-(--earist-body-text)">Available as Adviser</Label>
-                  <div className="flex items-center gap-2">
-                    <Switch
-                      checked={editForm.isAvailableAsAdviser}
-                      disabled={editForm.isExternal}
-                      onCheckedChange={(checked) => setEditForm({ ...editForm, isAvailableAsAdviser: checked })}
-                    />
-                    <span className="text-xs text-(--earist-body-text)">
-                      {editForm.isAvailableAsAdviser ? "Yes" : "No"}
-                    </span>
-                  </div>
-                </div>
-                {editForm.isExternal && (
-                  <p className="mt-1 text-xs text-(--earist-body-text)">
-                    External panelists cannot serve as thesis/dissertation
-                    advisers.
-                  </p>
-                )}
-
-                {/* Account Status */}
-                <div className="mt-3 flex items-center justify-between">
-                  <Label className="text-sm text-(--earist-body-text)">Account Status</Label>
-                  <div className="flex items-center gap-2">
-                    <Switch
-                      checked={editForm.isActive}
-                      onCheckedChange={(checked) => setEditForm({ ...editForm, isActive: checked })}
-                    />
-                    <span className="text-xs text-(--earist-body-text)">
-                      {editForm.isActive ? "Active" : "Inactive"}
-                    </span>
-                  </div>
-                </div>
-
-                {/* New Password */}
-                <div className="mt-3">
-                  <Label className={labelClass}>
-                    New Password (leave blank to keep current)
-                  </Label>
-                  <Input
-                    type="password"
-                    value={editForm.newPassword}
-                    onChange={(e) =>
-                      setEditForm({ ...editForm, newPassword: e.target.value })
-                    }
-                    placeholder="Enter new password"
-                  />
-                </div>
-              </div>
-            </div>
-
-            <div className="mt-4 flex gap-3">
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setShowEditModal(false);
-                  setSelectedPanelist(null);
-                }}
-                className="flex-1"
-              >
-                Cancel
-              </Button>
-              <Button
-                disabled={
-                  editMutation.isPending ||
-                  !editForm.firstName.trim() ||
-                  !editForm.lastName.trim() ||
-                  !editForm.email.trim()
-                }
-                onClick={() =>
-                  editMutation.mutate({ id: selectedPanelist.id, data: editForm })
-                }
-                className="flex-1 bg-(--earist-primary) text-white hover:bg-(--earist-primary)/90"
-              >
-                {editMutation.isPending && (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                )}
-                Save Changes
-              </Button>
-            </div>
-          </div>
-        </div>
+      {editor && (
+        <FacultyFormDialog
+          faculty={editor.faculty}
+          canManage={canManage}
+          onClose={() => setEditor(null)}
+          onSaved={async () => {
+            await refresh();
+            if (editor.faculty) toast.success("Faculty updated.");
+          }}
+          onCreated={(created) => {
+            setEditor(null);
+            setCredential(created);
+          }}
+        />
       )}
-
-      {/* ======================== */}
-      {/* VIEW PANELIST MODAL      */}
-      {/* ======================== */}
-      {showViewModal && selectedPanelist && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-lg rounded-xl bg-white p-6 shadow-xl">
-            <div className="mb-4 flex items-center justify-between">
-              <h3 className="text-lg font-bold text-(--earist-primary)">
-                Panelist Details
-              </h3>
-              <button
-                onClick={() => {
-                  setShowViewModal(false);
-                  setSelectedPanelist(null);
-                }}
-                className="rounded-full p-1 text-(--earist-body-text) hover:bg-(--earist-surface-gray)"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-
-            <div className="space-y-4">
-              {/* Name */}
-              <div>
-                <p className="text-xs text-(--earist-body-text)">Name</p>
-                <p className="font-medium text-(--earist-primary)">
-                  {formatDisplayName(selectedPanelist)}
-                </p>
-              </div>
-
-              {/* Email */}
-              <div>
-                <p className="text-xs text-(--earist-body-text)">Email</p>
-                <p className="text-sm text-(--earist-body-text)">
-                  {selectedPanelist.email}
-                </p>
-              </div>
-
-              {/* Qualification */}
-              <div>
-                <p className="text-xs text-(--earist-body-text)">Qualification</p>
-                <p className="text-sm text-(--earist-body-text)">
-                  {selectedPanelist.qualification}
-                </p>
-              </div>
-
-              {/* Affiliation */}
-              <div>
-                <p className="text-xs text-(--earist-body-text)">Affiliation</p>
-                <p className="text-sm text-(--earist-body-text)">
-                  {selectedPanelist.affiliation}
-                </p>
-              </div>
-
-              {/* Specialization */}
-              <div>
-                <p className="text-xs text-(--earist-body-text)">Specialization</p>
-                <p className="text-sm text-(--earist-body-text)">
-                  {selectedPanelist.specialization}
-                </p>
-              </div>
-
-              {/* Type & Status row */}
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <p className="text-xs text-(--earist-body-text)">Type</p>
-                  <Badge
-                    className={
-                      selectedPanelist.isExternal
-                        ? "bg-purple-100 text-purple-700"
-                        : "bg-blue-100 text-blue-700"
-                    }
-                  >
-                    {selectedPanelist.isExternal ? "External" : "Internal"}
-                  </Badge>
-                </div>
-                <div>
-                  <p className="text-xs text-(--earist-body-text)">Status</p>
-                  <Badge
-                    className={
-                      selectedPanelist.isActive
-                        ? "bg-green-100 text-green-700"
-                        : "bg-gray-100 text-gray-500"
-                    }
-                  >
-                    {selectedPanelist.isActive ? "Active" : "Inactive"}
-                  </Badge>
-                </div>
-              </div>
-
-              {/* Adviser */}
-              <div>
-                <p className="text-xs text-(--earist-body-text)">
-                  Available as Adviser
-                </p>
-                <Badge
-                  className={
-                    selectedPanelist.isAvailableAsAdviser
-                      ? "bg-green-100 text-green-700"
-                      : "bg-gray-100 text-gray-500"
-                  }
-                >
-                  {selectedPanelist.isAvailableAsAdviser ? "Yes" : "No"}
-                </Badge>
-              </div>
-
-              {/* Account History */}
-              <div className="border-t border-(--earist-border-gray) pt-4">
-                <p className="text-xs font-semibold text-(--earist-primary) uppercase tracking-wide mb-3">Account History</p>
-                <div className="space-y-2">
-                  <div className="flex justify-between">
-                    <span className="text-xs text-(--earist-body-text)">Created At</span>
-                    <span className="text-sm text-gray-900">
-                      {new Date(selectedPanelist.userCreatedAt || selectedPanelist.createdAt).toLocaleDateString("en-US", {
-                        year: "numeric",
-                        month: "long",
-                        day: "numeric",
-                        hour: "numeric",
-                        minute: "2-digit",
-                      })}
-                    </span>
-                  </div>
-                  {selectedPanelist.createdByName && (
-                    <div className="flex justify-between">
-                      <span className="text-xs text-(--earist-body-text)">Created By</span>
-                      <span className="text-sm text-gray-900">{selectedPanelist.createdByName}</span>
-                    </div>
-                  )}
-                  <div className="flex justify-between">
-                    <span className="text-xs text-(--earist-body-text)">Last Updated</span>
-                    <span className="text-sm text-gray-900">
-                      {new Date(selectedPanelist.userUpdatedAt || selectedPanelist.createdAt).toLocaleDateString("en-US", {
-                        year: "numeric",
-                        month: "long",
-                        day: "numeric",
-                        hour: "numeric",
-                        minute: "2-digit",
-                      })}
-                    </span>
-                  </div>
-                  {selectedPanelist.updatedByName && (
-                    <div className="flex justify-between">
-                      <span className="text-xs text-(--earist-body-text)">Updated By</span>
-                      <span className="text-sm text-gray-900">{selectedPanelist.updatedByName}</span>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            <div className="mt-5 flex gap-3">
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setShowViewModal(false);
-                  setSelectedPanelist(null);
-                }}
-                className="flex-1"
-              >
-                Close
-              </Button>
-              <Button
-                onClick={() => {
-                  setShowViewModal(false);
-                  openEditModal(selectedPanelist);
-                }}
-                className="flex-1 bg-(--earist-primary) text-white hover:bg-(--earist-primary)/90"
-              >
-                <Edit className="mr-1 h-4 w-4" />
-                Edit Panelist
-              </Button>
-            </div>
-          </div>
-        </div>
+      {credential && (
+        <TemporaryCredentialDialog
+          credential={credential}
+          onClose={() => setCredential(null)}
+          returnFocus={() =>
+            document.getElementById("faculty-create") ??
+            document.getElementById("faculty-search")
+          }
+        />
       )}
     </div>
   );

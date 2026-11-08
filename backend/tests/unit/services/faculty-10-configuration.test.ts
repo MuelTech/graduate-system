@@ -80,6 +80,26 @@ describe.each(actions)("FACULTY-10 exact management action %s", (key, invoke, wo
     await expect(invoke()).rejects.toMatchObject({ statusCode: 403 }); expect(work).not.toHaveBeenCalled();
   });
 });
+describe("FACULTY-11 page-specific management context", () => {
+  it("returns only a current server-derived boolean for view, manage and Full", async () => {
+    account(["faculty.view"]); expect(await service.getManagementContext("actor")).toEqual({ canManage: false });
+    account(["faculty.manage"]); expect(await service.getManagementContext("actor")).toEqual({ canManage: true });
+    account([], { administratorAccess: { level: "FULL" } });
+    expect(await service.getManagementContext("actor")).toEqual({ canManage: true });
+    account(["faculty.view"]); expect(await service.getManagementContext("actor")).toEqual({ canManage: false });
+    expect(db.panelist.findMany).not.toHaveBeenCalled();
+    expect(db.panelist.findUnique).not.toHaveBeenCalled();
+  });
+  it.each([[], ["settings.manage"], ["essay.evaluate"]])("rejects absent/unrelated/malformed authority %j", async (...keys) => {
+    account(keys as string[]);
+    await expect(service.getManagementContext("actor")).rejects.toMatchObject({ statusCode: 403 });
+  });
+  it("does not invent management authority while dormant", async () => {
+    account([], { administratorAccess: { level: "FULL" } });
+    await expect(new AdminPanelistService().getManagementContext("actor")).rejects.toMatchObject({ statusCode: 503 });
+  });
+});
+
 describe("FACULTY-10 bounded DTOs, contracts, provisioning and history", () => {
   it("faculty.view never permits a mutation", async () => {
     account(["faculty.view"]); await expect(service.updatePanelist("profile", { isActive: false }, "actor")).rejects.toMatchObject({ statusCode: 403 });
