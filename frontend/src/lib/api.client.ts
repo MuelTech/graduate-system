@@ -43,6 +43,7 @@ export const apiClientRequest = async (
 
   // Refresh the server-derived session on denial without destroying a valid login.
   if (response.status === 403) {
+    if (typeof window !== "undefined") window.dispatchEvent(new Event("faculty-access-changed"));
     try { await getSession(); } catch { /* Preserve the original forbidden response. */ }
   }
 

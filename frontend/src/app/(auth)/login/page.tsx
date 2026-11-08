@@ -1,5 +1,6 @@
 "use client";
-import { signIn } from "next-auth/react";
+import { getSession, signIn, useSession } from "next-auth/react";
+import { loginDestination } from "@/lib/faculty-access";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
 import Link from "next/link";
@@ -15,14 +16,13 @@ import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { GraduationCap, Eye, EyeOff, AlertCircle, CheckCircle } from "lucide-react";
 
-type UserRole = "applicant" | "student" | "admin" | "panelist" | "other";
+type UserRole = "applicant" | "student" | "faculty" | "admin";
 
 const roles: { value: UserRole; label: string }[] = [
   { value: "applicant", label: "Applicant" },
   { value: "student", label: "Student" },
+  { value: "faculty", label: "Faculty" },
   { value: "admin", label: "Administrator" },
-  { value: "panelist", label: "Panelist" },
-  { value: "other", label: "Other Roles" },
 ];
 
 export default function LoginPage() {
@@ -36,6 +36,7 @@ export default function LoginPage() {
 }
 
 function LoginForm() {
+  const { status: sessionStatus } = useSession();
   const router = useRouter();
   const searchParams = useSearchParams();
   const [role, setRole] = useState<UserRole>("applicant");
@@ -128,7 +129,9 @@ function LoginForm() {
           setError("An error occurred during sign in.");
         }
       } else {
-        router.push(`/${role}/dashboard`); // Successfully logged in! Redirect to dashboard/home.
+        const destination = loginDestination((await getSession())?.user);
+        if (destination) router.replace(destination);
+        else setError("Your account is temporarily unavailable. Please try again.");
       }
     } catch (err) {
       setError("An unexpected error occurred. Please try again.");
@@ -261,10 +264,8 @@ function LoginForm() {
                 </>
               )}
 
-              {/* Admin / Panelist / Other Fields */}
-              {(role === "admin" ||
-                role === "panelist" ||
-                role === "other") && (
+              {/* Email-based account credentials */}
+              {(role === "admin" || role === "faculty") && (
                 <>
                   <div>
                     <label className="mb-1.5 block text-sm font-semibold text-(--earist-secondary)">
@@ -296,7 +297,7 @@ function LoginForm() {
 
               <Button
                 type="submit"
-                disabled={isLoading}
+                disabled={isLoading || sessionStatus === "loading"}
                 className="w-full bg-(--earist-accent) text-(--earist-primary) hover:bg-(--earist-accent)/90"
               >
                 {isLoading ? "Signing In..." : "Sign In"}

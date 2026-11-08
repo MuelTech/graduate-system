@@ -27,7 +27,7 @@ test("the Defense Workspace route is sidebar-free focus mode; other routes keep 
   const layout = read(LAYOUT);
   assert.match(layout, /pathname\.startsWith\("\/panelist\/defense-workspace"\)/);
   // The portal nav still exists for the non-immersive branch.
-  assert.match(layout, /Panelist Portal/);
+  assert.match(layout, /Faculty Portal/);
   assert.match(layout, /navItems/);
 });
 

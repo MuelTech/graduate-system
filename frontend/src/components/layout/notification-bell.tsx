@@ -2,6 +2,7 @@
 
 import { isAcademicAccountRole } from "@/lib/account-role";
 import { useState } from "react";
+import { useSession } from "next-auth/react";
 import Link from "next/link";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Bell, CheckCircle2 } from "lucide-react";
@@ -16,9 +17,12 @@ export function NotificationBell({
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const queryClient = useQueryClient();
+  const { data: session } = useSession();
+  const notificationKey = ["notifications", session?.user?.id ?? ""];
 
   const { data: notifications = [] } = useQuery({
-    queryKey: ["notifications"],
+    queryKey: notificationKey,
+    enabled: Boolean(session?.user?.id),
     queryFn: async () => {
       const res = await apiClientRequest("/notifications");
       return res || [];
@@ -31,7 +35,7 @@ export function NotificationBell({
       return apiClientRequest(`/notifications/${id}/read`, { method: "PUT" });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["notifications"] });
+      queryClient.invalidateQueries({ queryKey: notificationKey });
     },
   });
 
@@ -55,6 +59,7 @@ export function NotificationBell({
   return (
     <div className="relative">
       <button
+        aria-label="Notifications"
         onClick={() => setIsOpen(!isOpen)}
         className="relative rounded-full p-2 text-(--earist-body-text) transition-colors hover:bg-(--earist-surface-light-red) hover:text-(--earist-primary)"
       >

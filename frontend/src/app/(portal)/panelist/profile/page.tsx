@@ -1,162 +1,63 @@
 "use client";
 
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { apiClientRequest } from "@/lib/api.client";
-import { cn } from "@/lib/utils";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
+import { facultyKey } from "@/lib/faculty-access";
+import { useFacultyAccess } from "@/components/faculty/faculty-access-provider";
+import { Card, CardContent } from "@/components/ui/card";
 import { PageHeader } from "@/components/ui/page-header";
 import { Skeleton } from "@/components/ui/skeleton";
-import { CircleAlert, RefreshCw, UserCheck } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
-interface PanelistProfile {
-  id: string;
+interface FacultyProfile {
   isExternal: boolean;
-  isAvailableAsAdviser: boolean;
   specialization?: string | null;
   officeAffiliation?: string | null;
+  highestEducationalAttainment?: string | null;
 }
 
-/**
- * UIUX-3A: the adviser-availability control moved here from the dashboard.
- * Uses the existing /panelists/me + /panelists/me/availability API and the
- * existing business semantics (external panelists are never adviser-eligible).
- */
-export default function PanelistProfile() {
-  const queryClient = useQueryClient();
-
-  const {
-    data: profile,
-    isLoading,
-    isError,
-    isFetching,
-    refetch,
-  } = useQuery<PanelistProfile>({
-    queryKey: ["panelistProfile"],
-    queryFn: async () =>
-      (await apiClientRequest("/panelists/me")) as PanelistProfile,
+export default function FacultyProfile() {
+  const { accountId } = useFacultyAccess();
+  const query = useQuery<FacultyProfile>({
+    queryKey: facultyKey(accountId, "profile"),
+    queryFn: ({ signal }) => apiClientRequest("/panelists/me", { signal }),
   });
-
-  const toggleMutation = useMutation({
-    mutationFn: async (isAvailable: boolean) =>
-      apiClientRequest("/panelists/me/availability", {
-        method: "PATCH",
-        body: JSON.stringify({ isAvailable }),
-      }),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ["panelistProfile"] });
-    },
-  });
-
-  const isExternal = profile?.isExternal === true;
-  const saving = toggleMutation.isPending;
-  const saveError = toggleMutation.isError;
-
   return (
     <div className="space-y-6">
-      <PageHeader
-        title="Profile"
-        description="Manage your profile and adviser availability."
-      />
-
-      <Card className="max-w-2xl">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-base">
-            <UserCheck
-              className="h-4 w-4 text-(--earist-secondary)"
-              aria-hidden="true"
-            />
-            Adviser Availability
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          {isLoading ? (
-            <div className="flex items-center justify-between gap-4" aria-busy="true">
-              <Skeleton className="h-5 w-56" />
-              <Skeleton className="h-5 w-10 rounded-full" />
-            </div>
-          ) : isError || !profile ? (
-            <div className="flex flex-col items-start gap-2 py-2">
-              <p className="flex items-center gap-2 text-sm text-(--earist-body-text)">
-                <CircleAlert
-                  className="h-4 w-4 text-(--earist-secondary)"
-                  aria-hidden="true"
-                />
-                Unable to load your availability setting.
-              </p>
-              <button
-                type="button"
-                onClick={() => void refetch()}
-                disabled={isFetching}
-                className="inline-flex items-center text-sm font-medium text-(--earist-secondary) hover:underline disabled:opacity-60"
-              >
-                <RefreshCw
-                  className={cn(
-                    "mr-1.5 h-3.5 w-3.5",
-                    isFetching && "animate-spin",
-                  )}
-                  aria-hidden="true"
-                />
-                Retry
-              </button>
+      <PageHeader title="Faculty Profile" />
+      <Card className="max-w-3xl">
+        <CardContent className="p-6">
+          {query.isPending ? (
+            <Skeleton className="h-32 w-full" />
+          ) : query.isError || !query.data ? (
+            <div role="alert" className="space-y-3">
+              <p>Unable to load your profile.</p>
+              <Button variant="outline" onClick={() => void query.refetch()}>
+                Retry profile
+              </Button>
             </div>
           ) : (
-            <>
-              <div className="flex items-start justify-between gap-4">
-                <div className="min-w-0 space-y-1">
-                  <Label htmlFor="adviser-availability" className="text-sm font-medium">
-                    Available as Thesis/Dissertation Adviser
-                  </Label>
-                  <p className="text-xs text-(--earist-body-text)">
-                    When available, students may select you as an adviser from
-                    your Title Defense panel. This does not create an adviser
-                    assignment by itself.
-                  </p>
+            <dl className="grid gap-6 sm:grid-cols-2">
+              {[
+                [
+                  "Classification",
+                  query.data.isExternal ? "External" : "Internal",
+                ],
+                ["Specialization", query.data.specialization],
+                ["Office / Affiliation", query.data.officeAffiliation],
+                [
+                  "Highest Educational Attainment",
+                  query.data.highestEducationalAttainment,
+                ],
+              ].map(([label, value]) => (
+                <div key={label} className="min-w-0">
+                  <dt className="text-sm text-(--earist-body-text)">{label}</dt>
+                  <dd className="mt-1 font-medium break-words text-(--earist-secondary)">
+                    {value || "—"}
+                  </dd>
                 </div>
-                <div className="flex shrink-0 items-center gap-2 pt-0.5">
-                  <Switch
-                    id="adviser-availability"
-                    size="default"
-                    checked={profile.isAvailableAsAdviser}
-                    disabled={saving || isExternal}
-                    onCheckedChange={(checked) =>
-                      toggleMutation.mutate(checked)
-                    }
-                    aria-label="Available as Thesis/Dissertation Adviser"
-                  />
-                  <span
-                    className={cn(
-                      "text-xs font-medium",
-                      profile.isAvailableAsAdviser
-                        ? "text-(--earist-body-text)"
-                        : "text-(--earist-body-text)",
-                    )}
-                  >
-                    {saving
-                      ? "Saving…"
-                      : profile.isAvailableAsAdviser
-                        ? "Available"
-                        : "Not available"}
-                  </span>
-                </div>
-              </div>
-
-              {isExternal ? (
-                <p className="text-xs text-(--earist-body-text)">
-                  External panelists cannot serve as thesis/dissertation
-                  advisers; this setting is unavailable for your account.
-                </p>
-              ) : null}
-
-              {saveError ? (
-                <p className="flex items-center gap-1.5 text-xs text-destructive">
-                  <CircleAlert className="h-3.5 w-3.5" aria-hidden="true" />
-                  {(toggleMutation.error as Error)?.message ||
-                    "Unable to update your availability. Please try again."}
-                </p>
-              ) : null}
-            </>
+              ))}
+            </dl>
           )}
         </CardContent>
       </Card>

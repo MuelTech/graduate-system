@@ -15,7 +15,7 @@ function load(path, dependencies = {}, globals = {}) {
     exports, require(name) {
       if (!(name in dependencies)) throw new Error(`Unexpected dependency: ${name}`);
       return dependencies[name];
-    }, Headers, FormData, AbortSignal, console, ...globals,
+    }, Headers, FormData, AbortSignal, Event, console, ...globals,
   }, { filename: path });
   return exports;
 }
@@ -76,19 +76,20 @@ test("session network failure fails closed and later recovers", async () => {
 });
 
 function client(status, session = { user: identity }) {
-  let signOuts = 0; let sessionReads = 0;
+  let signOuts = 0; let sessionReads = 0; let accessRefreshes = 0;
   const { ApiError } = load("lib/api-error.ts");
   const { apiClientRequest } = load("lib/api.client.ts", {
     "next-auth/react": { getSession: async () => { sessionReads++; return session; }, signOut: () => { signOuts++; } },
     "./backend-origin.client": { getClientBackendBaseUrl: () => "http://backend" },
     "./api-error": { ApiError },
-  }, { window: {}, fetch: async () => response(status, { error: "denied", missing: ["context"] }) });
-  return { apiClientRequest, ApiError, signOuts: () => signOuts, sessionReads: () => sessionReads };
+  }, { window: { dispatchEvent(event) { if (event.type === "faculty-access-changed") accessRefreshes++; } }, fetch: async () => response(status, { error: "denied", missing: ["context"] }) });
+  return { apiClientRequest, ApiError, signOuts: () => signOuts, sessionReads: () => sessionReads, accessRefreshes: () => accessRefreshes };
 }
 test("valid client 403 preserves login, status/body, and refreshes current session", async () => {
   const api = client(403);
   await assert.rejects(api.apiClientRequest("/admin/action"), error => error instanceof api.ApiError && error.statusCode === 403 && error.message === "denied");
   assert.equal(api.signOuts(), 0); assert.equal(api.sessionReads(), 2);
+  assert.equal(api.accessRefreshes(), 1);
 });
 test("client 401 signs out and preserves status", async () => {
   const api = client(401);

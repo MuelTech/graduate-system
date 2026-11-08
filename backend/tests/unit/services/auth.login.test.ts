@@ -233,7 +233,7 @@ describe("FACULTY-2 email role and activity boundary", () => {
       .rejects.toMatchObject({ statusCode: 403 });
     expect(jwtMock.sign).not.toHaveBeenCalled();
   });
-  it.each(["faculty", "ADMIN", "__proto__", "constructor", "", null, {}, ["admin"]])("rejects unknown/forged selected role %j before lookup", async (role) => {
+  it.each(["ADMIN", "__proto__", "constructor", "", null, {}, ["admin"]])("rejects unknown/forged selected role %j before lookup", async (role) => {
     await expect(new AuthService().login({ role, email: "a@example.com", password: "pw" } as never))
       .rejects.toMatchObject({ statusCode: 400 });
     expect(repo.findUserByEmail).not.toHaveBeenCalled();
@@ -255,6 +255,26 @@ describe("FACULTY-2 email role and activity boundary", () => {
   });
 });
 
+
+describe("FACULTY-14 canonical Faculty login choice", () => {
+  it.each(["FACULTY", "PANELIST"])("accepts stored %s without rewriting identity", async role => {
+    repo.findUserByEmail.mockResolvedValue(studentUser({ role }));
+    const result = await new AuthService().login({ role: "faculty", email: "academic@example.test", password: "pw" });
+    expect(result.user.role).toBe(role);
+    expect(jwtMock.sign.mock.calls[0][0]).toMatchObject({ role, userId: "user-1" });
+  });
+  it.each(["ADMIN", "CUSTOM", "STUDENT", "APPLICANT"])("denies Faculty selection for %s", async role => {
+    repo.findUserByEmail.mockResolvedValue(studentUser({ role }));
+    await expect(new AuthService().login({ role: "faculty", email: "other@example.test", password: "pw" }))
+      .rejects.toMatchObject({ statusCode: 403 });
+    expect(jwtMock.sign).not.toHaveBeenCalled();
+  });
+  it.each(["FACULTY", "PANELIST"])("denies Administrator selection for %s", async role => {
+    repo.findUserByEmail.mockResolvedValue(studentUser({ role }));
+    await expect(new AuthService().login({ role: "admin", email: "academic@example.test", password: "pw" }))
+      .rejects.toMatchObject({ statusCode: 403 });
+  });
+});
 
 describe("FACULTY-2 public registration preservation", () => {
   it("always creates APPLICANT despite injected privileged role fields", async () => {

@@ -280,7 +280,7 @@ test("compatibility pages redirect to My Advisees without removing shared action
   const layout = read(LAYOUT);
   assert.doesNotMatch(layout, /href: "\/panelist\/adviser-requests"/);
   assert.doesNotMatch(layout, /href: "\/panelist\/adviser-reviews"/);
-  assert.match(layout, /href: "\/panelist\/advisees", label: "My Advisees"/);
+  assert.match(layout, /href:\s*"\/panelist\/advisees",\s*label:\s*"My Advisees"/);
 });
 
 test("shared action surfaces avoid raw internal terminology in visible copy", () => {
