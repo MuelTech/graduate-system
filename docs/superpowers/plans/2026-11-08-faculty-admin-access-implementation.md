@@ -4,7 +4,7 @@
 - Repository: `MuelTech/graduate-system`
 - Audit baseline / verified live `main`: `045316540d97364214792c7d441ae20a1e426d4c`
 - Branch: `feat/faculty-admin-access`
-- Status: FACULTY-0 accepted; FACULTY-1 accepted; FACULTY-2 accepted for continuation; FACULTY-3 accepted for continuation; FACULTY-4 accepted for continuation; FACULTY-5 accepted for continuation; FACULTY-6 accepted for continuation after implementation, independent remote commit-diff/source review, and bounded least-privilege correction review. FACULTY-7 implemented / pending independent review.
+- Status: FACULTY-0 accepted; FACULTY-1 accepted; FACULTY-2 accepted for continuation; FACULTY-3 accepted for continuation; FACULTY-4 accepted for continuation; FACULTY-5 accepted for continuation; FACULTY-6 accepted for continuation after implementation, independent remote commit-diff/source review, and bounded least-privilege correction review; FACULTY-7 accepted for continuation after implementation, independent remote commit-diff/source review, and bounded least-privilege correction review. FACULTY-8 is next and has not started.
 
 **Historical FACULTY-0 stop boundary:** FACULTY-0 authorized documentation only and ended before implementation. That boundary was satisfied before FACULTY-1 was separately authorized.
 
@@ -301,7 +301,7 @@ Sequence: **1 foundation → 2 auth → 3 identity compatibility → 4 Admin aut
 
 ### FACULTY-7 — Defense and Adviser administrative guards
 
-- **Status:** FACULTY-7 implemented / pending independent review. See [implementation report](../reports/2026-11-08-faculty-7-defense-adviser-administrative-guards.md).
+- **Status:** ✅ Accepted for continuation at correction HEAD `ec68ff3d9ef4202f1321418467ed08e4cc642286` (original implementation `ff12c6cbe92ed7cda312c9e8af5b44f39b531fef`) after independent remote commit-diff/source review and bounded least-privilege correction review. See [implementation report](../reports/2026-11-08-faculty-7-defense-adviser-administrative-guards.md). FACULTY-8 is next / not started.
 
 - **Scope:** guard application review, scheduling/correction, committee candidate queries, records administration and Dean review/legacy assign wrapper; recheck proposed manual participant identity/activity/profile at writes.
 - **Non-goals:** committee quotas, external-role expansion, Adviser replacement, post-start substitution, scoring/verdict/report redesign.

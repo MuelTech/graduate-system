@@ -1,6 +1,6 @@
 # FACULTY-7 — Defense and Adviser administrative guards
 
-Date: 2026-11-08 (Asia/Manila). Status: **implemented / pending independent review**. Not accepted by this implementation report.
+Date: 2026-11-08 (Asia/Manila). Status: **ACCEPTED FOR CONTINUATION** after independent remote review and bounded least-privilege correction.
 
 ## Baseline and scope
 
@@ -254,3 +254,19 @@ Exact correction files:
 - `docs/superpowers/reports/2026-11-08-faculty-7-defense-adviser-administrative-guards.md`
 
 No implementation blocker or scope deviation. No frontend, schema/migration, capability catalog, private-file service or live access changes. Restricted rollout remains dormant. Final correction commit and clean local/remote parity are recorded in the delivery handoff. Stop after this correction; FACULTY-8 is not started.
+
+
+## Independent acceptance checkpoint
+
+- Accepted correction HEAD: `ec68ff3d9ef4202f1321418467ed08e4cc642286`; original FACULTY-7 implementation commit: `ff12c6cbe92ed7cda312c9e8af5b44f39b531fef`.
+- Independent remote review compared the original FACULTY-7 implementation against the accepted FACULTY-6 docs checkpoint `d0e867f5acdae3dde36e5bcbd385176f5639f550`: one implementation commit, 24 changed files, 1 ahead / 0 behind. The bounded correction was separately reviewed against `ff12c6cbe92ed7cda312c9e8af5b44f39b531fef`: one correction commit, exactly 3 changed files, 1 ahead / 0 behind.
+- Review confirmed the 25-endpoint capability mapping and 15 deferred/retired classifications; no new capability, committee role, quota or External Faculty eligibility policy was invented.
+- Review confirmed current DB-resolved Admin access, dormant code-owned enforcement, shared FACULTY-4 fence and in-transaction actor revalidation for Dean decisions, application review, initial scheduling and SCHEDULED correction. Manual committee participants are re-read at the owning write transaction and must be current active PANELIST/FACULTY accounts with active Panelist profiles.
+- Review confirmed the existing GS-020 signed requested-Adviser + CONFORME + Dean approval invariant, server-derived active Adviser seat, SCHEDULED-only correction, and exact academic assignment authority for evaluation, Rapporteur, Chairman verdict, signatures and realtime are preserved.
+- Independent review identified over-broad Prisma projections in the three legacy application lists. Correction commit `ec68ff3d9ef4202f1321418467ed08e4cc642286` replaced them with an explicit shared `DEFENSE_APPLICATION_LIST_SELECT`, bounded ThesisRecord/Student/User/Program/title/Adviser fields, and omitted `thesisDocuments` entirely. The final response contract was verified against the actual repository/service return path using deliberately over-broad synthetic fixtures.
+- The final three list projections do not expose credential/account-management fields, private Student/COR/payment metadata, or document storage paths/keys/providers/checksums/uploader/supersession identifiers. Filtering and ordering remain unchanged.
+- Agent-reported original implementation verification: 36 focused files / 745 tests PASS, including 119 new authorization tests; backend build and `git diff --check` passed. Agent-reported correction verification: 7 focused files / 183 tests PASS; backend build and `git diff --check` passed. The independent review inspected the actual source, diff and tests; it did not rerun those commands.
+- Real MariaDB contention was safely skipped because no isolated endpoint was configured; the normal XAMPP application DB was not used for destructive/scratch tests. This remains a deployment-readiness limitation while rollout is dormant.
+- No hosted CI status/workflow run was returned for the reviewed commits. Manual/browser QA was not required for this backend-only package; no frontend/UI changed.
+- No schema/migration, live Admin mapping/bootstrap, Restricted provisioning/activation, email integration, private-file/PDF implementation or FACULTY-8 work occurred.
+- **FACULTY-7 is accepted for continuation. FACULTY-8 is next / not started.**
