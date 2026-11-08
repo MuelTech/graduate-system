@@ -3,7 +3,7 @@
 Date: 2026-11-09 (Asia/Manila). Branch: `feat/faculty-admin-access`.
 Starting local and actual remote HEAD: `00092857f154dc28db24e28baabab17c43238d22`; clean worktree verified before edits with `git status --short`, `git rev-parse HEAD`, and escalated `git ls-remote origin refs/heads/feat/faculty-admin-access`.
 
-**Status: FACULTY-9 implemented / pending independent review.** No acceptance or FACULTY-10 start is asserted.
+**Status: FACULTY-9 accepted for continuation** at `a22777becfb901973d2aec3e1548e360a60d25d0` after independent remote commit-diff/source review. FACULTY-10 remains deferred / not started pending project-owner approval.
 
 ## Bounded coverage ledger (recorded before implementation)
 
@@ -23,7 +23,8 @@ All paths have `/api` prefix. In the enabled target, Full resolves enumerated ca
 | GET `/repository/admin/entries` | `repository.view` | Safe archive/publication queue | Requires key | RepositoryPublicationService; raw paths/signatures/datasets excluded |
 | PUT `/repository/admin/entries/:id/publish`; `/unpublish`; `/metadata` | `repository.manage` | Existing metadata/publication transitions | Requires key and view prerequisite | RepositoryPublicationService; no file publication or privacy grant implied |
 | GET `/databank` | `repository.view` | Safe legacy archive queue | Requires key | DatabankService takes authenticated actor identity, never `userRole === ADMIN` |
-| GET `/repository`; `/repository/:id`; GET `/databank/public`; `/databank/public/:id` | Public metadata; current member/owner for download eligibility | Public/member rules | Public/member rules, no private archive grant | RepositoryPublicationService; optional current-account validation, public private/unknown remains 404; respondent download only original Student researcher |
+| GET `/repository`; `/repository/:id` | Public metadata; optional authenticated current member/owner affects download eligibility | Public/member rules | Public/member rules, no private archive grant | RepositoryPublicationService uses optional current-account validation; private/unknown remains 404; respondent download only exact current Student researcher |
+| GET `/databank/public`; `/databank/public/:id` | Deprecated public metadata compatibility aliases only | Guest/public projection only | Guest/public projection only | Delegates to RepositoryPublicationService without caller context; no member/owner download eligibility is inferred on these aliases; private/unknown remains 404 |
 | POST `/memos`; PATCH `/memos/:id/archive` | `memos.manage` | Existing management | Requires key | MemoService; creator/audience/Program/archive/notifications preserved |
 | GET `/memos`; direct all-memo service read | `memos.manage` for Admin-wide projection | All memos | All memos only with key; otherwise denied | MemoService; Student ALL/STUDENTS/own PROGRAM and Faculty/PANELIST ALL/PANELISTS, unarchived only; other supported non-Admin audience ALL only |
 | GET `/documents/memo/:id/file` | `memos.manage` for Admin; exact audience for others | Management read including archive | Requires key; no creator bypass after revocation | DocumentService; Student Program and Faculty/PANELIST audience + unarchived; no generic authenticated bypass |
@@ -78,7 +79,7 @@ Backend `npm run build`: **PASS** after the final production-code changes. Repos
 
 No browser/manual QA, hosted CI, deployment validation, real-DB business/integration test or real multi-connection contention rehearsal was executed or claimed. One pre-existing Repository route-shape test imported the database module before it had a mock: the application's startup `$connect()` probe succeeded. No application-data query/mutation or schema operation was invoked by that test. A database mock was added before the passing related/final reruns; those runs were isolated. This incidental connectivity log is not database verification. No database credentials or real account records were inspected or written.
 
-Independent remote commit-diff/source review is still required. Ending commit and actual post-push remote equality are reported in the delivery response rather than embedded as a self-referential commit hash. Work stops after FACULTY-9; FACULTY-10 remains not started.
+Independent remote commit-diff/source review is complete. The accepted FACULTY-9 implementation commit is `a22777becfb901973d2aec3e1548e360a60d25d0`; the live `feat/faculty-admin-access` branch was verified at that commit during review. Work still stops after FACULTY-9; FACULTY-10 remains deferred / not started pending project-owner approval.
 
 ## Exact changed files
 
@@ -127,3 +128,16 @@ Independent remote commit-diff/source review is still required. Ending commit an
 - `docs/superpowers/GSIS_IMPLEMENTATION_CHECKLIST.md`
 - `docs/superpowers/plans/2026-11-08-faculty-admin-access-implementation.md`
 - `docs/superpowers/reports/2026-11-09-faculty-9-operational-aggregate-guards.md`
+
+
+## Independent-review acceptance — 2026-11-09 (Asia/Manila)
+
+Independent remote commit-diff/source review is complete for FACULTY-9 commit `a22777becfb901973d2aec3e1548e360a60d25d0`. The review reconciled the exact 43-file commit against the canonical FACULTY-9 plan, action/capability ledger and live production paths.
+
+The review verified the shared OperationalAuthorization/current-account boundary, exact Settings/key policy, distinct email-template/log capabilities, storage-health/integrity separation, Repository/Databank service-level guards, Memo management/audience/attachment behavior, raw respondent-data fail-closed ownership, dashboard no-query containment, and explicit target denial of generic audit deletion, legacy Expert assignment and deferred Faculty administration. No acceptance-blocking authorization, privacy or scope issue remained.
+
+One documentation nuance was corrected during acceptance: the canonical `/repository` routes use optional authentication and may project current-member/owner download eligibility, while the deprecated `/databank/public*` aliases deliberately call the same publication service without caller context and therefore remain guest/public projections only. This is a documentation clarification, not a production-code correction.
+
+Evidence classes remain separate. Codex reported 43 affected test files / 1,212 tests passed with zero skips/failures, a final 2-suite rerun of 281 tests, backend build PASS and diff checks PASS. The independent review inspected the pushed source/diff and corresponding regression coverage; it did not rerun those local Windows commands. GitHub hosted CI, browser/manual QA and real-DB business/contention verification were not executed or claimed.
+
+**Acceptance checkpoint:** FACULTY-9 is accepted for continuation at `a22777becfb901973d2aec3e1548e360a60d25d0`. Operational enforcement remains code-owned/dormant. No schema/migration/frontend/live provisioning or Restricted rollout is accepted by this checkpoint. FACULTY-10 remains deferred / not started pending explicit project-owner approval.
