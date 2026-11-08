@@ -2,7 +2,7 @@
 
 Date: 2026-11-09 (Asia/Manila). Branch: `feat/faculty-admin-access`.
 
-**Status: FACULTY-14 implemented / pending independent review. FACULTY-15 deferred / not started.**
+**Status: FACULTY-14 accepted for continuation** at `cbf15478e38d3c483c417e45888aefd6577ed303` after independent remote commit-diff/source review. FACULTY-15 remains deferred / not started pending project-owner approval. Project-owner manual/visual QA remains pending and separate from this source-continuation acceptance.
 
 Starting local and actual remote HEAD: `3978de6bc12192e7ef6f8262c38fe35962a3f259`. Worktree was clean. Branch/local HEAD and `git ls-remote origin refs/heads/feat/faculty-admin-access` were verified before editing. The actual remote matched the requested starting commit. The ending commit and final local/remote comparison are reported at delivery rather than embedded as a self-referential SHA here.
 
@@ -176,4 +176,31 @@ Documentation (3):
 
 FACULTY-12's code-owned activation constant remains false; normal Faculty Essay APIs still return controlled unavailable responses while dormant. The UI is source-ready against that contract, not a live Essay Evaluation rollout. FACULTY-10/direct-access enforcement are not activated. No environment/request/Settings/database/client activation mechanism or real grant provisioning was added.
 
-No schema/migration, role/data conversion, CUSTOM deletion/infrastructure retirement, Program evaluator mapping, new rubric/regrade/MCQ/PASS-FAIL/email authority, Adviser/Defense workflow redesign, Admin sidebar/dashboard permission integration, Administrators Management, deployment or main merge occurred. No FACULTY-15+ work began. FACULTY-12's five-case isolated real-MariaDB contention readiness gate remains **OPEN / UNVERIFIED**; no ordinary application database was used for that harness. Independent remote review remains pending. Stop after FACULTY-14.
+No schema/migration, role/data conversion, CUSTOM deletion/infrastructure retirement, Program evaluator mapping, new rubric/regrade/MCQ/PASS-FAIL/email authority, Adviser/Defense workflow redesign, Admin sidebar/dashboard permission integration, Administrators Management, deployment or main merge occurred. No FACULTY-15+ work began. FACULTY-12's five-case isolated real-MariaDB contention readiness gate remains **OPEN / UNVERIFIED**; no ordinary application database was used for that harness. Independent remote commit-diff/source review is complete. The live `feat/faculty-admin-access` branch was verified at `cbf15478e38d3c483c417e45888aefd6577ed303` during review. Project-owner manual/visual QA remains pending and is not claimed by this acceptance. Stop after FACULTY-14; FACULTY-15 remains deferred / not started pending explicit project-owner approval.
+
+
+## Independent-review acceptance — 2026-11-09 (Asia/Manila)
+
+Independent remote commit-diff/source review is complete for FACULTY-14 commit `cbf15478e38d3c483c417e45888aefd6577ed303`. The live `feat/faculty-admin-access` branch was verified at that exact implementation SHA, and the pushed range from `3978de6bc12192e7ef6f8262c38fe35962a3f259` was reconciled as one commit changing exactly 25 files.
+
+The review verified the canonical visible login transition to **Applicant / Student / Faculty / Administrator**, with server-side Faculty selection accepting both stored FACULTY and legacy PANELIST academic identities while rejecting Admin/CUSTOM/Student/Applicant mismatches. Post-login routing is derived from the refreshed server-synchronized identity rather than the selected form value; both academic stored identities retain the technical `/panelist/dashboard` destination and no `/faculty` route migration or second workspace chooser is introduced.
+
+The Faculty portal consumes the accepted FACULTY-13 self-access projection through an account-scoped private React Query client. Conditional Essay Evaluations / My Advisees / My Defenses destinations are withheld during revalidation and removed on access failure/revocation. The current-account ID scopes new Faculty queries, account switch/logout destroys the private cache, NotificationBell is keyed by the current User ID, and protected-route presentation refreshes current work before rendering. These UI flags remain presentation hints only; exact Essay, Adviser and Defense APIs continue to authorize guessed/deep-linked resources independently.
+
+The review verified the My Advisees edge cases retained by FACULTY-13: addressed-request-only context reaches the existing Adviser Requests surface, while own-issued-GS-017-only context remains useful because the existing My Advisees Manuscript Reviews area independently exposes Adviser Certification Records. My Defenses and immersive `/panelist/defense-workspace/[scheduleId]` compatibility remain intact; actual Defense-role terminology such as Panelist is not globally renamed.
+
+Faculty Profile is read-only and no longer contains the legacy self-service Adviser Availability Switch/PATCH. Admin-controlled availability therefore remains owned by Faculty Management.
+
+The new Essay Evaluations UI uses only the accepted FACULTY-12 endpoints. Queue traversal correctly follows empty candidate-scan pages while `nextCursor` remains non-null, rejects repeated/backwards/non-progressing cursors and does not misreport a dormant/read failure as an empty workload. Detail reads the exact narrow frozen prompt/response/captured maximum projection; MISSING, BLANK and SUBMITTED response states remain distinct. IMAGE stimuli use the exact Faculty essay-media endpoint, with authenticated blob loading, PNG/JPEG/size validation, abort/retry handling and object-URL cleanup rather than the generic exam-execution media entitlement.
+
+The grading UI sends only `{ essayScore }`, permits zero/fractions within the captured maximum as assistive client validation, requires an irreversible-action Dialog and prevents duplicate writes. Success clears the draft, invalidates the pending queue and reports only **Essay evaluation saved.**; it does not infer or expose PASS/FAIL, MCQ, total score or result-email state. 404/409 remove grading controls without regrade, 403 refreshes current Faculty access, 503 remains a truthful temporary-unavailable state and 401 retains session-expiry behavior.
+
+No acceptance-blocking authorization, session/cache isolation, Essay Evaluation, privacy or scope issue remained. No schema/migration, live activation, real Faculty grant provisioning, role/data conversion, Program evaluator mapping, Defense/Adviser workflow redesign, Administrators Management or FACULTY-15+ work was included.
+
+Evidence classes remain separate. Codex reported 42 new frontend verifier checks PASS, 72 related frontend checks PASS, backend 6 suites / 236 tests PASS, 36 synthetic Chrome scenarios PASS plus a final 3-scenario visual/copy subset PASS, frontend TypeScript/scoped ESLint/production build PASS, backend build PASS and repository-root diff check PASS. The independent review inspected the pushed production source, focused verifier/browser test source and underlying Adviser/Defense compatibility seams; it did not rerun those commands or inspect the implementation agent's ignored local screenshots. GitHub hosted CI was not observed.
+
+**Project-owner manual/visual QA remains PENDING / NOT YET EXECUTED as an acceptance evidence class.** The implementation agent's synthetic browser runs and screenshot inspection do not substitute for owner manual/browser acceptance. FACULTY-14 is accepted here only for development continuation.
+
+The previously recorded FACULTY-12 five-case isolated real-MariaDB contention gate remains **OPEN / UNVERIFIED** and is not closed by this UI acceptance.
+
+**Acceptance checkpoint:** FACULTY-14 is accepted for continuation at `cbf15478e38d3c483c417e45888aefd6577ed303`. Faculty Essay Evaluation remains dormant/source-ready, not a live rollout. FACULTY-15 remains deferred / not started pending explicit project-owner approval.
