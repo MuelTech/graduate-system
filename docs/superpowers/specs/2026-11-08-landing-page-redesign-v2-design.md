@@ -3,7 +3,7 @@
 **Project:** EARIST Graduate School Information System (GS-IS)
 **Date:** 2026-11-08
 **Repository / branch:** `MuelTech/graduate-system` / `feat/landing-page-redesign`
-**Status:** Working V2 design authority. Tasks 1–3 have been implemented on the feature branch and Task 3 is under owner refinement before closure. Current owner decisions replace the earlier conservative program/FAQ/contact assumptions: use the complete program offerings from the selected official EARIST Graduate School page as editable working content, keep FAQ on Home without promoting the legacy `/faq` page, add a public inquiry form, and provide accessible smooth same-page navigation. This document still does not establish final whole-site visual or production-content acceptance.
+**Status:** Working V2 design authority. Tasks 1–3 have been implemented on the feature branch. The main Task 3 refinement is implemented, with one final Home Programs layout polish still pending before Task 3 closure. Task 4 remains the coordinated redesign of the dedicated `/programs` and `/about` routes. Current owner decisions use the complete selected official Graduate School program listing, keep FAQ on Home, add the public inquiry form, provide accessible smooth same-page navigation, and use official EARIST/Graduate School sources for About content. This document still does not establish final whole-site visual or production-content acceptance.
 **Verified documentation starting HEAD:** `ab6086026ec68715035f36be91663b6e306af2fd`
 **Verified current main / merge base:** `045316540d97364214792c7d441ae20a1e426d4c`
 
@@ -98,6 +98,8 @@ Mobile order: identity/headline, short supporting copy, primary and secondary ac
 
 Home must show the complete working Graduate School program offerings rather than a curated four-plus-four sample. Use a short introduction and two readable directory groups: **Master's Programs** and **Doctoral Programs**. Preserve degree names and published majors from the selected official EARIST Graduate School source. Long major lists may wrap or use subordinate rows; do not collapse them into invented summaries. No repeated icon cards, promotional descriptions, residency badges, invented career outcomes, admissions availability, or deadlines.
 
+The Home composition must respond to the actual unequal group lengths. Do **not** force Master's and Doctoral groups into equal-height side-by-side columns when the result leaves a large dead area after the shorter group. Prefer a balanced editorial directory: each degree group may occupy its own full-width block, with its program rows flowing into responsive internal columns where useful. On narrow screens, keep a simple single-column reading order. The goal is compact visual rhythm without artificial spacing, duplicated content, or hiding official offerings.
+
 Use **View All Graduate Programs** → `/programs`. Home entries can be non-interactive directory rows; do not give them false program-specific Apply links or invent detail routes. A program list must not change or preselect registration state.
 
 The official EARIST Graduate School pages are now the public content references for program names and degree groupings:
@@ -130,7 +132,9 @@ Use a labelled photographic substitute during QA if needed. Never fabricate publ
 
 About is a lighter institutional composition: approximately 40% image/seal and 60% concise text, with a white or warm-cream surface. Use the separate Graduate School seal as a secondary identifier at 72–88px where useful, not as a replacement for the primary EARIST seal. Link **About the Graduate School** → `/about`.
 
-Until approved institutional prose is supplied, describe only verifiable public capabilities and identity: programs information, public research discovery, and GS-IS account access. Do not borrow the current software mission/vision or fabricate history, leadership, rankings, enrollment counts, alumni totals, affiliations, or testimonials. Imagery may carry the composition without padding it with unsupported prose.
+Use official EARIST sources for institutional/About copy rather than system-generated placeholder prose. The official Graduate School page (`https://earist.edu.ph/graduate-school/`) is the primary Graduate School-specific reference and publishes Graduate School Goals covering professional/leadership development, advancement of knowledge and research, and values for progressive leadership. The official EARIST About page (`https://earist.edu.ph/about/`) may provide clearly institution-level Vision, Mission, Goals, Objectives, and Philosophy when broader EARIST context is useful. Keep Graduate School-specific and institution-wide statements clearly distinguished.
+
+Do not borrow the current software/system Mission/Vision, technology-stack descriptions, role lists, or product-feature marketing from the legacy `/about` page. Do not fabricate history, leadership, rankings, enrollment counts, alumni totals, affiliations, testimonials, or outcome claims. Home About should remain concise; the dedicated `/about` route in Task 4 may present richer verified institutional context.
 
 Getting Started is the primary public FAQ/help surface on Home. Keep a concise introductory column and a useful set of FAQ rows covering the verified public/account pathways, including registration's Pinnacle Applicant ID prerequisite, existing-user Sign In, Programs, and public Repository browsing. Use real `/register`, `/login`, `/programs`, and `/repository` destinations where an answer needs a next action. **Do not show `View All FAQs` or otherwise promote the legacy `/faq` route.** Expand the Home FAQ set only with verified, concise questions as needed; do not reproduce the whole applicant workflow or add unsupported policy.
 
