@@ -3,6 +3,7 @@ import { Prisma } from '@prisma/client';
 import { EXAM_CONFIGURATION_KEY } from '../services/exam-configuration.rules';
 import { AppError } from '../utils/AppError';
 import { PROTECTED_ACCESS_AUDIT_PREFIXES, isProtectedAccessAuditAction } from '../access/access-audit';
+import { ORDINARY_SETTING_KEYS, isOrdinarySettingKey } from '../access/operational-settings-policy';
 
 export interface AuditLogQuery {
     page?: number;
@@ -15,34 +16,39 @@ export interface AuditLogQuery {
 }
 
 export class SettingsRepository {
-    async getAllSettings() {
-        return prisma.systemSetting.findMany({
-            where: { settingKey: { not: EXAM_CONFIGURATION_KEY } },
+    constructor(private readonly db: Pick<Prisma.TransactionClient, "systemSetting" | "emailTemplate"> = prisma) {}
+    async getAllSettings(ordinaryOnly = false) {
+        return this.db.systemSetting.findMany({
+            where: { settingKey: { not: EXAM_CONFIGURATION_KEY, ...(ordinaryOnly ? { in: [...ORDINARY_SETTING_KEYS] } : {}) } },
             orderBy: { settingKey: 'asc' }
         });
     }
 
-    async updateSetting(settingKey: string, settingValue: string, userId: string) {
+    async updateSetting(settingKey: string, settingValue: string, userId: string, ordinaryOnly = false) {
         // Resolve through the DB's key collation so case/accent aliases cannot
         // bypass the exam-specific validator via the generic string endpoint.
-        const current = await prisma.systemSetting.findUnique({ where: { settingKey }, select: { settingKey: true } });
+        if (ordinaryOnly && !isOrdinarySettingKey(settingKey)) throw new AppError("This setting cannot be changed here.", 403);
+        const current = await this.db.systemSetting.findUnique({ where: { settingKey }, select: { settingKey: true } });
         if (current?.settingKey.toLowerCase() === EXAM_CONFIGURATION_KEY || settingKey.toLowerCase() === EXAM_CONFIGURATION_KEY) {
             throw new AppError("Manage exam configuration from the Exam Question Bank.", 409);
         }
-        return prisma.systemSetting.update({
+        if (ordinaryOnly && (!current || current.settingKey !== settingKey || !isOrdinarySettingKey(current.settingKey))) {
+            throw new AppError("This setting cannot be changed here.", 403);
+        }
+        return this.db.systemSetting.update({
             where: { settingKey, NOT: { settingKey: EXAM_CONFIGURATION_KEY } },
             data: { settingValue, lastModifiedById: userId }
         });
     }
 
     async getAllEmailTemplates() {
-        return prisma.emailTemplate.findMany({
+        return this.db.emailTemplate.findMany({
             orderBy: { templateKey: 'asc' }
         });
     }
 
     async updateEmailTemplate(templateKey: string, subject: string, bodyHtml: string, userId: string) {
-        return prisma.emailTemplate.update({
+        return this.db.emailTemplate.update({
             where: { templateKey },
             data: { subject, bodyHtml, updatedById: userId }
         });

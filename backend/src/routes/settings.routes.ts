@@ -1,3 +1,4 @@
+import { requireOperationalCapability, excludeOperationalAction } from "../middlewares/operational-capability.middleware";
 import { Router } from "express";
 import { SettingsController } from "../controllers/settings.controller";
 import { authenticateJWT, requireRole } from '../middlewares/auth.middleware';
@@ -10,16 +11,16 @@ router.use(authenticateJWT);
 router.use(requireRole(["ADMIN"]));
 
 // System Settings Routes
-router.get("/", controller.getAllSettings.bind(controller));
-router.put("/:key", controller.updateSetting.bind(controller));
+router.get("/", requireOperationalCapability("settings.view"), controller.getAllSettings.bind(controller));
+router.put("/:key", requireOperationalCapability("settings.manage"), controller.updateSetting.bind(controller));
 
 // Email Templates Routes
-router.get("/email-templates", controller.getAllEmailTemplates.bind(controller));
-router.put("/email-templates/:key", controller.updateEmailTemplate.bind(controller));
+router.get("/email-templates", requireOperationalCapability("email.configuration.manage"), controller.getAllEmailTemplates.bind(controller));
+router.put("/email-templates/:key", requireOperationalCapability("email.configuration.manage"), controller.updateEmailTemplate.bind(controller));
 
 // Audit Logs Routes
-router.get("/audit-logs", controller.getAuditLogs.bind(controller));
-router.delete("/audit-logs/:id", controller.deleteAuditLog.bind(controller));
-router.post("/audit-logs/delete", controller.deleteAuditLogs.bind(controller));
+router.get("/audit-logs", requireOperationalCapability("audit.view"), controller.getAuditLogs.bind(controller));
+router.delete("/audit-logs/:id", excludeOperationalAction, controller.deleteAuditLog.bind(controller));
+router.post("/audit-logs/delete", excludeOperationalAction, controller.deleteAuditLogs.bind(controller));
 
 export default router;

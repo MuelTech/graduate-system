@@ -1,3 +1,4 @@
+import { requireOperationalCapability } from "../middlewares/operational-capability.middleware";
 import { Router } from "express";
 import { RepositoryController } from "../controllers/repository.controller";
 import { authenticateJWT, optionalAuthenticateJWT, requireRole } from "../middlewares/auth.middleware";
@@ -26,24 +27,28 @@ router.get(
   "/admin/entries",
   authenticateJWT,
   requireRole(["ADMIN"]),
+  requireOperationalCapability("repository.view"),
   controller.listAdmin,
 );
 router.put(
   "/admin/entries/:id/publish",
   authenticateJWT,
   requireRole(["ADMIN"]),
+  requireOperationalCapability("repository.manage"),
   controller.publish,
 );
 router.put(
   "/admin/entries/:id/unpublish",
   authenticateJWT,
   requireRole(["ADMIN"]),
+  requireOperationalCapability("repository.manage"),
   controller.unpublish,
 );
 router.put(
   "/admin/entries/:id/metadata",
   authenticateJWT,
   requireRole(["ADMIN"]),
+  requireOperationalCapability("repository.manage"),
   controller.updateMetadata,
 );
 

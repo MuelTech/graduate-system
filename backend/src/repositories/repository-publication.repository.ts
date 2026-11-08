@@ -1,3 +1,4 @@
+import type { Prisma } from "@prisma/client";
 import prisma from "../config/database";
 
 /**
@@ -125,6 +126,7 @@ const ADMIN_SELECT = {
 } as const;
 
 export class RepositoryPublicationRepository {
+  constructor(private readonly db: Pick<Prisma.TransactionClient, "eLibrary"> = prisma) {}
   /**
    * Public list. `isPublic: true` is always enforced; the caller's auth role is
    * irrelevant and is never inspected here.
@@ -132,7 +134,7 @@ export class RepositoryPublicationRepository {
   async searchPublished(
     searchQuery?: string,
   ): Promise<PublishedEntryRow[]> {
-    return prisma.eLibrary.findMany({
+    return this.db.eLibrary.findMany({
       where: {
         isPublic: true,
         ...(searchQuery
@@ -170,7 +172,7 @@ export class RepositoryPublicationRepository {
 
   /** Public detail; private rows are indistinguishable from missing rows. */
   async findPublishedById(id: string): Promise<PublishedEntryRow | null> {
-    return prisma.eLibrary.findFirst({
+    return this.db.eLibrary.findFirst({
       where: { id, isPublic: true },
       select: PUBLISHED_SELECT,
     });
@@ -178,14 +180,14 @@ export class RepositoryPublicationRepository {
 
   /** ADMIN publication queue. */
   async findAllForAdmin(): Promise<AdminEntryRow[]> {
-    return prisma.eLibrary.findMany({
+    return this.db.eLibrary.findMany({
       select: ADMIN_SELECT,
       orderBy: { createdAt: "desc" },
     });
   }
 
   async findAdminById(id: string): Promise<AdminEntryRow | null> {
-    return prisma.eLibrary.findUnique({
+    return this.db.eLibrary.findUnique({
       where: { id },
       select: ADMIN_SELECT,
     });
@@ -193,7 +195,7 @@ export class RepositoryPublicationRepository {
 
   /** Minimal state probe for publish/unpublish conflict detection. */
   async getPublicationState(id: string): Promise<PublicationState | null> {
-    return prisma.eLibrary.findUnique({
+    return this.db.eLibrary.findUnique({
       where: { id },
       select: { id: true, isPublic: true },
     });
@@ -209,7 +211,7 @@ export class RepositoryPublicationRepository {
     adminId: string,
     publishedAt: Date,
   ): Promise<number> {
-    const result = await prisma.eLibrary.updateMany({
+    const result = await this.db.eLibrary.updateMany({
       where: { id, isPublic: false },
       data: {
         isPublic: true,
@@ -225,7 +227,7 @@ export class RepositoryPublicationRepository {
    * the Repository only; the private archive row and any files are untouched.
    */
   async unpublishIfPublic(id: string): Promise<number> {
-    const result = await prisma.eLibrary.updateMany({
+    const result = await this.db.eLibrary.updateMany({
       where: { id, isPublic: true },
       data: { isPublic: false },
     });
@@ -243,7 +245,7 @@ export class RepositoryPublicationRepository {
       keywords?: string | null;
     },
   ): Promise<AdminEntryRow | null> {
-    await prisma.eLibrary.update({
+    await this.db.eLibrary.update({
       where: { id },
       data: {
         ...(data.title !== undefined ? { title: data.title } : {}),

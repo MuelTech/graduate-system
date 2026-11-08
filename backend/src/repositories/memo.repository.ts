@@ -1,7 +1,11 @@
+import type { Prisma } from "@prisma/client";
 import { MemoAudience } from "@prisma/client";
 import prisma from "../config/database";
 
+const CREATOR_SELECT = { id: true, firstName: true, lastName: true, role: true } as const;
+
 export class MemoRepository {
+    constructor(private readonly db: Pick<Prisma.TransactionClient, "memo"> = prisma) {}
     async createMemo(data: {
         createdById: string;
         title: string;
@@ -10,37 +14,37 @@ export class MemoRepository {
         programId?: string;
         attachmentUrl?: string | null;
     }) {
-        return await prisma.memo.create({
+        return await this.db.memo.create({
             data: {
                 ...data,
                 sentAt: new Date(),
             },
             include: {
-                createdBy: true,
+                createdBy: { select: CREATOR_SELECT },
                 program: true
             },
         });
     }
 
     async findById(id: string) {
-        return await prisma.memo.findUnique({
+        return await this.db.memo.findUnique({
             where: { id },
             include: {
-                createdBy: true,
+                createdBy: { select: CREATOR_SELECT },
                 program: true,
             },
         });
     }
 
     async getAllMemos() {
-        return await prisma.memo.findMany({
+        return await this.db.memo.findMany({
             orderBy: { createdAt: "desc" },
-            include: { createdBy: true, program: true },
+            include: { createdBy: { select: CREATOR_SELECT }, program: true },
         });
     }
 
     async getMemosForStudent(programId: string) {
-        return await prisma.memo.findMany({
+        return await this.db.memo.findMany({
             where: {
                 isArchived: false,
                 OR: [
@@ -53,12 +57,20 @@ export class MemoRepository {
                 ],
             },
             orderBy: { createdAt: "desc" },
-            include: { createdBy: true, program: true }
+            include: { createdBy: { select: CREATOR_SELECT }, program: true }
+        });
+    }
+
+    async getMemosForGeneralAudience() {
+        return this.db.memo.findMany({
+            where: { isArchived: false, targetAudience: MemoAudience.ALL },
+            orderBy: { createdAt: "desc" },
+            include: { createdBy: { select: CREATOR_SELECT }, program: true },
         });
     }
 
     async getMemosForPanelist() {
-        return await prisma.memo.findMany({
+        return await this.db.memo.findMany({
             where: {
                 isArchived: false,
                 OR: [
@@ -67,15 +79,15 @@ export class MemoRepository {
                 ],
             },
             orderBy: { createdAt: "desc" },
-            include: { createdBy: true, program: true },
+            include: { createdBy: { select: CREATOR_SELECT }, program: true },
         });
     }
 
     async archiveMemo(id: string) {
-        return await prisma.memo.update({
+        return await this.db.memo.update({
             where: { id },
             data: { isArchived: true },
-            include: { createdBy: true, program: true },
+            include: { createdBy: { select: CREATOR_SELECT }, program: true },
         });
     }
 }

@@ -1,3 +1,4 @@
+import { OperationalAuthorization, operationalAuthorization } from "../access/operational-authorization";
 import { DashboardRepository } from "../repositories/admin-dashboard.repository";
 import { DefenseApplicationsRepository } from "../repositories/defense-applications.repository";
 import { CorRepository } from "../repositories/cor.repository";
@@ -21,7 +22,14 @@ export class AdminDashboardService {
   private defenseAppsRepo = new DefenseApplicationsRepository();
   private corRepo = new CorRepository();
 
-  async getDashboardData() {
+  constructor(private readonly authorization: OperationalAuthorization = operationalAuthorization) {}
+
+  async getDashboardData(actorId = "") {
+    const keys = await this.authorization.capabilities(actorId);
+    const students = keys.includes("students.view");
+    const applications = keys.includes("defense.applications.view");
+    const schedules = keys.includes("defense.schedules.view");
+    const records = keys.includes("defense.records.view");
     const [
       enrolledStudents,
       thesisRecords,
@@ -35,58 +43,58 @@ export class AdminDashboardService {
       defenseReady,
       corPendingUploads,
     ] = await Promise.all([
-      this.dashboardRepo.getEnrolledStudents(),
-      this.dashboardRepo.getThesisRecordsForPipeline(),
-      this.dashboardRepo.getBridgingWaiversToReviewCount(),
-      this.dashboardRepo.getAdviserRequestsForDeanReviewCount(),
-      this.dashboardRepo.getDefensesAwaitingConclusionCount(),
-      this.dashboardRepo.getRapReportsAwaitingSignaturesCount(),
-      this.dashboardRepo.getUpcomingDefenses(5),
-      this.dashboardRepo.getRecentActivity(6),
+      students ? this.dashboardRepo.getEnrolledStudents() : undefined,
+      applications ? this.dashboardRepo.getThesisRecordsForPipeline() : undefined,
+      keys.includes("waivers.view") ? this.dashboardRepo.getBridgingWaiversToReviewCount() : undefined,
+      keys.includes("adviser.requests.view") ? this.dashboardRepo.getAdviserRequestsForDeanReviewCount() : undefined,
+      schedules ? this.dashboardRepo.getDefensesAwaitingConclusionCount() : undefined,
+      records ? this.dashboardRepo.getRapReportsAwaitingSignaturesCount() : undefined,
+      schedules ? this.dashboardRepo.getUpcomingDefenses(5) : undefined,
+      keys.includes("audit.view") ? this.dashboardRepo.getRecentActivity(6) : undefined,
       // Reuse the exact authoritative Defense Applications buckets.
-      this.defenseAppsRepo.getDefenseApplicationsPaginated({
+      applications ? this.defenseAppsRepo.getDefenseApplicationsPaginated({
         page: 1,
         pageSize: 1,
         bucket: "NEEDS_REVIEW",
-      }),
-      this.defenseAppsRepo.getDefenseApplicationsPaginated({
+      }) : undefined,
+      applications ? this.defenseAppsRepo.getDefenseApplicationsPaginated({
         page: 1,
         pageSize: 1,
         bucket: "READY",
-      }),
+      }) : undefined,
       // Reuse the canonical current-actionable COR review queue.
-      this.corRepo.getPendingUploads(),
+      keys.includes("cor.view") ? this.corRepo.getPendingUploads() : undefined,
     ]);
 
-    const enrollment = buildEnrollmentSnapshot(enrolledStudents);
-    const thesisPipeline = buildThesisPipeline(thesisRecords);
+    const enrollment = enrolledStudents === undefined ? undefined : buildEnrollmentSnapshot(enrolledStudents);
+    const thesisPipeline = thesisRecords === undefined ? undefined : buildThesisPipeline(thesisRecords);
+    const defenseApplicationsToReview = defenseNeedsReview?.total;
+    const defensesReadyForScheduling = defenseReady?.total;
+    const corSubmissionsToReview = corPendingUploads?.length;
 
-    const defenseApplicationsToReview = defenseNeedsReview.total;
-    const defensesReadyForScheduling = defenseReady.total;
-    const corSubmissionsToReview = corPendingUploads.length;
-
+    // Omit unauthorized fields entirely; never query then hide, or fabricate zero counts.
     return {
       kpis: {
-        enrolledStudents: enrollment.total,
-        defenseApplicationsToReview,
-        defensesReadyForScheduling,
-        corSubmissionsToReview,
+        ...(enrollment === undefined ? {} : { enrolledStudents: enrollment.total }),
+        ...(defenseApplicationsToReview === undefined ? {} : { defenseApplicationsToReview }),
+        ...(defensesReadyForScheduling === undefined ? {} : { defensesReadyForScheduling }),
+        ...(corSubmissionsToReview === undefined ? {} : { corSubmissionsToReview }),
       },
       needsAttention: {
-        defenseApplications: defenseApplicationsToReview,
-        corSubmissions: corSubmissionsToReview,
-        defensesReadyForScheduling,
-        bridgingWaivers,
-        adviserRequestsForDeanReview,
+        ...(defenseApplicationsToReview === undefined ? {} : { defenseApplications: defenseApplicationsToReview }),
+        ...(corSubmissionsToReview === undefined ? {} : { corSubmissions: corSubmissionsToReview }),
+        ...(defensesReadyForScheduling === undefined ? {} : { defensesReadyForScheduling }),
+        ...(bridgingWaivers === undefined ? {} : { bridgingWaivers }),
+        ...(adviserRequestsForDeanReview === undefined ? {} : { adviserRequestsForDeanReview }),
       },
-      enrollment,
-      thesisPipeline,
-      upcomingDefenses,
+      ...(enrollment === undefined ? {} : { enrollment }),
+      ...(thesisPipeline === undefined ? {} : { thesisPipeline }),
+      ...(upcomingDefenses === undefined ? {} : { upcomingDefenses }),
       workflowMonitoring: {
-        defensesAwaitingConclusion,
-        rapReportsAwaitingSignatures,
+        ...(defensesAwaitingConclusion === undefined ? {} : { defensesAwaitingConclusion }),
+        ...(rapReportsAwaitingSignatures === undefined ? {} : { rapReportsAwaitingSignatures }),
       },
-      recentActivity,
+      ...(recentActivity === undefined ? {} : { recentActivity }),
     };
   }
 }

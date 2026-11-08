@@ -47,9 +47,10 @@ export class RepositoryController {
   };
 
   /** ADMIN: private archive + publication-state queue. */
-  listAdmin = async (_req: Request, res: Response) => {
+  listAdmin = async (req: AuthenticatedRequest, res: Response) => {
     try {
-      const result = await this.service.listAdminEntries();
+      if (!req.user?.userId) { res.status(401).json({ error: "Unauthorized" }); return; }
+      const result = await this.service.listAdminEntries(req.user!.userId);
       res.json(result);
     } catch (error) {
       sendRepositoryError(res, error);

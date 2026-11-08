@@ -8,7 +8,7 @@ const settingsService = new SettingsService();
 export class SettingsController {
     async getAllSettings(req: AuthenticatedRequest, res: Response): Promise<void> {
         try {
-            const settings = await settingsService.getAllSettings();
+            const settings = await settingsService.getAllSettings(req.user!.userId);
             res.json(settings);
         } catch (error: unknown) {
             if (error instanceof AppError) {
@@ -41,7 +41,7 @@ export class SettingsController {
 
     async getAllEmailTemplates(req: AuthenticatedRequest, res: Response): Promise<void> {
         try {
-            const templates = await settingsService.getAllEmailTemplates();
+            const templates = await settingsService.getAllEmailTemplates(req.user!.userId);
             res.json(templates);
         } catch (error: unknown) {
             if (error instanceof AppError) {
@@ -84,7 +84,7 @@ export class SettingsController {
                 endDate: (req.query.endDate as string) || "",
                 search: (req.query.search as string) || ""
             };
-            const result = await settingsService.getAuditLogs(filters);
+            const result = await settingsService.getAuditLogs(filters, req.user!.userId);
             res.json(result);
         } catch (error: unknown) {
             if (error instanceof AppError) {
@@ -100,7 +100,7 @@ export class SettingsController {
     async deleteAuditLog(req: AuthenticatedRequest, res: Response): Promise<void> {
         try {
             const id = req.params.id as string;
-            const result = await settingsService.deleteAuditLog(id);
+            const result = await settingsService.deleteAuditLog(id, req.user!.userId);
             res.json(result);
         } catch (error: unknown) {
             if (error instanceof AppError) {
@@ -116,7 +116,7 @@ export class SettingsController {
     async deleteAuditLogs(req: AuthenticatedRequest, res: Response): Promise<void> {
         try {
             const { ids } = req.body;
-            const result = await settingsService.deleteAuditLogs(ids);
+            const result = await settingsService.deleteAuditLogs(ids, req.user!.userId);
             res.json(result);
         } catch (error: unknown) {
             if (error instanceof AppError) {

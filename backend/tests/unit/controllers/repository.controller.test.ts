@@ -116,7 +116,13 @@ describe("DL-10 RepositoryController", () => {
   it("admin list returns the service read model", async () => {
     listAdminEntries.mockResolvedValue([{ id: "elib-1" }]);
     const res = makeRes();
-    await controller.listAdmin({} as any, res);
+    await controller.listAdmin({ user: { userId: "admin-9", role: "ADMIN" }, body: { actorId: "attacker" } } as any, res);
+    expect(listAdminEntries).toHaveBeenCalledWith("admin-9");
     expect(res.json).toHaveBeenCalledWith([{ id: "elib-1" }]);
+  });
+
+  it("admin list without authenticated identity never calls the service", async () => {
+    const res = makeRes(); await controller.listAdmin({} as any, res);
+    expect(res.status).toHaveBeenCalledWith(401); expect(listAdminEntries).not.toHaveBeenCalled();
   });
 });

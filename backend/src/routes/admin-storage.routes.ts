@@ -1,3 +1,4 @@
+import { requireOperationalCapability } from "../middlewares/operational-capability.middleware";
 import { Router } from "express";
 import { StorageHealthController } from "../controllers/storage-health.controller";
 import { authenticateJWT, requireRole } from "../middlewares/auth.middleware";
@@ -18,12 +19,14 @@ router.get(
   "/health",
   authenticateJWT,
   requireRole(["ADMIN"]),
+  requireOperationalCapability("storage.health.view"),
   controller.getHealth,
 );
 router.post(
   "/integrity-scan",
   authenticateJWT,
   requireRole(["ADMIN"]),
+  requireOperationalCapability("storage.integrity.scan"),
   controller.runIntegrityScan,
 );
 

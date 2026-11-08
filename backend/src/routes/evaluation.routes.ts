@@ -1,3 +1,4 @@
+import { excludeOperationalAction } from "../middlewares/operational-capability.middleware";
 // backend/src/routes/evaluation.routes.ts
 import { Router } from 'express';
 import { EvaluationController } from '../controllers/evaluation.controller';
@@ -21,7 +22,7 @@ router.post(
 router.post(
   '/:id/assign', 
   authenticateJWT, 
-  requireRole(['ADMIN']), 
+  requireRole(['ADMIN']), excludeOperationalAction,
   evalController.assignExpert
 );
 

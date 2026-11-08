@@ -1,3 +1,4 @@
+import { OperationalAuthorization, operationalAuthorization } from "../access/operational-authorization";
 import {
   EvaluationRepository,
   type EvaluationUploadInput,
@@ -6,6 +7,7 @@ import { CreateEvaluationRequestInput, AssignExpertInput } from '../interfaces/e
 import { AppError } from '../utils/AppError';
 
 export class EvaluationService {
+  constructor(private readonly authorization: OperationalAuthorization = operationalAuthorization) {}
   private evalRepo = new EvaluationRepository();
 
   /**
@@ -35,6 +37,7 @@ export class EvaluationService {
   }
 
   async assignExpert(requestId: string, data: AssignExpertInput) {
+    this.authorization.assertExcluded();
     return this.evalRepo.assignExpertToRequest(requestId, data.assignedById);
   }
 }

@@ -1,3 +1,4 @@
+import { AppError } from "../utils/AppError";
 import { Request, Response } from "express";
 import { MemoService } from "../services/memo.service";
 
@@ -10,7 +11,7 @@ export class MemoController {
             const { title, content, targetAudience, programId } = req.body;
             
             // Extract uploaded file path if present
-            const attachmentUrl = req.file ? req.file.path : (req.body.attachmentUrl || null);
+            const attachmentUrl = req.file ? req.file.path : null;
 
             const memo = await this.service.createMemo(
                 adminId,
@@ -22,7 +23,7 @@ export class MemoController {
             );
             res.status(201).json(memo);
         } catch (error: any) {
-            res.status(500).json({ error: error.message });
+            res.status(error instanceof AppError ? error.statusCode : 500).json({ error: error.message });
         }
     };
 
@@ -32,7 +33,7 @@ export class MemoController {
             const memos = await this.service.getMemosForUser(user.userId, user.role);
             res.json(memos);
         } catch (error: any) {
-            res.status(500).json({ error: error.message });
+            res.status(error instanceof AppError ? error.statusCode : 500).json({ error: error.message });
         }
     };
 
@@ -43,7 +44,7 @@ export class MemoController {
             const archived = await this.service.archiveMemo(adminId, memoId);
             res.json(archived);
         } catch (error: any) {
-            res.status(400).json({ error: error.message });
+            res.status(error instanceof AppError ? error.statusCode : 400).json({ error: error.message });
         }
     };
 }

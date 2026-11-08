@@ -1,4 +1,5 @@
 import { AppError } from "../utils/AppError";
+import { OperationalAuthorization, operationalAuthorization } from "../access/operational-authorization";
 import { isValidStorageKey } from "../storage/storage-key";
 import { MANAGED_STORAGE_PREFIXES } from "../storage/upload-policy";
 import type { StorageDiagnosticsProvider } from "../storage/storage-diagnostics.types";
@@ -146,9 +147,11 @@ export class StorageHealthService {
     private readonly config: StorageOperationsConfig,
     private readonly telemetry: UploadTelemetry,
     private readonly maxIssues = 200,
+    private readonly authorization: OperationalAuthorization = operationalAuthorization,
   ) {}
 
-  async getHealth(): Promise<StorageHealthDto> {
+  async getHealth(actorId = ""): Promise<StorageHealthDto> {
+    await this.authorization.assert(actorId, "storage.health.view");
     const prefixes = MANAGED_STORAGE_PREFIXES;
     const [listing, legacy, temp, capacity, references] = await Promise.all([
       this.diagnostics.listManagedObjects(prefixes),
@@ -194,7 +197,8 @@ export class StorageHealthService {
     };
   }
 
-  async runIntegrityScan(): Promise<IntegrityScanResultDto> {
+  async runIntegrityScan(actorId = ""): Promise<IntegrityScanResultDto> {
+    await this.authorization.assert(actorId, "storage.integrity.scan");
     if (this.scanInProgress) {
       throw new AppError("Integrity scan already in progress.", 409);
     }

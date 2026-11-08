@@ -1,3 +1,4 @@
+import { AppError } from "../utils/AppError";
 import { Response } from "express";
 import { AuthenticatedRequest } from "../middlewares/auth.middleware";
 import { AdminDashboardService } from "../services/admin-dashboard.service";
@@ -10,11 +11,11 @@ export class AdminDashboardController {
     res: Response
   ): Promise<void> => {
     try {
-      const data = await this.dashboardService.getDashboardData();
+      const data = await this.dashboardService.getDashboardData(req.user?.userId);
       res.status(200).json(data);
     } catch (error: any) {
       console.error("Dashboard error:", error);
-      res.status(500).json({ error: "Failed to load dashboard data." });
+      res.status(error instanceof AppError ? error.statusCode : 500).json({ error: "Failed to load dashboard data." });
     }
   };
 }

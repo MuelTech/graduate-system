@@ -99,8 +99,8 @@ export class DatabankController {
   /** ADMIN: legacy archive list (no publication mutation). */
   getAllEntries = async (req: Request, res: Response) => {
     try {
-      const userRole = (req as any).user?.role;
-      const result = await this.service.getAllEntries(userRole);
+      const actor = (req as any).user;
+      const result = await this.service.getAllEntries(actor);
       res.json(result);
     } catch (error: any) {
       res.status(403).json({ error: error.message });

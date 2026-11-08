@@ -1,4 +1,6 @@
 import { privateRecordAuthorization, PrivateRecordAuthorization } from "../access/private-record-authorization";
+import { operationalAuthorization, OperationalAuthorization, type OperationalActor } from "../access/operational-authorization";
+import { canReadMemoAudience } from "../access/memo-audience";
 import { PRIVATE_DOCUMENT_CLASSIFICATION, isDefenseApplicationDocument, isScheduledDocument } from "../access/private-document-context";
 import { isAcademicAccountRole } from "../utils/academic-account";
 // backend/src/services/document.service.ts
@@ -335,13 +337,38 @@ const MODEL_REGISTRY: Record<keyof typeof PRIVATE_DOCUMENT_CLASSIFICATION, Model
             },
         },
         getOwnerId: (r) => r.thesis?.student?.user?.id ?? null,
-        // STRICT PRIVACY: only owner or Admin can stream raw respondent datasets
+        // Dormant legacy check only. FACULTY-9 target requires the original Student owner.
         getExtraAuthCheck: () => false,
     },
 };
 
 export class DocumentService {
-    constructor(private readonly authorization: PrivateRecordAuthorization = privateRecordAuthorization) {}
+    constructor(private readonly authorization: PrivateRecordAuthorization = privateRecordAuthorization,
+        private readonly operations: OperationalAuthorization = operationalAuthorization) {}
+
+    private async operationalDocumentAllowed(model: string, record: any, actor: OperationalActor): Promise<boolean> {
+        if (model === "memo") {
+            if (actor.role === "ADMIN") {
+                await this.operations.assert(actor.userId, "memos.manage");
+                return true;
+            }
+            const student = actor.role === "STUDENT"
+                ? await prisma.student.findUnique({ where: { userId: actor.userId }, select: { programId: true } }) : null;
+            if (actor.role === "STUDENT" && !student) return false;
+            return canReadMemoAudience(record, actor.role, student?.programId);
+        }
+        // A corrupted archive relationship cannot grant owner or publication rights.
+        if (!record.thesisId || record.thesisId !== record.thesis?.id || !record.thesis?.student?.user?.id) return false;
+        const owner = actor.role === "STUDENT" && record.thesis.student.user.id === actor.userId;
+        if (model === "elibrary-respondent-data") return owner;
+        if (owner) return true;
+        if (record.isPublic === true && (actor.role === "STUDENT" || actor.role === "ADMIN" || isAcademicAccountRole(actor.role))) return true;
+        if (actor.role === "ADMIN") {
+            await this.operations.assert(actor.userId, "repository.view");
+            return true;
+        }
+        return false;
+    }
 
     private async adminAllowed(modelType: string, record: any, actor: { userId: string; role: string }): Promise<boolean> {
         if (!this.authorization.enabled) return actor.role === "ADMIN";
@@ -376,11 +403,12 @@ export class DocumentService {
             throw new AppError("Unknown document type", 400);
         }
 
-        // FACULTY-9 classes retain their existing policy until that package is authorized.
-        const deferred = PRIVATE_DOCUMENT_CLASSIFICATION[modelType as keyof typeof PRIVATE_DOCUMENT_CLASSIFICATION] === "FACULTY-9";
+        const operationalClass = PRIVATE_DOCUMENT_CLASSIFICATION[modelType as keyof typeof PRIVATE_DOCUMENT_CLASSIFICATION] === "FACULTY-9";
         let actor = { userId, role: userRole };
         try {
-            if (!deferred && this.authorization.enabled) {
+            if (operationalClass && this.operations.enabled) {
+                actor = await this.operations.current(actor);
+            } else if (!operationalClass && this.authorization.enabled) {
                 actor = await this.authorization.current(actor);
             } else {
                 const user = await prisma.user.findUnique({ where: { id: userId }, select: { role: true, isActive: true } });
@@ -402,15 +430,21 @@ export class DocumentService {
         }
 
         try {
-            const validThesis = !["thesis-document", "plagiarism-result"].includes(modelType) ||
-                !this.authorization.enabled || (record.thesisId === record.thesis?.id && Boolean(record.thesisId));
-            const ownerRole = deferred || !this.authorization.enabled ||
-                actor.role === "STUDENT" || (modelType === "cor-upload" && actor.role === "APPLICANT");
-            const isOwner = validThesis && ownerRole && config.getOwnerId(record) === userId;
-            const isAdmin = deferred ? userRole === "ADMIN" : await this.adminAllowed(modelType, record, actor);
-            const hasExtraAuth = config.getExtraAuthCheck?.(record, userId, actor.role) ?? false;
-            if (!validThesis || (!isOwner && !isAdmin && !hasExtraAuth)) {
-                throw new AppError("Not authorized to view this document", 403);
+            if (operationalClass && this.operations.enabled) {
+                if (!await this.operationalDocumentAllowed(modelType, record, actor)) {
+                    throw new AppError("Not authorized to view this document", 403);
+                }
+            } else {
+                const validThesis = !["thesis-document", "plagiarism-result"].includes(modelType) ||
+                    !this.authorization.enabled || (record.thesisId === record.thesis?.id && Boolean(record.thesisId));
+                const ownerRole = operationalClass || !this.authorization.enabled ||
+                    actor.role === "STUDENT" || (modelType === "cor-upload" && actor.role === "APPLICANT");
+                const isOwner = validThesis && ownerRole && config.getOwnerId(record) === userId;
+                const isAdmin = operationalClass ? userRole === "ADMIN" : await this.adminAllowed(modelType, record, actor);
+                const hasExtraAuth = config.getExtraAuthCheck?.(record, userId, actor.role) ?? false;
+                if (!validThesis || (!isOwner && !isAdmin && !hasExtraAuth)) {
+                    throw new AppError("Not authorized to view this document", 403);
+                }
             }
         } catch (error) {
             await this.auditDenied(config, id, userId);

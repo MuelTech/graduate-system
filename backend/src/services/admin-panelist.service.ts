@@ -1,3 +1,4 @@
+import { OperationalAuthorization, operationalAuthorization } from "../access/operational-authorization";
 import { AdminPanelistRepository } from '../repositories/admin-panelist.repository';
 import bcrypt from "bcryptjs";
 import { AppError } from '../utils/AppError';
@@ -5,11 +6,14 @@ import { AppError } from '../utils/AppError';
 const adminPanelistRepository = new AdminPanelistRepository();
 
 export class AdminPanelistService {
+    constructor(private readonly authorization: OperationalAuthorization = operationalAuthorization) {}
     async getAllPanelists() {
+        this.authorization.assertExcluded();
         return adminPanelistRepository.findAll();
     }
 
     async getPanelistById(id: string) {
+        this.authorization.assertExcluded();
         const panelist = await adminPanelistRepository.findById(id);
         if (!panelist) {
             throw new AppError("Panelist not found!", 404);
@@ -18,6 +22,7 @@ export class AdminPanelistService {
     }
 
     async createPanelist(data: any, adminId: string) {
+        this.authorization.assertExcluded();
         const existingUser = await adminPanelistRepository.checkEmailInUse(data.email);
         if (existingUser) {
             throw new AppError("Email is already in use by another account.", 400);
@@ -33,6 +38,7 @@ export class AdminPanelistService {
     }
 
     async updatePanelist(id: string, data: any, adminId: string) {
+        this.authorization.assertExcluded();
         const panelist = await adminPanelistRepository.findById(id);
         if (!panelist) {
             throw new AppError("Panelist not found!", 404);

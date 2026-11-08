@@ -1,3 +1,4 @@
+import { requireOperationalCapability } from "../middlewares/operational-capability.middleware";
 import { Router } from "express";
 import { DatabankController } from "../controllers/databank.controller";
 import { authenticateJWT, requireRole } from "../middlewares/auth.middleware";
@@ -22,7 +23,7 @@ router.get("/public/:id", controller.getEntryById);
 
 // 2. Legacy ADMIN archive list. Publication mutations are NOT served here;
 //    Admin publishes through /repository/admin/entries/:id/publish|unpublish.
-router.get("/", authenticateJWT, requireRole(["ADMIN"]), controller.getAllEntries);
+router.get("/", authenticateJWT, requireRole(["ADMIN"]), requireOperationalCapability("repository.view"), controller.getAllEntries);
 
 // 3. Protected Student archive routes (DL-9 — private Databank registration)
 router.get(

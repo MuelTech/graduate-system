@@ -1,4 +1,5 @@
-import { Request, Response } from "express";
+import type { AuthenticatedRequest } from "../middlewares/auth.middleware";
+import { Response } from "express";
 import { AppError } from "../utils/AppError";
 import { STORAGE_OPERATIONS_CONFIG } from "../utils/file.utils";
 import { StorageHealthRepository } from "../repositories/storage-health.repository";
@@ -34,17 +35,17 @@ export class StorageHealthController {
     private readonly service: StorageHealthService = defaultService,
   ) {}
 
-  getHealth = async (_req: Request, res: Response): Promise<void> => {
+  getHealth = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
-      res.json(await this.service.getHealth());
+      res.json(await this.service.getHealth(req.user?.userId));
     } catch (error) {
       sendStorageError(res, error);
     }
   };
 
-  runIntegrityScan = async (_req: Request, res: Response): Promise<void> => {
+  runIntegrityScan = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
-      res.json(await this.service.runIntegrityScan());
+      res.json(await this.service.runIntegrityScan(req.user?.userId));
     } catch (error) {
       sendStorageError(res, error);
     }

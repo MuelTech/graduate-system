@@ -1,4 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
+// Route-shape inspection must never initialize the application's database probe.
+vi.mock("../../../src/config/database", () => ({ default: {} }));
 import {
   authenticateJWT,
   optionalAuthenticateJWT,
@@ -59,12 +61,13 @@ describe("DL-10 admin Repository routes require ADMIN", () => {
     ["/admin/entries", "get"],
     ["/admin/entries/:id/publish", "put"],
     ["/admin/entries/:id/unpublish", "put"],
+    ["/admin/entries/:id/metadata", "put"],
   ];
 
   it.each(adminRoutes)("%s %s starts with authenticateJWT", (path, method) => {
     const route = findRoute(layers, path, method);
     expect(route).toBeDefined();
-    expect(route?.stack.length).toBe(3);
+    expect(route?.stack.length).toBe(4);
     expect(route?.stack[0]?.handle).toBe(authenticateJWT);
   });
 
