@@ -57,6 +57,27 @@ export const publicSiteContent = {
       },
     ],
   },
+  news: {
+    sampleLabel: "Sample content — design review only",
+    reviewNote: "Layout samples for review, not official announcements.",
+    featured: {
+      title: "Sample announcement headline",
+      summary:
+        "This sample shows how a featured Graduate School announcement could appear. It does not describe an official event or notice.",
+    },
+    items: [
+      {
+        title: "Sample Graduate School update",
+        summary:
+          "A short sample summary used to review headline length and spacing.",
+      },
+      {
+        title: "Sample campus information",
+        summary:
+          "Placeholder copy for a text-only announcement in the public news section.",
+      },
+    ],
+  },
   research: {
     image: {
       src: "/images/landing/v2/research-preview.webp",
@@ -74,6 +95,42 @@ export const publicSiteContent = {
       alt: "Generated illustration of a fictional seminar room with wooden tables, burgundy chairs, and a blank writing board.",
       caption: "Design placeholder image — not EARIST photography",
     },
+  },
+  contact: {
+    reviewNote:
+      "Official-source contact details — client confirmation pending.",
+    // Reference 2 publishes institutional contact information, not a separately
+    // verified Graduate School office line. Keep the earlier GS listing separate.
+    address: "Nagtahan St, Sampaloc, Manila, 1008 Metro Manila",
+    email: "earistofficial1945@gmail.com",
+    phone: "(02) 7738 5059",
+    phoneHref: "tel:+63277385059",
+    sourceHref: "https://earist.edu.ph/graduate-school-2/",
+    graduateSchoolReference: {
+      phone: "(02) 7154914",
+      phoneHref: "tel:+6327154914",
+      socialHandle: "earistgraduateschool",
+      sourceHref: "https://earist.edu.ph/graduate-school/",
+    },
+    // Outgoing destinations read from the official EARIST site's navigation.
+    // No social URL is inferred from the earlier page's plain-text handle.
+    platforms: [
+      {
+        label: "EARIST Website",
+        href: "https://earist.edu.ph/",
+        description: "Official institutional website.",
+      },
+      {
+        label: "Applicant Portal",
+        href: "https://earistweb.pinnacle.com.ph/aims/applicants/",
+        description: "Pinnacle Applicants Access Module.",
+      },
+      {
+        label: "Applicant’s Inquiry (Facebook)",
+        href: "https://www.facebook.com/mis.office.earist?mibextid=ZbWKwL",
+        description: "Inquiry destination linked by the official EARIST site.",
+      },
+    ],
   },
   gettingStarted: {
     faqs: [

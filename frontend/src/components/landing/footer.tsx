@@ -1,57 +1,104 @@
+import Image from "next/image";
 import Link from "next/link";
-import { GraduationCap } from "lucide-react";
+import { publicSiteContent } from "@/content/public-site-content";
 
-const quickLinks = [
-  { href: "/programs", label: "Programs" },
-  { href: "/repository", label: "Repository" },
-  { href: "/faq", label: "FAQ" },
-  { href: "/login", label: "Login" },
-  { href: "/register", label: "Register" },
-];
+const footerGroups = [
+  {
+    id: "study",
+    title: "Study & Information",
+    links: [
+      { label: "Programs", href: "/#programs" },
+      { label: "Getting Started", href: "/#getting-started" },
+      { label: "FAQ", href: "/faq" },
+      { label: "About", href: "/#about" },
+    ],
+  },
+  {
+    id: "research",
+    title: "Research & Updates",
+    links: [
+      { label: "Research Repository", href: "/repository" },
+      { label: "News & Announcements", href: "/#news" },
+    ],
+  },
+  {
+    id: "contact",
+    title: "Contact & Access",
+    links: [
+      { label: "Contact Us", href: "/#contact" },
+      {
+        label: "EARIST Website",
+        href: publicSiteContent.contact.platforms[0].href,
+      },
+      {
+        label: "Applicant Portal",
+        href: publicSiteContent.contact.platforms[1].href,
+      },
+    ],
+  },
+] as const;
 
 export function Footer() {
+  const { institution } = publicSiteContent;
+
   return (
-    <footer className="bg-(--earist-primary) text-white">
-      <div className="container mx-auto px-4 py-12 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-1 gap-8 sm:grid-cols-2">
-          {/* Institutional identity */}
+    <footer className="public-footer">
+      <div className="public-body-frame">
+        <div className="public-footer__layout">
           <div>
-            <div className="mb-4 flex items-center gap-2">
-              <GraduationCap
-                aria-hidden="true"
-                className="h-7 w-7 shrink-0 text-(--earist-accent)"
+            <Link href="/" className="public-footer__identity">
+              <Image
+                src={institution.sealSrc}
+                alt="EARIST seal"
+                width={56}
+                height={56}
               />
-              <span className="text-lg font-bold">EARIST Graduate School</span>
-            </div>
-            <p className="max-w-sm text-sm leading-relaxed text-white/90">
-              Eulogio &ldquo;Amang&rdquo; Rodriguez Institute of Science and
-              Technology
-            </p>
+              <span>
+                EARIST
+                <span className="public-footer__school">Graduate School</span>
+              </span>
+            </Link>
+            <p className="public-footer__institution">{institution.fullName}</p>
           </div>
 
-          {/* Verified destinations */}
-          <nav aria-label="Footer navigation">
-            <h2 className="mb-4 text-sm font-semibold tracking-wider text-white uppercase">
-              Quick Links
-            </h2>
-            <ul>
-              {quickLinks.map((link) => (
-                <li key={link.href}>
-                  <Link
-                    href={link.href}
-                    className="inline-flex min-h-11 items-center rounded-md text-sm text-white/90 underline-offset-4 transition-colors hover:text-white hover:underline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white"
-                  >
-                    {link.label}
-                  </Link>
-                </li>
-              ))}
-            </ul>
+          <nav
+            aria-label="Footer navigation"
+            className="public-footer__navigation"
+          >
+            {footerGroups.map((group) => (
+              <div key={group.id}>
+                <h2 className="public-footer__group-title">{group.title}</h2>
+                <ul>
+                  {group.links.map((link) => (
+                    <li key={link.href}>
+                      {link.href.startsWith("https://") ? (
+                        <a href={link.href} className="public-footer__link">
+                          {link.label}
+                        </a>
+                      ) : (
+                        <Link href={link.href} className="public-footer__link">
+                          {link.label}
+                        </Link>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+                {group.id === "contact" && (
+                  <div className="public-footer__accounts">
+                    <Link href="/login" className="public-footer__link">
+                      Sign In
+                    </Link>
+                    <Link href="/register" className="public-footer__link">
+                      Register
+                    </Link>
+                  </div>
+                )}
+              </div>
+            ))}
           </nav>
         </div>
-
-        {/* Bottom Bar */}
-        <div className="mt-8 border-t border-white/20 pt-6">
-          <p className="text-xs text-white/90">
+        <div className="public-footer__bottom">
+          <p>
             © {new Date().getFullYear()} EARIST Graduate School Information
             System. All rights reserved.
           </p>

@@ -2,8 +2,8 @@
 
 **Project:** EARIST Graduate School Information System (GS-IS)
 **Date:** 2026-11-08
-**Package:** V2 Tasks 1–2 — accepted masthead/Hero foundation and Landing body design preview.
-**Status:** Task 1 accepted by the owner for continuation. Task 2 body visual review remains pending. Temporary imagery and provisional program content are not production-content approved. Task 3 has not begun.
+**Package:** V2 Tasks 1–3 — accepted masthead/Hero foundation, Landing body, and public information/contact design preview.
+**Status:** Task 1 accepted by the owner for continuation; Task 2 treatments preserved. Task 3 is implemented for owner visual review. Temporary imagery, sample news, and source-review program/contact details are not final production content. Task 4 has not begun.
 **Authority:** [V2 specification](../specs/2026-11-08-landing-page-redesign-v2-design.md) and [V2 implementation plan](../plans/2026-11-08-landing-page-redesign-v2.md).
 
 ## 1. Hero review image
@@ -48,7 +48,7 @@ Replace the Hero preview with an owner-approved real institutional photograph be
 
 Keep the image caption and page-level notice visible until their replacement conditions are met. A production build or branch push does not remove preview status. Remove or revise the page-level notice only after every unapproved image/sample on that page is replaced or omitted and the owner approves the production content. No frontend environment check, backend endpoint, database field, CMS, or public-data contract is introduced for this gate.
 
-Task 1 introduced the Hero image and reused the institutional seal. Task 2 adds the Research/About images and explicitly provisional program snapshot below. News, deeper-page redesigns, final navigation IA, and final Footer remain later packages. This ledger is dedicated feature evidence; shared canonical documentation is unchanged.
+Task 1 introduced the Hero image and reused the institutional seal. Task 2 added the Research/About images and provisional program snapshot below. Task 3 corrects program provenance, adds text-only sample News and Contact Us, and completes public navigation/Footer. It introduces no new images. Deeper-page redesigns remain later packages. This ledger is dedicated feature evidence; shared canonical documentation is unchanged.
 
 ## 4. Task 2 — Research review image
 
@@ -99,7 +99,7 @@ Use case: photorealistic-natural. Asset type: temporary institutional About sect
 - Home FAQ content covers existing registration's Pinnacle Applicant ID prerequisite, Sign In, Programs, and public Repository discovery. Native disclosures are used; detailed academic-policy answers are not copied from the legacy FAQ.
 - All four body sections share the accepted 1200px frame and 64px desktop / 44px mobile vertical padding. Masthead and Hero markup/styles are preserved; the existing Hero CTA's frontend URL changes to `/#programs`, with the old `graduate-study` anchor retained at that same section for compatibility.
 - Research links to the existing `/repository` only. No publications, research statistics, new Home API reads, News, CMS, or backend integration are added. Public navigation destinations, Footer, deeper pages, authentication, authorization, chatbot, and shared canonical documents remain outside Task 2.
-- Both new generated outputs were visually inspected as fictional academic-context illustrations. Their captions and the existing public-page preview notice remain visible, with no environment-based suppression. The production replacement gate in section 3 applies to both images and to unconfirmed program content. Task 2 visual acceptance remains an owner decision; Task 3 is not initiated.
+- Both Task 2 generated outputs were visually inspected as fictional academic-context illustrations. Their captions and the existing public-page preview notice remain visible, with no environment-based suppression. The production replacement gate in section 3 applies to both images and to unconfirmed program content. At the Task 2 handoff, Task 3 had not been initiated; the current Task 3 state is recorded in section 8.
 
 ## 7. Inherited Task 2 correction — official program references
 
@@ -113,3 +113,38 @@ Read on 2026-11-08 from the official [Graduate School reference 1](https://earis
 | Business/Public Administration doctorate wording | Doctor **of** Business Administration; Doctor **of** Public Administration | Same **of** wording | Replace the old seed-derived **in** wording with the shared official titles. |
 
 The source-derived master's selection remains Mathematics, Industrial Psychology, Business Administration, and Public Administration. The Doctor of Philosophy in Industrial Psychology title is also shared. The official pages do not authorize inventing current admissions availability, residency limits, deadlines, or a total program count. Client confirmation remains visible; the deeper `/programs` route is a later package.
+
+## 8. Task 3 — News, navigation, Contact Us, and Footer
+
+### Scope and inherited correction
+
+The package begins from verified local/live feature HEAD `eedfe2352a6a60f9bd82b6a082c7797251b33bf3`, preserving the intervening owner documentation commits. The inherited Programs content/provenance correction was committed first as `4a37f637ef19754f3ea3de5d06151aee7450f4e3`, before the new Task 3 source work. Its design/layout is preserved; section 7 records the official-source differences and unresolved client decisions.
+
+News is a text-only editorial composition with one featured sample and two smaller entries. Every item visibly states **Sample content — design review only**; the section also states that these are layout samples, not official announcements. Dates, Read More/View All actions, article routes, official events, admissions claims, and new publishing/API behavior are absent. No new photography or generated asset was needed.
+
+The Navbar now uses the final root-qualified Home anchors for Programs, News, About, and Contact, plus the dedicated `/repository` route. Sign In/Register retain their original routes. The institutional identity still links Home. `/faq` remains reachable through Home help and Footer. Accepted masthead geometry/identity, Hero, Research, About, and help treatments remain unchanged.
+
+### Contact and platform provenance
+
+Contact Us appears before Footer with visible status **Official-source contact details — client confirmation pending.** It distinguishes institutional details from the earlier Graduate School listing rather than silently presenting them as one current office record.
+
+| Displayed reference | Source | Status / boundary |
+| --- | --- | --- |
+| Nagtahan St, Sampaloc, Manila, 1008 Metro Manila | [Graduate School reference 2](https://earist.edu.ph/graduate-school-2/) | Official-source institutional location; client confirmation remains pending. No map or location-service endpoint added. |
+| `earistofficial1945@gmail.com`; `(02) 7738 5059` | [Graduate School reference 2](https://earist.edu.ph/graduate-school-2/) | Labelled campus/institutional contact, not asserted to be a separately verified Graduate School office line. Mail and telephone links reflect these exact details. |
+| `(02) 7154914`; Facebook/Twitter handle `earistgraduateschool` | [Graduate School reference 1](https://earist.edu.ph/graduate-school/) | Separate earlier Graduate School listing, explicitly for confirmation. The handle is plain text; no Facebook/Twitter profile URL was guessed from it. |
+| `https://earist.edu.ph/` | [Official EARIST website](https://earist.edu.ph/) | Canonical website used; the earlier page's `www.earist-edu.ph` string is not used as a destination. |
+| `https://earistweb.pinnacle.com.ph/aims/applicants/` | Apply Online link in [official EARIST navigation](https://earist.edu.ph/) | Shown as Applicant Portal / Pinnacle Applicants Access Module. It is distinct from GS-IS Register and does not change the registration flow. |
+| `https://www.facebook.com/mis.office.earist?mibextid=ZbWKwL` | Applicant's Inquiry link in [official EARIST navigation](https://earist.edu.ph/) | Shown as Applicant's Inquiry (Facebook), not mislabelled as the older Graduate School social handle. Exact source-linked URL retained. |
+
+These outgoing URLs were read from the official pages on 2026-11-08. Automated target retrieval returned HTTP 403 for the Applicant Portal and a fetch/cache limitation for Facebook; the verified fact is their inclusion in official-site navigation, not successful authentication/service availability or a client endorsement. The current homepage also displays a different institutional phone from Graduate School reference 2; no additional phone from that page was introduced. The client must confirm current contact ownership/numbers and preferred social/platform destinations before production-content acceptance.
+
+There is no contact form, submission endpoint, ticketing workflow, office-hours claim, new email, invented social destination, or contact-data API. External links use ordinary same-tab anchors; mail/tel links do not send messages automatically.
+
+### Footer and verification boundary
+
+The Footer has four visual groups: real EARIST seal/identity, Study & Information, Research & Updates, and Contact & Access. Detailed contact data stays in Contact Us; Footer uses links to Contact, public resources, the official website/applicant platform, and Sign In/Register. No unsupported privacy/terms destinations or social icons were introduced. A mobile-only copyright inset provides clearance from the unchanged chatbot launcher without increasing broad section padding or changing widget behavior.
+
+Task 3 verification covers TypeScript, scoped ESLint, exact diff/whitespace, focused desktop/mobile Home review, section/anchor uniqueness, cross-route Navbar navigation from the four deeper public destinations, Footer/platform hrefs, mobile keyboard/disclosure/Escape/focus behavior, and mobile copyright clearance. Source/data checks keep the accepted Hero/Task 2 treatments and protected backend/auth/chatbot/deeper-page/canonical files intact. Browser/source checks and the owner approval decision remain separate; no hosted CI pass, production build rerun, production deployment, or final content approval is claimed.
+
+Remaining client decisions: reconcile the official program majors/wording; confirm current institutional versus Graduate School contact details and social destinations; replace sample news with approved content; replace the existing fictional images with authorized institutional photographs. Task 4 is not initiated by this package.

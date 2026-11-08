@@ -6,13 +6,12 @@ import Link from "next/link";
 import { Menu, X } from "lucide-react";
 import { publicSiteContent } from "@/content/public-site-content";
 
-// Preserve destinations until the later navigation package supplies Home anchors.
 const navLinks = [
-  { href: "/", label: "Home" },
-  { href: "/programs", label: "Programs" },
+  { href: "/#programs", label: "Programs" },
   { href: "/repository", label: "Research Repository" },
-  { href: "/faq", label: "FAQ" },
-  { href: "/about", label: "About" },
+  { href: "/#news", label: "News" },
+  { href: "/#about", label: "About" },
+  { href: "/#contact", label: "Contact" },
 ];
 
 export function Navbar() {
