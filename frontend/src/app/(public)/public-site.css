@@ -535,6 +535,7 @@
   list-style: none;
 }
 .earist-public .public-programs__list > li {
+  break-inside: avoid;
   padding-block: 15px;
   border-top: 1px solid #ddd9d2;
   font-size: 20px;
@@ -662,10 +663,13 @@
   margin-top: 6px;
 }
 @media (min-width: 768px) {
-  .earist-public .public-programs__intro,
-  .earist-public .public-programs__directory {
+  .earist-public .public-programs__intro {
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     gap: 64px;
+  }
+  .earist-public .public-programs__list {
+    column-count: 2;
+    column-gap: 64px;
   }
 }
 @media (min-width: 900px) {
