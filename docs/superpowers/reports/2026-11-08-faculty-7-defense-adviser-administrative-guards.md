@@ -192,3 +192,65 @@ Manual/browser QA: **NOT EXECUTED** (no UI change). Hosted CI and independent re
 - Existing schedule-correction simultaneous-editor last-write-wins behavior remains accepted/deferred; no new optimistic version token.
 - Full rollout remains blocked by the previously accepted staged rollout boundary and later private-file/remaining-admin/configuration closure, independent review and real isolated-DB readiness validation. This package itself has no implementation blocker or unplanned schema/UI deviation.
 - FACULTY-7 is **implemented / pending independent review** only. Stop after committing/pushing this package; do not proceed to FACULTY-8.
+
+## Bounded correction — application-list projections (2026-11-08)
+
+Status remains **implemented / pending independent review**. This correction does not mark FACULTY-7 accepted.
+
+Starting feature/local HEAD, verified after fetching both requested branches: `ff12c6cbe92ed7cda312c9e8af5b44f39b531fef`. Verified main: `045316540d97364214792c7d441ae20a1e426d4c`. Starting worktree/index clean; local/remote feature drift `0 / 0`, main/feature drift `0 / 18`. No fast-forward was needed. No branch creation, merge, rebase, reset, history rewrite or force push.
+
+Independent review correctly identified that the initial User-only minimization left three over-broad application-list projections in `ThesisRepository`: `getPendingDefenses()`, `getApprovedDefenses()` and `getAllDefenses()`. Their root `include` still returned every ThesisRecord scalar, their Student relations returned every Student scalar, and `thesisDocuments: true` exposed storage metadata. This correction supersedes the application-list portion of the earlier response-minimization findings.
+
+### Consumer audit and document treatment
+
+Audited the three exact route registrations, their controller/service callers, frontend source, frontend scripts/e2e tests, backend scripts and backend tests for both endpoint paths and method references. The three endpoints are retained legacy array reads, and there are **no active in-repository frontend/script consumers** of `/defense/pending`, `/defense/approved` or `/defense/all` beyond the authorization test inventory. The controllers serialize the service result directly.
+
+The current application UI requests `/defense/applications` and `/defense/applications/summary` in `frontend/src/app/(portal)/admin/thesis/applications/page.tsx`; Scheduling requests the separate `/defense/approved-applications` endpoint. The smoke walkthrough also uses that separate paginated endpoint. Those routes and their projections are unchanged. `ApprovedApplicationDto` in `frontend/src/types/index.ts` and the application-row component establish the existing identity, stage/status, submitted-date, title and Adviser display conventions used to retain a small compatible list shape. The paginated application row's document-count requirement belongs to its own endpoint, not these three legacy reads.
+
+No consumer of the corrected endpoints requires document summaries. **`thesisDocuments` is omitted entirely** from their queries and responses. No private paths, storage identifiers, provider, checksum, uploader or supersession identifiers are selected or exposed through these lists. Actual private-file/PDF authorization remains FACULTY-8 work and was not started.
+
+### Final response projection contract
+
+All three methods share one explicit `DEFENSE_APPLICATION_LIST_SELECT`, checked with `satisfies Prisma.ThesisRecordSelect`. Each returns an array with this bounded shape:
+
+```text
+{
+  id, stage, status, outcome, rejectionReason, createdAt,
+  student: {
+    id, studentNumber,
+    user: { id, firstName, lastName, email },
+    program: { id, programName, programType }
+  },
+  thesisTitles: [{ id, titleText, isSelected }],
+  assignment: { id, adviser: { id, firstName, lastName, email } } | null
+}
+```
+
+Nullable values retain their existing semantics. The only retained ThesisRecord timestamp is `createdAt` for submitted-date display and the existing all-list ordering. Payment fields (`orNumber`, `amountPaid`), redundant top-level relationship identifiers, stage-specific submission timestamps and unrelated workflow relations are excluded. Student contact/birth/residency/curriculum/alignment/enrollment/COR extraction metadata is excluded. Program has no department, residency, exam configuration or timestamps. Titles preserve identity/text/selection without their thesis ID or timestamps. Assignment preserves only its identity and required Adviser display data, with no complete User/Panelist record or assignment lifecycle metadata. This legacy assignment display remains distinct from authoritative active-Adviser resolution; no assignment authority changed.
+
+Pending still filters exactly `status: PENDING`; approved still filters exactly `status: APPROVED`; neither gains an ordering override. All still has no status filter and retains `createdAt: desc`. No application transition, stage, title-selection rule, scheduling eligibility, write/audit operation, capability guard or rollout composition changed.
+
+### Correction verification
+
+Extended the existing FACULTY-7 repository/service boundary tests for each of the three methods:
+
+- Assert the entire Prisma select/filter/order contract, including bounded Student/User/Program/title/Adviser relations and absence of a document relation.
+- Execute the actual repository and service return paths against a projection-aware Prisma mock containing deliberately over-broad rows. Assert the final serialized response object exactly, not just query arguments; recursively reject all listed credential, account-management, Student-private, COR extraction, payment and document-storage fields.
+- Preserve row filtering/order, application identity/stage/status/outcome/rejection context, submission-date display, required nested display fields, nullable Program/assignment context and existing title selection values.
+
+Run from `backend`:
+
+```powershell
+npx vitest run tests/unit/services/faculty-7-defense-adviser-boundaries.test.ts tests/unit/routes/faculty-7-defense-adviser.routes.test.ts tests/unit/repositories/thesis.repository.review-audit.test.ts tests/unit/repositories/thesis.repository.schedule-binding.test.ts tests/unit/repositories/defense-applications.repository.test.ts tests/unit/services/defense-application-workflow.test.ts tests/unit/services/defense-application-session.test.ts
+npm run build
+```
+
+Results: **7 files / 183 tests PASS**; backend TypeScript build **PASS**. `git diff --check` from repository root **PASS**. Existing Vite future config-loader warning remains non-failing. No full backend suite, frontend build, schema/migration or real-DB contention run was needed or performed. Tests use synthetic fixtures, not a real database. Manual/browser QA and hosted CI were not executed for this correction; independent review remains pending.
+
+Exact correction files:
+
+- `backend/src/repositories/thesis.repository.ts`
+- `backend/tests/unit/services/faculty-7-defense-adviser-boundaries.test.ts`
+- `docs/superpowers/reports/2026-11-08-faculty-7-defense-adviser-administrative-guards.md`
+
+No implementation blocker or scope deviation. No frontend, schema/migration, capability catalog, private-file service or live access changes. Restricted rollout remains dormant. Final correction commit and clean local/remote parity are recorded in the delivery handoff. Stop after this correction; FACULTY-8 is not started.

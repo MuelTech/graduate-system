@@ -22,6 +22,7 @@ import {
   writeDefenseScheduleAudit,
 } from "../services/defense-audit";
 import { requireSingleActiveAdviser } from "../services/active-adviser.rules";
+import type { Prisma } from "@prisma/client";
 
 /** DL-6: builds a stage/type-scoped evidence row from DL-2 managed metadata. */
 function toDocumentData(
@@ -54,6 +55,26 @@ function toDocumentData(
 const DEFENSE_ADMIN_USER_SELECT = { id: true, firstName: true, lastName: true, email: true } as const;
 const DEFENSE_ADMIN_PROFILE_SELECT = { specialization: true, officeAffiliation: true,
   isExternal: true, isActive: true, isAvailableAsAdviser: true } as const;
+
+/** Legacy application-list display contract. Documents belong to separate detail/history reads. */
+const DEFENSE_APPLICATION_LIST_SELECT = {
+  id: true,
+  stage: true,
+  status: true,
+  outcome: true,
+  rejectionReason: true,
+  createdAt: true,
+  student: {
+    select: {
+      id: true,
+      studentNumber: true,
+      user: { select: DEFENSE_ADMIN_USER_SELECT },
+      program: { select: { id: true, programName: true, programType: true } },
+    },
+  },
+  thesisTitles: { select: { id: true, titleText: true, isSelected: true } },
+  assignment: { select: { id: true, adviser: { select: DEFENSE_ADMIN_USER_SELECT } } },
+} as const satisfies Prisma.ThesisRecordSelect;
 
 export class ThesisRepository {
   constructor(private readonly administration: DefenseAdviserAuthorization = defenseAdviserAuthorization) {}
@@ -154,12 +175,7 @@ export class ThesisRepository {
       where: {
         status: "PENDING",
       },
-      include: {
-        student: { include: { user: { select: DEFENSE_ADMIN_USER_SELECT } } },
-        thesisTitles: true,
-        thesisDocuments: true,
-        assignment: { include: { adviser: { select: DEFENSE_ADMIN_USER_SELECT } } },
-      },
+      select: DEFENSE_APPLICATION_LIST_SELECT,
     });
   }
 
@@ -170,12 +186,7 @@ export class ThesisRepository {
       where: {
         status: "APPROVED",
       },
-      include: {
-        student: { include: { user: { select: DEFENSE_ADMIN_USER_SELECT } } },
-        thesisTitles: true,
-        thesisDocuments: true,
-        assignment: { include: { adviser: { select: DEFENSE_ADMIN_USER_SELECT } } },
-      },
+      select: DEFENSE_APPLICATION_LIST_SELECT,
     });
   }
 
@@ -317,12 +328,7 @@ export class ThesisRepository {
 
   async getAllDefenses() {
     return prisma.thesisRecord.findMany({
-      include: {
-        student: { include: { user: { select: DEFENSE_ADMIN_USER_SELECT } } },
-        thesisTitles: true,
-        thesisDocuments: true,
-        assignment: { include: { adviser: { select: DEFENSE_ADMIN_USER_SELECT } } },
-      },
+      select: DEFENSE_APPLICATION_LIST_SELECT,
       orderBy: { createdAt: "desc" },
     });
   }

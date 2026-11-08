@@ -213,11 +213,95 @@ describe("FACULTY-7 academic separation beyond HTTP", () => {
 
 describe("FACULTY-7 administrative response projections", () => {
   const identity = { id: true, firstName: true, lastName: true, email: true };
-  it.each(["getPendingDefenses", "getApprovedDefenses", "getAllDefenses"] as const)("%s bounds nested Student and Adviser users", async method => {
+  const applicationSelect = {
+    id: true, stage: true, status: true, outcome: true, rejectionReason: true, createdAt: true,
+    student: { select: { id: true, studentNumber: true, user: { select: identity },
+      program: { select: { id: true, programName: true, programType: true } } } },
+    thesisTitles: { select: { id: true, titleText: true, isSelected: true } },
+    assignment: { select: { id: true, adviser: { select: identity } } },
+  };
+  const applicationMethods = [
+    { method: "getPendingDefenses", where: { status: "PENDING" }, orderBy: undefined },
+    { method: "getApprovedDefenses", where: { status: "APPROVED" }, orderBy: undefined },
+    { method: "getAllDefenses", where: undefined, orderBy: { createdAt: "desc" } },
+  ] as const;
+  const forbidden = ["passwordHash", "mustChangePassword", "customRoleId", "createdById", "updatedById",
+    "cellphone", "dateOfBirth", "residencyStartDate", "curriculumType", "alignmentStatus", "enrollmentDate",
+    "corExtractedYearLevel", "corExtractedScholarship", "lastCorSyncAt", "orNumber", "amountPaid",
+    "filePath", "storageKey", "storageProvider", "checksum", "checksumAlgorithm", "uploadedById", "supersedesDocumentId"];
+
+  // Model Prisma's select semantics over a deliberately over-broad fixture. An absent
+  // select or a broad nested `true` returns the raw fixture, so payload tests detect leaks.
+  function selectedFixture(value: any, select?: Record<string, any>): any {
+    if (!select || value == null) return value;
+    if (Array.isArray(value)) return value.map(row => selectedFixture(row, select));
+    return Object.fromEntries(Object.entries(select).map(([key, projection]) =>
+      [key, projection === true ? value[key] : selectedFixture(value[key], projection.select)]));
+  }
+  function rawApplication(status: string, createdAt: string) {
+    const privateFields = Object.fromEntries(forbidden.map(key => [key, `private-${key}`]));
+    const user = { ...privateFields, id: "student-user", firstName: "Sam", lastName: "Student", email: "student@example.test" };
+    return { ...privateFields, id: status, studentId: "student-1", assignmentId: "assignment", stage: "TITLE", status,
+      outcome: null, rejectionReason: status === "REJECTED" ? "Correct the evidence" : null, createdAt,
+      titleApplicationSubmittedAt: "unneeded-stage-timestamp", proposalApplicationSubmittedAt: null, finalApplicationSubmittedAt: null,
+      student: { ...privateFields, id: "student-1", studentNumber: "2026-001", userId: user.id, programId: "program", user,
+        program: { ...privateFields, id: "program", programName: "MIT", programType: "MASTERS", department: "unrelated", examPassingScore: 75 } },
+      thesisTitles: [{ ...privateFields, id: "title", thesisId: status, titleText: "Research Title", isSelected: false, createdAt }],
+      assignment: { ...privateFields, id: "assignment", studentId: "student-1", adviserId: "adviser", assignedDate: createdAt, createdAt, isActive: true,
+        adviser: { ...user, id: "adviser", firstName: "Ana", lastName: "Adviser", email: "adviser@example.test", panelist: { ...privateFields, isActive: true } } },
+      thesisDocuments: [{ ...privateFields, id: "document", docType: "RECEIPT", defenseStage: "TITLE", isCurrent: true, uploadedAt: createdAt }],
+    };
+  }
+  function expectedApplication(status: string, createdAt: string) {
+    return { id: status, stage: "TITLE", status, outcome: null,
+      rejectionReason: status === "REJECTED" ? "Correct the evidence" : null, createdAt,
+      student: { id: "student-1", studentNumber: "2026-001",
+        user: { id: "student-user", firstName: "Sam", lastName: "Student", email: "student@example.test" },
+        program: { id: "program", programName: "MIT", programType: "MASTERS" } },
+      thesisTitles: [{ id: "title", titleText: "Research Title", isSelected: false }],
+      assignment: { id: "assignment", adviser: { id: "adviser", firstName: "Ana", lastName: "Adviser", email: "adviser@example.test" } } };
+  }
+  function assertNoPrivateFields(value: any) {
+    if (!value || typeof value !== "object") return;
+    for (const [key, child] of Object.entries(value)) {
+      expect(forbidden, `unexpected field ${key}`).not.toContain(key);
+      expect(key).not.toBe("thesisDocuments");
+      assertNoPrivateFields(child);
+    }
+  }
+  it.each(applicationMethods)("$method uses an explicit complete application-list select with unchanged filter/order", async ({ method, where, orderBy }) => {
+    db.thesisRecord.findMany.mockResolvedValue([]);
     await repo[method]();
-    const query = db.thesisRecord.findMany.mock.calls[0][0];
-    expect(query.include.student.include.user).toEqual({ select: identity });
-    expect(query.include.assignment.include.adviser).toEqual({ select: identity });
+    expect(db.thesisRecord.findMany).toHaveBeenCalledExactlyOnceWith({
+      ...(where ? { where } : {}), select: applicationSelect, ...(orderBy ? { orderBy } : {}),
+    });
+  });
+  it.each(applicationMethods)("$method returns only safe fields through the actual service, preserving rows and order", async ({ method }) => {
+    const raw = [rawApplication("PENDING", "2026-11-01"), rawApplication("REJECTED", "2026-11-03"), rawApplication("APPROVED", "2026-11-02")];
+    db.thesisRecord.findMany.mockImplementation(async query => {
+      const rows = raw.filter(row => !query.where?.status || row.status === query.where.status);
+      if (query.orderBy?.createdAt === "desc") rows.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+      return rows.map(row => selectedFixture(row, query.select));
+    });
+    const payload = JSON.parse(JSON.stringify(await service[method]("actor")));
+    const expected = method === "getPendingDefenses" ? [expectedApplication("PENDING", "2026-11-01")]
+      : method === "getApprovedDefenses" ? [expectedApplication("APPROVED", "2026-11-02")]
+        : [expectedApplication("REJECTED", "2026-11-03"), expectedApplication("APPROVED", "2026-11-02"), expectedApplication("PENDING", "2026-11-01")];
+    expect(payload).toEqual(expected);
+    assertNoPrivateFields(payload);
+  });
+  it.each(applicationMethods)("$method preserves nullable assignment/context and title selection without loading documents", async ({ method }) => {
+    const status = method === "getApprovedDefenses" ? "APPROVED" : "PENDING";
+    const raw = { ...rawApplication(status, "2026-11-01"), stage: "FINAL", outcome: "REDEFENSE_REQUIRED", assignment: null };
+    raw.student.program = null as any;
+    raw.thesisTitles[0].isSelected = true;
+    db.thesisRecord.findMany.mockImplementation(async query => [selectedFixture(raw, query.select)]);
+    const payload = JSON.parse(JSON.stringify(await repo[method]()));
+    const expected = { ...expectedApplication(status, "2026-11-01"), stage: "FINAL", outcome: "REDEFENSE_REQUIRED", assignment: null };
+    expected.student.program = null as any;
+    expected.thesisTitles[0].isSelected = true;
+    expect(payload).toEqual([expected]);
+    assertNoPrivateFields(payload);
   });
   it("Adviser request/assignment overviews omit account credentials and unrelated metadata", async () => {
     await repo.getAllAdviserRequests();
