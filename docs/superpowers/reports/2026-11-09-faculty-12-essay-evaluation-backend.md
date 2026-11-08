@@ -3,7 +3,7 @@
 Date: 2026-11-09 (Asia/Manila). Branch: `feat/faculty-admin-access`.
 Starting local and actual remote HEAD: `248d4665923cdcbe95510951247f536e877e583b`; worktree clean, remote verified before edits with `git ls-remote origin refs/heads/feat/faculty-admin-access`.
 
-**Status: FACULTY-12 implemented / pending independent review. FACULTY-13 deferred / not started.** Source readiness only; no live rollout or acceptance is claimed. The delivery commit contains this report; its exact SHA and final local/remote comparison are recorded in the delivery response.
+**Status: FACULTY-12 accepted for continuation** at `c0059b9ebd0de569bb07d34a224506e0aa44f779` after independent remote commit-diff/source review. FACULTY-13 remains deferred / not started pending project-owner approval. This accepts source readiness only; it is not a live rollout or production activation. The delivery commit contains this report; its exact SHA and final local/remote comparison are recorded in the delivery response.
 
 ## Pre-implementation coverage ledger
 
@@ -141,4 +141,21 @@ Cross-Program tests show the same configured evaluator sees valid pending rows f
 
 ## Preserved scope and stop
 
-No schema/migration, frontend, scoring formula, Program evaluator mapping, Program Chair, evaluator assignment/load policy, real provisioning/grant activation, result-email integration, new rubric/remarks, regrading, academic override or FACULTY-13+ work. No ordinary database changes or live activation. No merge to `main`. Independent review remains pending; stop after FACULTY-12.
+No schema/migration, frontend, scoring formula, Program evaluator mapping, Program Chair, evaluator assignment/load policy, real provisioning/grant activation, result-email integration, new rubric/remarks, regrading, academic override or FACULTY-13+ work. No ordinary database changes or live activation. No merge to `main`. Independent remote commit-diff/source review is complete. The live `feat/faculty-admin-access` branch was verified at `c0059b9ebd0de569bb07d34a224506e0aa44f779` during review. Stop after FACULTY-12; FACULTY-13 remains deferred / not started pending explicit project-owner approval.
+
+
+## Independent-review acceptance — 2026-11-09 (Asia/Manila)
+
+Independent remote commit-diff/source review is complete for FACULTY-12 commit `c0059b9ebd0de569bb07d34a224506e0aa44f779`. The live `feat/faculty-admin-access` branch was verified at that exact implementation SHA. The pushed range from `248d4665923cdcbe95510951247f536e877e583b` contains one commit and exactly 21 changed files.
+
+The review verified the new narrow Faculty queue/detail/grade and frozen-essay media endpoints; current active FACULTY or legacy-compatible PANELIST identity; active matching profile; password readiness; exact configured `essay.evaluate` grant; External Faculty compatibility; and denial of Student, Applicant, CUSTOM and Admin actors. The shared `resolveConfiguredAccountAccess()` rejects inactive User/profile and malformed, duplicate, unknown or wrong-category grant state before the Faculty grant can resolve.
+
+Queue, detail, media entitlement and grade all reuse `requirePendingEssayReview()`, which delegates to the accepted B7 `requireEssayReview()` frozen-evidence resolver. The review confirmed that the queue's coarse TAKEN/PENDING predicates do not themselves confer eligibility, invalid evidence is excluded, guessed IDs cannot bypass detail/write eligibility, and the same exact frozen prompt/response/captured maximum is used. The exact essay image path is bound to the pending frozen essay's image ID and revision and reuses the existing managed-storage integrity checks.
+
+The B7 evaluation write is shared through `writeLockedEssayEvaluation()`; the existing B8 `scoreLockedApplication()` remains unchanged and runs in the same transaction. The Faculty receipt is narrow and excludes MCQ/result/scoring breakdowns. The grade transaction acquires the shared Administrator access fence, then evaluator User/profile locks, revalidates current authority after waits, locks the application, rereads B7 evidence, writes the immutable first evaluation, invokes B8 and commits atomically. The legacy Admin route/service/repository remain excluded when the Faculty target is composed; while all rollout gates remain dormant, accepted legacy compatibility remains unchanged.
+
+No acceptance-blocking authorization, frozen-evidence, scoring, privacy or scope issue remained. No schema/migration, frontend, Program evaluator mapping, real grant provisioning, result-email integration, live activation or FACULTY-13+ work was included.
+
+Evidence classes remain separate. Codex reported 23 affected suites / 916 tests passed, five real MariaDB contention cases safely skipped, backend build PASS and diff checks PASS. The independent review inspected the pushed production source, tests and isolated contention harness; it did not execute the Windows test commands or run real InnoDB contention. The five-case real MariaDB harness remains **unverified** because no separate isolated server was configured. This is an explicit deployment/activation-readiness gate: do not claim the lock-race proof until the isolated harness is executed. GitHub hosted CI was not observed; browser/manual QA was not applicable to this backend-only package.
+
+**Acceptance checkpoint:** FACULTY-12 is accepted for continuation at `c0059b9ebd0de569bb07d34a224506e0aa44f779`. The Faculty Essay Evaluation target remains code-owned/dormant and no live evaluator grants are activated. FACULTY-13 remains deferred / not started pending explicit project-owner approval.
