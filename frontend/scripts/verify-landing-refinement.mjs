@@ -47,6 +47,11 @@ async function check(name, run) {
 // Give real browser observers/React events time to settle, without advancing the
 // virtual eight-second carousel timer. No API responses or application data mocked.
 const settle = () => new Promise((resolve) => setTimeout(resolve, 80));
+async function releaseCarousel(page) {
+  await page.locator(".public-masthead__identity").focus();
+  await page.mouse.move(0, 0);
+  await settle();
+}
 
 try {
   await check(
@@ -60,6 +65,17 @@ try {
         ["news", "about", "programs", "graduate-research", "contact"],
       );
       await expect(page.locator("main h1")).toHaveCount(1);
+      const hero = await page.locator(".public-carousel").boundingBox();
+      assert.equal(hero.x, 0, "Hero must start at the viewport edge");
+      assert.equal(hero.width, 1440, "Hero must span the full viewport");
+      assert.ok(
+        hero.height >= 640,
+        "Hero must be the dominant opening feature",
+      );
+      await expect(page.locator(".public-opening__sidebar")).toHaveCount(0);
+      await expect(
+        visibleSlide(page).locator(".public-carousel__action"),
+      ).toHaveCount(2);
       await expect(page.locator("main details")).toHaveCount(0);
       await expect(
         page.locator('#about a[href="/about"], #programs a[href="/programs"]'),
@@ -70,7 +86,7 @@ try {
         page.getByRole("link", { name: "Entrance Examination", exact: true }),
       ).toHaveAttribute("href", "/login");
       await expect(
-        page.getByRole("link", { name: "create an account", exact: true }),
+        page.locator('#applicant-access a[href="/register"]'),
       ).toHaveAttribute("href", "/register");
       await expect(page.locator(".public-opening__pinnacle")).toHaveAttribute(
         "href",
@@ -104,7 +120,9 @@ try {
       await expect(page.locator('.public-carousel [role="status"]')).toHaveText(
         "",
       );
-      await page.locator(".public-carousel__image:visible").hover();
+      await page
+        .locator(".public-carousel")
+        .hover({ position: { x: 100, y: 100 } });
       await settle();
       await page.clock.fastForward(16_100);
       await position(page, 2);
@@ -126,7 +144,8 @@ try {
           exact: true,
         }),
       ).toBeVisible();
-      await page.locator("#landing-title").click();
+      await page.locator("#landing-title").scrollIntoViewIfNeeded();
+      await releaseCarousel(page);
       await page.clock.fastForward(16_100);
       await position(page, 1);
       await page
@@ -146,7 +165,8 @@ try {
           exact: true,
         })
         .click();
-      await page.locator("#landing-title").click();
+      await page.locator("#landing-title").scrollIntoViewIfNeeded();
+      await releaseCarousel(page);
       await page.clock.fastForward(16_100);
       await position(page, 2);
       await page.close();
@@ -160,7 +180,8 @@ try {
     await settle();
     await page.clock.fastForward(16_100);
     await position(page, 1);
-    await page.locator("#landing-title").click();
+    await page.locator("#landing-title").scrollIntoViewIfNeeded();
+    await releaseCarousel(page);
     await settle();
     await page.clock.fastForward(8_100);
     await position(page, 2);
@@ -213,19 +234,21 @@ try {
         await expect(
           page.locator(".public-carousel__slide[hidden]:visible"),
         ).toHaveCount(0);
-        await expect(visibleSlide(page).locator("figcaption")).toContainText(
-          "not EARIST photography",
-        );
         await expect(
           visibleSlide(page).locator(".public-carousel__sample"),
         ).toHaveText("Sample content — design review only");
-        await expect
-          .poll(() =>
-            visibleSlide(page)
-              .locator("img")
-              .evaluate((image) => image.complete && image.naturalWidth > 0),
-          )
-          .toBe(true);
+        if (await visibleSlide(page).locator("img").count()) {
+          await expect(visibleSlide(page).locator("figcaption")).toContainText(
+            "not EARIST photography",
+          );
+          await expect
+            .poll(() =>
+              visibleSlide(page)
+                .locator("img")
+                .evaluate((image) => image.complete && image.naturalWidth > 0),
+            )
+            .toBe(true);
+        }
       }
       await page.close();
     },

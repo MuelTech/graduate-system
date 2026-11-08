@@ -6,19 +6,42 @@ import {
   useRef,
   useState,
   useSyncExternalStore,
-  type ReactNode,
 } from "react";
 import { ArrowLeft, ArrowRight, Pause, Play } from "lucide-react";
 import { publicSiteContent } from "@/content/public-site-content";
-import { PreviewImage } from "./preview-image";
+import Image from "next/image";
+import Link from "next/link";
 
-// Existing fictional review imagery; provenance remains in the V2 asset ledger.
+// Local review features, not official news or events. Existing image provenance
+// remains in the V2 asset ledger; no institutional photograph is implied.
 const slides = [
-  { ...publicSiteContent.news.featured, image: publicSiteContent.hero.image },
-  { ...publicSiteContent.news.items[0], image: publicSiteContent.about.image },
   {
-    ...publicSiteContent.news.items[1],
+    title: "Graduate study at EARIST.",
+    summary: publicSiteContent.hero.description,
+    category: "News & Announcements",
+    image: publicSiteContent.hero.image,
+    treatment: "photograph",
+    primary: { label: "Explore Programs", href: "/#programs" },
+    secondary: { label: "Entrance Examination", href: "/login" },
+  },
+  {
+    title: "Registered in Pinnacle?",
+    summary:
+      "Sign in or create an account to access examination services.",
+    category: "Applicant examination access",
+    treatment: "statement",
+    primary: { label: "Entrance Examination", href: "/login" },
+    secondary: { label: "Create Account", href: "/register" },
+  },
+  {
+    title: "Explore graduate research.",
+    summary:
+      "Explore published graduate research titles, abstracts, and citations in the Research Repository.",
+    category: "Research Repository",
     image: publicSiteContent.research.image,
+    treatment: "photograph",
+    primary: { label: "Browse Research Repository", href: "/repository" },
+    secondary: { label: "Explore Programs", href: "/#programs" },
   },
 ];
 const intervalMs = 8_000;
@@ -47,7 +70,7 @@ function getEnvironment() {
   );
 }
 
-export function AnnouncementsSection({ children }: { children?: ReactNode }) {
+export function AnnouncementsSection() {
   const [active, setActive] = useState(0);
   const [mode, setMode] = useState<"auto" | "playing" | "paused">("auto");
   const [hovered, setHovered] = useState(false);
@@ -110,7 +133,11 @@ export function AnnouncementsSection({ children }: { children?: ReactNode }) {
   return (
     <div
       ref={root}
-      className="public-opening__layout"
+      className="public-carousel"
+      role="region"
+      aria-roledescription="carousel"
+      aria-label="News & Announcements"
+      aria-describedby="news-review-note"
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       onFocusCapture={() => setFocusPaused(true)}
@@ -119,131 +146,145 @@ export function AnnouncementsSection({ children }: { children?: ReactNode }) {
           setFocusPaused(false);
       }}
     >
+      <div className="public-carousel__identity public-body-frame">
+        <h1 id="landing-title">EARIST Graduate School</h1>
+      </div>
+      <p id="news-review-note" className="sr-only">
+        {publicSiteContent.news.reviewNote}
+      </p>
       <div
-        className="public-carousel"
-        role="region"
-        aria-roledescription="carousel"
-        aria-labelledby="news-title"
-        aria-describedby="news-review-note"
+        id={carouselId}
+        className="public-carousel__viewport"
+        aria-live="off"
       >
-        <div
-          id={carouselId}
-          className="public-carousel__viewport"
-          aria-live="off"
-        >
-          {slides.map((slide, index) => (
-            <article
-              key={slide.title}
-              id={`${carouselId}-${index}`}
-              className="public-carousel__slide"
-              hidden={active !== index}
-              role="group"
-              aria-roledescription="slide"
-              aria-label={`${index + 1} of ${slides.length}`}
-            >
-              <PreviewImage
-                image={slide.image}
-                className="public-carousel__image"
-                sizes="(min-width: 1248px) 752px, (min-width: 900px) 62vw, (min-width: 600px) calc(100vw - 48px), calc(100vw - 36px)"
-                priority={index === 0}
-              />
-              <div className="public-carousel__copy">
-                <p className="public-carousel__sample">
-                  {publicSiteContent.news.sampleLabel}
-                </p>
-                <h3>{slide.title}</h3>
-                <p className="public-carousel__summary">{slide.summary}</p>
+        {slides.map((slide, index) => (
+          <article
+            key={slide.title}
+            id={carouselId + "-" + index}
+            className={
+              "public-carousel__slide public-carousel__slide--" +
+              slide.treatment
+            }
+            hidden={active !== index}
+            role="group"
+            aria-roledescription="slide"
+            aria-label={index + 1 + " of " + slides.length}
+          >
+            {slide.image && (
+              <figure className="public-carousel__image">
+                <Image
+                  src={slide.image.src}
+                  alt={slide.image.alt}
+                  fill
+                  sizes="100vw"
+                  priority={index === 0}
+                />
+                <figcaption>{slide.image.caption}</figcaption>
+              </figure>
+            )}
+            <div className="public-carousel__copy public-body-frame">
+              <p className="public-carousel__category">{slide.category}</p>
+              <h2>{slide.title}</h2>
+              <p className="public-carousel__summary">{slide.summary}</p>
+              <div className="public-carousel__actions">
+                <Link
+                  href={slide.primary.href}
+                  className="public-carousel__action public-carousel__action--primary"
+                >
+                  {slide.primary.label}{" "}
+                  <ArrowRight aria-hidden="true" size={19} />
+                </Link>
+                <Link
+                  href={slide.secondary.href}
+                  className="public-carousel__action public-carousel__action--secondary"
+                >
+                  {slide.secondary.label}{" "}
+                  <ArrowRight aria-hidden="true" size={19} />
+                </Link>
               </div>
-            </article>
-          ))}
-        </div>
-
-        {slides.length > 1 && (
-          <div className="public-carousel__controls">
+              {slide.treatment === "statement" && (
+                <p className="public-carousel__prerequisite">
+                  A Pinnacle Applicant ID is required to create an account.
+                </p>
+              )}
+              <p className="public-carousel__sample">
+                {publicSiteContent.news.sampleLabel}
+              </p>
+            </div>
+          </article>
+        ))}
+      </div>
+      {slides.length > 1 && (
+        <>
+          <button
+            className="public-carousel__arrow public-carousel__arrow--previous"
+            type="button"
+            aria-label="Previous announcement"
+            aria-controls={carouselId}
+            onClick={() => selectSlide(active - 1)}
+          >
+            <ArrowLeft aria-hidden="true" size={22} />
+          </button>
+          <button
+            className="public-carousel__arrow public-carousel__arrow--next"
+            type="button"
+            aria-label="Next announcement"
+            aria-controls={carouselId}
+            onClick={() => selectSlide(active + 1)}
+          >
+            <ArrowRight aria-hidden="true" size={22} />
+          </button>
+          <div className="public-carousel__controls public-body-frame">
             <span className="public-carousel__position" aria-hidden="true">
-              <strong>{String(active + 1).padStart(2, "0")}</strong> /{" "}
+              {String(active + 1).padStart(2, "0")} /{" "}
               {String(slides.length).padStart(2, "0")}
             </span>
-            <div className="public-carousel__control-buttons">
-              {motionAllowed && (
+            <div
+              className="public-carousel__indicators"
+              role="group"
+              aria-label="Choose announcement"
+            >
+              {slides.map((slide, index) => (
                 <button
+                  key={slide.title}
                   type="button"
-                  className="public-carousel__playback"
                   aria-label={
-                    rotationRequested
-                      ? "Pause announcement rotation"
-                      : "Play announcement rotation"
+                    "Show announcement " + (index + 1) + ": " + slide.title
                   }
-                  aria-controls={carouselId}
-                  onClick={toggleRotation}
-                >
-                  {rotationRequested ? (
-                    <Pause aria-hidden="true" size={15} />
-                  ) : (
-                    <Play aria-hidden="true" size={15} />
-                  )}
-                  <span>{rotationRequested ? "Pause" : "Play"}</span>
-                </button>
-              )}
-              <button
-                type="button"
-                aria-label="Previous announcement"
-                aria-controls={carouselId}
-                onClick={() => selectSlide(active - 1)}
-              >
-                <ArrowLeft aria-hidden="true" size={20} />
-              </button>
-              <button
-                type="button"
-                aria-label="Next announcement"
-                aria-controls={carouselId}
-                onClick={() => selectSlide(active + 1)}
-              >
-                <ArrowRight aria-hidden="true" size={20} />
-              </button>
-            </div>
-          </div>
-        )}
-        <p role="status" className="sr-only">
-          {announcement}
-        </p>
-      </div>
-
-      <div className="public-opening__sidebar">
-        <div className="public-opening__updates">
-          <h3>In this preview</h3>
-          <ol className="public-opening__update-list">
-            {slides.map((slide, index) => (
-              <li key={slide.title}>
-                <button
-                  type="button"
-                  aria-label={`Show announcement ${index + 1}: ${slide.title}`}
-                  aria-controls={`${carouselId}-${index}`}
+                  aria-controls={carouselId + "-" + index}
                   aria-pressed={active === index}
                   onClick={() => selectSlide(index)}
                 >
-                  <span
-                    className="public-opening__update-number"
-                    aria-hidden="true"
-                  >
-                    0{index + 1}
-                  </span>
-                  <span>
-                    <span className="public-opening__update-title">
-                      {slide.title}
-                    </span>
-                    <span className="public-opening__update-label">
-                      {publicSiteContent.news.sampleLabel}
-                    </span>
-                  </span>
-                  <ArrowRight aria-hidden="true" size={18} />
+                  <span />
                 </button>
-              </li>
-            ))}
-          </ol>
-        </div>
-        {children}
-      </div>
+              ))}
+            </div>
+            {motionAllowed && (
+              <button
+                type="button"
+                className="public-carousel__playback"
+                aria-label={
+                  rotationRequested
+                    ? "Pause announcement rotation"
+                    : "Play announcement rotation"
+                }
+                aria-controls={carouselId}
+                onClick={toggleRotation}
+              >
+                {rotationRequested ? (
+                  <Pause aria-hidden="true" size={16} />
+                ) : (
+                  <Play aria-hidden="true" size={16} />
+                )}
+                <span>{rotationRequested ? "Pause" : "Play"}</span>
+              </button>
+            )}
+          </div>
+        </>
+      )}
+      <p role="status" className="sr-only">
+        {announcement}
+      </p>
     </div>
   );
 }
