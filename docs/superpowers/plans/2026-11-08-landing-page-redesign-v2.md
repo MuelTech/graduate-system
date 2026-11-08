@@ -3,7 +3,7 @@
 **Project:** EARIST Graduate School Information System (GS-IS)
 **Date:** 2026-11-08
 **Repository / branch:** `MuelTech/graduate-system` / `feat/landing-page-redesign`
-**Status:** Proposed bounded implementation packages; documentation only is authorized now. No V2 source implementation is started or automatically authorized by this plan.
+**Status:** Working bounded implementation plan. Tasks 1–2 are implemented on `feat/landing-page-redesign` and owner-reviewed for continuation; Task 3 has not begun. Pre-Task-3 owner clarifications now add official program-source references, a Home Contact Us section, and official-source contact/platform review content.
 **Verified documentation starting HEAD:** `ab6086026ec68715035f36be91663b6e306af2fd`
 **Committed V2 specification / report update:** `da5d0d6c23d24c2232d8c0420f2e54cb858c8f55`
 **Verified current main / feature merge base:** `045316540d97364214792c7d441ae20a1e426d4c`
@@ -85,11 +85,11 @@ The actual seals are documented in `backend/assets/official-forms/README.md`; ba
 
 ### 4.3 Content handling without integration
 
-Use owner-confirmed program names when available. Otherwise use a small source-derived provisional snapshot labelled exactly as design-review content per the specification, with no invented degrees or residency/availability claims. Home and the later directory share this snapshot; no false count or program-specific Apply action.
+Use the official EARIST Graduate School pages as the program-content references: https://earist.edu.ph/graduate-school/ and https://earist.edu.ph/graduate-school-2/. They differ in some majors/wording, so the current frontend list remains review content until the client confirms the reconciled catalog. Home and the later directory share this official-source/client-confirmation status; do not silently merge conflicts, invent degrees, assert a total count, or add program-specific Apply behavior.
 
 News samples use neutral sample headlines, sample-date labels or no date, and no invented admissions deadlines, events, policies, institutional outcomes, or public article destinations. They are non-link editorial entries. Do not introduce `/news`, `/news/[slug]`, a CMS, API calls, or expose private memos.
 
-Research contains no sample publications at all. About uses verified identity and concise public-purpose copy until approved institutional prose arrives. Home help covers only the verified account/public-browsing paths; detailed policy is not inferred from old FAQ text. Unverified contacts/social links remain absent; use a balanced three-column Footer.
+Research contains no sample publications at all. About uses verified identity and concise public-purpose copy until approved institutional prose arrives. Home help covers only the verified account/public-browsing paths; detailed policy is not inferred from old FAQ text. Contact Us and Footer may now use official-source review content from the EARIST Graduate School pages: the newer page's Nagtahan St campus address, earistofficial1945@gmail.com and (02) 7738 5059; the older Graduate School page's (02) 7154914 and earistgraduateschool social handle; the current EARIST website; and the official-site-linked Applicants Access Module. Because the sources differ in age/detail, client confirmation is required before calling individual contact/social details final production content.
 
 ## 5. Six proposed implementation packages
 
@@ -136,25 +136,26 @@ Packages are sequential because they share Home, content, and scoped styles. Eac
 
 **Stop:** Commit/handoff Task 2. Explicitly record that News and final Footer/navigation remain Task 3 and that a partial page is not whole-site acceptance.
 
-### Task 3 — News design preview, final public navigation, and institutional Footer
+### Task 3 — News design preview, final public navigation, Contact Us, and institutional Footer
 
-**Visual goal:** Complete the intended Home rhythm with one featured sample plus compact news rows, introduce the final anchor navigation once all targets exist, and replace the sparse Footer with balanced institutional groups.
+**Visual goal:** Complete the intended Home rhythm with one featured sample plus compact news rows, introduce the final anchor navigation once all targets exist, add a practical Contact Us section backed by official-source review content, and replace the sparse Footer with balanced institutional groups.
 
 **Exact likely files:**
 
 - Modify `frontend/src/components/landing/announcements-section.tsx`, `frontend/src/components/landing/navbar.tsx`, `frontend/src/components/landing/footer.tsx`, `frontend/src/app/(public)/page.tsx`.
+- Add `frontend/src/components/landing/contact-section.tsx` (or an equivalently scoped Home-only component).
 - Extend `frontend/src/content/public-site-content.ts`, `frontend/src/app/(public)/public-site.css`, and the V2 asset ledger if an image is added.
 - Optional image: `frontend/public/images/landing/v2/news-feature-preview.webp`.
 
-**Assets/content:** Neutral locally defined samples with per-item **Sample content — design review only** and section-level notice. Dates are explicitly samples or omitted. Optional image has its own visible not-EARIST caption. Footer uses the real seal; contact/social content remains absent until verified.
+**Assets/content:** Neutral locally defined News samples with per-item **Sample content — design review only** and section-level notice. Dates are explicitly samples or omitted. Optional image has its own visible not-EARIST caption. Footer uses the real seal. Contact Us may use the official EARIST-source review details recorded in the specification, including the current EARIST website and official-site-linked Applicants Access Module. Where the two official Graduate School pages differ, keep the content reviewable/client-confirmable rather than claiming final verification.
 
-**Shared blast radius:** Final Navbar/Footer affect all five public routes. Final Navbar is logo → `/`, Programs → `/#programs`, Research Repository → `/repository`, News → `/#news`, About → `/#about`, Sign In → `/login`, Register → `/register`. Footer reaches deeper pages and Home help. No new news route, fake article link, or session-based behavior.
+**Shared blast radius:** Final Navbar/Footer affect all five public routes. Final Navbar is logo → `/`, Programs → `/#programs`, Research Repository → `/repository`, News → `/#news`, About → `/#about`, Contact → `/#contact`, Sign In → `/login`, Register → `/register`. FAQ remains available from Home help/Footer via `/faq`, not as a primary masthead item. Footer reaches deeper pages, Home help, Contact Us, and official platform destinations. No new news route, fake article link, contact-form backend, or session-based behavior.
 
-**Responsive/accessibility:** News is a vertical editorial list on mobile, not a horizontal strip. Samples are not falsely clickable. Check active/focus treatment, mobile menu closing after cross-route hash navigation, real target positions beneath the masthead, three balanced Footer columns, white-text contrast, and widget clearance.
+**Responsive/accessibility:** News is a vertical editorial list on mobile, not a horizontal strip. Samples are not falsely clickable. Contact details and platform actions must remain readable/clickable without tiny icon-only controls. Check active/focus treatment, mobile menu closing after cross-route hash navigation, real target positions beneath the masthead, four balanced Footer groups, white-text contrast, external-link semantics where appropriate, and widget clearance.
 
-**Verification:** TypeScript, scoped ESLint/diff checks; verify exact final section order/anchor uniqueness, all Navbar/Footer links from all five routes, per-item sample labels at every viewport, and absence of old dated/official-sounding news. Browser review should assess the assembled Home and shared shell, not just isolated sections. No new API calls or backend tests.
+**Verification:** TypeScript, scoped ESLint/diff checks; verify exact final section order/anchor uniqueness including `contact`, all Navbar/Footer/platform links from all five routes, per-item sample labels at every viewport, and absence of old dated/official-sounding news. Confirm no invented contact endpoint or fake social destination was added. Browser review should assess the assembled Home and shared shell, not just isolated sections. No new API calls or backend tests.
 
-**Stop:** Commit/handoff Task 3 for whole-Landing owner visual review before deeper page work. A rejection requires bounded revision/instruction; do not treat technically passing checks as acceptance or proceed automatically.
+**Stop:** Commit/handoff Task 3 for whole-Landing owner visual review before deeper page work. Record which contact/program details still await client confirmation. A rejection requires bounded revision/instruction; do not treat technically passing checks as acceptance or proceed automatically.
 
 ### Task 4 — Coordinated Programs, About, and FAQ public-page refinement
 
@@ -166,7 +167,7 @@ Packages are sequential because they share Home, content, and scoped styles. Eac
 - Add `frontend/src/components/programs/programs-directory.tsx` if needed for a narrow client-side local search/type-filter boundary; this directory is new, not an existing repository component.
 - Extend `frontend/src/content/public-site-content.ts` and named deeper-page classes in `frontend/src/app/(public)/public-site.css`.
 
-**Assets/content:** Reuse the already labelled About image and real seals; no additional photography is required. Programs shares Home's confirmed/provisional snapshot. Remove unsupported admissions-open text, statistics, and software mission/vision from the redesigned presentation. Use approved institutional prose if available. Verify detailed FAQ claims against canonical sources before reuse; omit or flag unresolved public-policy text for confirmation rather than inventing a replacement rule. Do not change the underlying workflow or chatbot text.
+**Assets/content:** Reuse the already labelled About image and real seals; no additional photography is required. Programs shares Home's official EARIST-source/client-confirmation snapshot from the two Graduate School pages. Reconcile differing majors/wording only from client confirmation; do not silently combine the pages. Remove unsupported admissions-open text, statistics, and software mission/vision from the redesigned presentation. Use approved institutional prose if available. Verify detailed FAQ claims against canonical sources before reuse; omit or flag unresolved public-policy text for confirmation rather than inventing a replacement rule. Do not change the underlying workflow or chatbot text.
 
 **Shared blast radius:** These three pages plus explicitly shared public content/styles. Local catalog/search/filtering does not alter registration options or API responses. Preserve `/programs`, `/about`, `/faq` and existing actual account actions. Do not introduce program detail routes or registration preselection.
 
@@ -210,9 +211,9 @@ Packages are sequential because they share Home, content, and scoped styles. Eac
 
 ## 6. Dependencies and production-content gate
 
-Implementation can progress without new backend/API/database/CMS work. The visual-preview dependencies are selected usable imagery, visible provenance labels, neutral news samples, and confirmed or clearly provisional program content. Higher-resolution official logos are desirable but not required at the modest specified display sizes.
+Implementation can progress without new backend/API/database/CMS work. The visual-preview dependencies are selected usable imagery, visible provenance labels, neutral news samples, official-source program/contact review content, and client confirmation where the official Graduate School pages conflict. Higher-resolution official logos are desirable but not required at the modest specified display sizes.
 
-Production-content acceptance separately requires owner-approved real institutional photography/rights, program names/degree groups, About prose, contact/social destinations, and real news content/destinations or an approved honest empty state. Before removing any preview notice, replace or omit every unapproved item on that page and recheck its alt text, crop, wording, and links. No environment mode may silently turn a sample into authoritative content.
+Production-content acceptance separately requires owner-approved real institutional photography/rights, a reconciled program catalog/degree grouping, About prose, confirmed contact/social destinations, and real news content/destinations or an approved honest empty state. Before removing any preview notice, replace or omit every unapproved item on that page and recheck its alt text, crop, wording, and links. No environment mode may silently turn a sample into authoritative content.
 
 An official public-news publishing workflow, live catalog integration, institution-wide font changes, chatbot corrections, and deeper Repository component work are deferred scopes. They are not implicit prerequisites for visual acceptance and are not authorized by this plan.
 
