@@ -3,7 +3,7 @@
 Date: 2026-11-09 (Asia/Manila). Branch: `feat/faculty-admin-access`.
 Starting local and actual remote HEAD: `976fd0464dc63e92c8c259077221339d24d43611`; worktree clean. Remote verified with `git ls-remote origin refs/heads/feat/faculty-admin-access` before edits.
 
-**Status: FACULTY-10 implemented / pending independent review.** No acceptance or FACULTY-11 start.
+**Status: FACULTY-10 accepted for continuation** at `772e2837ec1ffc6cce4f64a12201480f065a3c33` after independent remote commit-diff/source review. FACULTY-11 remains deferred / not started pending project-owner approval.
 
 ## Pre-implementation coverage ledger
 
@@ -87,7 +87,7 @@ Backend `npm run build`: **PASS** after final production changes. Repository-roo
 
 No full backend suite, browser/manual QA, hosted CI, real-DB business/contention testing, migration execution or deployment validation was performed. New and affected runs use mocked database composition; transaction rollback and lock-order tests prove the modeled contract, not real MariaDB locking/rollback behavior. There was no live account inventory, provisioning, grant mapping or production data access. Real multi-connection fence/target-contention and coordinated activation remain release-readiness work, not claimed acceptance.
 
-Independent remote source/diff review remains required. The ending commit, clean-worktree result and actual post-push remote equality are reported in the delivery response rather than embedded as a self-referential commit hash. Stop after FACULTY-10; FACULTY-11 remains deferred / not started.
+Independent remote source/diff review is complete. The accepted FACULTY-10 implementation commit is `772e2837ec1ffc6cce4f64a12201480f065a3c33`; the live `feat/faculty-admin-access` branch was verified at that commit during review. Stop after FACULTY-10; FACULTY-11 remains deferred / not started pending project-owner approval.
 
 ## Exact changed files
 
@@ -123,3 +123,18 @@ Independent remote source/diff review remains required. The ending commit, clean
 - `docs/superpowers/GSIS_IMPLEMENTATION_CHECKLIST.md`
 - `docs/superpowers/plans/2026-11-08-faculty-admin-access-implementation.md`
 - `docs/superpowers/reports/2026-11-09-faculty-10-configuration-adviser-eligibility.md`
+
+
+## Independent-review acceptance — 2026-11-09 (Asia/Manila)
+
+Independent remote commit-diff/source review is complete for FACULTY-10 commit `772e2837ec1ffc6cce4f64a12201480f065a3c33`. The review reconciled the exact 30-file commit against the canonical FACULTY-10 plan, implementation report and live production paths.
+
+The review independently verified the bounded `faculty.view` / `faculty.manage` management boundary, current-account authorization, strict Faculty DTO/input projection, secure random temporary-credential provisioning, `mustChangePassword` preservation, direct Faculty-grant restriction to `essay.evaluate`, protected transactional audit, External/availability invariants, DR-7 conflict handling, and retirement of alternate unaudited Faculty writers. The enabled target denies Faculty self-service Adviser availability while preserving own-profile reads and existing exact Adviser authority.
+
+The Adviser path was reviewed end to end. Candidate listing remains bound to the owning Student's exact passed/concluded Title ODP and same-session completed RAP. Request submission rechecks current eligibility after the shared fence before persisting immutable signed evidence. Dean approval rechecks current academic identity/profile activity, Internal classification, Adviser availability, exact source/ODP context, signed GS-020 evidence, CONFORME state and sole-active-assignment rules inside the transaction before creating a new `AdviserAssignment`. DR-6 revocation fails closed without rewriting the signed request or Adviser response. The legacy `/thesis/adviser/available` compatibility alias is Student-only and correctly passes the authenticated Student identity into the same bounded ODP candidate service; the unrestricted repository directory helper is retired.
+
+No acceptance-blocking authorization, privacy, credential or scope issue remained. One operational integration note remains intentional: the hardened Faculty-management endpoints return controlled 503 while the code-owned `FACULTY_CONFIGURATION_ENABLED` flag remains false. This checkpoint accepts source readiness only; it is not a live Faculty Management rollout.
+
+Evidence classes remain separate. Codex reported 45 affected test files / 1,586 tests passed with zero failures/skips, a final FACULTY-10 rerun of 4 files / 185 tests, backend build PASS and diff checks PASS. The independent review inspected the pushed source/diff and corresponding regression coverage; it did not rerun those local Windows commands. GitHub hosted CI, browser/manual QA and real-DB business/contention verification were not executed or claimed.
+
+**Acceptance checkpoint:** FACULTY-10 is accepted for continuation at `772e2837ec1ffc6cce4f64a12201480f065a3c33`. Faculty configuration remains code-owned/dormant; no schema/migration/frontend/live provisioning, data conversion or Restricted rollout is accepted by this checkpoint. FACULTY-11 remains deferred / not started pending explicit project-owner approval.
