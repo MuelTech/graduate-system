@@ -68,7 +68,7 @@ Keep the old `graduate-study` anchor as an unobtrusive compatibility target at t
 
 Use a solid warm-white masthead with a fine burgundy/gold detail, aligned to the page's content gutter. The desktop composition is identity left, five public links in the middle/right, and separated account actions at the end. Avoid a translucent SaaS toolbar treatment.
 
-Render the actual EARIST seal, unchanged, at approximately 60–64 CSS pixels on desktop. Pair it with a clear EARIST / Graduate School word lockup and the full name, Eulogio "Amang" Rodriguez Institute of Science and Technology, at a subordinate readable size. A two-row masthead is preferable to squeezing a long identity into one crowded row. Desktop height is approximately 88–96px, allowed to grow with text/zoom.
+Render the actual EARIST seal, unchanged, at approximately 60–64 CSS pixels on desktop. Pair it with the full institutional name, Eulogio "Amang" Rodriguez Institute of Science and Technology, using the accepted compact lockup. Do not repeat a separate Graduate School line in the masthead; the Hero owns that page identity. Allow the institutional name to wrap cleanly without making the masthead unnecessarily tall. Desktop height is approximately 88–96px, allowed to grow with text/zoom.
 
 Sign In is a quiet text action. Register is a compact outlined burgundy action. The Hero owns the strongest filled action. Use these labels consistently instead of alternating Login and Sign In.
 
