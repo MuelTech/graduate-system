@@ -1133,3 +1133,200 @@ html:has(.earist-public) {
   outline: 2px solid var(--earist-primary);
   outline-offset: 3px;
 }
+
+/* Task 4: informational Programs/About pages; Home and shared shell stay intact. */
+.earist-public .public-information-header {
+  padding-block: 56px;
+  border-bottom: 1px solid #e4ded4;
+  background: #fffaf2;
+}
+.earist-public .public-information-header__layout,
+.earist-public .public-school-about__introduction,
+.earist-public .public-school-about__goals-layout {
+  display: grid;
+  gap: 28px;
+}
+.earist-public .public-information-title {
+  max-width: 620px;
+  color: var(--earist-primary);
+  font-size: 48px;
+  font-weight: 600;
+  line-height: 1.08;
+  letter-spacing: -0.025em;
+}
+.earist-public .public-information-lead {
+  max-width: 640px;
+  color: var(--earist-body-text);
+  font-size: 20px;
+  line-height: 1.55;
+}
+.earist-public .public-program-directory__navigation {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 32px;
+  margin-top: 24px;
+}
+.earist-public .public-program-directory__navigation .public-body-link {
+  margin-top: 0;
+}
+.earist-public .public-program-directory__groups {
+  display: grid;
+  gap: 40px;
+}
+.earist-public .public-program-directory__group-title {
+  padding-top: 18px;
+  border-top: 2px solid var(--earist-primary);
+  scroll-margin-top: 128px;
+  color: var(--earist-primary);
+  font-size: 28px;
+  font-weight: 600;
+  line-height: 1.3;
+}
+.earist-public .public-program-directory__list {
+  margin-top: 20px;
+  list-style: none;
+}
+.earist-public .public-program-directory__list > li {
+  break-inside: avoid;
+  border-top: 1px solid #ddd9d2;
+  padding-block: 18px;
+}
+.earist-public .public-program-directory__list h3,
+.earist-public .public-school-about__goals h3 {
+  color: var(--earist-body-text);
+  font-size: 22px;
+  font-weight: 500;
+  line-height: 1.35;
+}
+.earist-public .public-program-directory__majors {
+  margin-top: 12px;
+  color: var(--earist-body-text);
+  font-size: 16px;
+  line-height: 1.5;
+}
+.earist-public .public-program-directory__majors p {
+  margin-bottom: 6px;
+  font-size: 14px;
+}
+.earist-public .public-program-directory__majors ul {
+  padding-left: 20px;
+  list-style: disc;
+}
+.earist-public .public-program-directory__majors li + li {
+  margin-top: 4px;
+}
+.earist-public .public-information-source {
+  margin-top: 28px;
+  color: #65594b;
+  font-size: 14px;
+  line-height: 1.6;
+}
+.earist-public .public-information-source a {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  color: var(--earist-primary);
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+.earist-public .public-information-source a:focus-visible,
+.earist-public .public-program-directory__group-title:focus-visible {
+  outline: 2px solid var(--earist-primary);
+  outline-offset: 5px;
+}
+.earist-public .public-school-about__introduction {
+  align-items: center;
+}
+.earist-public .public-school-about__introduction .public-information-lead {
+  margin-top: 24px;
+}
+.earist-public .public-school-about__image .public-preview-image__frame {
+  flex: none;
+  aspect-ratio: 3 / 2;
+}
+.earist-public .public-school-about__image .public-preview-image__caption {
+  padding: 8px 0 0;
+  border: 0;
+  background: transparent;
+  color: #65594b;
+}
+.earist-public .public-school-about__goals {
+  counter-reset: school-goal;
+  list-style: none;
+}
+.earist-public .public-school-about__goals > li {
+  position: relative;
+  padding: 22px 0 22px 48px;
+  border-top: 1px solid #ddd9d2;
+  counter-increment: school-goal;
+}
+.earist-public .public-school-about__goals > li::before {
+  content: counter(school-goal, decimal-leading-zero);
+  position: absolute;
+  left: 0;
+  top: 24px;
+  color: var(--earist-primary);
+  font-size: 16px;
+  line-height: 1.5;
+}
+.earist-public .public-school-about__goals p {
+  margin-top: 10px;
+  color: var(--earist-body-text);
+  font-size: 17px;
+  line-height: 1.65;
+}
+.earist-public .public-school-about__institution {
+  background: #fffaf2;
+}
+.earist-public .public-information-pathways {
+  padding-block: 24px;
+  border-top: 1px solid #e4ded4;
+  background: #fff;
+}
+.earist-public .public-information-pathways .public-body-frame {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 12px 32px;
+}
+.earist-public .public-information-pathways .public-body-link {
+  margin-top: 0;
+}
+@media (min-width: 768px) {
+  .earist-public .public-information-header__layout {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 64px;
+  }
+  .earist-public .public-program-directory__list {
+    column-count: 2;
+    column-gap: 64px;
+  }
+}
+@media (min-width: 900px) {
+  .earist-public .public-school-about__introduction {
+    grid-template-columns: minmax(0, 1.2fr) minmax(0, 0.8fr);
+    gap: 64px;
+  }
+  .earist-public .public-school-about__goals-layout {
+    grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr);
+    gap: 72px;
+  }
+}
+@media (max-width: 599px) {
+  .earist-public .public-information-header {
+    padding-block: 40px;
+  }
+  .earist-public .public-information-title {
+    font-size: 36px;
+  }
+  .earist-public .public-information-lead {
+    font-size: 18px;
+  }
+  .earist-public .public-program-directory__group-title {
+    font-size: 26px;
+  }
+  .earist-public .public-program-directory__list h3,
+  .earist-public .public-school-about__goals h3 {
+    font-size: 20px;
+  }
+}

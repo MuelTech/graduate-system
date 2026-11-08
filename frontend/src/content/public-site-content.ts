@@ -25,6 +25,7 @@ export const publicSiteContent = {
   // Working catalog selected by the owner from https://earist.edu.ph/graduate-school-2/.
   // Source history and client replacement dependencies remain in the feature ledger.
   programs: {
+    sourceHref: "https://earist.edu.ph/graduate-school-2/",
     groups: [
       {
         id: "masters",
@@ -124,6 +125,32 @@ export const publicSiteContent = {
     },
   },
   about: {
+    // Goal summaries: https://earist.edu.ph/graduate-school/ (Graduate School Goals).
+    // Institutional context: https://earist.edu.ph/about/ (EARIST Goals).
+    // Keep these scopes distinct; neither source describes software/platform goals.
+    sourceHref: "https://earist.edu.ph/graduate-school/",
+    introduction:
+      "Graduate study at EARIST connects professional development, research, and leadership through its master's and doctoral programs.",
+    goals: [
+      {
+        title: "Professional practice",
+        description:
+          "Strengthen professional practice and leadership among educators, business and industry leaders, practitioners, and civil servants.",
+      },
+      {
+        title: "Knowledge and research",
+        description:
+          "Advance knowledge and technology through relevant, innovative research.",
+      },
+      {
+        title: "Values and leadership",
+        description:
+          "Encourage values and attitudes that support proactive, progressive, and transformative leadership and management.",
+      },
+    ],
+    institutionSourceHref: "https://earist.edu.ph/about/",
+    institutionalContext:
+      "EARIST's institution-wide goals cover instruction and training across trades, business, arts, sciences, and technology. They also include research, advanced studies, and progressive leadership.",
     image: {
       src: "/images/landing/v2/about-preview.webp",
       width: 1536,
