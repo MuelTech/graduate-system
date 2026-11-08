@@ -19,9 +19,6 @@ export function GettingStartedSection() {
             Find the right starting point for GS-IS registration, account
             access, and public information.
           </p>
-          <Link href="/faq" className="public-body-link">
-            View All FAQs <ArrowRight aria-hidden="true" size={18} />
-          </Link>
         </div>
         <div id="faq" className="public-help__questions">
           <h3 className="public-help__title">Frequently asked questions</h3>

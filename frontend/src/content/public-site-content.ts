@@ -22,37 +22,73 @@ export const publicSiteContent = {
       // docs/superpowers/reports/2026-11-08-landing-page-redesign-v2-assets.md.
     },
   },
+  // Working catalog selected by the owner from https://earist.edu.ph/graduate-school-2/.
+  // Source history and client replacement dependencies remain in the feature ledger.
   programs: {
-    reviewNote:
-      "Official EARIST references differ on majors and wording; client confirmation is pending.",
-    sources: [
-      { label: "Reference 1", href: "https://earist.edu.ph/graduate-school/" },
-      {
-        label: "Reference 2",
-        href: "https://earist.edu.ph/graduate-school-2/",
-      },
-    ],
-    // Curated degree names shared by both official pages above. Conflicting
-    // major lists are intentionally omitted, not combined into a final catalog.
     groups: [
       {
         id: "masters",
         title: "Master's Programs",
         entries: [
-          "Master of Science in Mathematics",
-          "Master of Arts in Industrial Psychology",
-          "Master in Business Administration",
-          "Master in Public Administration",
+          {
+            name: "Master of Science in Mathematics",
+            majors: [],
+          },
+          {
+            name: "Master of Arts in Industrial Psychology",
+            majors: [],
+          },
+          {
+            name: "Master in Business Administration",
+            majors: [],
+          },
+          {
+            name: "Master in Public Administration",
+            majors: [],
+          },
+          {
+            name: "Master of Arts in Industrial Education",
+            majors: ["Hotel and Restaurant Management"],
+          },
+          {
+            name: "Master of Arts in Education",
+            majors: [
+              "Administration and Supervision",
+              "Guidance and Counseling",
+              "Special Education",
+            ],
+          },
+          {
+            name: "Master of Arts in Teaching (MAT)",
+            majors: [
+              "Electrical Technology",
+              "Electronics Technology",
+              "Mathematics",
+              "Science",
+            ],
+          },
         ],
       },
       {
         id: "doctoral",
         title: "Doctoral Programs",
         entries: [
-          "Doctor of Philosophy in Industrial Psychology",
-          "Doctor of Education",
-          "Doctor of Business Administration",
-          "Doctor of Public Administration",
+          {
+            name: "Doctor of Philosophy in Industrial Psychology",
+            majors: [],
+          },
+          {
+            name: "Doctor of Education",
+            majors: ["Educational Management"],
+          },
+          {
+            name: "Doctor of Business Administration",
+            majors: [],
+          },
+          {
+            name: "Doctor of Public Administration",
+            majors: [],
+          },
         ],
       },
     ],
@@ -97,21 +133,10 @@ export const publicSiteContent = {
     },
   },
   contact: {
-    reviewNote:
-      "Official-source contact details — client confirmation pending.",
-    // Reference 2 publishes institutional contact information, not a separately
-    // verified Graduate School office line. Keep the earlier GS listing separate.
     address: "Nagtahan St, Sampaloc, Manila, 1008 Metro Manila",
     email: "earistofficial1945@gmail.com",
     phone: "(02) 7738 5059",
     phoneHref: "tel:+63277385059",
-    sourceHref: "https://earist.edu.ph/graduate-school-2/",
-    graduateSchoolReference: {
-      phone: "(02) 7154914",
-      phoneHref: "tel:+6327154914",
-      socialHandle: "earistgraduateschool",
-      sourceHref: "https://earist.edu.ph/graduate-school/",
-    },
     // Outgoing destinations read from the official EARIST site's navigation.
     // No social URL is inferred from the earlier page's plain-text handle.
     platforms: [

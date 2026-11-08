@@ -33,28 +33,12 @@ export function ProgramsSection() {
             </Link>
           </div>
         </div>
-        <p id="programs-review-note" className="public-programs__review-note">
-          {publicSiteContent.programs.reviewNote}{" "}
-          {publicSiteContent.programs.sources.map((source, index) => (
-            <span key={source.href}>
-              {index > 0 && " · "}
-              <a
-                href={source.href}
-                aria-label={`Official EARIST Graduate School ${source.label.toLowerCase()}`}
-                className="underline underline-offset-2"
-              >
-                {source.label}
-              </a>
-            </span>
-          ))}
-        </p>
         <div className="public-programs__directory">
           {publicSiteContent.programs.groups.map((group) => (
             <div
               key={group.id}
               role="group"
               aria-labelledby={`programs-${group.id}`}
-              aria-describedby="programs-review-note"
             >
               <h3
                 id={`programs-${group.id}`}
@@ -63,8 +47,20 @@ export function ProgramsSection() {
                 {group.title}
               </h3>
               <ul className="public-programs__list">
-                {group.entries.map((name) => (
-                  <li key={name}>{name}</li>
+                {group.entries.map((program) => (
+                  <li key={program.name}>
+                    <span>{program.name}</span>
+                    {program.majors.length > 0 && (
+                      <div className="public-programs__majors">
+                        <p>Major in:</p>
+                        <ul>
+                          {program.majors.map((major) => (
+                            <li key={major}>{major}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </li>
                 ))}
               </ul>
             </div>

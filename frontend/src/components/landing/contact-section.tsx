@@ -1,4 +1,5 @@
 import { ArrowUpRight } from "lucide-react";
+import { InquiryForm } from "./inquiry-form";
 import { publicSiteContent } from "@/content/public-site-content";
 
 export function ContactSection() {
@@ -8,7 +9,6 @@ export function ContactSection() {
     <section
       id="contact"
       aria-labelledby="contact-title"
-      aria-describedby="contact-review-note"
       className="public-body-section public-contact"
     >
       <div className="public-body-frame">
@@ -21,11 +21,8 @@ export function ContactSection() {
           </div>
           <div>
             <p className="public-body-copy">
-              Use the official contact and platform references below for
-              institutional inquiries.
-            </p>
-            <p id="contact-review-note" className="public-contact__review-note">
-              {contact.reviewNote}
+              Contact EARIST or use the platforms below for institutional
+              inquiries.
             </p>
           </div>
         </div>
@@ -47,33 +44,10 @@ export function ContactSection() {
             <a href={contact.phoneHref} className="public-contact__line">
               {contact.phone}
             </a>
-            <a href={contact.sourceHref} className="public-contact__source">
-              Source: Graduate School reference 2
-            </a>
 
-            <div className="public-contact__earlier">
-              <h4>Earlier Graduate School listing</h4>
-              <a
-                href={contact.graduateSchoolReference.phoneHref}
-                className="public-contact__line"
-              >
-                {contact.graduateSchoolReference.phone}
-              </a>
-              <p>
-                Facebook/Twitter handle:{" "}
-                <span>{contact.graduateSchoolReference.socialHandle}</span>
-              </p>
-              <a
-                href={contact.graduateSchoolReference.sourceHref}
-                className="public-contact__source"
-              >
-                View official reference · confirm current details
-              </a>
-            </div>
-          </div>
-
-          <div>
-            <h3 className="public-contact__group-title">Official platforms</h3>
+            <h3 className="public-contact__group-title public-contact__platform-title">
+              Official platforms
+            </h3>
             <ul className="public-contact__platforms">
               {contact.platforms.map((platform) => (
                 <li key={platform.href}>
@@ -90,6 +64,7 @@ export function ContactSection() {
               ))}
             </ul>
           </div>
+          <InquiryForm />
         </div>
       </div>
     </section>

@@ -9,7 +9,6 @@ const footerGroups = [
     links: [
       { label: "Programs", href: "/#programs" },
       { label: "Getting Started", href: "/#getting-started" },
-      { label: "FAQ", href: "/faq" },
       { label: "About", href: "/#about" },
     ],
   },
