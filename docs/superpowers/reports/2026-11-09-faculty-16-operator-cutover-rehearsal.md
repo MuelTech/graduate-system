@@ -2,7 +2,7 @@
 
 Date: 2026-11-09 (Asia/Manila). Repository: `MuelTech/graduate-system`. Branch: `feat/faculty-admin-access`.
 
-**Status: FACULTY-16 implemented / pending independent review.** No independent acceptance or activation is asserted. FACULTY-17 and FACULTY-18 were not implemented.
+**Status: FACULTY-16 accepted for continuation at `f86a52fc375d8c1b08ccc8fd1d6408658dd5665a` after independent remote commit-diff/source review.** This is a source/continuation acceptance only—not owner QA completion, live cutover approval, or production readiness. FACULTY-17 and FACULTY-18 were not implemented.
 
 ## Bounded source-integrity correction — 2026-11-09
 
@@ -31,7 +31,7 @@ npm run faculty:cutover:rehearse -- --help
 git diff --check
 ```
 
-No actual development/XAMPP, staging or production database was inspected or modified. No real mapping, schema, migration, activation or FACULTY-17/18 work occurred. The new disposable server used only `backend/.tmp/faculty16-source-server/data` on port 33316; generated schemas were removed and that helper server was shut down. DR-1/2 and applicable DR-4–7 remain unresolved/held out; DR-3 remains resolved. FACULTY-4/FACULTY-12 exact contention gates remain open; all three activation gates remain false; owner/manual QA and hosted CI remain unclaimed. Status remains **implemented / pending independent review**.
+No actual development/XAMPP, staging or production database was inspected or modified. No real mapping, schema, migration, activation or FACULTY-17/18 work occurred. The new disposable server used only `backend/.tmp/faculty16-source-server/data` on port 33316; generated schemas were removed and that helper server was shut down. DR-1/2 and applicable DR-4–7 remain unresolved/held out; DR-3 remains resolved. FACULTY-4/FACULTY-12 exact contention gates remain open; all three activation gates remain false; owner/manual QA and hosted CI remain unclaimed. Status is superseded by the independent continuation-acceptance record below; unresolved owner/environment gates remain open.
 
 Exact correction files (relative to `4383c38`): `backend/package.json`; `backend/scripts/faculty-cutover-rehearsal.cjs`; `backend/src/cli/faculty-cutover-rehearsal.ts`; `backend/tests/unit/access/faculty-16-source-provenance.test.ts`; `backend/tests/integration/faculty-16-cutover-rehearsal.test.ts`; `docs/runbooks/faculty-16-cutover-rehearsal.md`; this report; `docs/superpowers/reports/evidence/2026-11-09-faculty-16-rehearsal.json`.
 
@@ -119,7 +119,7 @@ Backend build, focused source/fixture typecheck and diff checks **PASS**. No pro
 
 - **Hosted CI:** not observed/claimed.
 - **Project-owner manual/browser/visual QA:** NOT EXECUTED / not recorded as PASS.
-- **Independent remote source review:** PENDING.
+- **Independent remote source review:** PASS — no acceptance-blocking issue found in the exact remote range `4383c38c881d16b5bcb266deff8d6732001645e7` → `f86a52fc375d8c1b08ccc8fd1d6408658dd5665a`. Review covered the original 13-file FACULTY-16 implementation and the 8-file source-provenance correction. Agent-local test/build/MariaDB commands were not independently rerun by the reviewer.
 - **FACULTY-4 real last-Full contention readiness:** OPEN; exact harness not executed.
 - **FACULTY-12 five-case real essay/access contention readiness:** OPEN; exact harness not executed.
 - **Activation:** `ADMINISTRATOR_MANAGEMENT_ENABLED`, `DIRECT_ACCESS_ENFORCEMENT_ENABLED`, `OPERATIONAL_ENFORCEMENT_ENABLED` remain unchanged and false. No real provisioning or development/staging/production cutover.
@@ -143,3 +143,18 @@ Backend build, focused source/fixture typecheck and diff checks **PASS**. No pro
 13. `docs/superpowers/GSIS_IMPLEMENTATION_CHECKLIST.md`
 
 The containing commit is the ending implementation HEAD; its exact SHA, clean worktree and local/actual-remote parity are reported after commit/push to avoid a self-referential commit ID. Push only to `feat/faculty-admin-access`; do not merge to main. Stop after FACULTY-16.
+
+
+## Independent remote source review and continuation acceptance
+
+**Independent review: PASS — no acceptance-blocking issue found.** FACULTY-16 is accepted for continuation at `f86a52fc375d8c1b08ccc8fd1d6408658dd5665a`.
+
+The reviewed remote range is `4383c38c881d16b5bcb266deff8d6732001645e7` → `f86a52fc375d8c1b08ccc8fd1d6408658dd5665a`, consisting of the bounded executable/source-provenance correction commit `8c53771970e48f2677e8d146a4e26fcbe92427c4` and the subsequent evidence/report-only publication commit. The live `feat/faculty-admin-access` branch was verified at the ending HEAD before this documentation update.
+
+The independent review inspected the exact pushed source, tests, runbook, regenerated evidence and canonical plan/checklist updates. It confirmed that the tracked launcher rejects dirty/hidden-index checkouts, loads the approved operator module graph from Git objects at the pinned HEAD, rejects stale ignored build artifacts/direct source execution, and records the executed commit plus per-file/source-tree hashes. The original provenance gap is therefore corrected in the reviewed source.
+
+The implementation report records the final clean committed replay at executed code/test commit `8c53771970e48f2677e8d146a4e26fcbe92427c4`: **4 files / 74 tests passed** (66 unit cases and 8 isolated MariaDB cases), with backend build, focused typecheck, launcher syntax/help and diff checks reported PASS. These execution results are agent-reported evidence inspected for consistency; the independent reviewer did not rerun those commands. Hosted CI was not observed and is not claimed.
+
+This acceptance is strictly **for continuation of the implementation sequence**. It does not close project-owner manual/browser QA for earlier Faculty UI packages, does not approve any actual identity mapping or environment inventory, and does not authorize a live cutover. DR-1/DR-2 and applicable DR-4–DR-7 remain unresolved/held out; DR-3 remains resolved. FACULTY-4 and FACULTY-12 exact real-MariaDB contention readiness gates remain OPEN. All three activation gates remain false. No actual development/XAMPP, staging or production database was inspected or modified. No FACULTY-17/18 work was performed.
+
+No application source, schema, migration, operator behavior, evidence payload, or activation setting was changed by this acceptance record. This is a documentation-only continuation checkpoint.
