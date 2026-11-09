@@ -1,0 +1,99 @@
+{
+  "package": "FACULTY-17A",
+  "status": "implemented / pending independent review",
+  "date": "2026-11-10",
+  "timezone": "Asia/Manila",
+  "evidenceClass": "agent-local synthetic isolated database/authentication execution",
+  "executedCodeCommit": "f29c994e4fc21cebd5801ec8cb57e56c628dab45",
+  "identity": {
+    "source": "f29c994e4fc21cebd5801ec8cb57e56c628dab45",
+    "sourceWorktree": "CLEAN",
+    "version": [
+      {
+        "version": "10.4.32-MariaDB"
+      }
+    ],
+    "migration": "20261110010000_role_scoped_email_identity",
+    "migrationSha256": "61238fdbb63925ac6da653d1bd10189cfe682ca20df646ee92afe7d209c03e68",
+    "preservedPreexistingDataSha256": "04d01af9a382bcb7a342fecd14659a88fbfb69ab314ef1ed728e83bbfac81ff2",
+    "migrationCount": 58,
+    "tableCount": 71,
+    "newTriggers": [
+      "users_email_identity_insert",
+      "users_email_identity_update"
+    ]
+  },
+  "operatorCompatibility": {
+    "sourceProvenance": {
+      "sourceCommit": "f29c994e4fc21cebd5801ec8cb57e56c628dab45",
+      "execution": "GIT_HEAD_TYPESCRIPT",
+      "sourceTreeSha256": "efd9daa1029ccc02c04e29b64804ec775aa60bdb0cbcb9c74a5752b8d3496dad",
+      "files": [
+        {
+          "file": "backend/scripts/faculty-cutover-rehearsal.cjs",
+          "sha256": "212fc5a5af5eb9b4403cb34078fb93f6c7f5f7cb289a64a2b5d1f9bfdd26f017"
+        },
+        {
+          "file": "backend/src/access/account-access.ts",
+          "sha256": "0c2946b1b6599e63912d8e7c87d46154813e625282224dd6c435a0870d07c48a"
+        },
+        {
+          "file": "backend/src/access/capability-catalog.ts",
+          "sha256": "45693fb1054a046345ff1a5fae1086cb5e538d6fb7ac39928af54fe039cdda1f"
+        },
+        {
+          "file": "backend/src/access/cutover-rehearsal.database.ts",
+          "sha256": "653573d2473b99619f131b3fccf32dd1f261b785c66aeea6fd3d5570728bee59"
+        },
+        {
+          "file": "backend/src/access/cutover-rehearsal.ts",
+          "sha256": "8dd3cc4f3c91e52261e7f17971f2fe903e74630227cc4e298e17ea47cab82df1"
+        },
+        {
+          "file": "backend/src/cli/faculty-cutover-rehearsal.ts",
+          "sha256": "f3ca3cfde8113ccaba67b0f30d92417ab0a50f178d7c905b060ebd7b8edf0dae"
+        },
+        {
+          "file": "backend/src/utils/academic-account.ts",
+          "sha256": "1127d4eb533381726ab6682639cda61c198bb9a3f9c795946c86e909764a8992"
+        },
+        {
+          "file": "backend/src/utils/account-email.ts",
+          "sha256": "b1e470976a1db8ec0063cc697280e4f9848b18d3c317bf8cfcc1cca0e37c5dbd"
+        }
+      ]
+    },
+    "databaseVersion": "10.4.32-MariaDB",
+    "migrationCount": 58,
+    "tableCount": 71,
+    "accountCount": 6,
+    "gs020PdfSha256": "19792406d9b7bcffe72415797d388f855d164ba28d68939f2a4737b14a68b8da",
+    "restoredBusinessDigest": "1e321211a22960ad7e2614b122ac44c541739a01eda937c1b88abe4183f047f2",
+    "cleanChain": true,
+    "populatedUpgrade": true,
+    "sqlBackupRestored": true,
+    "appliedBatches": 4,
+    "restorationBatches": 4,
+    "heldOutAdminAccounts": 1
+  },
+  "finalReplay": {
+    "files": 4,
+    "passed": 81,
+    "failed": 0,
+    "skipped": 0,
+    "identityCases": 51,
+    "retirementCompatibilityCases": 10,
+    "historicalFoundationCases": 12,
+    "operatorCompatibilityCases": 8,
+    "note": "Foundation count includes three server-isolation contract cases."
+  },
+  "disposableServer": {
+    "newWorkspaceDataDirectory": "backend/.tmp/faculty17a-server/data",
+    "loopbackPort": 33318,
+    "remainingGeneratedSchemas": 0,
+    "shutdown": true
+  },
+  "activationGates": "unchanged and false",
+  "hostedCI": "not observed",
+  "projectOwnerManualQA": "pending; not claimed"
+}

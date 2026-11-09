@@ -111,3 +111,17 @@ Final bounded file inventory and clean committed replay evidence follow before d
 - `frontend/e2e/faculty-17a-login.spec.ts`
 - `frontend/scripts/faculty-17a-fixture-server.mjs`
 - `frontend/scripts/verify-faculty-2-session.mjs`
+
+## Final clean committed source and replay
+
+Executed code/test checkpoint: `f29c994e4fc21cebd5801ec8cb57e56c628dab45`. The identity harness reported a CLEAN worktree; the operator's unchanged provenance mechanism loaded the pinned committed application graph, now explicitly including the pure email helper. The final publication changes only this report and the sanitized evidence, with no application/schema/test changes after that checkpoint.
+
+Final consolidated replay: **4 files / 81 tests passed, zero failures/skips**: 51 identity/migration/auth/provisioning cases, 10 retirement-preservation cases, 12 historical foundation cases (including 3 server-isolation contracts), and 8 operator migration/SQL-restore/CLI cases. The focused unit regression separately passed **12 files / 396 tests**, frontend verifiers **119 checks**, and synthetic Chrome **6 scenarios**. No unrelated full-suite run was performed.
+
+- Migration SHA-256: `61238fdbb63925ac6da653d1bd10189cfe682ca20df646ee92afe7d209c03e68`.
+- Preserved preexisting business-column SHA-256: `04d01af9a382bcb7a342fecd14659a88fbfb69ab314ef1ed728e83bbfac81ff2`. The migration comparison retained raw email, User IDs, hashes, timestamps, profiles, Student relationships and original audit attribution; only new key projections and migration ledger additions were excluded.
+- Target: 58 committed migrations, 71 tables, and the two expected identity triggers. Prisma comparison found no target-schema drift after both clean deployment and populated upgrade.
+- Operator committed source-tree SHA-256: `efd9daa1029ccc02c04e29b64804ec775aa60bdb0cbcb9c74a5752b8d3496dad`; its module-file hashes, independent historical GS-020 hash and restored-state digest are in the evidence.
+- Every generated FACULTY-1/16/17/17A schema was confirmed absent on the isolated server (count zero), and the process was shut down only after its exact workspace data directory/port were verified. The frontend fixture and temporary browser were stopped.
+
+See [sanitized source/replay evidence](evidence/2026-11-10-faculty-17a-identity.json). The runtime requires the new columns/triggers; deployment must use the reviewed migration and compatible role-scoped code before any approved pair is provisioned. No such actual environment action occurred. The delivery response records the ending HEAD and verified local/actual-remote parity, avoiding a self-referential commit hash here. Independent source review and project-owner QA remain pending.
