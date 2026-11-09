@@ -1,6 +1,6 @@
 # FACULTY-15 — Administrators Management and permission-aware Admin UI
 
-**Status:** Implemented / pending independent review.
+**Status:** Accepted for continuation at `60e559568b4a368666e5cd42fde64eeb3ec29daf` after independent remote commit-diff/source review. Project-owner manual/browser/visual QA remains pending and separate from this source-continuation acceptance.
 
 **Date:** 2026-11-09 (Asia/Manila).
 
@@ -88,7 +88,7 @@ node node_modules/@playwright/test/cli.js test e2e/administrators-management.spe
 
 Use the existing Playwright Chrome configuration. Stop the preview before a production build. The repository's existing Next middleware-convention and Node register deprecations, and Vitest native-config warning, are nonblocking existing toolchain notices.
 
-**Project-owner manual/browser/visual acceptance remains pending and belongs to the project owner. It is not recorded as PASS.** Independent remote source review remains pending. Hosted CI is not claimed by local tests: `.github/workflows/ci.yml` triggers pushes to main and PRs targeting main; this delivery does not merge to main. Any actual commit status observed after push is reported in the delivery message.
+**Project-owner manual/browser/visual acceptance remains pending and belongs to the project owner. It is not recorded as PASS.** Independent remote commit-diff/source review is complete and accepted for continuation at `60e559568b4a368666e5cd42fde64eeb3ec29daf`. Hosted CI was not observed for this delivery; local/synthetic execution evidence is not recorded as hosted CI.
 
 ## Dormancy and unresolved readiness gates
 
@@ -96,7 +96,7 @@ All three existing code-owned switches remain literal `false`: `ADMINISTRATOR_MA
 
 FACULTY-4's isolated real-MariaDB migration/full-chain/contention/audit-trigger/rollback verification remains unexecuted. FACULTY-12's five-case isolated InnoDB evaluator/access/grading contention proof also remains unexecuted. Their existing separate-server safeguards/readiness requirements remain intact; mock/unit success and browser 409 feedback do not close either gate. No normal XAMPP/application database, scratch schema, reset, reseed or live write was used here.
 
-FACULTY-15 is implemented / pending independent review. Stop here; FACULTY-16 is not started.
+FACULTY-15 is accepted for continuation at `60e559568b4a368666e5cd42fde64eeb3ec29daf`. Stop here; FACULTY-16 remains deferred / not started pending explicit project-owner approval.
 
 ## Exact changed files
 
@@ -152,3 +152,34 @@ The following manifest includes this report and the two status-only canonical do
 - `frontend/src/components/admin/faculty/faculty-form.tsx`
 - `frontend/src/components/admin/faculty/temporary-credential.tsx`
 - `frontend/src/lib/admin-access.ts`
+
+
+## Independent-review acceptance — 2026-11-09 (Asia/Manila)
+
+Independent remote commit-diff/source review is complete for FACULTY-15 commit `60e559568b4a368666e5cd42fde64eeb3ec29daf`. The live `feat/faculty-admin-access` branch was verified at that exact implementation SHA, and the pushed range from `bb368269e4fb479f030c6be388a5767d4a9f1b9a` was reconciled as one commit changing exactly 50 files. The package changed frontend production/UI, verification and documentation only; no FACULTY-15 production backend source, schema, migration or activation mechanism changed.
+
+The review verified that the Admin frontend consumes the existing FACULTY-13 `/auth/me` configured-access projection without inferring Full authority from the ADMIN role alone. Current identity, password readiness, configured-access status, Full/Restricted level and exact ADMIN-category capabilities are validated fail-closed. Valid zero-grant Restricted Administrators remain authenticated with a safe account landing; malformed, wrong-category, duplicate, unavailable, inactive or unmapped access never falls back to Full.
+
+The frontend reuses the original FACULTY-1 capability catalog directly through a narrow build-time loader rather than maintaining a second grant authority. Full Administrator presentation requires the complete enumerated ADMIN catalog including the non-direct-grantable Administrator-management capability. Restricted presentation uses only the resolved effective capability set and cannot obtain `administrator_access.manage`, Faculty `essay.evaluate`, unknown keys or missing prerequisites through the UI.
+
+Administrators Management is presented only to a current Full Administrator and reuses the accepted FACULTY-4 list/detail/create/PATCH contracts. The UI supports bounded list/detail, explicit Full/Restricted level, Active/Inactive state, direct capability configuration, safe unmapped-target review, last-active-Full conflict feedback and one-time temporary credential handoff. The temporary password remains component-local, bypasses React Query caches and persistent browser storage, and is cleared on dismissal. The FACULTY-4 access-removal API remains an existing backend operation; the accepted FACULTY-15 UI scope does not require a separate removal button, so its absence is not an acceptance blocker.
+
+The dynamic Admin navigation and action controls map existing routes to approved catalog capabilities. Read authority does not automatically display mutation controls. Cross-module dependencies are bounded: Applicant assignment is presented only with both Exam Schedule management and Applicant read access, while Scheduled-defense summary/list requests that use the Defense Applications API are withheld without the corresponding Applications read grant. Settings reads are separated among general Settings, Audit, Email Templates, Email Logs and Exam Configuration rather than fetching unrelated settings data.
+
+Dashboard containment was independently checked because `OPERATIONAL_ENFORCEMENT_ENABLED` remains false. The frontend requests the legacy broad `/admin/dashboard` aggregate only when the current account owns every read capability represented by that aggregate. Partial or zero-grant Restricted accounts instead receive authorized destination links and a safe no-work landing; the UI does not fetch the broad aggregate and hide unauthorized cards afterward.
+
+Current-access and private-work caching are account/access scoped. The current-access query is keyed by authenticated Admin User ID; the operational QueryClient remounts on the resolved access fingerprint and clears on account/access changes or failure. Foreground/focus, the shared protected-resource 403 signal and successful mutations refresh current access. Route presentation refreshes access before rendering sensitive Admin pages, but these checks remain presentation only; existing backend route/service/resource authorization remains authoritative.
+
+The review also verified that Full administrative authority does not recreate academic override authority: legacy Admin Essay Evaluation controls are removed from the Exam Record presentation, and unclassified result-email mutation UI is withheld. Custom Roles and mock Analytics remain compatibility/full-only destinations for later ownership; FACULTY-15 does not implement arbitrary Custom Roles, Analytics or FACULTY-17 retirement.
+
+No acceptance-blocking authorization, capability-mapping, Dashboard-query, Administrator-management, privacy/cache or scope issue remained.
+
+Evidence classes remain separate. Codex reported 49 new frontend verification checks PASS, 87 related frontend checks PASS, 9 backend suites / 390 tests PASS, 29 synthetic Chrome scenarios PASS plus focused repeat runs, frontend TypeScript/scoped ESLint/production build PASS, backend build PASS and repository-root diff check PASS. The independent review inspected the pushed production source, exact commit diff, FACULTY-1/FACULTY-4 authority semantics and committed verifier/browser-test intent; it did not rerun those local commands or inspect ignored local screenshots. GitHub hosted status/workflow runs were not observed for the reviewed SHA.
+
+**Project-owner manual/browser/visual QA remains PENDING / NOT YET EXECUTED as an acceptance evidence class.** Synthetic browser runs and implementation-agent screenshot inspection do not substitute for owner acceptance. FACULTY-15 is accepted here for development continuation only.
+
+All three code-owned switches remain literal `false`: `ADMINISTRATOR_MANAGEMENT_ENABLED`, `DIRECT_ACCESS_ENFORCEMENT_ENABLED`, and `OPERATIONAL_ENFORCEMENT_ENABLED`. No real Full/Restricted Administrator provisioning, bootstrap, grant activation, role/data conversion or live Restricted rollout occurred. DR-1 and DR-4 remain separately governed.
+
+The FACULTY-4 isolated real-MariaDB migration/full-chain/contention/audit-trigger/rollback gate remains **OPEN / UNVERIFIED**. The FACULTY-12 five-case isolated InnoDB evaluator/access/grading contention gate also remains **OPEN / UNVERIFIED**. Neither is closed by FACULTY-15's mock/unit/browser evidence.
+
+**Acceptance checkpoint:** FACULTY-15 is accepted for continuation at `60e559568b4a368666e5cd42fde64eeb3ec29daf`. Live Restricted enforcement/provisioning remains unactivated. FACULTY-16 remains deferred / not started pending explicit project-owner approval.
