@@ -593,6 +593,10 @@
   border: 1px solid #fff;
   border-radius: 20px;
   background: rgba(255, 255, 255, 0.4);
+  transition:
+    width var(--public-carousel-duration) cubic-bezier(0.45, 0, 0.2, 1),
+    background-color var(--public-carousel-duration) ease,
+    border-color var(--public-carousel-duration) ease;
 }
 .earist-public .public-carousel__indicators button[aria-pressed="true"] span {
   width: 28px;
@@ -810,6 +814,9 @@
   }
 }
 @media (prefers-reduced-motion: reduce) {
+  .earist-public .public-carousel__indicators button span {
+    transition: none;
+  }
   .earist-public .public-carousel__slide:not([hidden]) {
     animation: none;
   }
