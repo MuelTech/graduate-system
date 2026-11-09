@@ -131,4 +131,35 @@ Executed code/test checkpoint: `833d2e6d0a58a8c6008bec0e0ea3a74c99743118`. The r
 - Operator executed source-tree SHA-256: `ddb1f2aed0d81c3ba0183e011df06e03dc19d2a5bbcc5389379230a92ec2685f`; 57 migrations, 71 tables, 6 synthetic accounts, 4 apply batches and 4 restoration batches. Its own independent GS-020 output and restored-state hashes are in the evidence.
 - All generated FACULTY-1/16/17 schemas were confirmed absent (count zero) on the new loopback server. Only the process whose exact workspace data directory and port 33317 were verified was shut down. The synthetic frontend fixture and temporary smoke-test browser were also stopped.
 
-See [sanitized committed-replay evidence](evidence/2026-11-10-faculty-17-retirement.json). No historical FACULTY-16 evidence payload was modified. Independent review and project-owner acceptance remain pending; no subsequent package is authorized by these results.
+See [sanitized committed-replay evidence](evidence/2026-11-10-faculty-17-retirement.json). No historical FACULTY-16 evidence payload was modified. At initial report publication, independent review and project-owner acceptance remained pending. See the chronological owner deployment/review addendum below for subsequent status; this addendum does not itself record formal project-owner acceptance.
+
+## Owner-performed local development migration deployment addendum (2026-11-10, Asia/Manila)
+
+This chronological addendum records a later project-owner operation. It does not rewrite the implementation agent's earlier synthetic-only execution record.
+
+The project owner supplied a terminal screenshot showing `npx prisma migrate deploy` executed from the `backend` directory. Prisma loaded `prisma.config.ts`, identified the MySQL database `graduate_system` at `localhost:3306`, reported **58 migrations found**, and reported successful application of these four pending migrations:
+
+- `20261108010000_faculty_identity_compatibility`
+- `20261108020000_administrator_access_lock`
+- `20261110000000_retire_custom_roles`
+- `20261110010000_role_scoped_email_identity`
+
+The terminal output ended with: **“All migrations have been successfully applied.”**
+
+Relevant package migrations:
+- FACULTY-17: `20261110000000_retire_custom_roles`.
+- FACULTY-17A: `20261110010000_role_scoped_email_identity`.
+
+### Evidence limits and operational boundaries
+
+- This is **project-owner-provided terminal screenshot evidence**. The reviewer did not independently connect to or query the local database.
+- The screenshot identifies the target as `graduate_system` at `localhost:3306`; the owner identifies this as the local development/XAMPP MySQL environment.
+- This confirms that Prisma reported successful deployment of the four listed migrations. It does not independently prove post-deployment schema inventory, application startup, Faculty/Admin account provisioning, same-email login smoke tests, or every affected workflow.
+- A subsequent `npx prisma migrate status` result was not supplied; do not claim an independently verified zero-pending status.
+- The shown command is `migrate deploy`; the screenshot does not show a database reset, `db push`, or seed operation.
+- The local development database was accessed and modified by this **separate owner-performed deployment**. The earlier statements that the implementation agent used only isolated synthetic databases remain historically accurate for the agent's implementation and verification runs.
+- No staging or production database operation is reported or authorized by this addendum.
+- This local migration deployment does not close the separate FACULTY-4/FACULTY-12 real-MariaDB contention-readiness gates and does not enable any activation gate. All three code-owned activation gates remain `false`.
+- No real Faculty/Admin account was provisioned, merged, split, or converted by this migration command.
+
+Project-owner application smoke QA and formal package acceptance remain separate checkpoints.
