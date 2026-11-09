@@ -208,13 +208,13 @@ This register preserves both remaining policy/environment gaps and resolved deci
 
 | ID | Decision / evidence needed | Blocks |
 | --- | --- | --- |
-| DR-1 | Identify actual initial Full Administrator account(s), remaining Admin mapping and operator bootstrap authority. Seed account is not evidence. | Live Admin bootstrap, Restricted provisioning, cutover |
-| DR-2 | Inspect real CUSTOM users/roles/grants; approve each target account identity and direct grant set, including mixed duties, inactive/unmapped accounts and unknown/duplicate keys. | CUSTOM conversion, removal of Other Roles, final activation if unresolved live users remain |
-| DR-3 — **RESOLVED** | Faculty Essay Evaluation is school-wide: configured Faculty evaluators may see and evaluate all pending eligible entrance-exam essays across Programs. Program is not an authorization boundary; no evaluator-to-Program relation or Program Chair role is required. Initial evaluator designation remains an operator/cutover mapping task, not a scope-policy question. | Resolved; no longer blocks Faculty essay queue/read/write design |
-| DR-4 | Choose approved unique identifiers for separate Faculty/Admin accounts when the same person currently uses one email. Preserve separate accounts; current unique email constraint cannot support identical emails twice. | Dual-duty provisioning/import; do not silently relax email uniqueness or invent aliases |
-| DR-5 | Confirm exact permitted External committee roles beyond the supported External Panelist scenario if new assignment validation requires them. Current generic candidate/role code does not prove institutional eligibility. Preserve existing exact history. | New/changed External Chairman/Rapporteur/Facilitator eligibility; no expansion by absence of a check |
-| DR-6 | Confirm disposition/UX when availability or activity changes after a signed request/CONFORME but before Dean approval. New assignment must satisfy Internal/active/available target rules, but accepted signed evidence must not be edited or deleted. | Eligibility-change recovery at Dean approval; ordinary eligible requests remain unchanged |
-| DR-7 | Confirm handling of Internal → External reclassification with existing active Adviser relationships or legacy External-Adviser anomalies. Preserve history; never silently revoke, reassign or legitimize an invalid relationship. | Such reclassification/repair cases, not ordinary Faculty profile reads |
+| DR-1 — **POLICY APPROVED; ACCOUNT/BOOTSTRAP PENDING** | At least one active Full Administrator is required for privileged Administrator Management. Initial account must be explicitly designated by the project owner and established through a controlled, operator-authorized, auditable bootstrap. Never infer from Gmail/email, role name, seed, creator, or account order. | Actual initial account designation, live bootstrap, Restricted provisioning and cutover |
+| DR-2 — **DEVELOPMENT RETIREMENT APPROVED; LIVE DISPOSITION PENDING** | Completely retire CUSTOM/CustomRole/RoleFeatureAccess and legacy Other Roles from the target architecture. Development-only CUSTOM test accounts may be removed through separately controlled cleanup and replaced by approved Faculty/Admin seeds. No automatic conversion or permission translation. Preserve unrelated academic/Defense/audit history and historical migrations. | FACULTY-17 implementation; any actual development account cleanup requires its own explicit operation authorization; live/production account disposition remains unresolved |
+| DR-3 — **RESOLVED** | Faculty Essay Evaluation is school-wide: configured Faculty evaluators may see and evaluate all pending eligible entrance-exam essays across Programs. Program is not an authorization boundary; no evaluator-to-Program relation or Program Chair role is required. Initial evaluator designation remains an operator/cutover mapping task. | Resolved; no longer blocks Faculty essay queue/read/write design |
+| DR-4 — **POLICY APPROVED; ENGINEERING IMPLEMENTATION PENDING** | Separate Faculty and Admin User records may share the same Gmail/email. Login role must select the correct account. Each record retains its own ID, password, session, grants and audit attribution. Authentication and recovery must be role-scoped; preserve same-role uniqueness and Applicant/Student promotion semantics. | Dual-duty same-email authentication, provisioning, recovery, schema uniqueness and session tests; must be implemented before affected dual-account provisioning/activation |
+| DR-5 — **POLICY APPROVED; IMPLEMENTATION VERIFICATION PENDING** | Admin may assign External Faculty as Chairman, Panelist, Rapporteur or Facilitator for an exact Defense schedule. External Faculty may never be Adviser or receive student advisees. Roles remain contextual assignments, not permanent account permissions. | Verify/correct Defense committee assignment eligibility and tests before enabling affected External assignments |
+| DR-6 — **POLICY APPROVED; IMPLEMENTATION VERIFICATION PENDING** | If requested Adviser becomes inactive/unavailable after CONFORME but before Dean approval, existing authorized Admin/Dean reviewer may reject the pending request with a reason. Preserve request and signed CONFORME unchanged; Student may submit a new request to another eligible Internal Faculty member. | Verify/correct rejection recovery path and regression tests in Adviser request/approval workflow |
+| DR-7 — **POLICY APPROVED; IMPLEMENTATION VERIFICATION PENDING** | An Internal Faculty member who has ever held an authoritative AdviserAssignment cannot be reclassified as External, even after assignment completion. Enforce server-side with no Admin override. | Verify/correct Faculty classification mutation and historical-assignment tests |
 
 Existing open ODP role-label confirmation, institutional Dean signatures, post-start committee substitution, evaluator excusal/quorum, comprehensive-exam history, account reactivation and Email Integration remain with their owning initiatives. Do not resolve them through this access plan. Retain current accepted ODP working mapping and all unmodified workflow rules.
 
@@ -224,7 +224,7 @@ Account inactivity always denies new protected access in the target. Its academi
 
 All packages require explicit separate authorization, verified current branch/base, a clean or understood worktree, bounded diff review, and commit/push followed by a stop. Expected areas are integration seams, not permission for unrelated refactors. New file paths are proposals; existing paths are grounded in the audit. The default verification follows the Engineering Verification Policy. Shared auth/schema changes deliberately require broader checks; focused UI work does not require repeated full backend suites.
 
-Sequence: **1 foundation → 2 auth → 3 identity compatibility → 4 Admin authority → 5 admission guards → 6 exam Admin guards → 7 defense Admin guards → 8 document guards → 9 operational guards → 10 Faculty configuration → 11 Faculty Management UI → 12 essay backend → 13 effective-access reads → 14 Faculty portal → 15 Administrators/Admin UI → 16 data cutover rehearsal → 17 Custom Roles UX retirement → 18 acceptance/activation.**
+Sequence: **1 foundation → 2 auth → 3 identity compatibility → 4 Admin authority → 5 admission guards → 6 exam Admin guards → 7 defense Admin guards → 8 document guards → 9 operational guards → 10 Faculty configuration → 11 Faculty Management UI → 12 essay backend → 13 effective-access reads → 14 Faculty portal → 15 Administrators/Admin UI → 16 data cutover rehearsal → 17 complete Custom Roles subsystem retirement → 17A same-Gmail role-scoped Faculty/Admin identity and recovery → 17B DR-5/6/7 implementation-alignment verification/corrections → 18 integrated acceptance/controlled activation.** FACULTY-17A and 17B are bounded follow-up packages added by this documentation revision; they do not replace or rewrite accepted historical package reports.
 
 ### FACULTY-1 — Direct-access foundation
 
@@ -305,7 +305,7 @@ Sequence: **1 foundation → 2 auth → 3 identity compatibility → 4 Admin aut
 
 - **Scope:** guard application review, scheduling/correction, committee candidate queries, records administration and Dean review/legacy assign wrapper; recheck proposed manual participant identity/activity/profile at writes.
 - **Non-goals:** committee quotas, external-role expansion, Adviser replacement, post-start substitution, scoring/verdict/report redesign.
-- **Dependencies:** 1–6; DR-5 before implementing disputed External-role eligibility.
+- **Dependencies:** 1–6. DR-5 is now owner-approved: External Faculty may be assigned Chairman, Panelist, Rapporteur, or Facilitator, never Adviser. Verify/correct any mismatch through bounded follow-up FACULTY-17B; do not rewrite this accepted historical package report.
 - **Expected areas:** thesis route/controller/service/repositories, scheduling correction, committee candidate helpers, Adviser Request Dean boundary.
 - **Migration impact:** none; retain assignment IDs/history.
 - **Authorization/UI impact:** Admin capabilities permit operations only; never academic evaluator/Rapporteur/Chairman powers. Assignment eligibility and automatic Adviser remain separate checks.
@@ -344,7 +344,7 @@ Sequence: **1 foundation → 2 auth → 3 identity compatibility → 4 Admin aut
 
 - **Scope:** Admin-managed Faculty profile/status/classification, direct Essay Evaluation grants, adviser availability; remove/deny self-service availability writes; align all new-assignment candidate/approval checks.
 - **Non-goals:** assigning Students/committees from Faculty Management, load caps, editing signed requests, rewriting existing assignments.
-- **Dependencies:** 1–9; DR-6/7 before affected pending-request/reclassification cases ship.
+- **Dependencies:** 1–9. DR-6/7 are now owner-approved; verify/correct the exact reject-after-CONFORME recovery and permanent Internal-after-AdviserAssignment classification lock through bounded follow-up FACULTY-17B. Preserve accepted signed evidence and existing assignments.
 - **Expected areas:** admin-panelist and panelist routes/controllers/services/repositories, canonical Adviser candidate/approval service, legacy available directory.
 - **Migration impact:** no relationship rewrite; any External-flag correction is explicit audited data work in 16.
 - **Authorization/UI impact:** `faculty.manage` controls profile/grants/availability; External effective availability false. Admin grant writes cannot confer academic authority on Admin itself.
@@ -409,7 +409,7 @@ Sequence: **1 foundation → 2 auth → 3 identity compatibility → 4 Admin aut
 
 - **Scope:** dedicated Administrators list/detail/status/access editor; Full/Restricted labels, safe last-Full conflict feedback, filtered Admin sidebar/actions and dashboard requests.
 - **Non-goals:** arbitrary Custom Role creation, Admin academic workspace, Analytics/Curriculum implementation, public signup for Admin.
-- **Dependencies:** 4–9, 13–14; DR-1 for live bootstrap and DR-4 for affected dual-account provisioning.
+- **Dependencies:** 4–9, 13–14; DR-1 policy is approved but actual bootstrap/account designation remains a FACULTY-18/live-environment gate. DR-4 policy is approved; role-scoped same-Gmail engineering implementation is tracked in FACULTY-17A before affected dual-account provisioning.
 - **Expected areas:** new Admin users/administrators pages/components, Admin layout/dashboard, capability presentation/query hooks.
 - **Migration impact:** none.
 - **Authorization/UI impact:** only Full manages accounts/access; Restricted sees granted modules and safe empty landing. API is authoritative even for guessed management URLs.
@@ -418,7 +418,7 @@ Sequence: **1 foundation → 2 auth → 3 identity compatibility → 4 Admin aut
 
 ### FACULTY-16 — Operator preflight, reconciliation and data-cutover rehearsal
 
-- **Status:** ✅ FACULTY-16 accepted for continuation at `f86a52fc375d8c1b08ccc8fd1d6408658dd5665a` after independent remote commit-diff/source review of the original implementation and bounded source-provenance correction. The correction makes the tracked launcher reject dirty/hidden-index checkouts and execute the pinned committed Git-object module graph rather than ignored `dist` output; the regenerated evidence records the executed code/test commit and source hashes. Agent-reported final clean committed replay: 4 files / 74 tests passed (66 unit + 8 isolated MariaDB), backend build, focused typecheck, launcher syntax/help and diff checks passed. Independent review verified the pushed source/diff/tests/evidence but did not rerun those commands. Hosted CI was not observed. Owner/manual QA remains unclaimed; no actual environment inventory/cutover occurred. DR-1/2 and applicable DR-4–7 remain unresolved/held out; DR-3 remains resolved. FACULTY-4/FACULTY-12 exact contention readiness gates remain OPEN; all three activation gates remain false. No FACULTY-17/18 work.
+- **Status:** ✅ FACULTY-16 accepted for continuation at `f86a52fc375d8c1b08ccc8fd1d6408658dd5665a` after independent remote commit-diff/source review of the original implementation and bounded source-provenance correction. The correction makes the tracked launcher reject dirty/hidden-index checkouts and execute the pinned committed Git-object module graph rather than ignored `dist` output; the regenerated evidence records the executed code/test commit and source hashes. Agent-reported final clean committed replay: 4 files / 74 tests passed (66 unit + 8 isolated MariaDB), backend build, focused typecheck, launcher syntax/help and diff checks passed. Independent review verified the pushed source/diff/tests/evidence but did not rerun those commands. Hosted CI was not observed. Owner/manual QA remains unclaimed; no actual environment inventory/cutover occurred. At FACULTY-16 completion, DR-1/2 and applicable DR-4–DR-7 were unresolved/held out; subsequent owner decisions are recorded in the current DR register and do not retroactively alter FACULTY-16 execution boundaries. DR-3 remains resolved. FACULTY-4/FACULTY-12 exact contention readiness gates remain OPEN; all three activation gates remain false. No FACULTY-17/18 work.
 
 - **Scope:** implement dry-run/idempotent operator manifest tooling, inventory actual authorized environment when separately permitted, bootstrap mappings and PANELIST/CUSTOM conversion rehearsal; record integrity/rollback evidence.
 - **Non-goals:** destructive resets, guessing CUSTOM grants or Full accounts, deleting legacy tables, modifying signed history, automatic academic repair.
@@ -429,22 +429,44 @@ Sequence: **1 foundation → 2 auth → 3 identity compatibility → 4 Admin aut
 - **Verification:** disposable clean-chain + snapshot upgrade, repeat-run no-op, interrupted/resumed batches, state drift rejection, historical outputs/hashes stable, zero dangling relationships and duplicate accounts, restoration/compatible rollback rehearsal.
 - **Stop condition:** reviewed operator evidence and concrete cutover manifest ready; stop before live execution/activation unless that exact environment action is separately authorized.
 
-### FACULTY-17 — Retire user-facing Custom Roles compatibility surface
+### FACULTY-17 — Complete Custom Roles subsystem retirement
 
-- **Scope:** remove mock Custom Roles navigation/page behavior and Other Roles login choice after reconciliation; safe legacy redirects or denied states with no new authority.
-- **Non-goals:** dropping CUSTOM enum/tables, deleting role/grant history, automatic account splitting, broad cleanup.
-- **Dependencies:** 15–16, DR-2 resolved for affected users; no active legacy users stranded by an unreviewed cutover.
-- **Expected areas:** Admin roles page/navigation, login choices, compatibility routes and docs/tests.
-- **Migration impact:** none; storage retained unread by target authorization.
-- **Authorization/UI impact:** four conceptual login roles; direct Faculty/Admin access editor owns configuration; old URLs cannot bypass Full checks.
-- **Verification:** no live Custom Role API introduced, old links/bookmarks, mapped/unmapped CUSTOM login, approved role labels, typecheck/lint/focused route contracts and owner visual review.
-- **Stop condition:** product retirement accepted with legacy evidence preserved; no destructive cleanup or next package.
+- **Scope:** remove the mock Custom Roles navigation/page/API and obsolete user-facing copy; retire the legacy Other Roles/CUSTOM authentication path; remove `UserRole.CUSTOM`, `User.customRoleId`, `CustomRole`, and `RoleFeatureAccess` from the target Prisma/database schema; update seeds, fixtures, tests and compatibility routes to the four-role model; add safe legacy URL redirects/denials with no new authority.
+- **Non-goals:** deleting unrelated User accounts, academic/Defense/audit history, historical migration files, or changing `PanelRole` / `PanelAssignment`; automatic account conversion; production data cleanup; live cutover.
+- **Dependencies:** 15–16; DR-2 development retirement policy approved. Any development-only CUSTOM account cleanup is a separate explicitly authorized operation. No production inventory or production cleanup is authorized by this package.
+- **Expected areas:** Admin roles page/navigation, auth service/repository and role selector contracts, Prisma schema, forward migration, seed/fixtures/tests, obsolete public copy/FAQ, compatibility routes and docs.
+- **Migration impact:** new forward Prisma migration removes only the obsolete CUSTOM enum value/column/FK/index and CustomRole/RoleFeatureAccess tables after repository-wide consumer/FK audit. Never edit/delete historical migration files. Prove no target runtime consumer remains. Preserve User IDs/credentials and all unrelated academic, Defense, signed, audit and historical evidence.
+- **Authorization/UI impact:** four conceptual login roles only; direct Faculty/Admin access editor owns configuration; Defense `PanelRole.PANELIST` and contextual Chairman/Panelist/Rapporteur/Facilitator/Adviser assignments remain unchanged. External Faculty may receive Chairman/Panelist/Rapporteur/Facilitator assignments but never Adviser.
+- **Verification:** old links/bookmarks, retired CUSTOM login/API denial, four-role login, forward migration from clean chain and populated synthetic legacy schema, no dangling FKs, preservation of User/academic/Defense/audit records, PanelRole/PanelAssignment unchanged, seed rebuild, typecheck/lint/focused route contracts and owner visual review.
+- **Stop condition:** complete legacy subsystem retirement is source-reviewed and synthetic migration evidence is recorded; no production cleanup, live cutover, or next package.
+
+### FACULTY-17A — Same-Gmail role-scoped Faculty/Admin accounts
+
+- **Scope:** implement DR-4's approved separate-account/same-email policy. Replace global email-only account resolution with a role-scoped identity contract that can resolve one Faculty User and one Admin User sharing the same normalized Gmail/email while preserving distinct IDs, passwords, sessions, access grants and audit attribution.
+- **Non-goals:** combined Faculty/Admin account/session, workspace switcher, duplicate accounts within the same role, changing Applicant ID or Student Number login, weakening Applicant-to-Student promotion, or automatically merging existing accounts.
+- **Dependencies:** FACULTY-17; DR-4 policy approved. Complete technical design review before schema/auth changes.
+- **Expected areas:** Prisma uniqueness/index migration, auth repository/service/controller contracts, NextAuth/session synchronization, Faculty/Admin provisioning, duplicate validation, password recovery/reset account selection, email notifications and tests.
+- **Migration impact:** replace global email uniqueness only with a carefully validated role-scoped constraint that permits the approved Faculty/Admin pair and prevents same-role duplicates. Preserve Applicant/Student same-record promotion and all existing identities. Do not assume a simple `@@unique([email, role])` is sufficient without auditing enum transitions and current records.
+- **Authorization/UI impact:** login role selector disambiguates the account server-side; no account shares credentials, sessions, grants or audit identity. Recovery must identify the selected account role and never reset the wrong account.
+- **Verification:** same email Faculty/Admin login in both selector directions; wrong-role rejection; same-role duplicate rejection; separate password/session/grant/audit isolation; password recovery correctness; Applicant/Student promotion and existing login regressions; migration from populated synthetic database.
+- **Stop condition:** same-email dual-account flow is source-reviewed and fully tested; no actual dual-duty account provisioning or live rollout.
+
+### FACULTY-17B — DR-5/DR-6/DR-7 implementation alignment
+
+- **Scope:** verify and make bounded corrections to the owning Defense assignment, Adviser request/Dean approval, and Faculty classification mutation paths so the newly approved DR-5/DR-6/DR-7 policies are enforced consistently.
+- **Non-goals:** redesigning Defense committee policy, changing existing role meanings, editing/deleting signed evidence, automatic Adviser replacement, automatic relationship cleanup, or changing accepted historical reports.
+- **Dependencies:** FACULTY-7 and FACULTY-10 accepted; DR-5/6/7 owner policies approved.
+- **Expected areas:** Admin Defense committee assignment validation, Adviser request rejection/reason and Dean approval path, Faculty Internal/External classification service/API/UI, regression tests and owning source-of-truth references.
+- **Migration impact:** no data rewrite. Preserve all historical PanelAssignment, AdviserAssignment, GS-020 signatures/snapshots and audit evidence.
+- **Authorization/UI impact:** External Faculty may be assigned Chairman, Panelist, Rapporteur or Facilitator on an exact schedule but never Adviser; an ineligible pending request after CONFORME may be rejected by the existing authorized reviewer with a reason; an Internal Faculty who has ever held an authoritative AdviserAssignment cannot be reclassified External, with no Admin override.
+- **Verification:** positive/negative role assignment matrix for Internal/External; External Adviser denial at list/request/approval boundaries; rejection after CONFORME preserves exact signed state and permits a new Student request; historical AdviserAssignment prevents reclassification even after completion; direct API/service bypass tests.
+- **Stop condition:** all three owner decisions are enforced and independently source-reviewed; no historical record repair or live activation.
 
 ### FACULTY-18 — Integrated acceptance and controlled activation
 
 - **Scope:** execute final cross-domain authorization, migration and multi-account UI acceptance; assemble coverage ledger/release checklist; perform only explicitly authorized environment cutover/activation from reviewed 16 manifest.
 - **Non-goals:** new functionality, cleanup, institution-policy decisions, hidden repairs, deployment without environment authorization.
-- **Dependencies:** 1–17, all blocking decisions resolved, independently reviewed remote HEADs and appropriate owner UI acceptance. If live action is not authorized, deliver reviewable release evidence and stop.
+- **Dependencies:** 1–17B, all blocking decisions for the specific target environment resolved, independently reviewed remote HEADs and appropriate owner UI acceptance. DR-1 actual Full Administrator designation/bootstrap and any live DR-2 account disposition require separate explicit environment authorization. FACULTY-4/FACULTY-12 exact real-MariaDB readiness gates must be closed with their required evidence. If live action is not authorized, deliver reviewable release evidence and stop.
 - **Expected areas:** tests/verifiers and release/acceptance docs; production corrections require a bounded fix to the owning package.
 - **Migration impact:** apply only reviewed migrations/manifest in the specifically authorized environment after consistent backup/restore proof; no new unreviewed schema.
 - **Authorization/UI impact:** no legacy broad ADMIN bypass coexists with Restricted accounts; role-only identity does not imply academic authority; final frontend/backend parity.
@@ -460,8 +482,10 @@ Each backend row includes direct HTTP, guessed resource ID and direct service-bo
 | Essay Evaluator only | Dashboard + Essay Evaluations; school-wide read/grade for all pending eligible entrance essays across Programs | No Admin, non-pending/ineligible attempt, committee or MCQ edit authority |
 | Internal available, no assignments | Eligible passed-Title ODP candidate when all current gates pass | No arbitrary My Advisees Student access; availability is not relationship authority |
 | Pending addressed GS-020, no advisee yet | Request context reachable; exact request response | No active relationship until CONFORME + Dean approval; no request-content mutation under signature |
+| Adviser becomes inactive/unavailable after CONFORME | Authorized reviewer can reject pending request with reason; Student can submit a new request | Original request and signed CONFORME remain unchanged; no automatic transfer |
+| Internal Adviser with any historical AdviserAssignment | Internal classification remains locked | No reclassification to External, including after assignment completion; no Admin override |
 | Assigned Adviser now unavailable for new work | Current assigned research/review work retained | External/new-assignment rules and history preservation remain; no COR/payment blanket access |
-| External with allowed Panelist assignment | Exact My Defenses/role work | Never Adviser candidate/new assignment; no unapproved external-role expansion |
+| External with permitted Defense assignment | Exact Chairman/Panelist/Rapporteur/Facilitator My Defenses/role work | Never Adviser candidate/new assignment; no student advisees |
 | Multiple Faculty responsibilities | Union of relevant work/navigation | Each resource still rechecks its own source; no union-induced privilege escalation |
 | Faculty without work | Dashboard/Profile/common allowed surfaces | No irrelevant zero-value academic cards or guessed API access |
 | Removed committee member | Existing attributed history stays owned by original assignment | No future active-session REST/socket/preview writes/reads through removed authority |
@@ -470,9 +494,9 @@ Each backend row includes direct HTTP, guessed resource ID and direct service-bo
 | Restricted Administrator | Only explicit keys, minimum task contexts and filtered aggregates | Hidden direct APIs/files/PDFs/settings/aliases denied; no access management/self-elevation |
 | Two concurrent Full removals | Exactly one valid change where required | Never zero active Full; audit atomicity and lock ordering verified |
 | Stale or revoked identity/grants | Current allowed actions remain usable | Disable/demotion/revocation effective on next protected operation and live transports; valid 403 does not sign out |
-| Same real person, two accounts | Separate approved identifiers, sessions and portals | No role/workspace switcher or merged grant inheritance; clear client query caches |
+| Same real person, Faculty + Admin accounts | Same Gmail/email may resolve to two separate User records by selected login role; independent passwords, sessions, grants and audit identities | No same-role duplicate, role confusion, wrong-account recovery, merged grants or workspace switcher |
 | PANELIST → FACULTY | Same User/profile/credentials/history IDs | PanelRole.PANELIST, historical text, hashes, signatures and exact documents unchanged |
-| CUSTOM reconciliation | Explicit approved account/grant manifest | Unknown/duplicate keys fail closed; no automatic Full/essay access or data deletion |
+| CUSTOM retirement | Forward migration removes obsolete CUSTOM enum/column/models/tables after consumer/FK audit | No historical migration rewrite, unrelated User/history deletion, or changes to PanelRole/PanelAssignment |
 | Upgrade/restart/rollback | Idempotent reviewed migration and compatible binaries | No role reset, duplicate accounts, lost records or Restricted access through legacy code |
 
 Use existing auth, Adviser, exam essay/scoring/amendment, committee/record/document and realtime tests listed in the audit. Add behavior tests for new risks, especially race/revocation/alias boundaries, rather than only source-string mirrors. Real MySQL/MariaDB contention is required for last-Full and sensitive grade/access races; SQLite or mocked transactions cannot prove it.
