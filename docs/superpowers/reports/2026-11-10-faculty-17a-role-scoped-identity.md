@@ -124,4 +124,35 @@ Final consolidated replay: **4 files / 81 tests passed, zero failures/skips**: 5
 - Operator committed source-tree SHA-256: `efd9daa1029ccc02c04e29b64804ec775aa60bdb0cbcb9c74a5752b8d3496dad`; its module-file hashes, independent historical GS-020 hash and restored-state digest are in the evidence.
 - Every generated FACULTY-1/16/17/17A schema was confirmed absent on the isolated server (count zero), and the process was shut down only after its exact workspace data directory/port were verified. The frontend fixture and temporary browser were stopped.
 
-See [sanitized source/replay evidence](evidence/2026-11-10-faculty-17a-identity.json). The runtime requires the new columns/triggers; deployment must use the reviewed migration and compatible role-scoped code before any approved pair is provisioned. No such actual environment action occurred. The delivery response records the ending HEAD and verified local/actual-remote parity, avoiding a self-referential commit hash here. Independent source review and project-owner QA remain pending.
+See [sanitized source/replay evidence](evidence/2026-11-10-faculty-17a-identity.json). The runtime requires the new columns/triggers; deployment must use the reviewed migration and compatible role-scoped code before any approved pair is provisioned. No such actual environment action occurred. The delivery response records the ending HEAD and verified local/actual-remote parity, avoiding a self-referential commit hash here. At initial report publication, independent source review and project-owner QA remained pending. See the chronological owner deployment/review addendum below for subsequent status; project-owner QA and formal acceptance remain separate.
+
+## Owner-performed local development migration deployment addendum (2026-11-10, Asia/Manila)
+
+This chronological addendum records a later project-owner operation. It does not rewrite the implementation agent's earlier synthetic-only execution record.
+
+The project owner supplied a terminal screenshot showing `npx prisma migrate deploy` executed from the `backend` directory. Prisma loaded `prisma.config.ts`, identified the MySQL database `graduate_system` at `localhost:3306`, reported **58 migrations found**, and reported successful application of these four pending migrations:
+
+- `20261108010000_faculty_identity_compatibility`
+- `20261108020000_administrator_access_lock`
+- `20261110000000_retire_custom_roles`
+- `20261110010000_role_scoped_email_identity`
+
+The terminal output ended with: **“All migrations have been successfully applied.”**
+
+Relevant package migrations:
+- FACULTY-17: `20261110000000_retire_custom_roles`.
+- FACULTY-17A: `20261110010000_role_scoped_email_identity`.
+
+### Evidence limits and operational boundaries
+
+- This is **project-owner-provided terminal screenshot evidence**. The reviewer did not independently connect to or query the local database.
+- The screenshot identifies the target as `graduate_system` at `localhost:3306`; the owner identifies this as the local development/XAMPP MySQL environment.
+- This confirms that Prisma reported successful deployment of the four listed migrations. It does not independently prove post-deployment schema inventory, application startup, Faculty/Admin account provisioning, same-email login smoke tests, or every affected workflow.
+- A subsequent `npx prisma migrate status` result was not supplied; do not claim an independently verified zero-pending status.
+- The shown command is `migrate deploy`; the screenshot does not show a database reset, `db push`, or seed operation.
+- The local development database was accessed and modified by this **separate owner-performed deployment**. The earlier statements that the implementation agent used only isolated synthetic databases remain historically accurate for the agent's implementation and verification runs.
+- No staging or production database operation is reported or authorized by this addendum.
+- This local migration deployment does not close the separate FACULTY-4/FACULTY-12 real-MariaDB contention-readiness gates and does not enable any activation gate. All three code-owned activation gates remain `false`.
+- No real Faculty/Admin account was provisioned, merged, split, or converted by this migration command.
+
+Project-owner application smoke QA and formal package acceptance remain separate checkpoints.
