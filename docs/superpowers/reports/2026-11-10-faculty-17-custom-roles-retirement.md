@@ -56,7 +56,7 @@ Agent-local execution only; none of the following is hosted CI, independent revi
 | Prisma validation / generated client / backend build | Passed |
 | Focused TypeScript for changed migration/route integration harnesses | Passed |
 | Frontend TypeScript / scoped ESLint / production build | Passed; existing middleware and module-register deprecation warnings remain |
-| Final clean committed migration/rehearsal replay | Recorded below after the source checkpoint |
+| Final clean committed migration/rehearsal replay | 10 retirement cases + 8 adjusted operator cases passed at the code checkpoint below; zero final failures/skips |
 
 The related backend set was chosen because current-account and operational role allowlists are shared authentication/authorization boundaries. It includes configured access, stale JWTs, Applicant-to-Student promotion, academic impersonation denial, Memo/private-file containment, official-record preservation and isolated operator source-provenance guards. No repository-wide test run was used.
 
@@ -76,7 +76,7 @@ Defense `PanelRole`/`PanelAssignment` definitions and all Faculty/Adviser/Defens
 
 ## Exact changed files and source checkpoint
 
-The complete bounded file inventory and clean committed replay evidence are finalized below before delivery. Accepted FACULTY-0–16 reports/evidence and historical migration files are excluded from the diff.
+The complete bounded file inventory and clean committed replay evidence follow. Accepted FACULTY-0–16 reports/evidence and historical migration files are excluded from the diff.
 
 37 files (including this report and the sanitized replay evidence):
 
@@ -117,3 +117,18 @@ The complete bounded file inventory and clean committed replay evidence are fina
 - `frontend/src/app/(public)/faq/page.tsx`
 - `frontend/src/lib/admin-access.ts`
 - `frontend/src/lib/current-session.ts`
+
+## Final clean committed replay
+
+Executed code/test checkpoint: `833d2e6d0a58a8c6008bec0e0ea3a74c99743118`. The retirement harness reported a CLEAN worktree at that commit; the adjusted operator replay loaded its pinned Git-object module graph and recorded its per-file/source-tree hashes. No code changes followed this checkpoint; the final publication adds only this completed report and sanitized evidence.
+
+- Retirement: **10 tests passed**, including clean-chain/populated upgrade, all refusal guards, seed rebuild and zero Prisma schema drift against both isolated schemas.
+- Adjusted operator regression: **8 tests passed**, including clean chain/populated upgrade, no-op, audit-failure rollback, interruption/resume, credential-drift refusal, reverse restoration, actual SQL dump/restore and separate-process CLI execution. This exercises existing Admin direct configuration and academic compatibility only, with no CUSTOM conversion.
+- The first operator attempt was refused by the existing Git ownership guard under the sandbox account before any operator schema was created. Replaying as the repository owner passed; no safe-directory configuration or source-provenance guard was changed. The retirement checks passed in that initial clean-commit attempt as well.
+- Retirement preserved-data SHA-256: `e024b3d3ecc0bfc07c6e3399f7019d364fecfbb8239d6e89bba132bd17fbe9c6` (all 71 target tables represented; 8 Users and all 5 Defense seats preserved).
+- Retained rendered GS-020 SHA-256: `5bf1e11bb746b962a8118e4c3a665e64454813f06d5b273cff4e4a4aa1376779` before and after the retirement.
+- Migration file SHA-256: `3c471ee891c5db17d3fbc1094e8408886b7301875ad017e5c35fe4ca5a42179b`.
+- Operator executed source-tree SHA-256: `ddb1f2aed0d81c3ba0183e011df06e03dc19d2a5bbcc5389379230a92ec2685f`; 57 migrations, 71 tables, 6 synthetic accounts, 4 apply batches and 4 restoration batches. Its own independent GS-020 output and restored-state hashes are in the evidence.
+- All generated FACULTY-1/16/17 schemas were confirmed absent (count zero) on the new loopback server. Only the process whose exact workspace data directory and port 33317 were verified was shut down. The synthetic frontend fixture and temporary smoke-test browser were also stopped.
+
+See [sanitized committed-replay evidence](evidence/2026-11-10-faculty-17-retirement.json). No historical FACULTY-16 evidence payload was modified. Independent review and project-owner acceptance remain pending; no subsequent package is authorized by these results.
