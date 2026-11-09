@@ -55,10 +55,15 @@ describe("FACULTY-9 Memo audience and archive boundary", () => {
     db.memo.findUnique.mockResolvedValue({ createdById: "actor", targetAudience: "ALL", isArchived: false });
     await denied(read("memo"));
   });
-  it.each(["STUDENT", "FACULTY", "PANELIST", "APPLICANT", "CUSTOM"])("%s retains active ALL audience only", async role => {
+  it.each(["STUDENT", "FACULTY", "PANELIST", "APPLICANT"])("%s retains active ALL audience only", async role => {
     account([], { role, administratorAccess: null, panelist: ["FACULTY", "PANELIST"].includes(role) ? { isActive: true } : null });
     db.memo.findUnique.mockResolvedValue({ targetAudience: "ALL", isArchived: false }); await read("memo", "ADMIN");
     db.memo.findUnique.mockResolvedValue({ targetAudience: "ALL", isArchived: true }); storage.resolveReadPath.mockClear(); await denied(read("memo"));
+  });
+  it("retired CUSTOM cannot read even ALL memos through a stale ADMIN claim", async () => {
+    account([], { role: "CUSTOM", administratorAccess: null, panelist: null });
+    db.memo.findUnique.mockResolvedValue({ targetAudience: "ALL", isArchived: false });
+    await denied(read("memo", "ADMIN"));
   });
   it.each(["FACULTY", "PANELIST"])("%s retains PANELISTS audience but no Student/Program access", async role => {
     account([], { role, administratorAccess: null, panelist: { isActive: true } });

@@ -11,7 +11,6 @@ model User {
   email                              String                    @unique
   passwordHash                       String                    @map("password_hash")
   role                               UserRole                  @default(APPLICANT)
-  customRoleId                       String?                   @map("custom_role_id")
   title                              String?
   firstName                          String                    @map("first_name")
   lastName                           String                    @map("last_name")
@@ -38,7 +37,6 @@ model User {
   corUploadsReviewed                 CorUpload[]               @relation("CorUploadReviewedBy")
   curriculumWaiversApproved          CurriculumWaiver[]        @relation("WaiverApprovedBy")
   curriculumWaiversRecommended       CurriculumWaiver[]        @relation("WaiverRecommendedBy")
-  customRolesCreated                 CustomRole[]              @relation("CustomRoleCreatedBy")
   defenseSchedulesSet                DefenseSchedule[]         @relation("ScheduleSetBy")
   defenseNotesFinalized              DefenseSchedule[]         @relation("RapporteurNotesFinalizedBy")
   defenseConclusionsRecorded         DefenseConclusion[]       @relation("DefenseConclusionConcludedBy")
@@ -66,7 +64,6 @@ model User {
   examAmendmentsRequested            ExamScheduleAmendment[] @relation("ExamAmendmentRequestedBy")
   examAmendmentsDecided              ExamScheduleAmendment[] @relation("ExamAmendmentDecidedBy")
   examResultDecisions                ExamResultDecision[]
-  customRole                         CustomRole?               @relation("UserCustomRole", fields: [customRoleId], references: [id])
   administratorAccess                AdministratorAccess?      @relation("AdministratorAccessAccount")
   administratorAccessCreated         AdministratorAccess[]     @relation("AdministratorAccessCreatedBy")
   administratorAccessUpdated         AdministratorAccess[]     @relation("AdministratorAccessUpdatedBy")
@@ -74,7 +71,6 @@ model User {
   capabilityGrantsCreated             AccountCapabilityGrant[]  @relation("CapabilityGrantCreatedBy")
   capabilityGrantsUpdated             AccountCapabilityGrant[]  @relation("CapabilityGrantUpdatedBy")
 
-  @@index([customRoleId], map: "users_custom_role_id_fkey")
   @@map("users")
 }
 
@@ -171,36 +167,6 @@ model UndergraduateProgram {
   students        Student[]
 
   @@map("undergraduate_programs")
-}
-
-model CustomRole {
-  id              String              @id @default(uuid()) @map("role_id")
-  roleName        String              @unique @map("role_name")
-  roleDescription String?             @map("role_description")
-  createdById     String              @map("created_by")
-  isActive        Boolean             @default(true) @map("is_active")
-  createdAt       DateTime            @default(now()) @map("created_at")
-  updatedAt       DateTime            @updatedAt @map("updated_at")
-  createdBy       User                @relation("CustomRoleCreatedBy", fields: [createdById], references: [id])
-  featureAccess   RoleFeatureAccess[]
-  users           User[]              @relation("UserCustomRole")
-
-  @@index([createdById], map: "custom_roles_created_by_fkey")
-  @@map("custom_roles")
-}
-
-model RoleFeatureAccess {
-  id           String     @id @default(uuid()) @map("access_id")
-  roleId       String     @map("role_id")
-  featureKey   String     @map("feature_key")
-  featureLabel String?    @map("feature_label")
-  canView      Boolean    @default(false) @map("can_view")
-  canEdit      Boolean    @default(false) @map("can_edit")
-  createdAt    DateTime   @default(now()) @map("created_at")
-  role         CustomRole @relation(fields: [roleId], references: [id])
-
-  @@index([roleId], map: "role_feature_access_role_id_fkey")
-  @@map("role_feature_access")
 }
 
 /** FACULTY-1: explicit metadata only. No row/default is created for existing Admins. */
@@ -1480,7 +1446,6 @@ enum UserRole {
   ADMIN
   STUDENT
   PANELIST
-  CUSTOM
   APPLICANT
   FACULTY
 

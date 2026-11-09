@@ -12,6 +12,11 @@ const allowedDevOrigins = (process.env.ALLOWED_DEV_ORIGINS ?? "")
   .filter(Boolean);
 
 const nextConfig: NextConfig = {
+  // Resolve retired bookmarks before the Admin layout's presentation gate.
+  // The destination retains its Full-only UI and backend authorization.
+  async redirects() {
+    return [{ source: "/admin/users/roles/:path*", destination: "/admin/users/administrators", permanent: false }];
+  },
   // Reuse the pure FACULTY-1 catalog across frontend/backend without a second copy.
   turbopack: {
     root: path.resolve(__dirname, ".."),

@@ -51,7 +51,7 @@ describe("FACULTY-4 real router/current-account boundary", () => {
     { capabilityGrants: [{ capabilityKey: "essay.evaluate" }] },
   ])("denies every management route for current actor %j despite stale ADMIN claims", async change => {
     Object.assign(fixture.control.state.users[0], change);
-    for (const [method, path, body] of routes) expect((await request(method, path, body)).status).toBe(403);
+    for (const [method, path, body] of routes) expect((await request(method, path, body)).status).toBe(change.role === "CUSTOM" ? 503 : 403);
     expect(fixture.database.$transaction).not.toHaveBeenCalled();
   });
   it("denies Restricted self-elevation and editing another Administrator", async () => {

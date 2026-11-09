@@ -60,12 +60,18 @@ describe("FACULTY-2 REST current account authority", () => {
     await authenticateJWT(request, res(), vi.fn());
     expect(request.user.role).toBe("STUDENT");
   });
-  it.each(["APPLICANT", "STUDENT", "ADMIN", "PANELIST", "FACULTY", "CUSTOM"])("gates %s by current credential state", async (role) => {
+  it.each(["APPLICANT", "STUDENT", "ADMIN", "PANELIST", "FACULTY"])("gates %s by current credential state", async (role) => {
     account.role = role; account.panelist = { isActive: true }; account.mustChangePassword = true;
     const response = res(); const next = vi.fn();
     await authenticateJWT(req(), response, next);
     expect(next).not.toHaveBeenCalled(); expect(response.status).toHaveBeenCalledWith(403);
     expect(response.json).toHaveBeenCalledWith(expect.objectContaining({ code: "PASSWORD_CHANGE_REQUIRED" }));
+  });
+  it.each([false, true])("rejects a persisted retired CUSTOM identity even with a valid token (password gate %s)", async mustChangePassword => {
+    account.role = "CUSTOM"; account.mustChangePassword = mustChangePassword;
+    const response = res(), next = vi.fn();
+    await authenticateJWT(req("/api/auth/me", "GET"), response, next);
+    expect(next).not.toHaveBeenCalled(); expect(response.status).toHaveBeenCalledWith(503);
   });
   it.each([
     ["/api/auth/me", "GET"], ["/api/auth/me?refresh=1", "GET"], ["/api/auth/change-password", "POST"],

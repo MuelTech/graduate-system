@@ -163,7 +163,7 @@ export class AuthService {
     async login(data: LoginInput): Promise<LoginResponse> {
         const roles: Record<string, UserRole> = {
             applicant: UserRole.APPLICANT, student: UserRole.STUDENT,
-            admin: UserRole.ADMIN, faculty: UserRole.FACULTY, panelist: UserRole.PANELIST, other: UserRole.CUSTOM,
+            admin: UserRole.ADMIN, faculty: UserRole.FACULTY, panelist: UserRole.PANELIST,
         };
         if (typeof data.role !== 'string' || !Object.prototype.hasOwnProperty.call(roles, data.role)) {
             throw new AppError("Invalid selected login role.", 400);

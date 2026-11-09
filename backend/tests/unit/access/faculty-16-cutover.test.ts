@@ -6,9 +6,8 @@ const copy = <T>(value: T): T => JSON.parse(JSON.stringify(value));
 function applyAll(b: Snapshot, m: Manifest, current = b) { for (;;) { const next = nextBatch(b, m, current).next; if (!next) return current; current = next; } }
 
 describe("FACULTY-16 manifest and durable reconciliation", () => {
-  it("inventories unknown/duplicate keys without granting or mutating, and reports exact table evidence", () => {
+  it("inventories target accounts without granting or mutating, and reports exact table evidence", () => {
     const b = syntheticCutoverSnapshot(), hash = snapshotDigest(b), report = inventory(b);
-    expect(report.integrity.findings.map(f => f.code)).toContain("DR-2_DUPLICATE_FEATURE");
     expect(report.integrity.findings.map(f => f.code)).toContain("EXTERNAL_AVAILABILITY");
     expect(report.accounts.find(a => a.userId === "unresolved")?.configuredAccess.capabilities).toEqual([]);
     expect(snapshotDigest(b)).toBe(hash);
@@ -53,7 +52,7 @@ describe("FACULTY-16 manifest and durable reconciliation", () => {
     ["historical role", (s: Snapshot) => { s.tables.panel_assignments[0].role = "CHAIRMAN"; }],
     ["signature", (s: Snapshot) => { s.tables.adviser_request_signed_states[0].signature_data = "changed"; }],
     ["hash", (s: Snapshot) => { s.tables.adviser_request_official_records[0].evidence_hash = "changed"; }],
-    ["legacy role", (s: Snapshot) => { s.tables.role_feature_access[0].can_edit = 0; }],
+    ["direct grant", (s: Snapshot) => { s.tables.account_capability_grants.push({ user_id: "unresolved", capability_key: "students.view" }); }],
     ["ledger", (s: Snapshot) => { s.tables._prisma_migrations[0].checksum = "changed"; }],
     ["schema", (s: Snapshot) => { s.schemaDigest = "changed"; }],
     ["new account", (s: Snapshot) => { s.tables.users.push({ ...s.tables.users[0], user_id: "new" }); }],
@@ -95,6 +94,16 @@ describe("FACULTY-16 manifest and durable reconciliation", () => {
     m.mappings[3] = { userId: "external", disposition: "BLOCKED", decision: `${kind} unresolved / blocked / denied` };
     expect(() => validateManifest(b, m)).not.toThrow();
     expect(applyAll(b, m).tables.panelists.find(r => r.user_id === "external")).toEqual(b.tables.panelists.find(r => r.user_id === "external"));
+  });
+  it.each(["CUSTOM", "UNKNOWN"])("rejects retired/unknown %s accounts rather than converting them", role => {
+    const b = syntheticCutoverSnapshot(); b.tables.users[1].role = role;
+    const before = snapshotDigest(b);
+    expect(() => validateManifest(b, syntheticCutoverManifest(b))).toThrow(/Retired Custom Roles/);
+    expect(snapshotDigest(b)).toBe(before);
+  });
+  it("rejects pre-retirement schemas rather than reading or translating legacy grants", () => {
+    const b = syntheticCutoverSnapshot(); b.tables.custom_roles = []; b.tables.role_feature_access = [];
+    expect(() => validateManifest(b, syntheticCutoverManifest(b))).toThrow(/Retired Custom Roles/);
   });
   it("rejects changed approval, missing/forged/duplicate journals and partial writes", () => {
     const b = syntheticCutoverSnapshot(), m = syntheticCutoverManifest(b), current = nextBatch(b, m, b).next!;

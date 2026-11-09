@@ -55,7 +55,7 @@ export default function AboutPage() {
                 Built with modern web technologies including Next.js,
                 TypeScript, and Tailwind CSS, the GS-IS provides a responsive
                 and accessible interface for all user roles: Administrators,
-                Students, Panelists, Applicants, and Custom roles.
+                Applicants, Students, Faculty, and Administrators.
               </p>
             </div>
 

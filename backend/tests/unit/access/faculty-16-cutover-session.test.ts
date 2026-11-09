@@ -34,14 +34,14 @@ describe("FACULTY-16 chosen session compatibility (current account wins)", () =>
     requireRole(["ADMIN"])(req, res, next); expect(next).not.toHaveBeenCalled();
     expect(currentAccountResponse(req.currentAccount).configuredAccess.capabilities).toEqual(["essay.evaluate"]);
   });
-  it("resolves converted CUSTOM from explicit Restricted metadata, never from its old claim/legacy features", async () => {
+  it("resolves an existing Admin from explicit Restricted metadata, never from a retired CUSTOM claim", async () => {
     const { req } = await request("restricted", "CUSTOM");
     expect(req.user.role).toBe("ADMIN");
     expect(currentAccountResponse(req.currentAccount).configuredAccess).toMatchObject({ administratorLevel: "RESTRICTED", capabilities: ["students.view"] });
   });
-  it("leaves held-out CUSTOM authenticated with no target authority", async () => {
+  it("leaves held-out Admin authenticated with no target authority", async () => {
     const { req } = await request("unresolved", "ADMIN");
-    expect(req.user.role).toBe("CUSTOM");
-    expect(currentAccountResponse(req.currentAccount).configuredAccess).toMatchObject({ status: "UNSUPPORTED_ACCOUNT", capabilities: [] });
+    expect(req.user.role).toBe("ADMIN");
+    expect(currentAccountResponse(req.currentAccount).configuredAccess).toMatchObject({ status: "MISSING_ADMIN_LEVEL", capabilities: [] });
   });
 });

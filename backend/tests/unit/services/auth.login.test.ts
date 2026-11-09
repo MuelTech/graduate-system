@@ -192,11 +192,11 @@ describe("AuthService.login Applicant + staff roles (regression)", () => {
   });
 
   it("keeps Admin/Panelist/Other on the email + password path", async () => {
-    for (const role of ["admin", "panelist", "other"]) {
+    for (const role of ["admin", "panelist"]) {
       vi.clearAllMocks();
       bcryptMock.compare.mockResolvedValue(true);
       repo.findUserByEmail.mockResolvedValue(
-        studentUser({ role: role === "other" ? "CUSTOM" : role.toUpperCase() }),
+        studentUser({ role: role.toUpperCase() }),
       );
       const svc = new AuthService();
 
@@ -208,7 +208,7 @@ describe("AuthService.login Applicant + staff roles (regression)", () => {
 
       expect(repo.findUserByEmail).toHaveBeenCalledWith(`${role}@example.com`);
       expect(repo.findStudentByStudentNumber).not.toHaveBeenCalled();
-      expect(result.user.role).toBe(role === "other" ? "CUSTOM" : role.toUpperCase());
+      expect(result.user.role).toBe(role.toUpperCase());
     }
   });
 });
@@ -233,14 +233,14 @@ describe("FACULTY-2 email role and activity boundary", () => {
       .rejects.toMatchObject({ statusCode: 403 });
     expect(jwtMock.sign).not.toHaveBeenCalled();
   });
-  it.each(["ADMIN", "__proto__", "constructor", "", null, {}, ["admin"]])("rejects unknown/forged selected role %j before lookup", async (role) => {
+  it.each(["other", "custom", "CUSTOM", "ADMIN", "__proto__", "constructor", "", null, {}, ["admin"]])("rejects unknown/forged selected role %j before lookup", async (role) => {
     await expect(new AuthService().login({ role, email: "a@example.com", password: "pw" } as never))
       .rejects.toMatchObject({ statusCode: 400 });
     expect(repo.findUserByEmail).not.toHaveBeenCalled();
     expect(jwtMock.sign).not.toHaveBeenCalled();
   });
-  it.each(["applicant", "student", "admin", "panelist", "other"])("rejects inactive %s", async (role) => {
-    const user = studentUser({ isActive: false, role: role === "other" ? "CUSTOM" : role.toUpperCase() });
+  it.each(["applicant", "student", "admin", "panelist", "faculty"])("rejects inactive %s", async (role) => {
+    const user = studentUser({ isActive: false, role: role.toUpperCase() });
     repo.findUserByEmail.mockResolvedValue(user);
     repo.findStudentByApplicantId.mockResolvedValue({ user });
     repo.findStudentByStudentNumber.mockResolvedValue({ user });

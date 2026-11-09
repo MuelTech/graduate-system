@@ -80,7 +80,7 @@ const faqCategories = [
       {
         question: "What are the different user roles in the system?",
         answer:
-          "The system has five user roles: Applicant (pre-enrollment), Student (enrolled), Panelist (defense panel members), Administrator (GS staff), and Custom (admin-defined roles). Each role has access to specific portals and features.",
+          "The system has four user roles: Applicant (pre-enrollment), Student (enrolled), Faculty (academic work), and Administrator (administrative work). Each role has access to its own portal and features.",
       },
       {
         question: "I forgot my password. How do I reset it?",

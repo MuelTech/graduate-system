@@ -26,7 +26,7 @@ export async function synchronizeCurrentSession<T extends SessionIdentity>(
     if (!response.ok) return unavailable("ACCOUNT_UNAVAILABLE");
     const { user } = await response.json();
     if (!user || user.id !== token.id || typeof user.email !== "string" ||
-      !["APPLICANT", "STUDENT", "PANELIST", "FACULTY", "ADMIN", "CUSTOM"].includes(user.role) ||
+      !["APPLICANT", "STUDENT", "PANELIST", "FACULTY", "ADMIN"].includes(user.role) ||
       typeof user.mustChangePassword !== "boolean") return unavailable("ACCOUNT_UNAVAILABLE");
     return {
       ...token, role: user.role.toLowerCase(), email: user.email,

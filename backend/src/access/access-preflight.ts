@@ -17,15 +17,9 @@ export interface AccessPreflightInventory {
       readonly isExternal: boolean;
       readonly isAvailableAsAdviser: boolean;
     } | null;
-    readonly customRoleId: string | null;
     readonly administratorLevel: AdminAccessLevel | null;
     /** Raw observations: unknown keys are evidence, never converted into grants. */
     readonly directCapabilityKeys: readonly string[];
-  }[];
-  readonly legacyRoles: readonly {
-    readonly id: string;
-    readonly isActive: boolean;
-    readonly features: readonly { readonly featureKey: string; readonly canView: boolean; readonly canEdit: boolean }[];
   }[];
   readonly integrity: {
     readonly migrationNames: readonly string[];
@@ -44,6 +38,6 @@ export function createAccessPreflightTemplate() {
     version: 1 as const,
     mode: "READ_ONLY" as const,
     inventoryStatus: "NOT_COLLECTED" as const,
-    requiredSections: Object.freeze(["accounts", "legacyRoles", "integrity"] as const),
+    requiredSections: Object.freeze(["accounts", "integrity"] as const),
   });
 }

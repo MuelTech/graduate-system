@@ -17,7 +17,7 @@ export async function loadCurrentAccount(userId: string) {
     throw new AppError("Current account could not be loaded.", 503);
   }
   if (!account) throw new AppError("Authentication account no longer exists.", 401);
-  if (account.id !== userId || !["APPLICANT", "STUDENT", "ADMIN", ...ACADEMIC_ACCOUNT_ROLES, "CUSTOM"].includes(account.role)) {
+  if (account.id !== userId || !["APPLICANT", "STUDENT", "ADMIN", ...ACADEMIC_ACCOUNT_ROLES].includes(account.role)) {
     throw new AppError("Current account could not be established.", 503);
   }
   if (account.isActive !== true) throw new AppError("Account is inactive.", 403);

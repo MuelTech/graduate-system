@@ -603,3 +603,50 @@ test("Schedules-only work withholds the Applications aggregate and directory ass
   ).toHaveCount(0);
   forbiddenCalls((await state(page)).calls, ["/admin/applicants"]);
 });
+
+// FACULTY-17 affected surfaces only; reuse the accepted synthetic access fixture.
+for (const bookmark of ["/admin/users/roles", "/admin/users/roles/legacy-bookmark"]) {
+test(`FACULTY-17 Full legacy bookmark ${bookmark} redirects without role controls`, async ({ page }) => {
+  await setup(page);
+  await page.goto(bookmark);
+  await expect(page).toHaveURL(/\/admin\/users\/administrators$/);
+  await expect(page.getByRole("heading", { name: "Administrators Management", exact: true })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Custom Roles", exact: true })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: /Create Role|Edit Role|Delete Role/ })).toHaveCount(0);
+  await page.screenshot({ path: "test-results/faculty17-full.png", fullPage: true });
+});
+}
+for (const keys of [[], ["faculty.view", "faculty.manage"]]) {
+  test(`FACULTY-17 Restricted legacy bookmark stays denied (${keys.length} grants)`, async ({ page }) => {
+    await setup(page, { level: "RESTRICTED", keys });
+    await page.goto("/admin/users/roles");
+    await expect(page).toHaveURL(/\/admin\/users\/administrators$/);
+    await expect(page.getByText("Your access has changed.", { exact: true })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Create Administrator", exact: true })).toHaveCount(0);
+    await expect(page.getByRole("link", { name: "Custom Roles", exact: true })).toHaveCount(0);
+    const value = await state(page);
+    forbiddenCalls(value.calls, ["/admin/administrators"]);
+    expect(value.writes).toHaveLength(0);
+  });
+}
+test("FACULTY-17 public login retains exactly four conceptual choices", async ({ page }) => {
+  await page.goto("/login");
+  await expect(page.locator("select option")).toHaveText(["Applicant", "Student", "Faculty", "Administrator"]);
+  await expect(page.getByRole("option", { name: /Custom|Other Roles|Panelist/ })).toHaveCount(0);
+  await page.screenshot({ path: "test-results/faculty17-login.png", fullPage: true });
+});
+for (const path of ["/about", "/faq"]) {
+  test(`FACULTY-17 public ${path} describes supported roles`, async ({ page }) => {
+    await page.goto(path);
+    if (path === "/faq") await page.getByRole("button", { name: "What are the different user roles in the system?" }).click();
+    await expect(page.locator("main")).not.toContainText(/Custom roles|Custom \(admin-defined|five user roles/i);
+    await expect(page.locator("main")).toContainText("Faculty");
+  });
+}
+
+test("FACULTY-17 unauthenticated legacy bookmark requires sign-in", async ({ page }) => {
+  await page.goto("/admin/users/roles");
+  await expect(page).toHaveURL(/\/login$/);
+  await expect(page.getByRole("heading", { name: "Sign In to Your Portal" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Create Administrator", exact: true })).toHaveCount(0);
+});

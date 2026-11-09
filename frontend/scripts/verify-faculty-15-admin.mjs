@@ -296,3 +296,13 @@ test("all activation gates remain code-owned false", () => {
       new RegExp(`${key}: boolean = false`),
     );
 });
+
+test("FACULTY-17 removes the retired destination and legacy URLs cannot authorize management", () => {
+  assert.equal(a.ADMIN_DESTINATIONS.some(item => item.href.startsWith("/admin/users/roles")), false);
+  for (const access of [full(), parse(), parse(["faculty.view", "faculty.manage"])]) {
+    assert.equal(a.adminRouteAllowed(access, "/admin/users/roles"), false);
+    assert.equal(a.adminRouteAllowed(access, "/admin/users/roles/saved-bookmark"), false);
+  }
+  assert.equal(a.adminRouteAllowed(full(), "/admin/users/administrators"), true);
+  assert.equal(a.adminRouteAllowed(parse(["faculty.view", "faculty.manage"]), "/admin/users/administrators"), false);
+});

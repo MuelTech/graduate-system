@@ -42,7 +42,6 @@ const navItems = [
       { href: "/admin/users/students", label: "Students" },
       { href: "/admin/users/panelists", label: "Faculty" },
       { href: "/admin/users/administrators", label: "Administrators" },
-      { href: "/admin/users/roles", label: "Custom Roles" },
     ],
   },
   {

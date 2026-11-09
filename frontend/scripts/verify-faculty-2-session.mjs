@@ -55,7 +55,7 @@ for (const status of [401, 403, 503]) test(`session handles ${status} without st
   }
 });
 
-for (const user of [{ ...serverUser, id: "other" }, { ...serverUser, role: "FORGED" }, { ...serverUser, mustChangePassword: undefined }, null]) {
+for (const user of [{ ...serverUser, id: "other" }, { ...serverUser, role: "FORGED" }, { ...serverUser, role: "CUSTOM" }, { ...serverUser, mustChangePassword: undefined }, null]) {
   test(`session rejects malformed/foreign account ${JSON.stringify(user)}`, async () => {
     const { synchronizeCurrentSession } = load("lib/current-session.ts", {}, { fetch: async () => response(200, { user }) });
     const result = await synchronizeCurrentSession(identity, "http://backend");

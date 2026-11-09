@@ -67,7 +67,7 @@ function access(state: Snapshot, id: string) {
     capabilityGrants: state.tables.account_capability_grants.filter(row => row.user_id === id).map(row => ({ capabilityKey: String(row.capability_key) })) });
 }
 
-/** Raw feature observations stay observations; no legacy-key translation exists. */
+/** Target-schema inventory only; no retired-role or legacy-key translation exists. */
 export function inventory(state: Snapshot) {
   const findings: Finding[] = [];
   const add = (code: string, userIds: string[], recordIds: string[] = []) => findings.push({ code, userIds, recordIds });
@@ -86,18 +86,13 @@ export function inventory(state: Snapshot) {
     if (pending.length && (!academic || !p || p.is_external !== 0 || p.is_available_as_adviser !== 1 || p.is_active !== 1 || user.is_active !== 1)) {
       add("DR-6_PENDING_INELIGIBLE", [id], pending.map(row => String(row.adviser_req_id)));
     }
-    if (["ADMIN", "CUSTOM"].includes(String(user.role))) {
+    if (user.role === "ADMIN") {
       const history = [...(state.tables.adviser_assignments ?? []).filter(row => row.adviser_id === id),
         ...(state.tables.panel_assignments ?? []).filter(row => row.user_id === id)];
       if (history.length) add("DR-4_ACADEMIC_HISTORY", [id]);
     }
-    if (user.role === "CUSTOM") {
-      const legacy = (state.tables.custom_roles ?? []).find(row => row.role_id === user.custom_role_id);
-      if (!legacy || legacy.is_active !== 1) add("DR-2_MISSING_OR_INACTIVE_ROLE", [id]);
-      const features = (state.tables.role_feature_access ?? []).filter(row => row.role_id === user.custom_role_id);
-      if (features.some((row, i) => features.findIndex(other => other.feature_key === row.feature_key) !== i)) add("DR-2_DUPLICATE_FEATURE", [id]);
-      // There is deliberately no inferred equivalence between legacy feature keys and the direct catalog.
-      if (features.length) add("DR-2_EXPLICIT_MAPPING_REQUIRED", [id]);
+    if (!["ADMIN", "APPLICANT", "STUDENT", "PANELIST", "FACULTY"].includes(String(user.role))) {
+      add("RETIRED_ACCOUNT_ROLE", [id]);
     }
   }
   const advisers = state.tables.adviser_assignments ?? [];
@@ -113,9 +108,8 @@ export function inventory(state: Snapshot) {
     version: 1, mode: "READ_ONLY", inventoryStatus: "COLLECTED_SYNTHETIC_REHEARSAL", sourceCommit: state.sourceCommit,
     baselineDigest: snapshotDigest(state), schemaDigest: state.schemaDigest, schemaEvidence: state.schemaEvidence,
     accounts: users.map(user => ({ userId: user.user_id, currentRole: user.role, isActive: user.is_active === 1,
-      mustChangePassword: user.must_change_password === 1, customRoleId: user.custom_role_id,
+      mustChangePassword: user.must_change_password === 1,
       panelist: profile(state, String(user.user_id)) ?? null, configuredAccess: access(state, String(user.user_id)) })),
-    legacyRoles: state.tables.custom_roles ?? [], legacyFeatures: state.tables.role_feature_access ?? [],
     authoritativeReferences: Object.fromEntries(Object.entries(state.tables).map(([table, rows]) => [table,
       rows.map(row => Object.fromEntries(Object.entries(row).filter(([column]) => /_id$/.test(column) || ["graded_by", "approved_by", "reviewed_by"].includes(column))))])),
     integrity: { migrationNames: state.tables._prisma_migrations.map(row => row.migration_name),
@@ -135,6 +129,10 @@ export function validateManifest(baseline: Snapshot, input: unknown): asserts in
     Number.isFinite(Date.parse(m.approvedAt)) && new Date(m.approvedAt).toISOString() === m.approvedAt, "Approval requires a UTC whole-second timestamp.");
   requireValue(Array.isArray(m.mappings) && m.mappings.length > 0 && m.mappings.length <= 1000, "A bounded explicit mapping list is required.");
   const observed = inventory(baseline), seen = new Set<string>();
+  requireValue(!baseline.tables.custom_roles && !baseline.tables.role_feature_access &&
+    !baseline.tables.users.some(row => "custom_role_id" in row) &&
+    !observed.integrity.findings.some(f => f.code === "RETIRED_ACCOUNT_ROLE"),
+    "Retired Custom Roles schema/account requires separate disposition and the FACULTY-17 migration; conversion is unsupported.");
   requireValue(baseline.version === 1 && /^[a-f0-9]{40}$/.test(baseline.sourceCommit), "Invalid baseline version/commit.");
   requireValue(new Set(baseline.tables.users.map(row => row.user_id)).size === baseline.tables.users.length &&
     new Set(baseline.tables.users.map(row => row.email)).size === baseline.tables.users.length, "Duplicate authoritative account identity.");
@@ -143,7 +141,7 @@ export function validateManifest(baseline: Snapshot, input: unknown): asserts in
     exactKeys(mapping, ["userId", "disposition", "decision", "target"]);
     requireValue(text(mapping.userId) && !seen.has(mapping.userId) && text(mapping.decision), "Duplicate/missing identity or decision."); seen.add(mapping.userId);
     const user = account(baseline, mapping.userId);
-    requireValue(["ADMIN", "CUSTOM", "PANELIST", "FACULTY"].includes(String(user.role)), "Unrelated identity cannot be converted.");
+    requireValue(["ADMIN", "PANELIST", "FACULTY"].includes(String(user.role)), "Unrelated identity cannot be converted.");
     requireValue(mapping.disposition === "APPROVED" || mapping.disposition === "BLOCKED", "Unknown disposition.");
     if (mapping.disposition === "BLOCKED") {
       requireValue(mapping.target === undefined && access(baseline, mapping.userId).capabilities.length === 0, "Held-out account must have no configured target capabilities."); continue;
@@ -152,7 +150,7 @@ export function validateManifest(baseline: Snapshot, input: unknown): asserts in
     requireValue(target && typeof target === "object", "Approved mapping requires an explicit target.");
     exactKeys(target, ["role", "level", "capabilities", "normalizeExternalAvailability"]);
     requireValue(["ADMIN", "FACULTY"].includes(target.role) && typeof target.normalizeExternalAvailability === "boolean", "Invalid target identity/normalization decision.");
-    requireValue(user.role === "CUSTOM" || (user.role === "ADMIN" && target.role === "ADMIN") || (["PANELIST", "FACULTY"].includes(String(user.role)) && target.role === "FACULTY"), "Account category cannot be merged or switched.");
+    requireValue((user.role === "ADMIN" && target.role === "ADMIN") || (["PANELIST", "FACULTY"].includes(String(user.role)) && target.role === "FACULTY"), "Account category cannot be merged or switched.");
     requireValue(!baseline.tables.administrator_access.some(row => row.user_id === mapping.userId) &&
       !baseline.tables.account_capability_grants.some(row => row.user_id === mapping.userId), "Existing target configuration requires separate reconciliation; hold it out.");
     const panels = baseline.tables.panelists.filter(row => row.user_id === mapping.userId);
@@ -163,12 +161,10 @@ export function validateManifest(baseline: Snapshot, input: unknown): asserts in
     requireValue(target.level !== "FULL" || target.capabilities.length === 0, "Full uses the enumerated catalog, never copied grants.");
     requireValue(!target.normalizeExternalAvailability || (target.role === "FACULTY" && panels[0]?.is_external === 1 && panels[0].is_available_as_adviser === 1), "Normalization must be explicit External true-to-false only.");
     const blockers = observed.integrity.findings.filter(f => f.userIds.includes(mapping.userId) &&
-      !["DR-2_EXPLICIT_MAPPING_REQUIRED", "DR-2_MISSING_OR_INACTIVE_ROLE", "DR-2_DUPLICATE_FEATURE"].includes(f.code) &&
-      !(f.code === "EXTERNAL_AVAILABILITY" && target.normalizeExternalAvailability) &&
-      !(f.code === "PROFILE_IDENTITY_MISMATCH" && user.role === "CUSTOM" && target.role === "FACULTY" && panels.length === 1));
+      !(f.code === "EXTERNAL_AVAILABILITY" && target.normalizeExternalAvailability));
     requireValue(blockers.length === 0, `Unresolved data decision: ${blockers.map(f => f.code).join(", ")}`);
   }
-  for (const user of baseline.tables.users.filter(row => ["ADMIN", "CUSTOM", "PANELIST", "FACULTY"].includes(String(row.role)))) {
+  for (const user of baseline.tables.users.filter(row => ["ADMIN", "PANELIST", "FACULTY"].includes(String(row.role)))) {
     requireValue(seen.has(String(user.user_id)), "Every affected account requires an approved or blocked disposition.");
   }
   const projected = clone(baseline);

@@ -1,6 +1,6 @@
 # FACULTY-16 operator preflight and isolated cutover rehearsal
 
-Status: **FACULTY-16 implemented / pending independent review**. This runbook executes the existing [implementation plan](../superpowers/plans/2026-11-08-faculty-admin-access-implementation.md#faculty-16--operator-preflight-reconciliation-and-data-cutover-rehearsal); it does not replace it or authorize environment access.
+Status: FACULTY-16 source acceptance is recorded in its unchanged implementation report. **FACULTY-17 target-schema compatibility update / pending independent review.** This runbook executes the existing [implementation plan](../superpowers/plans/2026-11-08-faculty-admin-access-implementation.md#faculty-16--operator-preflight-reconciliation-and-data-cutover-rehearsal); it does not replace it or authorize environment access.
 
 ## Scope and environment boundary
 
@@ -49,7 +49,7 @@ From a clean committed compatible checkout, run `npm run faculty:cutover:rehears
 npm run faculty:cutover:rehearse -- --schema faculty16_test_<uuid32> --capture <protected-baseline.json> --evidence <new-inventory.json>
 ```
 
-The read-only inventory lists current account/profile/activity/password flags, explicit direct configuration, legacy role/feature evidence (including duplicate/unknown keys), authoritative record/actor/relationship IDs, migrations, schema evidence and per-table counts/SHA-256. Missing profiles, role/profile/activity mismatches, duplicate active Advisers, External-Adviser anomalies, pending ineligible GS-020, ADMIN/CUSTOM academic history and unapproved External committee roles are reported. Baseline snapshots carry the original role/grant mapping; history is never inferred from a current display name.
+The read-only inventory lists current account/profile/activity/password flags, explicit direct configuration, authoritative record/actor/relationship IDs, migrations, schema evidence and per-table counts/SHA-256. Missing profiles, role/profile/activity mismatches, duplicate active Advisers, External-Adviser anomalies, pending ineligible GS-020, ADMIN academic history and unapproved External committee roles are reported. Baseline snapshots carry the original role/grant mapping; history is never inferred from a current display name.
 
 Prepare an immutable version-1 JSON manifest using the following shape. These placeholders deliberately do not form an executable approval:
 
@@ -69,18 +69,20 @@ Prepare an immutable version-1 JSON manifest using the following shape. These pl
       "decision": "<explicit synthetic DR-1 approval>",
       "target": { "role": "ADMIN", "level": "FULL", "capabilities": [], "normalizeExternalAvailability": false }
     },
-    { "userId": "<unresolved synthetic account ID>", "disposition": "BLOCKED", "decision": "DR-2 unresolved / unmapped / denied" }
+    { "userId": "<unresolved synthetic account ID>", "disposition": "BLOCKED", "decision": "Synthetic unconfigured Admin / blocked / denied" }
   ]
 }
 ```
 
-Every ADMIN/CUSTOM/PANELIST/FACULTY account requires exactly one disposition, including already-Faculty and inactive accounts. The first approved batch must establish an active, password-ready Full Administrator. Full derives the existing enumerated administrative catalog; no wildcard or direct `administrator_access.manage` grant is accepted. Restricted and Faculty grants pass the existing category/catalog validation; read prerequisites stay with that catalog. Faculty can receive only `essay.evaluate`, school-wide under resolved DR-3. Raw legacy feature keys are evidence and never copied or translated automatically.
+Every ADMIN/PANELIST/FACULTY account requires exactly one disposition, including already-Faculty and inactive accounts. The first approved batch must establish an active, password-ready Full Administrator. Full derives the existing enumerated administrative catalog; no wildcard or direct `administrator_access.manage` grant is accepted. Restricted and Faculty grants pass the existing category/catalog validation; read prerequisites stay with that catalog. Faculty can receive only `essay.evaluate`, school-wide under resolved DR-3. Retired CUSTOM accounts and pre-retirement schemas are rejected before manifest execution; no conversion or legacy grant translation is supported.
 
-An approved mapping changes only an existing account's stored role in place, inserts its exact new direct configuration and optionally changes an explicitly approved External `isAvailableAsAdviser=true` to false. It creates no accounts or profiles, resets no credentials, changes no classification/activity, merges no identities, and edits no academic relationship. Existing target metadata/grants require separate reconciliation and must be held out; this tool does not overwrite them. CUSTOM-to-Faculty requires an existing exact academic profile; missing profiles cannot be invented to pass preflight. Existing User/profile IDs, email uniqueness, credentials/flags, timestamps, `customRoleId`, CustomRole/RoleFeatureAccess rows, PanelRole values, historical actors and all signed bytes/hashes stay unchanged.
+An approved mapping changes only an existing account's stored role in place, inserts its exact new direct configuration and optionally changes an explicitly approved External `isAvailableAsAdviser=true` to false. It creates no accounts or profiles, resets no credentials, changes no classification/activity, merges no identities, and edits no academic relationship. Existing target metadata/grants require separate reconciliation and must be held out; this tool does not overwrite them. Existing User/profile IDs, email uniqueness, credentials/flags, timestamps, PanelRole values, historical actors and all signed bytes/hashes stay unchanged.
 
-Hold out unresolved DR-1/2/4–7 cases explicitly with no target. A BLOCKED account must resolve to no configured target capabilities. Ambiguous classifications, DR-4 mixed academic/operational history, DR-5 External non-Panelist seats, DR-6 pending ineligible signed requests, DR-7 External-Adviser anomalies and duplicate active Adviser relationships block the affected mapping; the fixture/inventory retains their exact evidence. DR-2 unknown/duplicate/inactive legacy keys require explicit per-account approval of an unrelated allowlisted direct set; their values do not supply authority. No guessed aliases, account splitting, automatic Faculty designation, signature edits or relationship repairs are supported.
+Hold out applicable unsupported cases explicitly with no target. A BLOCKED account must resolve to no configured target capabilities. Existing FACULTY-16 eligibility hold-outs remain conservative; DR-5/6/7 engineering alignment belongs to FACULTY-17B. Owner policy decisions are recorded in the current canonical plan; historical FACULTY-16 evidence is not rewritten or treated as real-account approval. No guessed aliases, account splitting, automatic Faculty designation, signature edits or relationship repairs are supported.
 
-Blocked mappings do not certify a future live rollout: existing assignment-derived work and dormant legacy paths are preserved, and unresolved live accounts must be assessed before activation. Missing DR-1 prevents an executable manifest; preflight capture can still report the blocker. Real decisions remain unresolved in FACULTY-16's synthetic evidence.
+FACULTY-17 requires the new forward retirement migration before this tool can apply a manifest. The migration refuses remaining CUSTOM/invalid identities and unexpected incoming dependencies before permanent DDL. Separate account disposition/cleanup is required outside this task; no normal development/staging/production inventory or cleanup is authorized. The historical pre-retirement replay remains reproducible at its accepted commit, not against the target Prisma client.
+
+Blocked mappings do not certify a future live rollout. DR-1 actual account designation/bootstrap and any live DR-2 disposition still require explicit authorization. FACULTY-17A/17B/18 and all activation gates remain outside this runbook update.
 
 ## Dry-run, bounded apply and resume
 
@@ -110,7 +112,7 @@ Restoration reverses committed batches in reverse order, restores original store
 
 Keep the accepted FACULTY/PANELIST-compatible binary for both forward and reverse states. Backend authentication already reloads current identity by token User ID: an existing PANELIST claim remains compatible with the same now-FACULTY account; stale ADMIN/CUSTOM claims never supply current privilege. The targeted session tests exercise this behavior and current Restricted metadata. For any future live cutover, stop writers and require fresh browser authentication/session refresh before reopening service so NextAuth presentation synchronizes; FACULTY-16 does not add a token-revocation/session protocol or claim owner browser acceptance.
 
-DDL migrations are separate from data-batch restoration and may implicitly commit. Retain additive enum/tables and legacy rows; never drop FACULTY while rows use it or deploy a PANELIST-only binary. Full disaster recovery requires a consistent DB plus private-storage backup, isolated SQL restore, file/hash verification and a compatible release. This rehearsal proves synthetic SQL backup/restore and exact GS-020 renderer hashes; an actual environment/private-storage restore remains separately authorized readiness work.
+DDL migrations are separate from data-batch restoration and may implicitly commit. FACULTY-17 retirement is forward-only; this batch-restoration tool cannot recreate dropped Custom Roles structures. Keep a verified pre-DDL backup for separately authorized disaster recovery. Never drop FACULTY while rows use it or deploy a PANELIST-only binary. Full disaster recovery requires a consistent DB plus private-storage backup, isolated SQL restore, file/hash verification and a compatible release. This rehearsal proves synthetic SQL backup/restore and exact GS-020 renderer hashes; an actual environment/private-storage restore remains separately authorized readiness work.
 
 ## Before any future deployment
 

@@ -159,7 +159,7 @@ describe.each(["PANELIST", "FACULTY"])("FACULTY-3 current-account + real HTTP wo
 
 it.each(["ADMIN", "CUSTOM", "STUDENT", "APPLICANT"])("denies current %s impersonating Faculty with an academic token", async role => {
   account.role = role;
-  expect((await request("/api/panelists/me", "FACULTY")).status).toBe(403);
-  expect((await request("/api/thesis/defense/schedule-1/workspace", "PANELIST")).status).toBe(403);
+  expect((await request("/api/panelists/me", "FACULTY")).status).toBe(role === "CUSTOM" ? 503 : 403);
+  expect((await request("/api/thesis/defense/schedule-1/workspace", "PANELIST")).status).toBe(role === "CUSTOM" ? 503 : 403);
   expect(db.defenseSchedule.findUnique).not.toHaveBeenCalled();
 });

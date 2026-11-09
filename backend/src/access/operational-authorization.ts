@@ -18,7 +18,7 @@ export class OperationalAuthorization {
 
   private validate(account: CurrentAccount | null, id: string): CurrentAccount {
     if (!account || account.id !== id || account.isActive !== true || account.mustChangePassword !== false ||
-        !["APPLICANT", "STUDENT", "FACULTY", "PANELIST", "ADMIN", "CUSTOM"].includes(account.role) ||
+        !["APPLICANT", "STUDENT", "FACULTY", "PANELIST", "ADMIN"].includes(account.role) ||
         (isAcademicAccountRole(account.role) && account.panelist?.isActive !== true) ||
         (account.role === "ADMIN" && resolveConfiguredAccountAccess(account).status !== "RESOLVED")) {
       throw new AppError("Current account access denied.", 403);

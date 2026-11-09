@@ -431,6 +431,8 @@ Sequence: **1 foundation → 2 auth → 3 identity compatibility → 4 Admin aut
 
 ### FACULTY-17 — Complete Custom Roles subsystem retirement
 
+- **Status:** **FACULTY-17 implemented / pending independent review.** See the [implementation report](../reports/2026-11-10-faculty-17-custom-roles-retirement.md) for the forward migration, fail-closed compatibility retirement, synthetic verification and remaining gates. No actual database access/cleanup, activation or FACULTY-17A/17B/18 work.
+
 - **Scope:** remove the mock Custom Roles navigation/page/API and obsolete user-facing copy; retire the legacy Other Roles/CUSTOM authentication path; remove `UserRole.CUSTOM`, `User.customRoleId`, `CustomRole`, and `RoleFeatureAccess` from the target Prisma/database schema; update seeds, fixtures, tests and compatibility routes to the four-role model; add safe legacy URL redirects/denials with no new authority.
 - **Non-goals:** deleting unrelated User accounts, academic/Defense/audit history, historical migration files, or changing `PanelRole` / `PanelAssignment`; automatic account conversion; production data cleanup; live cutover.
 - **Dependencies:** 15–16; DR-2 development retirement policy approved. Any development-only CUSTOM account cleanup is a separate explicitly authorized operation. No production inventory or production cleanup is authorized by this package.

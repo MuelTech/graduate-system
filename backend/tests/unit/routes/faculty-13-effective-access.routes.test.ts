@@ -113,7 +113,7 @@ describe("FACULTY-13 additive self-access contract", () => {
     expect(database.examApplication.findMany).not.toHaveBeenCalled();
     expect(database.thesisRecord.findFirst).not.toHaveBeenCalled();
   });
-  it.each(["APPLICANT", "STUDENT", "CUSTOM", "ADMIN"])("%s cannot inherit another Faculty account's work", async role => {
+  it.each(["APPLICANT", "STUDENT", "ADMIN"])("%s cannot inherit another Faculty account's work", async role => {
     account = { ...academic(role), panelist: null, administratorAccess: role === "ADMIN" ? { level: "FULL" } : null };
     assignments.push(adviser(otherId)); requests.push({ requestedAdviserId: otherId });
     certifications.push(certification(otherId)); defenses.push(defense(otherId));

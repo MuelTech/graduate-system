@@ -55,12 +55,9 @@ describe.skipIf(!enabled)("FACULTY-16 isolated real MariaDB migration and cutove
     writeFileSync(path.join(folder, "prisma.config.ts"), `export default ${JSON.stringify({ schema: path.resolve("prisma/schema.prisma"), migrations: { path: migrations }, datasource: { url: url.toString() } })}`);
     deploy();
     prisma = new PrismaClient({ adapter: new PrismaMariaDb(url.toString().replace("mysql://", "mariadb://")) }); await prisma.$connect();
-    for (const [id, role] of [["operator", "ADMIN"], ["restricted", "CUSTOM"], ["faculty", "PANELIST"], ["external", "PANELIST"], ["unresolved", "CUSTOM"], ["student", "STUDENT"]] as const) {
+    for (const [id, role] of [["operator", "ADMIN"], ["restricted", "ADMIN"], ["faculty", "PANELIST"], ["external", "PANELIST"], ["unresolved", "ADMIN"], ["student", "STUDENT"]] as const) {
       await prisma.user.create({ data: { id, role, email: `${id}@example.invalid`, firstName: "Synthetic", lastName: id, passwordHash: `unusable-synthetic-${id}`, mustChangePassword: false } });
     }
-    await prisma.customRole.create({ data: { id: "legacy-role", roleName: "Synthetic unknown legacy", createdById: "operator" } });
-    for (const id of ["restricted", "unresolved"]) await prisma.user.update({ where: { id }, data: { customRoleId: "legacy-role" } });
-    for (const id of ["feature-1", "feature-2"]) await prisma.roleFeatureAccess.create({ data: { id, roleId: "legacy-role", featureKey: "unknown.legacy", canView: true, canEdit: true } });
     for (const id of ["faculty", "external"]) await prisma.panelist.create({ data: { id: `profile-${id}`, userId: id, isExternal: id === "external", isAvailableAsAdviser: true } });
     await prisma.program.create({ data: { id: "program", programName: "Synthetic Preservation", programType: "MASTERS" } });
     await prisma.student.create({ data: { id: "student-row", userId: "student", programId: "program" } });
@@ -111,7 +108,11 @@ describe.skipIf(!enabled)("FACULTY-16 isolated real MariaDB migration and cutove
     }
   }, 60_000);
   it("deploys the clean committed chain, upgrades a populated synthetic snapshot and redeploys as no-op", () => {
-    for (const table of Object.keys(legacy.tables).filter(name => name !== "_prisma_migrations")) expect(baseline.tables[table]).toEqual(legacy.tables[table]);
+    // FACULTY-17 contracts only the obsolete structures; all business records survive.
+    for (const table of Object.keys(legacy.tables).filter(name => !["_prisma_migrations", "custom_roles", "role_feature_access"].includes(name))) {
+      const prior = table === "users" ? legacy.tables[table].map(({ custom_role_id, ...row }) => row) : legacy.tables[table];
+      expect(baseline.tables[table]).toEqual(prior);
+    }
     expect(baseline.tables.administrator_access).toHaveLength(0); expect(baseline.tables.account_capability_grants).toHaveLength(0);
     expect(deploy()).toContain("No pending migrations");
   });
@@ -202,7 +203,7 @@ describe.skipIf(!enabled)("FACULTY-16 isolated real MariaDB migration and cutove
       const [version] = await restored.query("SELECT VERSION() AS version");
       console.log("FACULTY-16 real MariaDB summary", JSON.stringify({ sourceProvenance, databaseVersion: (version as any[])[0].version, migrationCount: baseline.tables._prisma_migrations.length,
         tableCount: Object.keys(baseline.tables).length, accountCount: baseline.tables.users.length, gs020PdfSha256: pdfHash,
-        restoredBusinessDigest: snapshotDigest(baseline), cleanChain: true, populatedUpgrade: true, sqlBackupRestored: true, appliedBatches: 4, restorationBatches: 4, heldOutCustomAccounts: 1 }));
+        restoredBusinessDigest: snapshotDigest(baseline), cleanChain: true, populatedUpgrade: true, sqlBackupRestored: true, appliedBatches: 4, restorationBatches: 4, heldOutAdminAccounts: 1 }));
     } finally { await restored.end(); }
   }, 180_000);
 });

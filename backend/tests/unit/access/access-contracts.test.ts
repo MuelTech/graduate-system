@@ -20,7 +20,7 @@ describe("operator preflight format foundation", () => {
     const template = createAccessPreflightTemplate();
     expect(template.inventoryStatus).toBe("NOT_COLLECTED");
     expect(template.mode).toBe("READ_ONLY");
-    expect(template.requiredSections).toEqual(["accounts", "legacyRoles", "integrity"]);
+    expect(template.requiredSections).toEqual(["accounts", "integrity"]);
     expect(template).not.toHaveProperty("accounts");
     expect(template).not.toHaveProperty("grants");
     expect(template).not.toHaveProperty("databaseUrl");

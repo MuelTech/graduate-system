@@ -118,13 +118,15 @@ describe.skipIf(process.env.FACULTY_1_DB_TEST !== "1")("FACULTY-1 real MariaDB m
     deploy();
     client = new PrismaClient({ adapter: new PrismaMariaDb(url.toString().replace("mysql://", "mariadb://")) });
     await client.$connect();
-    for (const [key, role] of [["actor", "ADMIN"], ["admin", "ADMIN"], ["faculty", "PANELIST"], ["student", "STUDENT"], ["custom", "CUSTOM"]] as const) {
+    for (const [key, role] of [["actor", "ADMIN"], ["admin", "ADMIN"], ["faculty", "PANELIST"], ["student", "STUDENT"]] as const) {
       await client.user.create({ data: { id: ids[key], email: `${ids[key]}@example.invalid`, firstName: "Synthetic", lastName: key, passwordHash: "unusable-test-hash", role } });
     }
     await client.panelist.create({ data: { id: ids.profile, userId: ids.faculty, isExternal: true, isAvailableAsAdviser: false } });
-    await client.customRole.create({ data: { id: ids.role, roleName: "Synthetic legacy role", createdById: ids.actor } });
-    await client.roleFeatureAccess.create({ data: { id: ids.feature, roleId: ids.role, featureKey: "legacy.unknown", canView: true, canEdit: true } });
-    await client.user.update({ where: { id: ids.custom }, data: { customRoleId: ids.role } });
+    // Historical pre-FACULTY-1 schema only; never a target seed/account conversion.
+    await connection.execute("INSERT INTO users (user_id,email,password_hash,role,first_name,last_name,updated_at) VALUES (?,?,?,'CUSTOM','Synthetic','Historical',NOW())", [ids.custom, `${ids.custom}@example.invalid`, "unusable-test-hash"]);
+    await connection.execute("INSERT INTO custom_roles (role_id,role_name,created_by,updated_at) VALUES (?,?,?,NOW())", [ids.role, "Synthetic historical role", ids.actor]);
+    await connection.execute("INSERT INTO role_feature_access (access_id,role_id,feature_key,can_view,can_edit) VALUES (?,?,?,1,1)", [ids.feature, ids.role, "legacy.unknown"]);
+    await connection.execute("UPDATE users SET custom_role_id=? WHERE user_id=?", [ids.role, ids.custom]);
     await client.program.create({ data: { id: ids.program, programName: "Synthetic preservation", programType: "MASTERS" } });
     await client.student.create({ data: { id: ids.studentRow, userId: ids.student, programId: ids.program } });
     // Historical relationship fixture is intentionally separate from this External profile.

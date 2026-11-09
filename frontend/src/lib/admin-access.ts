@@ -199,12 +199,6 @@ export const ADMIN_DESTINATIONS: readonly AdminDestination[] = [
     fullOnly: true,
   },
   {
-    href: "/admin/users/roles",
-    label: "Custom Roles",
-    group: "User Management",
-    fullOnly: true,
-  },
-  {
     href: "/admin/exam/slots",
     label: "Exam Schedules",
     group: "Exam Management",
