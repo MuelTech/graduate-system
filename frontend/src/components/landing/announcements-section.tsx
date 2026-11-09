@@ -1,11 +1,13 @@
 "use client";
 
 import {
+  useCallback,
   useEffect,
   useId,
   useRef,
   useState,
   useSyncExternalStore,
+  type CSSProperties,
 } from "react";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 import { publicSiteContent } from "@/content/public-site-content";
@@ -44,7 +46,14 @@ const slides = [
   },
 ];
 const intervalMs = 8_000;
+const transitionMs = 900;
 const motionQuery = "(prefers-reduced-motion: reduce)";
+type Direction = "forward" | "backward";
+type SlideFrame = {
+  active: number;
+  previous: number | null;
+  direction: Direction;
+};
 
 function subscribeEnvironment(onChange: () => void) {
   const motion = window.matchMedia(motionQuery);
@@ -65,7 +74,14 @@ function getEnvironment() {
 }
 
 export function AnnouncementsSection() {
-  const [active, setActive] = useState(0);
+  const [{ active, previous, direction }, setFrame] = useState<SlideFrame>({
+    active: 0,
+    previous: null,
+    direction: "forward",
+  });
+  const queuedSlide = useRef<{ index: number; direction: Direction } | null>(
+    null,
+  );
   const [paused, setPaused] = useState(false);
   const [hovered, setHovered] = useState(false);
   const [focusPaused, setFocusPaused] = useState(false);
@@ -100,15 +116,58 @@ export function AnnouncementsSection() {
   useEffect(() => {
     if (!rotating || slides.length < 2) return;
     const timer = window.setTimeout(
-      () => setActive((index) => (index + 1) % slides.length),
+      () =>
+        setFrame((frame) => ({
+          active: (frame.active + 1) % slides.length,
+          previous: frame.active,
+          direction: "forward",
+        })),
       intervalMs,
     );
     return () => window.clearTimeout(timer);
   }, [rotating, active]);
 
-  function selectSlide(index: number) {
+  const finishTransition = useCallback(() => {
+    if (previous === null) return;
+    const queued = queuedSlide.current;
+    queuedSlide.current = null;
+    if (queued && queued.index !== active) {
+      setFrame({
+        active: queued.index,
+        previous: motionAllowed ? active : null,
+        direction: queued.direction,
+      });
+      setAnnouncement(
+        `Announcement ${queued.index + 1} of ${slides.length}: ${slides[queued.index].title}`,
+      );
+    } else {
+      setFrame((frame) => ({ ...frame, previous: null }));
+    }
+  }, [active, previous, motionAllowed]);
+
+  useEffect(() => {
+    if (previous === null) return;
+    // Animation-end normally settles the frame. Also recover from a cancelled
+    // animation, a background tab, or a motion-preference change mid-transition.
+    const timer = window.setTimeout(
+      finishTransition,
+      motionAllowed ? transitionMs + 100 : 0,
+    );
+    return () => window.clearTimeout(timer);
+  }, [finishTransition, motionAllowed, previous]);
+
+  function selectSlide(index: number, nextDirection: Direction = "forward") {
     const next = (index + slides.length) % slides.length;
-    setActive(next);
+    if (previous !== null) {
+      queuedSlide.current = { index: next, direction: nextDirection };
+      return;
+    }
+    if (next === active) return;
+    setFrame({
+      active: next,
+      previous: motionAllowed ? active : null,
+      direction: nextDirection,
+    });
     setAnnouncement(
       `Announcement ${next + 1} of ${slides.length}: ${slides[next].title}`,
     );
@@ -123,6 +182,9 @@ export function AnnouncementsSection() {
     <div
       ref={root}
       className="public-carousel"
+      style={
+        { "--public-carousel-duration": `${transitionMs}ms` } as CSSProperties
+      }
       role="region"
       aria-roledescription="carousel"
       aria-label="News & Announcements"
@@ -167,9 +229,21 @@ export function AnnouncementsSection() {
             id={carouselId + "-" + index}
             className={
               "public-carousel__slide public-carousel__slide--" +
-              slide.treatment
+              slide.treatment +
+              (previous !== null && index === active
+                ? " public-carousel__slide--entering"
+                : "") +
+              (index === previous ? " public-carousel__slide--leaving" : "")
             }
-            hidden={active !== index}
+            data-active={index === active ? "true" : undefined}
+            data-direction={direction}
+            hidden={index !== active && index !== previous}
+            aria-hidden={index !== active}
+            inert={index !== active}
+            onAnimationEnd={(event) => {
+              if (event.target === event.currentTarget && index === active)
+                finishTransition();
+            }}
             role="group"
             aria-roledescription="slide"
             aria-label={index + 1 + " of " + slides.length}
@@ -222,7 +296,12 @@ export function AnnouncementsSection() {
             type="button"
             aria-label="Previous announcement"
             aria-controls={carouselId}
-            onClick={() => selectSlide(active - 1)}
+            onClick={() =>
+              selectSlide(
+                (queuedSlide.current?.index ?? active) - 1,
+                "backward",
+              )
+            }
           >
             <ArrowLeft aria-hidden="true" size={22} />
           </button>
@@ -231,7 +310,9 @@ export function AnnouncementsSection() {
             type="button"
             aria-label="Next announcement"
             aria-controls={carouselId}
-            onClick={() => selectSlide(active + 1)}
+            onClick={() =>
+              selectSlide((queuedSlide.current?.index ?? active) + 1)
+            }
           >
             <ArrowRight aria-hidden="true" size={22} />
           </button>

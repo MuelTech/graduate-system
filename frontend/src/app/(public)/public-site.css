@@ -382,6 +382,8 @@
 }
 .earist-public .public-carousel__viewport {
   display: grid;
+  overflow: clip;
+  isolation: isolate;
   min-height: clamp(640px, calc(100svh - 88px), 960px);
 }
 .earist-public .public-carousel__identity {
@@ -408,8 +410,24 @@
 .earist-public .public-carousel__slide[hidden] {
   display: none;
 }
-.earist-public .public-carousel__slide:not([hidden]) {
-  animation: public-announcement-appear 320ms ease-out;
+.earist-public .public-carousel__slide--entering {
+  z-index: 2;
+  will-change: transform;
+  animation: public-carousel-enter-right var(--public-carousel-duration)
+    cubic-bezier(0.45, 0, 0.2, 1) both;
+}
+.earist-public .public-carousel__slide--leaving {
+  z-index: 1;
+  pointer-events: none;
+  will-change: transform;
+  animation: public-carousel-exit-left var(--public-carousel-duration)
+    cubic-bezier(0.45, 0, 0.2, 1) both;
+}
+.earist-public .public-carousel__slide--entering[data-direction="backward"] {
+  animation-name: public-carousel-enter-left;
+}
+.earist-public .public-carousel__slide--leaving[data-direction="backward"] {
+  animation-name: public-carousel-exit-right;
 }
 .earist-public .public-carousel__image {
   position: absolute;
@@ -661,12 +679,36 @@
   outline: 2px solid var(--earist-primary);
   outline-offset: 4px;
 }
-@keyframes public-announcement-appear {
+@keyframes public-carousel-enter-right {
   from {
-    opacity: 0;
+    transform: translate3d(100%, 0, 0);
   }
   to {
-    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+@keyframes public-carousel-exit-left {
+  from {
+    transform: translate3d(0, 0, 0);
+  }
+  to {
+    transform: translate3d(-100%, 0, 0);
+  }
+}
+@keyframes public-carousel-enter-left {
+  from {
+    transform: translate3d(-100%, 0, 0);
+  }
+  to {
+    transform: translate3d(0, 0, 0);
+  }
+}
+@keyframes public-carousel-exit-right {
+  from {
+    transform: translate3d(0, 0, 0);
+  }
+  to {
+    transform: translate3d(100%, 0, 0);
   }
 }
 @media (min-width: 900px) and (max-width: 1359px) {

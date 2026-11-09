@@ -11,11 +11,14 @@ const results = [];
 const errors = [];
 const mutations = [];
 const visibleSlide = (page) =>
-  page.locator(".public-carousel__slide:not([hidden])");
+  page.locator('.public-carousel__slide[data-active="true"]');
 const position = async (page, number) => {
   await expect(visibleSlide(page)).toHaveAttribute(
     "aria-label",
     `${number} of 3`,
+  );
+  await expect(page.locator(".public-carousel__slide--entering")).toHaveCount(
+    0,
   );
 };
 
@@ -54,6 +57,160 @@ async function releaseCarousel(page) {
 }
 
 try {
+  await check(
+    "Continuous horizontal motion, forward wrap and rapid navigation",
+    async () => {
+      const page = await open();
+
+      async function inspectMotion(forward = true) {
+        await expect(
+          page.locator(".public-carousel__slide--entering"),
+        ).toHaveCount(1);
+        const samples = await page.evaluate(() => {
+          const incoming = document.querySelector(
+            ".public-carousel__slide--entering",
+          );
+          const outgoing = document.querySelector(
+            ".public-carousel__slide--leaving",
+          );
+          const animations = [
+            incoming.getAnimations()[0],
+            outgoing.getAnimations()[0],
+          ];
+          if (animations.some((animation) => !animation))
+            throw Error("Missing paired animations");
+          const duration = Number(animations[0].effect.getTiming().duration);
+          animations.forEach((animation) => animation.pause());
+          return [0, 0.25, 0.5, 0.75, 1].map((fraction) => {
+            animations.forEach((animation) => {
+              animation.currentTime = duration * fraction;
+            });
+            const next = incoming.getBoundingClientRect();
+            const old = outgoing.getBoundingClientRect();
+            return {
+              fraction,
+              duration,
+              incomingX: next.x,
+              incomingRight: next.right,
+              outgoingX: old.x,
+              outgoingRight: old.right,
+              width: next.width,
+              opacity: getComputedStyle(incoming).opacity,
+              outgoingInert: outgoing.inert,
+              outgoingHiddenFromAT: outgoing.getAttribute("aria-hidden"),
+              overflow: document.documentElement.scrollWidth - innerWidth,
+            };
+          });
+        });
+        assert.ok(samples[0].duration >= 600 && samples[0].duration <= 1200);
+        assert.ok(
+          Math.abs(samples[0].incomingX - (forward ? 1440 : -1440)) < 1,
+        );
+        assert.ok(Math.abs(samples.at(-1).incomingX) < 1);
+        for (let index = 0; index < samples.length; index++) {
+          const sample = samples[index];
+          assert.equal(
+            sample.opacity,
+            "1",
+            "The slide must move, not fade through an empty background",
+          );
+          assert.equal(sample.outgoingInert, true);
+          assert.equal(sample.outgoingHiddenFromAT, "true");
+          assert.equal(sample.overflow, 0);
+          const seam = forward
+            ? sample.outgoingRight - sample.incomingX
+            : sample.incomingRight - sample.outgoingX;
+          assert.ok(
+            Math.abs(seam) < 1,
+            "Incoming and outgoing panels must meet without a gap",
+          );
+          if (index > 0) {
+            assert.ok(
+              forward
+                ? sample.incomingX < samples[index - 1].incomingX
+                : sample.incomingX > samples[index - 1].incomingX,
+            );
+          }
+        }
+        await page.evaluate(() => {
+          document
+            .querySelectorAll(".public-carousel__slide")
+            .forEach((slide) =>
+              slide.getAnimations().forEach((animation) => animation.finish()),
+            );
+        });
+        await page.clock.fastForward(1_100);
+        await expect(
+          page.locator(".public-carousel__slide--entering"),
+        ).toHaveCount(0);
+        await expect(
+          page.locator(".public-carousel__slide:not([hidden])"),
+        ).toHaveCount(1);
+      }
+
+      await page
+        .getByRole("button", { name: "Next announcement", exact: true })
+        .click();
+      await inspectMotion();
+      await position(page, 2);
+      await page.getByRole("button", { name: /^Show announcement 3:/ }).click();
+      await position(page, 3);
+      await page
+        .getByRole("button", { name: "Next announcement", exact: true })
+        .click();
+      await inspectMotion();
+      await position(page, 1);
+      await page
+        .getByRole("button", { name: "Previous announcement", exact: true })
+        .click();
+      await inspectMotion(false);
+      await position(page, 3);
+      await page
+        .getByRole("button", { name: "Next announcement", exact: true })
+        .click();
+      await page.getByRole("button", { name: /^Show announcement 2:/ }).click();
+      const lastChoice = page.getByRole("button", {
+        name: /^Show announcement 3:/,
+      });
+      await lastChoice.click();
+      await position(page, 3);
+      await expect(lastChoice).toBeFocused();
+      await expect(
+        page.locator(".public-carousel__slide:not([hidden])"),
+      ).toHaveCount(1);
+      await page
+        .getByRole("button", { name: "Next announcement", exact: true })
+        .click();
+      await expect(
+        page.locator(".public-carousel__slide--entering"),
+      ).toHaveCount(1);
+      await page.emulateMedia({ reducedMotion: "reduce" });
+      await page.clock.fastForward(100);
+      await position(page, 1);
+      assert.equal(
+        await visibleSlide(page).evaluate(
+          (slide) => getComputedStyle(slide).animationName,
+        ),
+        "none",
+      );
+      await page.emulateMedia({ reducedMotion: "no-preference" });
+      await page
+        .getByRole("button", { name: "Next announcement", exact: true })
+        .click();
+      await settle();
+      await page.evaluate(() => {
+        document
+          .querySelectorAll(".public-carousel__slide")
+          .forEach((slide) =>
+            slide.getAnimations().forEach((animation) => animation.cancel()),
+          );
+      });
+      await page.clock.fastForward(1_100);
+      await position(page, 2);
+      await page.close();
+    },
+  );
+
   await check(
     "Home hierarchy, complete catalog, truthful destinations and removed CTAs",
     async () => {
