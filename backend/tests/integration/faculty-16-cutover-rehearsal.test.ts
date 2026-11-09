@@ -28,7 +28,7 @@ describe.skipIf(!enabled)("FACULTY-16 isolated real MariaDB migration and cutove
     return renderAdviserRequest({ ...frozen.renderInput, logos });
   }
   let created = false, restoreCreated = false, cleanCreated = false;
-  const source = execFileSync("git", ["rev-parse", "HEAD"], { encoding: "utf8" }).trim();
+  let source: string, sourceProvenance: unknown;
   const server = process.env.FACULTY_16_DB_SERVER_URL!, application = process.env.DATABASE_URL!;
   const safeSchema = (name: string) => { if (!/^faculty16_test_[a-f0-9]{32}$/.test(name)) throw new Error("Unsafe schema cleanup."); return `\`${name}\``; };
   function deploy() {
@@ -40,6 +40,9 @@ describe.skipIf(!enabled)("FACULTY-16 isolated real MariaDB migration and cutove
     return ["--protocol=TCP", `--host=${u.hostname}`, `--port=${u.port}`, `--user=${decodeURIComponent(u.username)}`, `--password=${decodeURIComponent(u.password)}`];
   }
   beforeAll(async () => {
+    // Refuse dirty/uncommitted rehearsal evidence before creating any disposable schema or output.
+    const reviewed = require("../../scripts/faculty-cutover-rehearsal.cjs").loadReviewedOperator();
+    reviewed.assertSource(); sourceProvenance = reviewed.provenance; source = reviewed.provenance.sourceCommit;
     const url = isolatedRehearsalUrl(server, application, schema);
     // Only now connect to the explicitly isolated server, never the application URL.
     db = await mysql.createConnection({ host: url.hostname, port: Number(url.port), user: decodeURIComponent(url.username), password: decodeURIComponent(url.password), dateStrings: true });
@@ -179,11 +182,13 @@ describe.skipIf(!enabled)("FACULTY-16 isolated real MariaDB migration and cutove
       const recovered = await captureSnapshot(restored, restoreSchema, source);
       expect(snapshotDigest({ ...recovered, schema })).toBe(snapshotDigest(baseline));
       expect(createHash("sha256").update(await historicalOutput(recovered)).digest("hex")).toBe(pdfHash);
-      const run = (name: string, args: string[]) => execFileSync(process.execPath, ["-r", "ts-node/register/transpile-only", "src/cli/faculty-cutover-rehearsal.ts", "--schema", restoreSchema,
+      const run = (name: string, args: string[]) => execFileSync(process.execPath, ["scripts/faculty-cutover-rehearsal.cjs", "--schema", restoreSchema,
         "--evidence", path.join(folder!, `${name}.json`), ...args], { encoding: "utf8", timeout: 60_000, stdio: "pipe" });
       const baselineFile = path.join(folder!, "baseline.json"), manifestFile = path.join(folder!, "manifest.json");
       run("capture", ["--capture", baselineFile]);
       const captured = JSON.parse(readFileSync(baselineFile, "utf8"));
+      expect(captured.sourceCommit).toBe(source);
+      expect(JSON.parse(readFileSync(path.join(folder!, "capture.json"), "utf8")).sourceProvenance).toEqual(sourceProvenance);
       writeFileSync(manifestFile, JSON.stringify(syntheticCutoverManifest(captured)));
       const common = ["--baseline", baselineFile, "--manifest", manifestFile];
       run("dry-run", common);
@@ -195,7 +200,7 @@ describe.skipIf(!enabled)("FACULTY-16 isolated real MariaDB migration and cutove
       expect(JSON.parse(readFileSync(path.join(folder!, "restore-repeat.json"), "utf8"))).toMatchObject({ committedBatches: 0, restored: 4 });
       expect(inventory(await captureSnapshot(restored, restoreSchema, source)).accounts.find(a => a.userId === "unresolved")?.configuredAccess.capabilities).toEqual([]);
       const [version] = await restored.query("SELECT VERSION() AS version");
-      console.log("FACULTY-16 real MariaDB summary", JSON.stringify({ databaseVersion: (version as any[])[0].version, migrationCount: baseline.tables._prisma_migrations.length,
+      console.log("FACULTY-16 real MariaDB summary", JSON.stringify({ sourceProvenance, databaseVersion: (version as any[])[0].version, migrationCount: baseline.tables._prisma_migrations.length,
         tableCount: Object.keys(baseline.tables).length, accountCount: baseline.tables.users.length, gs020PdfSha256: pdfHash,
         restoredBusinessDigest: snapshotDigest(baseline), cleanChain: true, populatedUpgrade: true, sqlBackupRestored: true, appliedBatches: 4, restorationBatches: 4, heldOutCustomAccounts: 1 }));
     } finally { await restored.end(); }

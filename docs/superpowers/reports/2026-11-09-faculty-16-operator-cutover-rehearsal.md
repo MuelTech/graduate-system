@@ -4,6 +4,20 @@ Date: 2026-11-09 (Asia/Manila). Repository: `MuelTech/graduate-system`. Branch: 
 
 **Status: FACULTY-16 implemented / pending independent review.** No independent acceptance or activation is asserted. FACULTY-17 and FACULTY-18 were not implemented.
 
+## Bounded source-integrity correction — 2026-11-09
+
+Independent review identified a real gap: the original `git rev-parse HEAD` label did not reject dirty source, and the npm entry used ignored `dist` output. The original synthetic run exercised behavior but **did not establish executable/source binding**: FACULTY-16 was still uncommitted during that run. Its source-binding claim is invalidated and the original hash evidence is superseded by the clean committed replay below. Historical verification counts in the original implementation record are not current provenance proof.
+
+Correction starting local/actual remote HEAD: `4383c38c881d16b5bcb266deff8d6732001645e7`; clean worktree, matching feature branch, verified before editing. Scope is limited to the launcher/CLI, focused source-integrity tests, existing FACULTY-16 harness, operator documentation and regenerated evidence. No reconciliation/domain/schema/gate redesign.
+
+The tracked CommonJS launcher anchors checks to its own checkout, rejects tracked/staged/untracked dirt and hidden index flags, strips inherited Git-location/index overrides and checks its own committed contents. It reads the six application modules from Git blobs at the pinned HEAD, transpiles them in memory, and permits relative imports only within that committed graph. Ignored dist/adjacent JS cannot supply executable application code; direct source/dist CLI invocation is denied. Runtime Node/installed dependencies remain trusted prerequisites. The CLI uses the launcher-provided commit and rechecks source before evidence/DB access and each batch. Evidence records per-file SHA-256 plus the complete source-tree SHA-256. Baseline/manifest/journal semantics, default dry-run, isolation, denial and restoration remain unchanged.
+
+Focused affected verification before committing the executable correction: **3 files / 65 tests passed**, including **12 new source-provenance cases** using disposable local Git fixtures and no database. They cover tracked/staged/untracked dirt with zero output creation, hidden index flags, inherited Git overrides/wrong working directory, exact committed file hashes, ignored dist/JS shadows, changed committed HEAD, wrong-HEAD baseline rejection and denied direct compiled execution. Backend build and focused test/fixture TypeScript checks passed.
+
+**Clean committed replay: PENDING in this executable-correction commit.** The final executable/tests are committed first; the explicit FACULTY-16 final verification and isolated synthetic evidence replay then execute from that clean HEAD. A later evidence/report-only commit records the actual executed commit and hashes without pretending the publication commit executed itself. No actual development/XAMPP, staging or production database is authorized or accessed. FACULTY-4/FACULTY-12 contention gates remain open; all three activation gates remain false; owner QA/hosted CI remain unclaimed. Stop pending independent review.
+
+Exact correction files (relative to `4383c38`): `backend/package.json`; `backend/scripts/faculty-cutover-rehearsal.cjs`; `backend/src/cli/faculty-cutover-rehearsal.ts`; `backend/tests/unit/access/faculty-16-source-provenance.test.ts`; `backend/tests/integration/faculty-16-cutover-rehearsal.test.ts`; `docs/runbooks/faculty-16-cutover-rehearsal.md`; this report; `docs/superpowers/reports/evidence/2026-11-09-faculty-16-rehearsal.json`.
+
 ## Verified baseline and scope
 
 Actual remote HEAD was verified with `git ls-remote origin refs/heads/feat/faculty-admin-access` as **`d4141dcdc46843f815811b1995c9542a8c978c31`**, matching the required starting HEAD. The clean local branch was behind at `60e559568b4a368666e5cd42fde64eeb3ec29daf`; it was fetched and fast-forwarded to the verified starting commit before editing. No applicable AGENTS.md was found in the repository/inspected ancestors. No replacement implementation plan was created.

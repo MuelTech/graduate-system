@@ -1,5 +1,7 @@
 {
   "version": 1,
+  "sourceBindingStatus": "INVALIDATED_ORIGINAL_DIRTY_IMPLEMENTATION_CHECKOUT_PENDING_CLEAN_COMMITTED_REPLAY",
+  "supersessionReason": "Original behavior evidence was produced before FACULTY-16 source was committed; its HEAD label did not prove executable provenance. Clean committed replay replaces this artifact after the bounded correction is committed.",
   "date": "2026-11-09",
   "timezone": "Asia/Manila",
   "startingHead": "d4141dcdc46843f815811b1995c9542a8c978c31",

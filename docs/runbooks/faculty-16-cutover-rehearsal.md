@@ -31,9 +31,19 @@ The ordinary `DATABASE_URL` need only be present for the port comparison; it is 
 
 The independent FACULTY-4 last-Full contention and FACULTY-12 five-case essay contention harnesses are **not executed by this command**. Their readiness gates remain open until those exact separately required checks pass.
 
+## Enforced source and executable provenance
+
+Use `npm run faculty:cutover:rehearse -- ...`, which invokes the tracked `backend/scripts/faculty-cutover-rehearsal.cjs` launcher. Before loading application code or creating evidence, it anchors Git to its own repository, requires an entirely clean checkout (tracked, staged and untracked changes included), rejects assume-unchanged/skip-worktree index flags and verifies its own file against HEAD. Inherited `GIT_*` overrides cannot substitute another worktree/index. Ignored runtime artifacts may remain, but outputs must be in an ignored protected directory such as `backend/.tmp` or outside the checkout so they do not become new untracked source dirt.
+
+The launcher reads its closed six-module TypeScript application graph directly from Git objects at that exact commit and transpiles it in memory with explicit compiler options. Relative imports resolve only inside that committed graph. It never loads working-tree source shadows, cached build files, `dist`, or a project ts-node/tsconfig hook. The CLI rejects direct source/dist execution. Cleanliness and the pinned HEAD are checked again before outputs and each reconciliation batch. A dirty tree or mismatched baseline HEAD fails before the first evidence file or DB connection.
+
+Protected evidence contains `sourceProvenance`: the actual `sourceCommit`, execution mode `GIT_HEAD_TYPESCRIPT`, each launcher/application Git blob's SHA-256, and `sourceTreeSha256` over that ordered file/hash list. This identifies the executed repository code; Node and installed package dependencies remain trusted runtime prerequisites. It does not assert independent reviewer approval, which is still required. `npm run build` is not an operator provenance prerequisite and ignored build output is not used.
+
+For reproducible evidence, first commit the final executable correction and tests, run verification from that clean commit with ignored output paths, then publish evidence/report changes in a documentation-only commit. Record the executed code commit explicitly, rather than claiming the later evidence-publication commit executed itself. A changed HEAD requires a newly captured/reviewed baseline; never relabel an old manifest or use new-HEAD artifacts to resume an old-HEAD rehearsal.
+
 ## Baseline and manifest
 
-From a reviewed compatible checkout, run `npm run build`, then `npm run faculty:cutover:rehearse -- --help`. For a synthetic schema retained by a separately controlled rehearsal harness:
+From a clean committed compatible checkout, run `npm run faculty:cutover:rehearse -- --help`. For a synthetic schema retained by a separately controlled rehearsal harness:
 
 ```powershell
 npm run faculty:cutover:rehearse -- --schema faculty16_test_<uuid32> --capture <protected-baseline.json> --evidence <new-inventory.json>
