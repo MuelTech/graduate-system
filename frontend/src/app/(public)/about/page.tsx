@@ -54,8 +54,8 @@ export default function AboutPage() {
               <p className="text-(--earist-body-text)">
                 Built with modern web technologies including Next.js,
                 TypeScript, and Tailwind CSS, the GS-IS provides a responsive
-                and accessible interface for all user roles: Administrators,
-                Applicants, Students, Faculty, and Administrators.
+                and accessible interface for all user roles: Applicants,
+                Students, Faculty, and Administrators.
               </p>
             </div>
 
