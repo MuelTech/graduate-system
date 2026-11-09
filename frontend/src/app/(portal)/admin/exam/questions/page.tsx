@@ -1,4 +1,6 @@
 "use client";
+import { AdminDialogContent as DialogContent } from "@/components/admin/access/admin-dialog";
+import { AdminCan } from "@/components/admin/access/admin-access-provider";
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { AdminQuestion } from "@/types";
@@ -9,7 +11,6 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   Dialog,
-  DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
@@ -151,20 +152,20 @@ export default function AdminExamQuestionsPage() {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Button variant="outline" onClick={() => setQuestionSetOpen(true)}>
+          <AdminCan capability="exam.questions.manage"><Button variant="outline" onClick={() => setQuestionSetOpen(true)}>
             Question Set
-          </Button>
-          <Button variant="outline" onClick={() => setConfigurationOpen(true)}>
+          </Button></AdminCan>
+          <AdminCan capability="exam.configuration.manage"><Button variant="outline" onClick={() => setConfigurationOpen(true)}>
             Exam Configuration
-          </Button>
-          <Button
+          </Button></AdminCan>
+          <AdminCan capability="exam.questions.manage"><Button
             onClick={() => {
               setWorking(false);
               setEditor({ question: null });
             }}
           >
             Add question
-          </Button>
+          </Button></AdminCan>
         </div>
       </div>
       {error && (
@@ -221,7 +222,7 @@ export default function AdminExamQuestionsPage() {
                       </Badge>
                     </div>
                     <div className="flex gap-2">
-                      <Button
+                      <AdminCan capability="exam.questions.manage"><Button
                         variant="outline"
                         size="sm"
                         onClick={() => {
@@ -231,8 +232,8 @@ export default function AdminExamQuestionsPage() {
                         aria-label={`Edit question ${question.order}`}
                       >
                         Edit
-                      </Button>
-                      <Button
+                      </Button></AdminCan>
+                      <AdminCan capability="exam.questions.manage"><Button
                         variant="destructive"
                         size="sm"
                         disabled={deleting !== null}
@@ -240,7 +241,7 @@ export default function AdminExamQuestionsPage() {
                         aria-label={`Delete question ${question.order}`}
                       >
                         {deleting === question.id ? "Deleting…" : "Delete"}
-                      </Button>
+                      </Button></AdminCan>
                     </div>
                   </div>
                   <p className="whitespace-pre-wrap font-medium text-(--earist-body-text)">
@@ -308,9 +309,9 @@ export default function AdminExamQuestionsPage() {
           />
         </>
       )}
-      {configurationOpen ? <ExamConfigurationDialog onClose={() => setConfigurationOpen(false)} /> : null}
+      {configurationOpen ? <AdminCan capability="exam.configuration.manage"><ExamConfigurationDialog onClose={() => setConfigurationOpen(false)} /></AdminCan> : null}
       {questionSetOpen ? (
-        <ExamQuestionSetDialog onClose={() => setQuestionSetOpen(false)} />
+        <AdminCan capability="exam.questions.manage"><ExamQuestionSetDialog onClose={() => setQuestionSetOpen(false)} /></AdminCan>
       ) : null}
       <Dialog
         open={editor !== null}

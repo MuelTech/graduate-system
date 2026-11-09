@@ -1,4 +1,5 @@
 "use client";
+import { AdminDialogContent as DialogContent } from "@/components/admin/access/admin-dialog";
 
 import { useMemo, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -7,7 +8,6 @@ import { ApiError, apiClientRequest } from "@/lib/api.client";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
-  DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,

@@ -1,7 +1,8 @@
 "use client";
+import { AdminCan, useAdminAccess } from "@/components/admin/access/admin-access-provider";
 
 import { useState } from "react";
-import Link from "next/link";
+import { AdminLink as Link } from "@/components/admin/access/admin-access-provider";
 import { useQuery } from "@tanstack/react-query";
 import { ApiError, apiClientRequest } from "@/lib/api.client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -120,6 +121,7 @@ export function ScheduledDefenseDetail({
     type: "success" | "error";
     message: string;
   } | null>(null);
+  const { allows } = useAdminAccess();
   const detailQuery = useQuery<ScheduledDefenseDetailDto>({
     queryKey: ["scheduledDefenseDetail", scheduleId],
     queryFn: async () =>
@@ -134,7 +136,7 @@ export function ScheduledDefenseDetail({
 
   const policyQuery = useQuery<CommitteePolicyDto>({
     queryKey: ["committeePolicy", defenseType, programType ?? ""],
-    enabled: !!detail,
+    enabled: allows("defense.schedules.manage") && !!detail,
     queryFn: async () => {
       const params = new URLSearchParams({ defenseType });
       if (programType) params.set("programType", programType);
@@ -274,7 +276,7 @@ export function ScheduledDefenseDetail({
                 {sessionStatusLabel(detail.sessionStatus)}
               </Badge>
               {canCorrect && !editing && (
-                <Button
+                <AdminCan capability="defense.schedules.manage"><Button
                   size="sm"
                   disabled={detailQuery.isFetching}
                   onClick={async () => {
@@ -297,7 +299,7 @@ export function ScheduledDefenseDetail({
                 >
                   <Settings2 className="mr-2 h-4 w-4" aria-hidden="true" />
                   Manage Schedule &amp; Committee
-                </Button>
+                </Button></AdminCan>
               )}
             </div>
           </div>
@@ -314,7 +316,7 @@ export function ScheduledDefenseDetail({
       </Card>
 
       {editing ? (
-        <ScheduledDefenseCorrectionEditor
+        <AdminCan capability="defense.schedules.manage"><ScheduledDefenseCorrectionEditor
           key={detail.scheduleId}
           detail={detail}
           policy={policyQuery.data}
@@ -332,7 +334,7 @@ export function ScheduledDefenseDetail({
             });
           }}
           onLifecycleConflict={handleLifecycleConflict}
-        />
+        /></AdminCan>
       ) : (
         <>
           <Card>

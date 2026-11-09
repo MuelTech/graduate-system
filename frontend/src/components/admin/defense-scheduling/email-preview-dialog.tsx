@@ -1,8 +1,8 @@
 "use client";
+import { AdminDialogContent as DialogContent } from "@/components/admin/access/admin-dialog";
 
 import {
   Dialog,
-  DialogContent,
   DialogHeader,
   DialogTitle,
   DialogFooter,

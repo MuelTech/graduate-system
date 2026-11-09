@@ -1,4 +1,5 @@
 "use client";
+import { AdminDialogContent as DialogContent } from "@/components/admin/access/admin-dialog";
 
 import { useState, type FormEvent } from "react";
 import type {
@@ -20,7 +21,6 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import {
   Dialog,
-  DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,

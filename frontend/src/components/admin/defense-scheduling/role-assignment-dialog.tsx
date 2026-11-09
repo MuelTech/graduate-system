@@ -1,10 +1,10 @@
 "use client";
+import { AdminDialogContent as DialogContent } from "@/components/admin/access/admin-dialog";
 
 import { useEffect, useState } from "react";
 import { useQuery, keepPreviousData } from "@tanstack/react-query";
 import {
   Dialog,
-  DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,

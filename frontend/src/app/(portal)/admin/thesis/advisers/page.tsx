@@ -1,4 +1,6 @@
 "use client";
+import { AdminDialogContent as DialogContent } from "@/components/admin/access/admin-dialog";
+import { AdminCan } from "@/components/admin/access/admin-access-provider";
 
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -20,7 +22,6 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog,
-  DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
@@ -237,7 +238,7 @@ export default function AdminAdviserRequestReviewPage() {
               </div>
 
               <div className="flex flex-wrap gap-2 pt-1">
-                <Button
+                <AdminCan capability="adviser.requests.review"><Button
                   type="button"
                   className="bg-green-600 text-white hover:bg-green-700"
                   onClick={() =>
@@ -250,8 +251,8 @@ export default function AdminAdviserRequestReviewPage() {
                 >
                   <CheckCircle2 className="mr-2 h-4 w-4" />
                   Approve Request
-                </Button>
-                <Button
+                </Button></AdminCan>
+                <AdminCan capability="adviser.requests.review"><Button
                   type="button"
                   variant="outline"
                   className="text-red-600"
@@ -265,7 +266,7 @@ export default function AdminAdviserRequestReviewPage() {
                 >
                   <XCircle className="mr-2 h-4 w-4" />
                   Reject
-                </Button>
+                </Button></AdminCan>
               </div>
             </CardContent>
           </Card>

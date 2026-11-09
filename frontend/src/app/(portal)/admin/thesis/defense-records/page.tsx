@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
+import { AdminLink as Link } from "@/components/admin/access/admin-access-provider";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { apiClientRequest } from "@/lib/api.client";
 import { cn } from "@/lib/utils";

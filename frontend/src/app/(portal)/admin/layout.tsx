@@ -1,6 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { AdminPortalProvider, AdminRouteGate, useAdminAccess } from "@/components/admin/access/admin-access-provider";
+import { ADMIN_DESTINATIONS, adminDestinationAllowed } from "@/lib/admin-access";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ChatbotWidget } from "@/components/chatbot/chatbot-widget";
@@ -39,6 +41,7 @@ const navItems = [
       { href: "/admin/users/applicants", label: "Applicants" },
       { href: "/admin/users/students", label: "Students" },
       { href: "/admin/users/panelists", label: "Faculty" },
+      { href: "/admin/users/administrators", label: "Administrators" },
       { href: "/admin/users/roles", label: "Custom Roles" },
     ],
   },
@@ -80,10 +83,40 @@ export default function AdminLayout({
 }: {
   children: React.ReactNode;
 }) {
+  return <AdminPortalProvider><AdminShell>{children}</AdminShell></AdminPortalProvider>;
+}
+
+function AdminShell({ children }: { children: React.ReactNode }) {
+  const { access } = useAdminAccess();
+  const permitted = (href: string) => {
+    const destination = ADMIN_DESTINATIONS.find(item => item.href === href);
+    return Boolean(destination && adminDestinationAllowed(access, destination));
+  };
+  const visibleNav = navItems.map(item => "children" in item ? { ...item, children: (item.children ?? []).filter(child => permitted(child.href)) } : item).filter(item => "children" in item ? (item.children ?? []).length > 0 : permitted(item.href));
   const pathname = usePathname();
   const { data: session } = useSession();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
+  const sidebar = useRef<HTMLElement>(null);
+  const opener = useRef<HTMLButtonElement>(null);
+  const wasOpen = useRef(false);
+  useEffect(() => {
+    if (sidebarOpen && window.matchMedia("(max-width: 1023px)").matches) {
+      wasOpen.current = true;
+      const frame = requestAnimationFrame(() => sidebar.current?.querySelector<HTMLAnchorElement>("a[href]")?.focus());
+      const escape = (event: KeyboardEvent) => {
+        if (event.key === "Escape") setSidebarOpen(false);
+        if (event.key === "Tab") {
+          const controls = Array.from(sidebar.current?.querySelectorAll<HTMLElement>('a[href], button:not(:disabled)') ?? []).filter(element => element.getClientRects().length > 0);
+          const first = controls[0], last = controls.at(-1);
+          if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
+          else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
+        }
+      };
+      document.addEventListener("keydown", escape);
+      return () => { cancelAnimationFrame(frame); document.removeEventListener("keydown", escape); };
+    } else if (wasOpen.current) { wasOpen.current = false; opener.current?.focus(); }
+  }, [sidebarOpen]);
   const [openMenus, setOpenMenus] = useState<Record<string, boolean>>({
     "User Management":
       pathname.startsWith("/admin/users") ||
@@ -93,6 +126,7 @@ export default function AdminLayout({
   });
 
   const toggleMenu = (label: string) => {
+    if (collapsed) { setCollapsed(false); setOpenMenus(previous => ({ ...previous, [label]: true })); return; }
     setOpenMenus((prev) => ({ ...prev, [label]: !prev[label] }));
   };
 
@@ -113,10 +147,12 @@ export default function AdminLayout({
 
       {/* Sidebar */}
       <aside
-        className={`fixed inset-y-0 left-0 z-50 flex flex-col bg-(--earist-primary) transition-all duration-300 ${
+        ref={sidebar}
+        id="admin-sidebar"
+        className={`fixed inset-y-0 left-0 z-50 flex flex-col bg-(--earist-primary) transition-[transform,width] duration-300 ${
           collapsed ? "w-17" : "w-65"
         } ${
-          sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
+          sidebarOpen ? "visible translate-x-0" : "invisible -translate-x-full lg:visible lg:translate-x-0"
         }`}
       >
         {/* Branding */}
@@ -155,7 +191,7 @@ export default function AdminLayout({
           className="flex-1 overflow-y-auto px-2 py-3"
         >
           <ul className="space-y-0.5">
-            {navItems.map((item) => {
+            {visibleNav.map((item) => {
               if ("children" in item) {
                 const isOpen = openMenus[item.label] ?? false;
                 const isActive =
@@ -177,7 +213,8 @@ export default function AdminLayout({
                       onClick={() => toggleMenu(item.label)}
                       aria-expanded={isOpen}
                       className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${parentState} ${FOCUS_RING}`}
-                      title={collapsed ? item.label : undefined}
+                      aria-label={item.label}
+                    title={collapsed ? item.label : undefined}
                     >
                       <item.icon
                         className="h-5 w-5 shrink-0"
@@ -239,6 +276,7 @@ export default function AdminLayout({
                         ? "bg-(--earist-accent) text-(--earist-primary)"
                         : "text-white hover:bg-white/10 hover:text-(--earist-accent)"
                     }`}
+                    aria-label={item.label}
                     title={collapsed ? item.label : undefined}
                   >
                     <item.icon className="h-5 w-5 shrink-0" aria-hidden="true" />
@@ -281,7 +319,8 @@ export default function AdminLayout({
 
       {/* Main Content */}
       <div
-        className={`flex min-w-0 flex-1 flex-col transition-all duration-300 ${
+        inert={sidebarOpen}
+        className={`flex min-w-0 flex-1 flex-col transition-[transform,width] duration-300 ${
           collapsed ? "lg:ml-17" : "lg:ml-65"
         }`}
       >
@@ -291,7 +330,10 @@ export default function AdminLayout({
           <div className="flex items-center gap-3">
             <button
               onClick={() => setSidebarOpen(true)}
+              ref={opener}
               aria-label="Open navigation"
+              aria-expanded={sidebarOpen}
+              aria-controls="admin-sidebar"
               className={`rounded-md p-1 text-(--earist-body-text) transition-colors hover:bg-(--earist-surface-gray) lg:hidden ${FOCUS_RING}`}
             >
               <Menu className="h-6 w-6" aria-hidden="true" />
@@ -311,7 +353,7 @@ export default function AdminLayout({
         </header>
 
         {/* Page Content */}
-        <main className="flex-1 p-4 sm:p-6 xl:p-8">{children}</main>
+        <main className="min-w-0 flex-1 p-4 sm:p-6 xl:p-8"><AdminRouteGate>{children}</AdminRouteGate></main>
       </div>
 
       {/* AI Chatbot Widget */}

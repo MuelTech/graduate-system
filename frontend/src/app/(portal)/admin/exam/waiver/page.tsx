@@ -1,4 +1,5 @@
 "use client";
+import { AdminCan } from "@/components/admin/access/admin-access-provider";
 
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -495,7 +496,7 @@ export default function AdminWaiverValidationPage() {
                   {/* Action Buttons (for pending) */}
                   {selectedWaiverData.status === "PENDING" && (
                     <div className="flex gap-2">
-                      <Button
+                      <AdminCan capability="waivers.manage"><Button
                         onClick={() => setShowValidateConfirm(true)}
                         className="flex-1 bg-green-600 text-white hover:bg-green-700"
                         disabled={
@@ -504,8 +505,8 @@ export default function AdminWaiverValidationPage() {
                       >
                         <CheckCircle2 className="mr-1 h-3 w-3" />
                         Validate
-                      </Button>
-                      <Button
+                      </Button></AdminCan>
+                      <AdminCan capability="waivers.manage"><Button
                         onClick={() => setShowRejectModal(true)}
                         variant="outline"
                         className="flex-1 text-red-600 hover:bg-red-50"
@@ -515,7 +516,7 @@ export default function AdminWaiverValidationPage() {
                       >
                         <XCircle className="mr-1 h-3 w-3" />
                         Reject
-                      </Button>
+                      </Button></AdminCan>
                     </div>
                   )}
                 </div>

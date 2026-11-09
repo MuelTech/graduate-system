@@ -1,7 +1,7 @@
 "use client";
 
 import { useParams } from "next/navigation";
-import Link from "next/link";
+import { AdminLink as Link } from "@/components/admin/access/admin-access-provider";
 import { useQuery } from "@tanstack/react-query";
 import { apiClientRequest, ApiError } from "@/lib/api.client";
 import { cn } from "@/lib/utils";

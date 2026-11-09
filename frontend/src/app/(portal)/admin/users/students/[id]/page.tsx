@@ -1,8 +1,10 @@
 "use client";
+import { AdminDialogContent as DialogContent } from "@/components/admin/access/admin-dialog";
+import { AdminCan } from "@/components/admin/access/admin-access-provider";
 
 import { useState } from "react";
 import { useParams } from "next/navigation";
-import Link from "next/link";
+import { AdminLink as Link } from "@/components/admin/access/admin-access-provider";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiClientRequest, ApiError } from "@/lib/api.client";
 import { cn } from "@/lib/utils";
@@ -15,7 +17,6 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import {
   Dialog,
   DialogClose,
-  DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
@@ -623,22 +624,22 @@ export default function StudentDetailPage() {
 
             {canRecordCompExam ? (
               <div className="flex flex-wrap gap-2 pt-1">
-                <Button
+                <AdminCan capability="students.comprehensive_exam.manage"><Button
                   size="sm"
                   className="bg-(--earist-success) text-white hover:bg-(--earist-success)/90"
                   onClick={() => setCompExamAction("PASSED")}
                   disabled={markCompExamMutation.isPending}
                 >
                   Mark as Passed
-                </Button>
-                <Button
+                </Button></AdminCan>
+                <AdminCan capability="students.comprehensive_exam.manage"><Button
                   size="sm"
                   variant="destructive"
                   onClick={() => setCompExamAction("FAILED")}
                   disabled={markCompExamMutation.isPending}
                 >
                   Mark as Failed
-                </Button>
+                </Button></AdminCan>
               </div>
             ) : (
               <p className="text-xs text-(--earist-body-text)">

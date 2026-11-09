@@ -1,6 +1,8 @@
 "use client";
 
-import Link from "next/link";
+import { AdminLink as Link } from "@/components/admin/access/admin-access-provider";
+import { useAdminAccess } from "@/components/admin/access/admin-access-provider";
+import { ADMIN_DESTINATIONS, adminDestinationAllowed, adminKey, canRequestDashboard } from "@/lib/admin-access";
 import { useQuery } from "@tanstack/react-query";
 import { apiClientRequest } from "@/lib/api.client";
 import { cn } from "@/lib/utils";
@@ -192,6 +194,17 @@ function DashboardSkeleton() {
 /* ------------------------------------------------------------------- page */
 
 export default function AdminDashboard() {
+  const { access } = useAdminAccess();
+  if (canRequestDashboard(access)) return <AuthorizedDashboard />;
+  const modules = ADMIN_DESTINATIONS.filter(item => !["Home", "Other"].includes(item.group) && adminDestinationAllowed(access, item));
+  const operations = ADMIN_DESTINATIONS.filter(item => item.group === "Other" && item.href !== "/admin/notifications" && adminDestinationAllowed(access, item));
+  return <div className="space-y-6"><PageHeader title="Dashboard" description="Your administrative workspace" />
+    <Card><CardContent className="space-y-3 p-6"><h2 className="font-semibold">{access?.level === "FULL" ? "Full Administrator" : "Restricted Administrator"}</h2><p className="break-all text-sm">{access?.email}</p><p className="text-sm text-muted-foreground">{modules.length + operations.length ? "Choose a module to continue your work." : "No administrative modules are assigned to your account. Contact a Full Administrator if you need access."}</p></CardContent></Card>
+    {[...modules, ...operations].length > 0 && <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">{[...modules, ...operations].map(item => <Link key={item.href} href={item.href} className="rounded-xl border bg-white p-5 font-semibold text-(--earist-primary) hover:bg-muted focus-visible:outline-2">{item.label}<span className="mt-1 block text-xs font-normal text-muted-foreground">{item.group}</span></Link>)}</div>}
+  </div>;
+}
+function AuthorizedDashboard() {
+  const { accountId } = useAdminAccess();
   const {
     data,
     isLoading,
@@ -199,8 +212,8 @@ export default function AdminDashboard() {
     isFetching,
     refetch,
   } = useQuery<DashboardData>({
-    queryKey: ["adminDashboard"],
-    queryFn: () => apiClientRequest("/admin/dashboard", { method: "GET" }),
+    queryKey: adminKey(accountId, "dashboard"),
+    queryFn: ({ signal }) => apiClientRequest("/admin/dashboard", { method: "GET", signal, cache: "no-store" }),
   });
 
   if (isLoading) {

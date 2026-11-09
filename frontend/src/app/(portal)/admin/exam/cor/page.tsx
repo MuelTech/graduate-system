@@ -1,4 +1,6 @@
 "use client";
+import { AdminDialogContent as DialogContent } from "@/components/admin/access/admin-dialog";
+import { AdminCan } from "@/components/admin/access/admin-access-provider";
 
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -21,7 +23,6 @@ import {
 } from "@/components/ui/select";
 import {
   Dialog,
-  DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
@@ -1015,21 +1016,21 @@ export default function AdminCorVerificationPage() {
 
               {/* F. Review Actions */}
               <div className="flex flex-col gap-3 sm:flex-row">
-                <Button
+                <AdminCan capability="cor.verify"><Button
                   variant="outline"
                   onClick={openReject}
                   className="text-destructive hover:bg-destructive/10 sm:w-44"
                 >
                   <XCircle className="mr-2 h-4 w-4" aria-hidden="true" />
                   Reject COR
-                </Button>
-                <Button
+                </Button></AdminCan>
+                <AdminCan capability="cor.verify"><Button
                   onClick={openVerify}
                   className="flex-1 bg-(--earist-primary) text-white hover:bg-(--earist-primary)/90"
                 >
                   <GraduationCap className="mr-2 h-4 w-4" aria-hidden="true" />
                   Verify COR &amp; Create Student Record
-                </Button>
+                </Button></AdminCan>
               </div>
               {fieldError && (
                 <p className="text-sm text-destructive" role="alert">

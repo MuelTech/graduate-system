@@ -1,4 +1,5 @@
 "use client";
+import { AdminCan } from "@/components/admin/access/admin-access-provider";
 
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -115,7 +116,7 @@ export default function AdminStorageHealthPage() {
           </p>
         </div>
         <div className="flex flex-col items-end gap-2">
-          <Button
+          <AdminCan capability="storage.integrity.scan"><Button
             className="bg-(--earist-primary) text-white hover:bg-(--earist-primary)/90"
             onClick={() => scanMutation.mutate()}
             disabled={scanMutation.isPending}
@@ -124,7 +125,7 @@ export default function AdminStorageHealthPage() {
               className={`mr-2 h-4 w-4 ${scanMutation.isPending ? "animate-spin" : ""}`}
             />
             {scanMutation.isPending ? "Scanning…" : "Run Integrity Scan"}
-          </Button>
+          </Button></AdminCan>
           <p className="max-w-xs text-right text-[11px] text-(--earist-body-text)">
             This operation reads storage and metadata only. It does not delete or
             repair files.

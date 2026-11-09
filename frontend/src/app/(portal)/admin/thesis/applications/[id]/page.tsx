@@ -1,7 +1,9 @@
 "use client";
+import { AdminDialogContent as DialogContent } from "@/components/admin/access/admin-dialog";
+import { AdminCan } from "@/components/admin/access/admin-access-provider";
 
 import { useState } from "react";
-import Link from "next/link";
+import { AdminLink as Link } from "@/components/admin/access/admin-access-provider";
 import { useParams, useRouter } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiClientRequest } from "@/lib/api.client";
@@ -15,7 +17,6 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog,
-  DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
@@ -697,7 +698,7 @@ export default function DefenseApplicationDetailPage() {
                 </p>
               )}
               <div className="mt-3 grid grid-cols-2 gap-2">
-                <Button
+                <AdminCan capability="defense.applications.review"><Button
                   variant="outline"
                   className="text-destructive hover:bg-destructive/10"
                   onClick={() => {
@@ -707,8 +708,8 @@ export default function DefenseApplicationDetailPage() {
                 >
                   <XCircle className="mr-1.5 h-4 w-4" aria-hidden="true" />
                   Reject
-                </Button>
-                <Button
+                </Button></AdminCan>
+                <AdminCan capability="defense.applications.review"><Button
                   className="bg-(--earist-primary) text-white hover:bg-(--earist-primary)/90"
                   onClick={() => {
                     setApproveError(null);
@@ -718,7 +719,7 @@ export default function DefenseApplicationDetailPage() {
                 >
                   <CheckCircle2 className="mr-1.5 h-4 w-4" aria-hidden="true" />
                   Approve
-                </Button>
+                </Button></AdminCan>
               </div>
             </div>
           )}
@@ -779,7 +780,7 @@ export default function DefenseApplicationDetailPage() {
                 This application is part of the student&apos;s defense history.
               </p>
               {historyQuery.data?.officialRecord?.available && (
-                <Button
+                <AdminCan capability="defense.records.view"><Button
                   variant="outline"
                   size="sm"
                   className="mt-3 w-full justify-center"
@@ -791,7 +792,7 @@ export default function DefenseApplicationDetailPage() {
                 >
                   <FileText className="mr-2 h-4 w-4" aria-hidden="true" />
                   View Defense Record
-                </Button>
+                </Button></AdminCan>
               )}
             </div>
           )}

@@ -1,4 +1,7 @@
 "use client";
+import { adminAllows, type AdminCapability } from "@/lib/admin-access";
+import { AdminDialogContent as DialogContent } from "@/components/admin/access/admin-dialog";
+import { AdminCan, useAdminAccess } from "@/components/admin/access/admin-access-provider";
 
 import { Suspense, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -9,7 +12,6 @@ import { PageHeader } from "@/components/ui/page-header";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
-  DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
@@ -75,6 +77,8 @@ export default function AdminSchedulingPage() {
 function AdminSchedulingPageInner() {
   const searchParams = useSearchParams();
   const router = useRouter();
+  const { snapshot } = useAdminAccess();
+  const allows = (key: AdminCapability) => adminAllows(snapshot, key);
   const queryClient = useQueryClient();
 
   const thesisIdFromQuery = searchParams.get("thesisId");
@@ -128,6 +132,7 @@ function AdminSchedulingPageInner() {
 
   // Tab counts — authoritative workflow summary for the same filters.
   const { data: summary } = useQuery<WorkflowSummary>({
+    enabled: allows("defense.applications.view"),
     queryKey: ["schedulingWorkflowSummary", search, stageFilter, programId],
     queryFn: async () => {
       const params = new URLSearchParams();
@@ -176,7 +181,7 @@ function AdminSchedulingPageInner() {
       defenseTypeFilter,
       programId,
     ],
-    enabled: activeTab === "SCHEDULED",
+    enabled: allows("defense.applications.view") && activeTab === "SCHEDULED",
     queryFn: async () => {
       const params = new URLSearchParams({
         page: String(scheduledPage),
@@ -206,7 +211,7 @@ function AdminSchedulingPageInner() {
   const deepLinkFallback = useQuery<ApprovedApplicationDto | null>({
     queryKey: ["schedulingDeepLinkApplication", effectiveThesisId],
     enabled:
-      !!effectiveThesisId && readyQuery.isSuccess && !deepLinkMatch,
+      allows("defense.applications.view") && !!effectiveThesisId && readyQuery.isSuccess && !deepLinkMatch,
     queryFn: async () =>
       (await apiClientRequest(
         `/thesis/defense/applications/${effectiveThesisId}`,
@@ -232,7 +237,7 @@ function AdminSchedulingPageInner() {
     isError: policyError,
   } = useQuery<CommitteePolicyDto>({
     queryKey: ["committeePolicy", defenseType, programType],
-    enabled: activeTab === "READY" && !!selected,
+    enabled: allows("defense.schedules.manage") && activeTab === "READY" && !!selected,
     queryFn: async () => {
       const params = new URLSearchParams({ defenseType });
       if (programType) params.set("programType", programType);
@@ -453,8 +458,9 @@ function AdminSchedulingPageInner() {
           <SchedulingQueuePanel
             activeTab={activeTab}
             onTabChange={handleTabChange}
-            readyCount={summary?.READY ?? 0}
-            scheduledCount={summary?.ACTIVE ?? 0}
+            readyCount={summary?.READY ?? readyQuery.data?.total}
+            scheduledCount={summary?.ACTIVE ?? scheduledQuery.data?.total}
+            canReadScheduled={allows("defense.applications.view")}
             search={search}
             defenseType={defenseTypeFilter}
             programId={programId}
@@ -507,7 +513,7 @@ function AdminSchedulingPageInner() {
               {selected && (
                 <>
                   <DefenseSummaryCard application={selected} />
-                  <DefenseCommitteeBuilder
+                  <AdminCan capability="defense.schedules.manage"><DefenseCommitteeBuilder
                     key={selected.id}
                     policy={policy}
                     policyLoading={policyLoading}
@@ -519,13 +525,13 @@ function AdminSchedulingPageInner() {
                     adviser={adviser}
                     adviserConflict={selected.activeAdviserConflict === true}
                     onAssignRole={handleAssignRole}
-                  />
-                  <DefenseScheduleForm
+                  /></AdminCan>
+                  <AdminCan capability="defense.schedules.manage"><DefenseScheduleForm
                     value={schedule}
                     onChange={setSchedule}
                     errors={scheduleErrors}
-                  />
-                  <DefenseReviewSummary
+                  /></AdminCan>
+                  <AdminCan capability="defense.schedules.manage"><DefenseReviewSummary
                     readiness={readiness}
                     showAdviser={selected.stage !== "TITLE"}
                     schedule={schedule}
@@ -533,7 +539,7 @@ function AdminSchedulingPageInner() {
                     isSubmitting={scheduleMutation.isPending}
                     onPreviewEmail={() => setShowEmailPreview(true)}
                     onSubmit={() => setShowConfirm(true)}
-                  />
+                  /></AdminCan>
                 </>
               )}
             </>

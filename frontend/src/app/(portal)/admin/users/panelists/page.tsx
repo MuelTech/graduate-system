@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useAdminAccess } from "@/components/admin/access/admin-access-provider";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Plus } from "lucide-react";
 import { toast } from "sonner";
@@ -69,7 +70,7 @@ export default function FacultyManagementPage() {
     },
   });
   const canManage =
-    query.data?.canManage === true && !query.isError && !query.isFetching;
+    useAdminAccess().allows("faculty.manage") && query.data?.canManage === true && !query.isError && !query.isFetching;
   const rows = query.data?.rows ?? [];
   const filtered = filterFaculty(rows, search, classification, status);
   const pages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));

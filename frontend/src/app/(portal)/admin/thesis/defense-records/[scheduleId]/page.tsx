@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 import { useParams } from "next/navigation";
-import Link from "next/link";
+import { AdminLink as Link } from "@/components/admin/access/admin-access-provider";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { ApiError, apiClientRequest } from "@/lib/api.client";

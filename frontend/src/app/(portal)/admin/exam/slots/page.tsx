@@ -1,4 +1,7 @@
 "use client";
+import { AdminDialogContent as DialogContent } from "@/components/admin/access/admin-dialog";
+import { AssignApplicantDialog } from "@/components/admin/exam/assign-applicant-dialog";
+import { AdminCan } from "@/components/admin/access/admin-access-provider";
 
 import { useRef, useState } from "react";
 import {
@@ -25,7 +28,6 @@ import {
 } from "@/components/ui/select";
 import {
   Dialog,
-  DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
@@ -285,10 +287,10 @@ function EmptyState({
             Create a schedule to make an entrance exam date available to
             applicants.
           </p>
-          <Button size="sm" onClick={onCreate}>
+          <AdminCan capability="exam.schedules.manage"><Button size="sm" onClick={onCreate}>
             <Plus className="mr-1.5 h-4 w-4" aria-hidden="true" />
             Create Schedule
-          </Button>
+          </Button></AdminCan>
         </>
       )}
     </div>
@@ -550,13 +552,13 @@ export default function AdminExamSchedulesPage() {
         title="Entrance Exam Schedules"
         description="Create and manage entrance exam schedules and capacity."
         actions={
-          <Button
+          <div className="flex flex-wrap gap-2"><AssignApplicantDialog onAssigned={clearFilters} /><AdminCan capability="exam.schedules.manage"><Button
             onClick={openCreate}
             className="bg-(--earist-primary) text-white hover:bg-(--earist-primary)/90"
           >
             <Plus className="mr-1.5 h-4 w-4" aria-hidden="true" />
             Create Schedule
-          </Button>
+          </Button></AdminCan></div>
         }
       />
 
@@ -772,7 +774,7 @@ export default function AdminExamSchedulesPage() {
                       </td>
                       <td className="px-4 py-3 align-top">
                         <div className="flex justify-end">
-                          <IconTooltipButton
+                          <AdminCan capability="exam.schedules.manage"><IconTooltipButton
                             label="Edit schedule"
                             onClick={() => openEdit(slot)}
                           >
@@ -780,7 +782,7 @@ export default function AdminExamSchedulesPage() {
                               className="h-4 w-4"
                               aria-hidden="true"
                             />
-                          </IconTooltipButton>
+                          </IconTooltipButton></AdminCan>
                         </div>
                       </td>
                     </tr>

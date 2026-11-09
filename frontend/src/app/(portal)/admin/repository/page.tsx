@@ -1,4 +1,6 @@
 "use client";
+import { AdminDialogContent as DialogContent } from "@/components/admin/access/admin-dialog";
+import { AdminCan } from "@/components/admin/access/admin-access-provider";
 
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -11,7 +13,6 @@ import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import {
   Dialog,
-  DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
@@ -32,7 +33,6 @@ import {
   Edit3,
   Eye,
   Download,
-  ShieldAlert,
   FileSpreadsheet,
   FileCheck,
   AlertCircle,
@@ -371,7 +371,7 @@ export default function AdminRepositoryPage() {
                     </p>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Button
+                    <AdminCan capability="repository.manage"><Button
                       variant="outline"
                       size="sm"
                       onClick={() => handleOpenEditModal(selectedEntryData)}
@@ -379,10 +379,10 @@ export default function AdminRepositoryPage() {
                     >
                       <Edit3 className="mr-1.5 h-3.5 w-3.5" />
                       Edit Metadata
-                    </Button>
+                    </Button></AdminCan>
 
                     {!selectedEntryData.publication.isPublished ? (
-                      <Button
+                      <AdminCan capability="repository.manage"><Button
                         size="sm"
                         className="bg-green-600 text-white hover:bg-green-700"
                         onClick={() => publishMutation.mutate(selectedEntryData.id)}
@@ -394,9 +394,9 @@ export default function AdminRepositoryPage() {
                           <CheckCircle2 className="mr-1.5 h-3.5 w-3.5" />
                         )}
                         Publish Metadata
-                      </Button>
+                      </Button></AdminCan>
                     ) : (
-                      <Button
+                      <AdminCan capability="repository.manage"><Button
                         variant="outline"
                         size="sm"
                         className="border-amber-400 text-amber-700 hover:bg-amber-50"
@@ -409,7 +409,7 @@ export default function AdminRepositoryPage() {
                           <GlobeLock className="mr-1.5 h-3.5 w-3.5" />
                         )}
                         Unpublish
-                      </Button>
+                      </Button></AdminCan>
                     )}
                   </div>
                 </div>

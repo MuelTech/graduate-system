@@ -1,9 +1,10 @@
 "use client";
+import { AdminCan } from "@/components/admin/access/admin-access-provider";
 
 import { useRef } from "react";
 import { ResultBreakdown } from "@/components/exam-content/result-breakdown";
 import { useParams } from "next/navigation";
-import Link from "next/link";
+import { AdminLink as Link } from "@/components/admin/access/admin-access-provider";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiClientRequest, ApiError } from "@/lib/api.client";
 import { cn } from "@/lib/utils";
@@ -13,7 +14,6 @@ import { Breadcrumb } from "@/components/ui/breadcrumb";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { ExamRecordActions } from "@/components/admin/exam/exam-record-actions";
-import { EssayEvaluationPanel } from "@/components/admin/exam/essay-evaluation-panel";
 import { StartAuthorization } from "@/components/admin/exam/start-authorization";
 import {
   deriveExamState,
@@ -28,7 +28,6 @@ import {
   ChevronRight,
   FileText,
   RefreshCw,
-  Send,
 } from "lucide-react";
 
 /* -------------------------------------------------------------- small parts */
@@ -186,7 +185,6 @@ export default function ExamRecordDetailPage() {
     retry: false,
   });
 
-  const emailBusy = useRef(false);
   const finalizeBusy = useRef(false);
   const finalizeMutation = useMutation({
     mutationFn: () =>
@@ -209,20 +207,6 @@ export default function ExamRecordDetailPage() {
       }
     },
   });
-  const emailMutation = useMutation({
-    mutationFn: () =>
-      apiClientRequest(`/exam/scores/${applicationId}/send-email`, {
-        method: "POST",
-      }),
-    onSuccess: (response: { message: string }) =>
-      toast.success(response.message),
-    onSettled: () => {
-      emailBusy.current = false;
-    },
-    onError: (error: Error) =>
-      toast.error(error.message || "Failed to queue result email."),
-  });
-
   if (recordQuery.isLoading) {
     return <DetailSkeleton />;
   }
@@ -316,22 +300,18 @@ export default function ExamRecordDetailPage() {
       </SectionCard>
 
       <div className="space-y-4">
-        <StartAuthorization
+        <AdminCan capability="exam.starts.authorize"><StartAuthorization
           applicationId={applicationId}
           applicantName={fullName}
-        />
+        /></AdminCan>
         <ExamRecordActions record={record} section="appointment" />
       </div>
 
       {isTaken || isCompleted ? (
-        <SectionCard title="Essay Evaluation">
-          <EssayEvaluationPanel
-            key={applicationId}
-            applicationId={applicationId}
-            evaluation={record.essayEvaluation}
-          />
+        <SectionCard title="Essay Evaluation Status">
+          <p className="text-sm text-muted-foreground">Essay Evaluation is completed in the Faculty portal.</p>
           {isTaken && record.essayEvaluation?.status === "COMPLETED" ? (
-            <Button
+            <AdminCan capability="exam.results.finalize"><Button
               disabled={finalizeMutation.isPending}
               onClick={() => {
                 if (finalizeBusy.current) return;
@@ -340,38 +320,13 @@ export default function ExamRecordDetailPage() {
               }}
             >
               {finalizeMutation.isPending ? "Finalizing…" : "Finalize Result"}
-            </Button>
+            </Button></AdminCan>
           ) : null}
         </SectionCard>
       ) : null}
 
       <ExamRecordActions record={record} section="reconsideration" />
 
-      {/* Result Notification */}
-      {isCompleted && record.resultEmailEligible ? (
-        <SectionCard
-          title="Result Notification"
-          description="Queue the official result email to the applicant."
-          action={
-            <Button
-              variant="outline"
-              onClick={() => {
-                if (emailBusy.current) return;
-                emailBusy.current = true;
-                emailMutation.mutate();
-              }}
-              disabled={emailMutation.isPending}
-            >
-              <Send className="mr-2 h-4 w-4" aria-hidden="true" />
-              {emailMutation.isPending ? "Queueing…" : "Send Result Email"}
-            </Button>
-          }
-        >
-          <p className="text-sm text-(--earist-body-text)">
-            The result email is placed on the system email queue for delivery.
-          </p>
-        </SectionCard>
-      ) : null}
     </div>
   );
 }

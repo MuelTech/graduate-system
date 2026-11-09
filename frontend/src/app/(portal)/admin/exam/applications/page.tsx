@@ -1,7 +1,8 @@
 "use client";
+import { AdminCan } from "@/components/admin/access/admin-access-provider";
 
 import { useState } from "react";
-import Link from "next/link";
+import { AdminLink as Link } from "@/components/admin/access/admin-access-provider";
 import { useQuery } from "@tanstack/react-query";
 import { apiClientRequest } from "@/lib/api.client";
 import { cn } from "@/lib/utils";
@@ -307,7 +308,7 @@ export default function ExamRecordsPage() {
       <PageHeader
         title="Entrance Exam Records"
         description="Monitor entrance exam schedules, grading progress, and results."
-        actions={<AssignApplicantDialog onAssigned={clearFilters} />}
+        actions={<AdminCan capability="exam.schedules.manage"><AssignApplicantDialog onAssigned={clearFilters} /></AdminCan>}
       />
 
       {/* Filters */}

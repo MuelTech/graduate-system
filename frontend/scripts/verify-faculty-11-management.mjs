@@ -146,6 +146,7 @@ test("view-only cannot submit and consequential account status changes require c
 const pagePath = "app/(portal)/admin/users/panelists/page.tsx";
 function pageHarness(query) {
   return harness(pagePath, "default", {}, {
+    "@/components/admin/access/admin-access-provider": { useAdminAccess: () => ({ allows: () => true }) },
     "@/lib/api.client": {}, sonner: { toast: {} }, "next-auth/react": { useSession: () => ({ data: { user: { id: "synthetic-admin" } } }) },
     "@tanstack/react-query": { useQuery: () => query, useQueryClient: () => ({ invalidateQueries: async () => {} }) },
   });
@@ -159,7 +160,7 @@ test("loading, request failure, empty registry, filtered-empty are distinct", ()
   field(h.render(), "faculty-search").props.onChange({ target: { value: "absent" } });
   assert.match(text(h.render()), /No matching Faculty/);
 });
-test("server boolean alone controls mutations; stale/error/refetch authority fails closed", () => {
+test("server context plus current Admin capability control mutations; stale reads fail closed", () => {
   for (const query of [
     { data: { rows: [], canManage: false } }, { data: { rows: [], canManage: true }, isError: true },
     { data: { rows: [], canManage: true }, isFetching: true },
@@ -169,6 +170,7 @@ test("server boolean alone controls mutations; stale/error/refetch authority fai
 test("page reads bounded context and DTOs, rejects malformed success responses", async () => {
   let options; let malformed = false; const calls = [];
   harness(pagePath, "default", {}, {
+    "@/components/admin/access/admin-access-provider": { useAdminAccess: () => ({ allows: () => true }) },
     "next-auth/react": { useSession: () => ({ data: { user: { id: "synthetic-admin" } } }) },
     sonner: { toast: {} },
     "@tanstack/react-query": { useQuery: value => { options = value; return { isPending: true }; }, useQueryClient: () => ({}) },
@@ -214,7 +216,8 @@ test("terminology, technical route, navigation and credential boundaries remain 
   const detail = source("components/admin/faculty/faculty-detail.tsx");
   const credential = source("components/admin/faculty/temporary-credential.tsx");
   const ui = [page, form, detail, credential].join("\n");
-  assert.doesNotMatch(ui, /Panelist Management|Add Panelist|Edit Panelist|Panelist Details|All Panelists|External Panelist|Loading panelists|No panelists|LAST NAME|New Password|essay\.evaluate|faculty\.manage|faculty\.view|localStorage|sessionStorage|console\./);
+  // FACULTY-15 adds an internal faculty.manage presentation check; no key is rendered.
+  assert.doesNotMatch(ui, /Panelist Management|Add Panelist|Edit Panelist|Panelist Details|All Panelists|External Panelist|Loading panelists|No panelists|LAST NAME|New Password|essay\.evaluate|faculty\.view|localStorage|sessionStorage|console\./);
   assert.doesNotMatch(form, /useMutation\(|password:|Chairman|Rapporteur|Facilitator|Panelist access/);
   assert.match(source("app/(portal)/admin/layout.tsx"), /href: "\/admin\/users\/panelists", label: "Faculty"/);
   assert.equal(rules.FACULTY_API, "/admin/panelists");

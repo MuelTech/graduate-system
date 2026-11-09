@@ -31,8 +31,9 @@ type ListState = {
 type Props = {
   activeTab: SchedulingQueueTab;
   onTabChange: (tab: SchedulingQueueTab) => void;
-  readyCount: number;
-  scheduledCount: number;
+  readyCount: number | undefined;
+  canReadScheduled: boolean;
+  scheduledCount: number | undefined;
   search: string;
   defenseType: string;
   programId: string;
@@ -296,6 +297,7 @@ export function SchedulingQueuePanel({
   activeTab,
   onTabChange,
   readyCount,
+  canReadScheduled,
   scheduledCount,
   search,
   defenseType,
@@ -349,22 +351,24 @@ export function SchedulingQueuePanel({
             onClick={() => onTabChange("READY")}
           >
             Ready for Scheduling
-            <span className={countClass(activeTab === "READY")}>{readyCount}</span>
+            <span className={countClass(activeTab === "READY")}>{readyCount ?? "—"}</span>
           </button>
           <button
             type="button"
             aria-pressed={activeTab === "SCHEDULED"}
+            disabled={!canReadScheduled}
+            title={!canReadScheduled ? "Defense Applications access is required to list scheduled defenses." : undefined}
             className={tabClass(activeTab === "SCHEDULED")}
             onClick={() => onTabChange("SCHEDULED")}
           >
             Scheduled
             <span className={countClass(activeTab === "SCHEDULED")}>
-              {scheduledCount}
+              {scheduledCount ?? "—"}
             </span>
           </button>
         </div>
         <p className="mt-1 text-xs text-(--earist-body-text)">
-          {activeTab === "READY"
+          {(activeTab === "READY" ? readyCount : scheduledCount) === undefined ? "Select an available list to view its records." : activeTab === "READY"
             ? `${readyCount} approved application${readyCount === 1 ? "" : "s"} awaiting panel assignment and a schedule.`
             : `${scheduledCount} scheduled defense${scheduledCount === 1 ? "" : "s"} to inspect.`}
         </p>

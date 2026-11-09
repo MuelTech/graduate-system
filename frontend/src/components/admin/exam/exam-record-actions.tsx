@@ -1,7 +1,9 @@
 "use client";
+import { AdminDialogContent as DialogContent } from "@/components/admin/access/admin-dialog";
+import { useAdminAccess } from "@/components/admin/access/admin-access-provider";
 
 import { useRef, useState } from "react";
-import Link from "next/link";
+import { AdminLink as Link } from "@/components/admin/access/admin-access-provider";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiClientRequest } from "@/lib/api.client";
 import { Button } from "@/components/ui/button";
@@ -10,7 +12,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   Dialog,
-  DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
@@ -62,6 +63,7 @@ export function ExamRecordActions({
   record: ExamRecordDetail;
   section?: "appointment" | "reconsideration" | "all";
 }) {
+  const { allows } = useAdminAccess();
   const [action, setAction] = useState<Action | null>(null);
   const [reason, setReason] = useState("");
   const [slot, setSlot] = useState("");
@@ -74,7 +76,7 @@ export function ExamRecordActions({
       apiClientRequest(`/exam/applications/${record.id}/amendment-options`, {
         cache: "no-store",
       }),
-    enabled: action !== null && actions[action].target,
+    enabled: allows("exam.schedules.manage") && action !== null && actions[action].target,
     gcTime: 0,
     staleTime: 0,
     refetchOnMount: "always",
@@ -147,7 +149,7 @@ export function ExamRecordActions({
         <Card>
           <CardContent className="space-y-3">
             <h2 className="text-base font-semibold">Appointment Changes</h2>
-            {record.canAmendAppointment ? (
+            {record.canAmendAppointment && allows("exam.schedules.manage") ? (
               <div className="flex flex-wrap gap-2">
                 <Button variant="outline" onClick={() => begin("reschedule")}>
                   Reschedule
@@ -215,7 +217,7 @@ export function ExamRecordActions({
                 ) : null}
               </dl>
             ) : null}
-            {appeal ? (
+            {appeal && allows("exam.schedules.manage") ? (
               <div className="flex flex-wrap gap-2">
                 <Button onClick={() => begin("approve")}>Approve Appeal</Button>
                 <Button variant="outline" onClick={() => begin("reject")}>
@@ -235,7 +237,7 @@ export function ExamRecordActions({
         </Card>
       ) : null}
       {section !== "appointment" &&
-      (record.canReconsiderResult || record.reconsideration) ? (
+      ((record.canReconsiderResult && allows("exam.results.reconsider")) || record.reconsideration) ? (
         <Card>
           <CardContent className="space-y-3">
             <h2 className="text-base font-semibold">Reconsideration</h2>

@@ -1,4 +1,8 @@
 "use client";
+import { AdminCan, useAdminAccess } from "@/components/admin/access/admin-access-provider";
+import { adminAllows, fullAdministrator, type AdminCapability } from "@/lib/admin-access";
+import { ExamConfigurationDialog } from "@/components/exam-content/exam-configuration-dialog";
+import { EmailLogs } from "@/components/admin/access/email-logs";
 
 import { useState, useEffect } from "react";
 import { AuditLogItem } from "@/types";
@@ -7,7 +11,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiClientRequest } from "@/lib/api.client";
-import { toast } from "sonner";
 import {
   Pagination,
   PaginationContent,
@@ -28,7 +31,6 @@ import {
   Mail,
   Lock,
   Search,
-  Trash2,
 } from "lucide-react";
 
 type EmailTemplateItem = {
@@ -40,8 +42,11 @@ type EmailTemplateItem = {
 };
 
 export default function AdminSettingsPage() {
+  const { snapshot, allows } = useAdminAccess();
+  const canRead = (key: AdminCapability) => adminAllows(snapshot, key);
   const queryClient = useQueryClient();
-  const [activeTab, setActiveTab] = useState("academic_year");
+  const [tab, setActiveTab] = useState("");
+  const [configurationOpen, setConfigurationOpen] = useState(false);
   const [showSaveConfirm, setShowSaveConfirm] = useState(false);
   const [editingTemplate, setEditingTemplate] = useState<EmailTemplateItem | null>(null);
 
@@ -62,7 +67,6 @@ export default function AdminSettingsPage() {
   const [auditActionFilter, setAuditActionFilter] = useState("");
   const [auditStartDate, setAuditStartDate] = useState("");
   const [auditEndDate, setAuditEndDate] = useState("");
-  const [selectedLogs, setSelectedLogs] = useState<string[]>([]);
 
   const tabs = [
     { id: "programs", label: "Programs", icon: BookOpen },
@@ -72,10 +76,14 @@ export default function AdminSettingsPage() {
     { id: "academic_year", label: "Academic Year", icon: Calendar },
     { id: "session", label: "Session & Security", icon: Lock },
     { id: "audit", label: "Audit Logs", icon: FileText },
-  ];
+    { id: "email_logs", label: "Email Logs", icon: Mail },
+    { id: "exam_configuration", label: "Exam Configuration", icon: Settings },
+  ].filter(item => item.id === "audit" ? canRead("audit.view") : item.id === "email" ? canRead("email.configuration.manage") : item.id === "email_logs" ? canRead("email.logs.view") : item.id === "exam_configuration" ? canRead("exam.configuration.manage") : ["academic_year", "strike", "session"].includes(item.id) ? canRead("settings.view") : fullAdministrator(snapshot));
+  const activeTab = tabs.some(item => item.id === tab) ? tab : tabs.some(item => item.id === "academic_year") ? "academic_year" : tabs[0]?.id;
 
   // 1. Fetch Settings
-  const { data: settingsData } = useQuery({
+  const { data: settingsData, isPending: settingsLoading, isError: settingsError, refetch: reloadSettings } = useQuery({
+    enabled: canRead("settings.view"),
     queryKey: ["systemSettings"],
     queryFn: async () => {
       const res = await apiClientRequest("/settings");
@@ -88,7 +96,7 @@ export default function AdminSettingsPage() {
   });
 
   // Fetch Audit Logs (Only when the tab is clicked)
-  const { data: auditData, isLoading: auditLoading } = useQuery({
+  const { data: auditData, isLoading: auditLoading, isError: auditError, refetch: reloadAudit } = useQuery({
     queryKey: ["auditLogs", auditPage, auditSearch, auditActionFilter, auditStartDate, auditEndDate],
     queryFn: async () => {
       const params = new URLSearchParams({
@@ -101,53 +109,20 @@ export default function AdminSettingsPage() {
       });
       return await apiClientRequest(`/settings/audit-logs?${params.toString()}`);
     },
-    enabled: activeTab === "audit",
+    enabled: activeTab === "audit" && canRead("audit.view"),
   });
 
   const auditLogs = auditData?.logs || [];
   const auditTotal = auditData?.total || 0;
   const auditTotalPages = Math.ceil(auditTotal / 20);
 
-  // Delete single audit log
-  const deleteLogMutation = useMutation({
-    mutationFn: async (id: string) => {
-      return await apiClientRequest(`/settings/audit-logs/${id}`, { method: "DELETE" });
-    },
-    onSuccess: () => {
-      toast.success("Audit log deleted.");
-      queryClient.invalidateQueries({ queryKey: ["auditLogs"] });
-      setSelectedLogs([]);
-    },
-    onError: (error: Error) => {
-      toast.error(error.message);
-    },
-  });
-
-  // Bulk delete audit logs
-  const bulkDeleteMutation = useMutation({
-    mutationFn: async (ids: string[]) => {
-      return await apiClientRequest("/settings/audit-logs/delete", {
-        method: "POST",
-        body: JSON.stringify({ ids }),
-      });
-    },
-    onSuccess: (data) => {
-      toast.success(data.message);
-      queryClient.invalidateQueries({ queryKey: ["auditLogs"] });
-      setSelectedLogs([]);
-    },
-    onError: (error: Error) => {
-      toast.error(error.message);
-    },
-  });
-
   // Fetch Email Templates
-  const { data: emailTemplates = [] } = useQuery({
+  const { data: emailTemplates = [], isPending: emailLoading, isError: emailError, refetch: reloadEmail } = useQuery({
     queryKey: ["emailTemplates"],
     queryFn: async () => {
       return await apiClientRequest("/settings/email-templates");
     },
-    enabled: activeTab === "email",
+    enabled: activeTab === "email" && canRead("email.configuration.manage"),
   });
 
   // Helper to safely populate state without triggering the useEffect linter
@@ -214,6 +189,7 @@ export default function AdminSettingsPage() {
   });
 
   const handleSave = () => {
+    if (!allows("settings.manage")) return;
     saveMutation.mutate({
       "ACADEMIC_YEAR": academicYear,
       "SEMESTER": semester,
@@ -267,8 +243,13 @@ export default function AdminSettingsPage() {
         </div>
 
         <div className="lg:col-span-3">
-          {activeTab === "academic_year" && (
-            <div className="space-y-4">
+          {activeTab === "exam_configuration" && <Card><CardContent className="space-y-3 p-6"><p>Manage examination timing and scoring configuration.</p><Button onClick={() => setConfigurationOpen(true)}>Open Exam Configuration</Button></CardContent></Card>}
+          {configurationOpen && allows("exam.configuration.manage") && <ExamConfigurationDialog onClose={() => setConfigurationOpen(false)} />}
+          {activeTab === "email_logs" && <EmailLogs />}
+          {activeTab === "academic_year" && settingsLoading && <p role="status">Loading settings…</p>}
+          {activeTab === "academic_year" && settingsError && <div role="alert"><p>Settings are unavailable.</p><Button variant="outline" onClick={() => void reloadSettings()}>Retry settings</Button></div>}
+          {activeTab === "academic_year" && settingsData && !settingsError && (
+            <fieldset disabled={!allows("settings.manage")} className="min-w-0"><div className="space-y-4">
               <Card>
                 <CardHeader>
                   <CardTitle className="text-sm font-semibold text-(--earist-secondary)">
@@ -456,18 +437,20 @@ export default function AdminSettingsPage() {
                 </CardContent>
               </Card>
 
-              <Button
+              <AdminCan capability="settings.manage"><Button
                 onClick={() => setShowSaveConfirm(true)}
                 className="w-full bg-(--earist-primary) text-white hover:bg-(--earist-primary)/90"
               >
                 <Save className="mr-2 h-4 w-4" />
                 Save Academic Year Settings
-              </Button>
-            </div>
+              </Button></AdminCan>
+            </div></fieldset>
           )}
 
           {/* Email Templates Tab */}
-          {activeTab === "email" && (
+          {activeTab === "email" && emailLoading && <p role="status">Loading email templates…</p>}
+          {activeTab === "email" && emailError && <div role="alert"><p>Email templates are unavailable.</p><Button onClick={() => void reloadEmail()}>Retry email templates</Button></div>}
+          {activeTab === "email" && !emailLoading && !emailError && (
             <Card>
               <CardHeader>
                 <CardTitle className="text-lg font-bold text-(--earist-primary)">Email Templates</CardTitle>
@@ -547,23 +530,7 @@ export default function AdminSettingsPage() {
                     <CardTitle className="text-lg font-bold text-(--earist-primary)">System Audit Logs</CardTitle>
                     <p className="text-sm text-(--earist-body-text)">Track and manage all critical system modifications.</p>
                   </div>
-                  <div className="flex gap-2">
-                    {selectedLogs.length > 0 && (
-                      <Button
-                        variant="destructive"
-                        size="sm"
-                        onClick={() => {
-                          if (confirm(`Delete ${selectedLogs.length} selected log(s)?`)) {
-                            bulkDeleteMutation.mutate(selectedLogs);
-                          }
-                        }}
-                        disabled={bulkDeleteMutation.isPending}
-                      >
-                        <Trash2 className="mr-1 h-4 w-4" />
-                        Delete ({selectedLogs.length})
-                      </Button>
-                    )}
-                  </div>
+
                 </div>
               </CardHeader>
               <CardContent>
@@ -627,55 +594,28 @@ export default function AdminSettingsPage() {
                   <table className="w-full text-left text-sm">
                     <thead className="bg-(--earist-surface-gray) text-xs uppercase text-(--earist-secondary)">
                       <tr>
-                        <th className="px-4 py-3 font-semibold w-10">
-                          <input
-                            type="checkbox"
-                            onChange={(e) => {
-                              if (e.target.checked) {
-                                setSelectedLogs(auditLogs.map((l: AuditLogItem) => l.id));
-                              } else {
-                                setSelectedLogs([]);
-                              }
-                            }}
-                            checked={selectedLogs.length === auditLogs.length && auditLogs.length > 0}
-                          />
-                        </th>
                         <th className="px-4 py-3 font-semibold">Timestamp</th>
                         <th className="px-4 py-3 font-semibold">User</th>
                         <th className="px-4 py-3 font-semibold">Action</th>
                         <th className="px-4 py-3 font-semibold">Details</th>
-                        <th className="px-4 py-3 font-semibold text-right">Actions</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-(--earist-border-gray) bg-white">
-                      {auditLoading ? (
+                      {auditError ? <tr><td colSpan={4} className="p-4"><p role="alert">Audit logs are unavailable.</p><Button variant="outline" onClick={() => void reloadAudit()}>Retry audit logs</Button></td></tr> : auditLoading ? (
                         <tr>
-                          <td colSpan={6} className="px-4 py-8 text-center text-gray-500 animate-pulse">
+                          <td colSpan={4} className="px-4 py-8 text-center text-gray-500 animate-pulse">
                             Loading audit logs...
                           </td>
                         </tr>
                       ) : auditLogs.length === 0 ? (
                         <tr>
-                          <td colSpan={6} className="px-4 py-8 text-center text-(--earist-body-text)">
+                          <td colSpan={4} className="px-4 py-8 text-center text-(--earist-body-text)">
                             No audit logs found.
                           </td>
                         </tr>
                       ) : (
                         auditLogs.map((log: AuditLogItem) => (
                           <tr key={log.id} className="hover:bg-gray-50">
-                            <td className="px-4 py-3">
-                              <input
-                                type="checkbox"
-                                checked={selectedLogs.includes(log.id)}
-                                onChange={(e) => {
-                                  if (e.target.checked) {
-                                    setSelectedLogs([...selectedLogs, log.id]);
-                                  } else {
-                                    setSelectedLogs(selectedLogs.filter(id => id !== log.id));
-                                  }
-                                }}
-                              />
-                            </td>
                             <td className="whitespace-nowrap px-4 py-3 text-gray-600">
                               {new Date(log.createdAt).toLocaleString()}
                             </td>
@@ -693,20 +633,7 @@ export default function AdminSettingsPage() {
                             <td className="px-4 py-3 text-gray-600">
                               {log.description || `Modified ${log.targetTable || 'record'}`}
                             </td>
-                            <td className="px-4 py-3 text-right">
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8 text-red-500 hover:text-red-700 hover:bg-red-50"
-                                onClick={() => {
-                                  if (confirm("Delete this audit log?")) {
-                                    deleteLogMutation.mutate(log.id);
-                                  }
-                                }}
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </td>
+
                           </tr>
                         ))
                       )}
@@ -766,7 +693,7 @@ export default function AdminSettingsPage() {
           )}
 
           {/* Other Tabs Placeholder */}
-          {activeTab !== "academic_year" && activeTab !== "audit" && activeTab !== "email" && (
+          {!["academic_year", "audit", "email", "email_logs", "exam_configuration"].includes(activeTab ?? "") && (
             <Card>
               <CardContent className="py-12">
                 <div className="flex flex-col items-center text-center">

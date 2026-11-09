@@ -1,4 +1,6 @@
 "use client";
+import { AdminDialogContent as DialogContent } from "@/components/admin/access/admin-dialog";
+import { useAdminAccess } from "@/components/admin/access/admin-access-provider";
 
 import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -13,7 +15,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   Dialog,
-  DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
@@ -67,8 +68,10 @@ export function AssignApplicantDialog({
 }: {
   onAssigned: () => void;
 }) {
+  const { allows } = useAdminAccess();
   const [open, setOpen] = useState(false);
   const pendingRef = useRef(false);
+  if (!allows("exam.schedules.manage") || !allows("applicants.view")) return null;
   return (
     <Dialog
       open={open}
