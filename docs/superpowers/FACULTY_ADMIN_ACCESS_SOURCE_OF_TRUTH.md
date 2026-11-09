@@ -72,7 +72,7 @@ Faculty and Admin are separate account roles in the approved target.
 
 A Faculty account does not receive Admin access.
 
-If the same real person legitimately performs both Faculty and administrative duties, the target model uses a separate Faculty account and a separate Admin account so academic and administrative activity remain clearly separated in authentication, navigation, authorization, and audit history.
+If the same real person legitimately performs both Faculty and administrative duties, the target model uses a separate Faculty account and a separate Admin account so academic and administrative activity remain clearly separated in authentication, navigation, authorization, and audit history. **The two separate accounts may use the same Gmail/email address.** The selected login role must disambiguate the account; each account retains its own User ID, password, session, access configuration, and audit attribution. Same-email support must not permit duplicate accounts within the same account role or weaken Applicant/Student identity and promotion rules.
 
 No Faculty/Admin workspace switcher or combined Faculty+Admin session is required by this design.
 
@@ -93,7 +93,7 @@ After authentication, the user enters the portal for the selected account role.
 
 Do not add a second post-login "Choose Workspace" screen.
 
-A selected role must be validated server-side against the authenticated account. Frontend selection alone is never authorization.
+A selected role must be validated server-side against the authenticated account. Authentication lookup must use the normalized email plus the selected account role, not email alone. Same-email Faculty/Admin accounts must resolve to the correct distinct User record and must never share credentials, sessions, grants, or audit identity. Password recovery must also identify the intended account role so a recovery request cannot reset the wrong account. Frontend selection alone is never authorization. Preserve Applicant ID and Student Number login, Applicant-to-Student promotion, and same-role email uniqueness.
 
 ---
 
@@ -164,9 +164,10 @@ The existing client policy is:
 
 - Internal Faculty may potentially serve as Advisers;
 - External Faculty must not be assigned as Advisers;
-- External Faculty may participate in defense work where the current Defense policy permits, including the supported External Panelist scenario.
+- External Faculty may be assigned by Admin to the contextual Defense roles **Chairman, Panelist, Rapporteur, and Facilitator** through the existing Defense committee-assignment workflow;
+- External Faculty must never be assigned as Adviser or receive student advisees.
 
-This source of truth does not broaden which defense committee roles an External Faculty member may occupy. Exact committee-role eligibility continues to come from the Defense workflow/policy.
+These are schedule-specific assignments, not permanent Faculty permissions. Admin selects the exact role for each defense. The four permitted External Defense roles do not create Adviser eligibility or bypass existing role-specific workflow checks.
 
 ### 7.1 Available as Adviser
 
@@ -178,6 +179,7 @@ Rules:
 - Internal Faculty may be Available or Unavailable as Adviser;
 - External Faculty are always unavailable/not applicable as Adviser;
 - External Faculty must never appear as valid Adviser candidates;
+- an Internal Faculty member who has ever held an authoritative AdviserAssignment to a Student cannot later be reclassified as External, even if the assignment is subsequently completed; enforce this at the backend and do not provide an Admin override;
 - changing availability must not erase historical or existing authoritative Adviser assignments;
 - availability is not itself an Adviser assignment.
 
@@ -210,6 +212,8 @@ Administration chooses/maintains defense committee membership through the accept
 Faculty Management may show a read-only summary of current/relevant defense assignments, but it must not become an alternate source of committee authority.
 
 Historical defense assignments and attribution must remain preserved through the Faculty migration.
+
+For External Faculty, the permitted contextual roles are Chairman, Panelist, Rapporteur, and Facilitator when selected by Admin in the exact schedule's committee workflow. External Faculty are never eligible for the Adviser role. Do not change PanelRole, PanelAssignment, historical assignment roles, or defense attribution as part of Custom Roles retirement.
 
 ---
 
@@ -284,6 +288,8 @@ These are not additional conceptual system roles. Both remain Admin accounts.
 ### 11.1 Full Administrator
 
 A Full Administrator has the complete approved administrative capability set and is the authority that can manage Administrator accounts/access.
+
+At least one active Full Administrator is required for normal privileged Administrator Management operations. The initial Full Administrator must be explicitly designated and approved by the project owner through a controlled, operator-authorized, auditable bootstrap. Never infer initial Full authority from Gmail/email, role name, seed account, creator identity, account creation order, or an ordinary public/runtime API. The bootstrap policy is approved; actual account identity and environment execution remain separately authorized.
 
 Full Administrator responsibilities include, subject to existing domain boundaries:
 
@@ -370,11 +376,17 @@ Instead:
 - Faculty receive the approved direct Faculty access plus assignment-driven work;
 - Admin accounts receive direct administrative capabilities.
 
-Existing `CUSTOM`, `CustomRole`, and `RoleFeatureAccess` infrastructure must not be blindly deleted.
+The approved target architecture completely retires the legacy Custom Roles account/permission subsystem; it is not retained or repurposed as internal permission machinery. The bounded retirement includes:
 
-A repository audit must determine whether parts of that infrastructure can be safely reused/refactored as internal permission machinery while removing the old user-facing Custom Roles concept.
+- remove `CUSTOM` from `UserRole`;
+- remove `User.customRoleId` and its relation/index;
+- remove the `CustomRole` and `RoleFeatureAccess` Prisma models and their database tables;
+- retire the legacy `other` → `CUSTOM` authentication path;
+- remove the mock Custom Roles UI, navigation, APIs, seed fixtures, and obsolete user-facing copy/references.
 
-Legacy users/data require an explicit compatibility/migration strategy.
+Implement database removal only through a new forward Prisma migration. Never rewrite or delete historical migration files. Before dropping the tables/enum value/column, audit all runtime, test, seed, foreign-key, and migration references and prove no remaining target consumer depends on them. Remove only development-only CUSTOM test accounts through a separately controlled development cleanup if needed; do not delete unrelated User records or academic/Defense/audit history. Do not inspect or modify staging/production data under this development decision.
+
+The replacement authority is the existing direct per-account Faculty/Admin capability model plus contextual Adviser/Defense assignments. No legacy RoleFeatureAccess rows are translated into new grants.
 
 ---
 
@@ -517,3 +529,18 @@ The approved direction is:
 **Panelist/Chairman/Rapporteur/Facilitator/Adviser are not new global roles or permanent Faculty permissions.** Their authority remains contextual to the accepted workflow.
 
 **Custom Roles is retired as a user-facing access-management concept, while reusable underlying permission infrastructure may be refactored after audit.**
+
+
+## 22. Owner-approved decision register (2026-11-09)
+
+The following product/business decisions were explicitly approved by the project owner. Approval of a policy does not imply that its code correction, live account mapping, institutional authorization, or deployment verification is complete.
+
+- **DR-1 — Initial Full Administrator:** At least one active Full Administrator is required for privileged Administrator Management. The initial account must be explicitly approved by the project owner and established through a controlled, operator-authorized, auditable bootstrap. No automatic designation from email, role name, seed account, creator, or account order. Actual account identity and environment bootstrap remain pending separate authorization.
+- **DR-2 — Custom Roles retirement:** Completely retire the legacy CUSTOM account/permission subsystem from the target architecture, including the CUSTOM enum value, User.customRoleId, CustomRole and RoleFeatureAccess models/tables, legacy Other Roles authentication, and mock UI. Use a forward migration; preserve migration history and unrelated academic/Defense/audit history. Development-only CUSTOM test accounts may be removed through a separately controlled development cleanup and replaced with approved Faculty/Admin test seeds. This decision does not authorize production data inspection or cleanup.
+- **DR-3 — Essay Evaluation:** Resolved. Configured Faculty evaluators may evaluate all pending eligible entrance-exam essays school-wide across Programs; Program is not an authorization boundary.
+- **DR-4 — Same Gmail, separate Faculty/Admin accounts:** Separate Faculty and Admin User records may share the same Gmail/email. The selected login role disambiguates them. Each account has its own ID, password, session, access configuration, and audit identity. Authentication and password recovery must be role-scoped. Preserve same-role uniqueness and Applicant/Student promotion semantics. The precise schema/auth implementation remains a follow-up engineering task.
+- **DR-5 — External Defense roles:** Admin may assign External Faculty to Chairman, Panelist, Rapporteur, or Facilitator on an exact Defense schedule. External Faculty may never be Adviser or receive student advisees. These are contextual assignments, not permanent account permissions.
+- **DR-6 — Ineligible pending Adviser request:** If the requested Adviser becomes inactive or unavailable after CONFORME but before Dean approval, the authorized existing Admin/Dean reviewer may reject the pending request with a recorded reason. Preserve the original request and signed CONFORME unchanged. The Student may submit a new request to another eligible Internal Faculty member.
+- **DR-7 — Internal Adviser classification lock:** Once an Internal Faculty member has ever held an authoritative AdviserAssignment to a Student, that account/profile cannot be reclassified as External, even if the assignment is subsequently completed. Enforce the restriction server-side; no Admin override. External Faculty remain ineligible for Adviser assignments.
+
+Implementation status is tracked separately in the existing implementation plan and checklist. DR-1 actual bootstrap, DR-2 live/production disposition, and deployment/activation gates remain unapproved until their separately stated prerequisites are satisfied.
