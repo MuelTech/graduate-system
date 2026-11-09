@@ -12,13 +12,30 @@ Correction starting local/actual remote HEAD: `4383c38c881d16b5bcb266deff8d67320
 
 The tracked CommonJS launcher anchors checks to its own checkout, rejects tracked/staged/untracked dirt and hidden index flags, strips inherited Git-location/index overrides and checks its own committed contents. It reads the six application modules from Git blobs at the pinned HEAD, transpiles them in memory, and permits relative imports only within that committed graph. Ignored dist/adjacent JS cannot supply executable application code; direct source/dist CLI invocation is denied. Runtime Node/installed dependencies remain trusted prerequisites. The CLI uses the launcher-provided commit and rechecks source before evidence/DB access and each batch. Evidence records per-file SHA-256 plus the complete source-tree SHA-256. Baseline/manifest/journal semantics, default dry-run, isolation, denial and restoration remain unchanged.
 
-Focused affected verification before committing the executable correction: **3 files / 65 tests passed**, including **12 new source-provenance cases** using disposable local Git fixtures and no database. They cover tracked/staged/untracked dirt with zero output creation, hidden index flags, inherited Git overrides/wrong working directory, exact committed file hashes, ignored dist/JS shadows, changed committed HEAD, wrong-HEAD baseline rejection and denied direct compiled execution. Backend build and focused test/fixture TypeScript checks passed.
+Focused affected verification before committing the executable correction: **3 files / 65 tests passed**, initially including 12 new source-provenance cases using disposable local Git fixtures and no database. A further cached-old-launcher regression was added and the provenance suite passed **13 cases**. They cover tracked/staged/untracked dirt with zero output creation, hidden index flags, inherited Git overrides/wrong working directory, exact committed file hashes, ignored dist/JS shadows, changed committed HEAD, wrong-HEAD baseline rejection, denied direct compiled execution and rejected old launcher contents even with a clean checkout. Backend build and focused test/fixture TypeScript checks passed.
 
-**Clean committed replay: PENDING in this executable-correction commit.** The final executable/tests are committed first; the explicit FACULTY-16 final verification and isolated synthetic evidence replay then execute from that clean HEAD. A later evidence/report-only commit records the actual executed commit and hashes without pretending the publication commit executed itself. No actual development/XAMPP, staging or production database is authorized or accessed. FACULTY-4/FACULTY-12 contention gates remain open; all three activation gates remain false; owner QA/hosted CI remain unclaimed. Stop pending independent review.
+**Clean committed replay: PASS at executed code/test commit `8c53771970e48f2677e8d146a4e26fcbe92427c4`.** The final executable/tests were committed before the replay and the source checkout remained clean throughout. The single final successful FACULTY-16 pass was **4 files / 74 tests passed, zero failures/skips**: 66 unit cases plus all 8 existing isolated real-MariaDB cases, now invoking the actual tracked launcher across capture/dry-run/apply/resume/repeat/restore. The harness checks that captured baseline HEAD and operator evidence provenance match the committed execution graph. Clean-chain/populated-upgrade, SQL backup/restore, exact 73-table integrity, immutable historical PDF hash and held-out mapping evidence were regenerated only in the existing synthetic/disposable harness.
+
+The executed launcher/six-module graph has SHA-256 **`cda19d5312480d085a01858e70f5fdb1ef436a2c177bf90d75ea2f7dd711918f`**; each Git-blob hash is included in the [replacement evidence](evidence/2026-11-09-faculty-16-rehearsal.json) and was independently recomputed from that commit before publication. Evidence/report publication is a subsequent documentation-only commit; no executable/test source changed after the recorded clean-code replay. The delivery message identifies the publication ending HEAD separately. Node/installed dependencies are trusted runtime prerequisites, not covered by the repository graph hash.
+
+The first final-pass attempt was correctly blocked by Git's dubious-ownership check under the sandbox account, before any rehearsal schema or operator output was created (66 unit tests passed; 8 DB cases skipped due to setup rejection; not treated as successful DB evidence). The same committed pass was then run in the repository owner's execution context without changing any source guard or Git trust configuration. Build, focused TypeScript, launcher syntax/help and diff checks passed there. This environment correction is the reason for that rerun, not a repeated unrelated regression sweep.
+
+Final command from `backend`, with the runbook's explicit isolated server environment:
+
+```powershell
+npx vitest run tests/unit/access/faculty-16-source-provenance.test.ts tests/unit/access/faculty-16-cutover.test.ts tests/unit/access/faculty-16-cutover-session.test.ts tests/integration/faculty-16-cutover-rehearsal.test.ts --reporter=verbose
+node --check scripts/faculty-cutover-rehearsal.cjs
+npm run build
+npx tsc --ignoreConfig --noEmit --strict --esModuleInterop --skipLibCheck --target ES2022 --module commonjs --moduleResolution node --ignoreDeprecations 6.0 --types node tests/unit/access/faculty-16-source-provenance.test.ts tests/unit/access/faculty-16-cutover.test.ts tests/unit/access/faculty-16-cutover-session.test.ts tests/integration/faculty-16-cutover-rehearsal.test.ts
+npm run faculty:cutover:rehearse -- --help
+git diff --check
+```
+
+No actual development/XAMPP, staging or production database was inspected or modified. No real mapping, schema, migration, activation or FACULTY-17/18 work occurred. The new disposable server used only `backend/.tmp/faculty16-source-server/data` on port 33316; generated schemas were removed and that helper server was shut down. DR-1/2 and applicable DR-4–7 remain unresolved/held out; DR-3 remains resolved. FACULTY-4/FACULTY-12 exact contention gates remain open; all three activation gates remain false; owner/manual QA and hosted CI remain unclaimed. Status remains **implemented / pending independent review**.
 
 Exact correction files (relative to `4383c38`): `backend/package.json`; `backend/scripts/faculty-cutover-rehearsal.cjs`; `backend/src/cli/faculty-cutover-rehearsal.ts`; `backend/tests/unit/access/faculty-16-source-provenance.test.ts`; `backend/tests/integration/faculty-16-cutover-rehearsal.test.ts`; `docs/runbooks/faculty-16-cutover-rehearsal.md`; this report; `docs/superpowers/reports/evidence/2026-11-09-faculty-16-rehearsal.json`.
 
-## Verified baseline and scope
+## Original verified baseline and scope (historical implementation record)
 
 Actual remote HEAD was verified with `git ls-remote origin refs/heads/feat/faculty-admin-access` as **`d4141dcdc46843f815811b1995c9542a8c978c31`**, matching the required starting HEAD. The clean local branch was behind at `60e559568b4a368666e5cd42fde64eeb3ec29daf`; it was fetched and fast-forwarded to the verified starting commit before editing. No applicable AGENTS.md was found in the repository/inspected ancestors. No replacement implementation plan was created.
 
@@ -107,7 +124,7 @@ Backend build, focused source/fixture typecheck and diff checks **PASS**. No pro
 - **FACULTY-12 five-case real essay/access contention readiness:** OPEN; exact harness not executed.
 - **Activation:** `ADMINISTRATOR_MANAGEMENT_ENABLED`, `DIRECT_ACCESS_ENFORCEMENT_ENABLED`, `OPERATIONAL_ENFORCEMENT_ENABLED` remain unchanged and false. No real provisioning or development/staging/production cutover.
 
-## Exact changed files and delivery
+## Original implementation changed files and delivery (historical)
 
 13 files, including this report and the two status-only canonical updates:
 

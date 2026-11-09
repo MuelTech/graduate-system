@@ -1,18 +1,67 @@
 {
   "version": 1,
-  "sourceBindingStatus": "INVALIDATED_ORIGINAL_DIRTY_IMPLEMENTATION_CHECKOUT_PENDING_CLEAN_COMMITTED_REPLAY",
-  "supersessionReason": "Original behavior evidence was produced before FACULTY-16 source was committed; its HEAD label did not prove executable provenance. Clean committed replay replaces this artifact after the bounded correction is committed.",
   "date": "2026-11-09",
   "timezone": "Asia/Manila",
-  "startingHead": "d4141dcdc46843f815811b1995c9542a8c978c31",
-  "environment": "Fresh workspace data directory, separate loopback MariaDB process at 127.0.0.1:33316, UUID disposable schemas, synthetic fixtures only",
+  "correctionStartingHead": "4383c38c881d16b5bcb266deff8d6732001645e7",
+  "executedSourceCommit": "8c53771970e48f2677e8d146a4e26fcbe92427c4",
+  "sourceBindingStatus": "VERIFIED_CLEAN_COMMITTED_GIT_OBJECT_EXECUTION",
+  "checkoutCleanAtExecution": true,
+  "sourceProvenance": {
+    "sourceCommit": "8c53771970e48f2677e8d146a4e26fcbe92427c4",
+    "execution": "GIT_HEAD_TYPESCRIPT",
+    "sourceTreeSha256": "cda19d5312480d085a01858e70f5fdb1ef436a2c177bf90d75ea2f7dd711918f",
+    "files": [
+      {
+        "file": "backend/scripts/faculty-cutover-rehearsal.cjs",
+        "sha256": "2e333371e5d20d5257b92cdfb79450026cdb367ecc23243e0412e0cc0b448766"
+      },
+      {
+        "file": "backend/src/access/account-access.ts",
+        "sha256": "0c2946b1b6599e63912d8e7c87d46154813e625282224dd6c435a0870d07c48a"
+      },
+      {
+        "file": "backend/src/access/capability-catalog.ts",
+        "sha256": "45693fb1054a046345ff1a5fae1086cb5e538d6fb7ac39928af54fe039cdda1f"
+      },
+      {
+        "file": "backend/src/access/cutover-rehearsal.database.ts",
+        "sha256": "653573d2473b99619f131b3fccf32dd1f261b785c66aeea6fd3d5570728bee59"
+      },
+      {
+        "file": "backend/src/access/cutover-rehearsal.ts",
+        "sha256": "895fea916ca18c3bae720aa8431af79391a3a0f0e4c530cb9daa0e693a50a5b5"
+      },
+      {
+        "file": "backend/src/cli/faculty-cutover-rehearsal.ts",
+        "sha256": "f3ca3cfde8113ccaba67b0f30d92417ab0a50f178d7c905b060ebd7b8edf0dae"
+      },
+      {
+        "file": "backend/src/utils/academic-account.ts",
+        "sha256": "1127d4eb533381726ab6682639cda61c198bb9a3f9c795946c86e909764a8992"
+      }
+    ]
+  },
+  "supersedes": "Original FACULTY-16 evidence generated from uncommitted implementation source; previous source-binding claim invalidated.",
+  "publication": "Follow-up evidence/report-only commit; executable and test source were committed and clean before this replay.",
+  "environment": "Fresh backend/.tmp/faculty16-source-server/data, separate loopback MariaDB process at 127.0.0.1:33316, UUID disposable schemas, synthetic fixtures only",
+  "verification": {
+    "finalFiles": 4,
+    "finalPassed": 74,
+    "failed": 0,
+    "skipped": 0,
+    "unitPassed": 66,
+    "isolatedMariaDbPassed": 8,
+    "build": "PASS",
+    "focusedTypecheck": "PASS",
+    "launcherSyntaxAndHelp": "PASS"
+  },
   "summary": {
     "databaseVersion": "10.4.32-MariaDB",
     "migrationCount": 56,
     "tableCount": 73,
     "accountCount": 6,
     "gs020PdfSha256": "19792406d9b7bcffe72415797d388f855d164ba28d68939f2a4737b14a68b8da",
-    "restoredBusinessDigest": "51218dcbef38747fa8f1373932d6a2a472737d79b9f512763fc40f61fe2c7c68",
+    "restoredBusinessDigest": "ccf37bed5237db79dde44b639e3b39e9fac750349c2ce44f8defd1d5a6ffec65",
     "cleanChain": true,
     "populatedUpgrade": true,
     "sqlBackupRestored": true,
@@ -21,22 +70,22 @@
     "heldOutCustomAccounts": 1
   },
   "integrity": {
-    "beforeDigest": "51218dcbef38747fa8f1373932d6a2a472737d79b9f512763fc40f61fe2c7c68",
-    "afterDigest": "ac525a21c20a51210b2828e77eb2d2e07c9c9035a576fe8324e1c28329f9867e",
+    "beforeDigest": "ccf37bed5237db79dde44b639e3b39e9fac750349c2ce44f8defd1d5a6ffec65",
+    "afterDigest": "8aafb94761ab2b04a23812bfbc41c36aae5d3b2fd77001a2952a34da3442722f",
     "tables": [
       {
         "table": "_prisma_migrations",
         "beforeCount": 56,
         "afterCount": 56,
-        "beforeDigest": "799e0e6fcc581677fbcc979fcff285a200ed61badc6148191760b7480b2eead6",
-        "afterDigest": "799e0e6fcc581677fbcc979fcff285a200ed61badc6148191760b7480b2eead6"
+        "beforeDigest": "92e7c3fda1f9ee499a700cecd9487665050988d70d639903c1bb567ad07c154b",
+        "afterDigest": "92e7c3fda1f9ee499a700cecd9487665050988d70d639903c1bb567ad07c154b"
       },
       {
         "table": "account_capability_grants",
         "beforeCount": 0,
         "afterCount": 2,
         "beforeDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
-        "afterDigest": "73710c3b64bf7233793c36d28e6d56c41f87a9ed0007510aa6c936733d981869"
+        "afterDigest": "67a01806a62b6486892115fcbc5ce6be6c940afd0acdac5acdb87b67f404c251"
       },
       {
         "table": "acknowledgement_receipts",
@@ -63,15 +112,15 @@
         "table": "adviser_assignments",
         "beforeCount": 1,
         "afterCount": 1,
-        "beforeDigest": "b75abf55d3fb0f425672d3da17aca93424b1bef0883d832d6b650a5f17761c8e",
-        "afterDigest": "b75abf55d3fb0f425672d3da17aca93424b1bef0883d832d6b650a5f17761c8e"
+        "beforeDigest": "ae78ac1df72af96621696935ce46ad84a1d3e51168229184085b7755a83a7ee2",
+        "afterDigest": "ae78ac1df72af96621696935ce46ad84a1d3e51168229184085b7755a83a7ee2"
       },
       {
         "table": "adviser_certifications",
         "beforeCount": 1,
         "afterCount": 1,
-        "beforeDigest": "fada0f1af36b5662c361fbf5fb8ba7db5cc748d91e33bf62f044cb090d8e2dca",
-        "afterDigest": "fada0f1af36b5662c361fbf5fb8ba7db5cc748d91e33bf62f044cb090d8e2dca"
+        "beforeDigest": "a3682432df773bd48cbad4c6723d424114fcaf10ac4f537b08fdc38f8729eac0",
+        "afterDigest": "a3682432df773bd48cbad4c6723d424114fcaf10ac4f537b08fdc38f8729eac0"
       },
       {
         "table": "adviser_request_official_records",
@@ -91,8 +140,8 @@
         "table": "adviser_requests",
         "beforeCount": 1,
         "afterCount": 1,
-        "beforeDigest": "98d881e60b9d6d74f721446b6ea95d65b3256c7bea6a4bad0ed3413470c4794f",
-        "afterDigest": "98d881e60b9d6d74f721446b6ea95d65b3256c7bea6a4bad0ed3413470c4794f"
+        "beforeDigest": "3fe41c5381d1378569a28385440485ac66cb2e6afaa802bada0bdabd39428e9f",
+        "afterDigest": "3fe41c5381d1378569a28385440485ac66cb2e6afaa802bada0bdabd39428e9f"
       },
       {
         "table": "applicant_answers",
@@ -112,8 +161,8 @@
         "table": "audit_logs",
         "beforeCount": 1,
         "afterCount": 5,
-        "beforeDigest": "bbc6eda0414105852aec5f5cb18c2d2905723f9de9219cc264678b2603ce5716",
-        "afterDigest": "eec0dd3fb925392dd8ac0107624c2f9616e8fc607afa3eea255f6ee0caf5f9fd"
+        "beforeDigest": "8e8277c0581e5b754f06da87c86e9bd4aa12442a7fdd65ff9fa5a0f59508a796",
+        "afterDigest": "bd9686ec717345e4accdea1fd8fcd8273afea5273a1ac9985d4be1f72d67e31c"
       },
       {
         "table": "chatbot_faqs",
@@ -161,8 +210,8 @@
         "table": "custom_roles",
         "beforeCount": 1,
         "afterCount": 1,
-        "beforeDigest": "c724ad68cce21c394678549f7fb223cca1efbccaff7bb69ac5e6610d750c19d1",
-        "afterDigest": "c724ad68cce21c394678549f7fb223cca1efbccaff7bb69ac5e6610d750c19d1"
+        "beforeDigest": "e28f3dba82632eee5800756207ee896bdb44a4d610de4c4e5004efbf5b421dfc",
+        "afterDigest": "e28f3dba82632eee5800756207ee896bdb44a4d610de4c4e5004efbf5b421dfc"
       },
       {
         "table": "defense_annotation_comments",
@@ -189,8 +238,8 @@
         "table": "defense_schedules",
         "beforeCount": 1,
         "afterCount": 1,
-        "beforeDigest": "95c5860061a929a66c36ebb8aab5f5171ed03d4e0f46b1d239b3fa80dce58e2a",
-        "afterDigest": "95c5860061a929a66c36ebb8aab5f5171ed03d4e0f46b1d239b3fa80dce58e2a"
+        "beforeDigest": "fb31d3f827095c64ec495d2992b1aca61222e5baf88b1a9f44793caaa34192f3",
+        "afterDigest": "fb31d3f827095c64ec495d2992b1aca61222e5baf88b1a9f44793caaa34192f3"
       },
       {
         "table": "e_library",
@@ -217,15 +266,15 @@
         "table": "entrance_exam_applications",
         "beforeCount": 1,
         "afterCount": 1,
-        "beforeDigest": "b43e24874157b27b5dc160fcb757c37ab208d05faf81a7e00482a79afd5fea5f",
-        "afterDigest": "b43e24874157b27b5dc160fcb757c37ab208d05faf81a7e00482a79afd5fea5f"
+        "beforeDigest": "b825c5d3850e4f4dbb3075b9387edd4bf336d984e4f2defb9e70c3d1a65c5155",
+        "afterDigest": "b825c5d3850e4f4dbb3075b9387edd4bf336d984e4f2defb9e70c3d1a65c5155"
       },
       {
         "table": "entrance_exam_scores",
         "beforeCount": 1,
         "afterCount": 1,
-        "beforeDigest": "8996cef2b1ab2533e2ec8d2c4164b83484e8b34f29f7d089c754ec92bb7a7429",
-        "afterDigest": "8996cef2b1ab2533e2ec8d2c4164b83484e8b34f29f7d089c754ec92bb7a7429"
+        "beforeDigest": "037c1c83c0cb441a969ba1159f4253ce6a8bc7ce60de8b50c681b9ac4dd8892c",
+        "afterDigest": "037c1c83c0cb441a969ba1159f4253ce6a8bc7ce60de8b50c681b9ac4dd8892c"
       },
       {
         "table": "exam_content_imports",
@@ -308,8 +357,8 @@
         "table": "exam_slots",
         "beforeCount": 1,
         "afterCount": 1,
-        "beforeDigest": "8b8663a40248b331a9e5189248e322dac675d3dde7ab392b4a1fd809adbbd0b0",
-        "afterDigest": "8b8663a40248b331a9e5189248e322dac675d3dde7ab392b4a1fd809adbbd0b0"
+        "beforeDigest": "b2e223db80bfbbc21676c4d3003a5122ed234b34e0140e8cdf0862b53f5cb903",
+        "afterDigest": "b2e223db80bfbbc21676c4d3003a5122ed234b34e0140e8cdf0862b53f5cb903"
       },
       {
         "table": "expert_evaluation_requests",
@@ -378,15 +427,15 @@
         "table": "panel_assignments",
         "beforeCount": 1,
         "afterCount": 1,
-        "beforeDigest": "41408863c5d6293ab7d965aa92ec43c9082a9fb7752dbc3b6bc9d17679ad2c72",
-        "afterDigest": "41408863c5d6293ab7d965aa92ec43c9082a9fb7752dbc3b6bc9d17679ad2c72"
+        "beforeDigest": "8280992fbf8a489c97aa50fbdf676bc2cccd71592499c9e2b64e5b29a90e6997",
+        "afterDigest": "8280992fbf8a489c97aa50fbdf676bc2cccd71592499c9e2b64e5b29a90e6997"
       },
       {
         "table": "panelists",
         "beforeCount": 2,
         "afterCount": 2,
-        "beforeDigest": "ff218a29ea88f648cbf5659aa89f6e6a3f330fe0c019a8eaa771840db66f3106",
-        "afterDigest": "d1a9b8ef17d41073d7325f82e10c8ddbc161ef3bde48c69e300ab71f67950227"
+        "beforeDigest": "fce20968cda73f01bb979e100c52f61b755034588f24f92f67b52a7532dd7c25",
+        "afterDigest": "1bd78e72c78e0f5215fb4ff5a85727f98efd2e4d539a00cf6e29dcec14c50a74"
       },
       {
         "table": "plagiarism_results",
@@ -399,8 +448,8 @@
         "table": "programs",
         "beforeCount": 1,
         "afterCount": 1,
-        "beforeDigest": "447473a44c8f6d7a7f53ad52110356c48424be8b674cdc1777b8a0e15c23e085",
-        "afterDigest": "447473a44c8f6d7a7f53ad52110356c48424be8b674cdc1777b8a0e15c23e085"
+        "beforeDigest": "43a0d56ee5134dcd11977420af68320f8fa16b4885279d7bc043b68859e586b0",
+        "afterDigest": "43a0d56ee5134dcd11977420af68320f8fa16b4885279d7bc043b68859e586b0"
       },
       {
         "table": "rap_report_signatures",
@@ -448,8 +497,8 @@
         "table": "role_feature_access",
         "beforeCount": 2,
         "afterCount": 2,
-        "beforeDigest": "cc6d8e7ee27e32f327fbaf273d94416f4d21e9509c8a9e1051b7e7f34f600f32",
-        "afterDigest": "cc6d8e7ee27e32f327fbaf273d94416f4d21e9509c8a9e1051b7e7f34f600f32"
+        "beforeDigest": "5e359a38e2e0f45b16fa39e804dedb361b8f76a196a8df6f274eab3fb97cf285",
+        "afterDigest": "5e359a38e2e0f45b16fa39e804dedb361b8f76a196a8df6f274eab3fb97cf285"
       },
       {
         "table": "school_year_calendar",
@@ -490,8 +539,8 @@
         "table": "students",
         "beforeCount": 1,
         "afterCount": 1,
-        "beforeDigest": "c7ce2a77ebe4fe1a4c6ab76f0d399daef8e4c489155ea34c46d6c226c20632b2",
-        "afterDigest": "c7ce2a77ebe4fe1a4c6ab76f0d399daef8e4c489155ea34c46d6c226c20632b2"
+        "beforeDigest": "534bc4173aed32b5ce61a710209f1963a1d5282b0bba31a4e7e1cfda9d049744",
+        "afterDigest": "534bc4173aed32b5ce61a710209f1963a1d5282b0bba31a4e7e1cfda9d049744"
       },
       {
         "table": "system_settings",
@@ -511,8 +560,8 @@
         "table": "thesis_records",
         "beforeCount": 1,
         "afterCount": 1,
-        "beforeDigest": "e97c2ed7d2428d24f4bc1d008d31c90e62b90b323d263bd36aaae0620d75b64b",
-        "afterDigest": "e97c2ed7d2428d24f4bc1d008d31c90e62b90b323d263bd36aaae0620d75b64b"
+        "beforeDigest": "584189372644fafabe94c68dec07382d87a711f457c46676a9006fc6b01ce03a",
+        "afterDigest": "584189372644fafabe94c68dec07382d87a711f457c46676a9006fc6b01ce03a"
       },
       {
         "table": "thesis_titles",
@@ -532,12 +581,12 @@
         "table": "users",
         "beforeCount": 6,
         "afterCount": 6,
-        "beforeDigest": "8f0fffd9a1078bcda2aa886c88ac6496b646242d78c7a50c7b9ec4a368f3a40f",
-        "afterDigest": "266b85c5da1d81e03570f1027c7e1c0f2406fd3d6f55de7715e9e972eff09c2d"
+        "beforeDigest": "d3cc2d6f70cf0664700204236507040f2f516c0f80ec4f067fc4d5fb1281b80a",
+        "afterDigest": "81bd965755a4ce10853939001e4c7c2adbfe54cfdcb4e2ca205045f3001e883c"
       }
     ]
   },
-  "evidenceClass": "Agent-local isolated real-MariaDB rehearsal; not hosted CI or owner QA",
+  "evidenceClass": "Agent-local clean committed source verification and isolated real-MariaDB rehearsal; not hosted CI or owner QA",
   "faculty4ContentionGate": "OPEN - exact harness not executed",
   "faculty12ContentionGate": "OPEN - exact five-case harness not executed",
   "activationGates": {
