@@ -24,6 +24,7 @@ export function AboutSection() {
           </p>
         </div>
         <PreviewImage
+          showCaption={false}
           image={publicSiteContent.about.image}
           className="public-about__image"
           sizes="(min-width: 1248px) 480px, (min-width: 900px) 43vw, 100vw"

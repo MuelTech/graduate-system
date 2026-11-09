@@ -65,6 +65,20 @@ try {
         ["news", "about", "programs", "graduate-research", "contact"],
       );
       await expect(page.locator("main h1")).toHaveCount(1);
+      await expect(page.locator("body")).not.toContainText("Design preview —");
+      await expect(page.locator("main")).not.toContainText(
+        "Sample content — design review only",
+      );
+      await expect(page.locator("main")).not.toContainText(
+        "Design placeholder image",
+      );
+      await expect(page.locator(".public-carousel__position")).toHaveCount(0);
+      assert.ok(
+        (
+          await page.locator(".public-carousel__playback").allTextContents()
+        ).every((text) => text.trim() === ""),
+        "Playback control must have no visible Play/Pause text",
+      );
       const hero = await page.locator(".public-carousel").boundingBox();
       assert.equal(hero.x, 0, "Hero must start at the viewport edge");
       assert.equal(hero.width, 1440, "Hero must span the full viewport");
@@ -234,13 +248,7 @@ try {
         await expect(
           page.locator(".public-carousel__slide[hidden]:visible"),
         ).toHaveCount(0);
-        await expect(
-          visibleSlide(page).locator(".public-carousel__sample"),
-        ).toHaveText("Sample content — design review only");
         if (await visibleSlide(page).locator("img").count()) {
-          await expect(visibleSlide(page).locator("figcaption")).toContainText(
-            "not EARIST photography",
-          );
           await expect
             .poll(() =>
               visibleSlide(page)

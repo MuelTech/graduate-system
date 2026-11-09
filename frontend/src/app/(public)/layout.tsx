@@ -1,7 +1,6 @@
 import { Navbar } from "@/components/landing/navbar";
 import { Footer } from "@/components/landing/footer";
 import { ChatbotWidget } from "@/components/chatbot/chatbot-widget";
-import { DesignPreviewNotice } from "@/components/landing/design-preview-notice";
 import "./public-site.css";
 
 export default function PublicLayout({
@@ -20,7 +19,6 @@ export default function PublicLayout({
         tabIndex={-1}
         className="public-main flex-1"
       >
-        <DesignPreviewNotice />
         {children}
       </main>
       <Footer />

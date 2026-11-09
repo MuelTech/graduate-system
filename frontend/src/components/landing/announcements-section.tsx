@@ -26,8 +26,7 @@ const slides = [
   },
   {
     title: "Registered in Pinnacle?",
-    summary:
-      "Sign in or create an account to access examination services.",
+    summary: "Sign in or create an account to access examination services.",
     category: "Applicant examination access",
     treatment: "statement",
     primary: { label: "Entrance Examination", href: "/login" },
@@ -137,7 +136,6 @@ export function AnnouncementsSection() {
       role="region"
       aria-roledescription="carousel"
       aria-label="News & Announcements"
-      aria-describedby="news-review-note"
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       onFocusCapture={() => setFocusPaused(true)}
@@ -149,9 +147,6 @@ export function AnnouncementsSection() {
       <div className="public-carousel__identity public-body-frame">
         <h1 id="landing-title">EARIST Graduate School</h1>
       </div>
-      <p id="news-review-note" className="sr-only">
-        {publicSiteContent.news.reviewNote}
-      </p>
       <div
         id={carouselId}
         className="public-carousel__viewport"
@@ -179,7 +174,6 @@ export function AnnouncementsSection() {
                   sizes="100vw"
                   priority={index === 0}
                 />
-                <figcaption>{slide.image.caption}</figcaption>
               </figure>
             )}
             <div className="public-carousel__copy public-body-frame">
@@ -207,9 +201,6 @@ export function AnnouncementsSection() {
                   A Pinnacle Applicant ID is required to create an account.
                 </p>
               )}
-              <p className="public-carousel__sample">
-                {publicSiteContent.news.sampleLabel}
-              </p>
             </div>
           </article>
         ))}
@@ -235,10 +226,6 @@ export function AnnouncementsSection() {
             <ArrowRight aria-hidden="true" size={22} />
           </button>
           <div className="public-carousel__controls public-body-frame">
-            <span className="public-carousel__position" aria-hidden="true">
-              {String(active + 1).padStart(2, "0")} /{" "}
-              {String(slides.length).padStart(2, "0")}
-            </span>
             <div
               className="public-carousel__indicators"
               role="group"
@@ -269,6 +256,7 @@ export function AnnouncementsSection() {
                     : "Play announcement rotation"
                 }
                 aria-controls={carouselId}
+                title={rotationRequested ? "Pause slideshow" : "Play slideshow"}
                 onClick={toggleRotation}
               >
                 {rotationRequested ? (
@@ -276,7 +264,6 @@ export function AnnouncementsSection() {
                 ) : (
                   <Play aria-hidden="true" size={16} />
                 )}
-                <span>{rotationRequested ? "Pause" : "Play"}</span>
               </button>
             )}
           </div>

@@ -382,7 +382,7 @@
 }
 .earist-public .public-carousel__viewport {
   display: grid;
-  min-height: clamp(640px, calc(100svh - 125px), 960px);
+  min-height: clamp(640px, calc(100svh - 88px), 960px);
 }
 .earist-public .public-carousel__identity {
   position: absolute;
@@ -431,16 +431,6 @@
     rgba(35, 10, 16, 0.78) 55%,
     rgba(35, 10, 16, 0.5) 100%
   );
-}
-.earist-public .public-carousel__image figcaption {
-  position: absolute;
-  z-index: 2;
-  left: max(24px, calc((100% - 1200px) / 2));
-  bottom: 16px;
-  right: 100px;
-  color: #fff;
-  font-size: 11px;
-  line-height: 1.4;
 }
 .earist-public .public-carousel__copy {
   position: relative;
@@ -511,13 +501,6 @@
 .earist-public .public-carousel__action--secondary:hover {
   background: rgba(255, 255, 255, 0.14);
 }
-.earist-public .public-carousel__sample {
-  max-width: 620px;
-  margin-top: 24px;
-  color: #fff0db;
-  font-size: 12px;
-  line-height: 1.5;
-}
 .earist-public .public-carousel__prerequisite {
   margin-top: 16px;
   color: #fff5ef;
@@ -538,9 +521,6 @@
 }
 .earist-public .public-carousel__slide--statement .public-carousel__actions {
   justify-content: center;
-}
-.earist-public .public-carousel__slide--statement .public-carousel__sample {
-  margin-inline: auto;
 }
 .earist-public .public-carousel__arrow {
   position: absolute;
@@ -569,18 +549,12 @@
 .earist-public .public-carousel__controls {
   position: absolute;
   z-index: 3;
-  inset: auto 0 44px;
-  display: grid;
-  grid-template-columns: 1fr auto 1fr;
+  inset: auto 0 32px;
+  display: flex;
+  justify-content: center;
   align-items: center;
-  gap: 20px;
+  gap: 8px;
   min-height: 44px;
-}
-.earist-public .public-carousel__position {
-  font-size: 12px;
-  color: #fff;
-  font-variant-numeric: tabular-nums;
-  letter-spacing: 0.04em;
 }
 .earist-public .public-carousel__indicators {
   display: flex;
@@ -608,15 +582,13 @@
   border-color: #e7bd64;
 }
 .earist-public .public-carousel__playback {
-  justify-self: end;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  width: 44px;
   min-height: 44px;
-  padding: 8px 12px;
+  padding: 8px;
   color: #fff;
-  font-size: 13px;
   cursor: pointer;
 }
 .earist-public .public-carousel button:focus-visible,
@@ -725,14 +697,10 @@
     bottom: 42px;
     width: calc(100% - 112px);
     margin-left: 24px;
-    grid-template-columns: auto 1fr auto;
     gap: 8px;
   }
   .earist-public .public-carousel__indicators {
     justify-content: center;
-  }
-  .earist-public .public-carousel__image figcaption {
-    right: 88px;
   }
 }
 @media (max-width: 599px) {
@@ -769,10 +737,6 @@
     padding-inline: 15px;
     font-size: 15px;
   }
-  .earist-public .public-carousel__sample {
-    margin-top: 18px;
-    font-size: 11px;
-  }
   .earist-public .public-carousel__arrow {
     width: 44px;
     height: 44px;
@@ -783,23 +747,12 @@
   .earist-public .public-carousel__controls {
     width: calc(100% - 106px);
     margin-left: 18px;
-    grid-template-columns: 1fr auto;
-  }
-  .earist-public .public-carousel__position {
-    display: none;
   }
   .earist-public .public-carousel__indicators {
     justify-content: flex-start;
   }
   .earist-public .public-carousel__playback {
     padding-inline: 8px;
-  }
-  .earist-public .public-carousel__playback span {
-    display: none;
-  }
-  .earist-public .public-carousel__image figcaption {
-    left: 18px;
-    font-size: 10px;
   }
   .earist-public .public-opening__access {
     padding-block: 20px;

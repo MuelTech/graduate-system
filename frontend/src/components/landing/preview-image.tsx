@@ -11,6 +11,7 @@ interface PreviewImageProps {
   className?: string;
   sizes: string;
   priority?: boolean;
+  showCaption?: boolean;
 }
 
 export function PreviewImage({
@@ -18,6 +19,7 @@ export function PreviewImage({
   className = "",
   sizes,
   priority = false,
+  showCaption = true,
 }: PreviewImageProps) {
   return (
     <figure className={`public-preview-image ${className}`}>
@@ -32,9 +34,11 @@ export function PreviewImage({
           className="public-preview-image__image"
         />
       </div>
-      <figcaption className="public-preview-image__caption">
-        {image.caption}
-      </figcaption>
+      {showCaption && (
+        <figcaption className="public-preview-image__caption">
+          {image.caption}
+        </figcaption>
+      )}
     </figure>
   );
 }

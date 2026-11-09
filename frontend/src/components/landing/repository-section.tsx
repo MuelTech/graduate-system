@@ -30,6 +30,7 @@ export function RepositorySection() {
           </p>
         </div>
         <PreviewImage
+          showCaption={false}
           image={publicSiteContent.research.image}
           className="public-research__image"
           sizes="(min-width: 1248px) 455px, (min-width: 900px) 40vw, 100vw"
