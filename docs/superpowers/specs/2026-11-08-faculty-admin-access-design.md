@@ -160,6 +160,8 @@ The exact role authority remains schedule/assignment-specific.
 
 Faculty detail may show assignment summaries, but those summaries must not become an alternate editor or source of defense authority.
 
+Admin may assign External Faculty to Chairman, Panelist, Rapporteur, or Facilitator for an exact Defense schedule. External Faculty must never be assigned as Adviser or receive student advisees. These are contextual Defense assignments, not permanent Faculty capabilities.
+
 ---
 
 ## 6. Faculty portal
@@ -314,6 +316,8 @@ Expected UI behavior:
 
 The UI must preserve the rule that at least one active Full Administrator remains.
 
+The initial Full Administrator must be explicitly approved by the project owner and established through a controlled, operator-authorized, auditable bootstrap. Do not infer the initial account from Gmail/email, role name, seed account, creator, or creation order. Actual account designation and environment bootstrap require separate authorization.
+
 The UI must not imply that Full Administrator can perform Faculty-only academic actions or bypass assignment-based Defense/Adviser authority.
 
 ---
@@ -384,6 +388,8 @@ Faculty credentials enter the Faculty portal.
 
 Admin credentials enter the Admin portal.
 
+A person with both responsibilities has two separate User accounts, but the accounts may share the same Gmail/email. The selected role must be included in server-side account resolution so the correct distinct account is authenticated. Each account keeps its own password, User ID, session, permissions, and audit attribution. Password recovery must also be role-scoped. Preserve same-role uniqueness and Applicant-to-Student promotion semantics.
+
 The target design does not require a combined Faculty + Admin account/session.
 
 ---
@@ -398,9 +404,7 @@ Instead:
 - Admin capabilities are configured directly for the Admin account;
 - Adviser/Defense work remains assignment-derived.
 
-The implementation plan must determine how legacy Custom Role users/data are migrated and whether existing backend permission machinery is reusable.
-
-Do not delete legacy data merely to simplify the UI.
+The approved target is complete retirement of the legacy Custom Roles subsystem, not reuse as internal permission machinery. Remove `UserRole.CUSTOM`, `User.customRoleId`, `CustomRole`, `RoleFeatureAccess`, and legacy `other` login compatibility, along with the mock page/navigation/APIs/seeds/obsolete copy. Use a new forward Prisma migration; never rewrite historical migrations. Before removal, audit all code, seed, test, FK and migration consumers. Development-only CUSTOM test accounts may be removed through a separately controlled development cleanup; preserve unrelated User records and all academic, Defense and audit history. This approval does not authorize staging/production inventory or cleanup.
 
 ---
 
@@ -512,7 +516,8 @@ Given:
 Then:
 - My Defenses reflects the assignment;
 - Faculty may perform only the permitted defense functions for that exact assignment;
-- Faculty cannot be selected/assigned as Adviser;
+- External Faculty may be assigned by Admin as Chairman, Panelist, Rapporteur, or Facilitator for the exact Defense schedule;
+- External Faculty cannot be selected/assigned as Adviser or receive student advisees;
 - Adviser availability cannot be enabled.
 
 ### Scenario D — Assigned Adviser
@@ -632,3 +637,18 @@ Faculty and Admin remain separate role experiences.
 - no arbitrary Custom Roles required in the target UX.
 
 The result should feel like one coherent GS-IS product while preserving strict domain authority and least-privilege behavior.
+
+
+## 21. Owner-approved decision register (2026-11-09)
+
+These decisions are approved product/business rules. Code implementation and live-environment authorization are tracked separately.
+
+- **DR-1 — Initial Full Administrator:** Require at least one active Full Administrator for privileged Administrator Management. Explicit project-owner designation only; use a controlled, operator-authorized and auditable bootstrap. No inference from email, role name, seed account, creator, or account order. Actual identity/provisioning remains separately authorized.
+- **DR-2 — Custom Roles retirement:** Completely remove the legacy CUSTOM account/permission subsystem from the target architecture: enum value, User.customRoleId, CustomRole/RoleFeatureAccess models and tables, Other Roles authentication, mock UI/API/seeds/copy. Use a forward migration and preserve migration history and unrelated academic/Defense/audit records. Development-only CUSTOM test accounts may be removed by separately controlled development cleanup. No production data access is authorized.
+- **DR-3 — Essay Evaluation:** Resolved; school-wide pending eligible entrance-exam essay access across Programs.
+- **DR-4 — Same Gmail, separate accounts:** Separate Faculty and Admin User records may share one Gmail/email. Login role selects the distinct account. IDs, passwords, sessions, permissions and audit attribution stay separate. Authentication and recovery must be role-scoped; preserve same-role uniqueness and Applicant/Student promotion behavior. Engineering implementation remains pending.
+- **DR-5 — External Defense roles:** Admin may assign External Faculty as Chairman, Panelist, Rapporteur or Facilitator on an exact schedule. External Faculty cannot be Adviser or receive student advisees.
+- **DR-6 — Ineligible pending Adviser request:** If the requested Adviser becomes inactive/unavailable after CONFORME but before Dean approval, the existing authorized Admin/Dean reviewer may reject with a reason. Preserve the request and signed CONFORME unchanged; the Student may submit a new request to another eligible Internal Faculty member.
+- **DR-7 — Internal Adviser classification lock:** An Internal Faculty member who has ever held an authoritative AdviserAssignment cannot be reclassified as External, even after the assignment ends. Backend-enforced; no Admin override.
+
+No decision above authorizes live account conversion, actual database cleanup, production deployment, or activation by itself.
