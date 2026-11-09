@@ -119,70 +119,64 @@ try {
   );
 
   await check(
-    "Desktop rotation, hover/focus suspension, manual stop and deliberate resume",
+    "Automatic rotation, interaction suspension, manual-navigation resume and keyboard pause",
     async () => {
       const page = await open();
+      await expect(page.locator(".public-carousel__playback")).toHaveCount(0);
       await expect(
-        page.getByRole("button", {
-          name: "Pause announcement rotation",
-          exact: true,
-        }),
-      ).toBeVisible();
+        page.getByRole("button", { name: "Pause slideshow", exact: true }),
+      ).toHaveCount(1);
       await settle();
       await page.clock.fastForward(8_100);
       await position(page, 2);
       await expect(page.locator('.public-carousel [role="status"]')).toHaveText(
         "",
       );
+      // Merely resting over the image/text must not stall automatic playback.
       await page
         .locator(".public-carousel")
         .hover({ position: { x: 100, y: 100 } });
-      await settle();
-      await page.clock.fastForward(16_100);
-      await position(page, 2);
-      await page.mouse.move(0, 0);
-      await settle();
       await page.clock.fastForward(8_100);
       await position(page, 3);
+      await visibleSlide(page)
+        .locator(".public-carousel__action")
+        .first()
+        .hover();
+      await settle();
+      await page.clock.fastForward(16_100);
+      await position(page, 3);
+      await releaseCarousel(page);
+      await page.clock.fastForward(8_100);
+      await position(page, 1);
       await page
-        .getByRole("button", { name: "Next announcement", exact: true })
+        .getByRole("button", { name: "Previous announcement", exact: true })
         .focus();
-      await settle();
+      await page.keyboard.press("Tab");
+      await expect(
+        page.getByRole("button", { name: "Next announcement", exact: true }),
+      ).toBeFocused();
+      await page.clock.fastForward(16_100);
+      await position(page, 1);
+      await page.keyboard.press("Enter");
+      await position(page, 2);
+      await releaseCarousel(page);
+      await page.clock.fastForward(8_100);
+      await position(page, 3);
+      // No on-screen Play button is required; keyboard users retain pause/resume.
+      await page
+        .getByRole("button", { name: "Pause slideshow", exact: true })
+        .focus();
+      await page.keyboard.press("Space");
+      await releaseCarousel(page);
       await page.clock.fastForward(16_100);
       await position(page, 3);
-      await page.keyboard.press("Enter");
-      await position(page, 1);
-      await expect(
-        page.getByRole("button", {
-          name: "Play announcement rotation",
-          exact: true,
-        }),
-      ).toBeVisible();
-      await page.locator("#landing-title").scrollIntoViewIfNeeded();
-      await releaseCarousel(page);
-      await page.clock.fastForward(16_100);
-      await position(page, 1);
       await page
-        .getByRole("button", {
-          name: "Play announcement rotation",
-          exact: true,
-        })
-        .click();
-      // Keep focus on Play: pointer exit alone must allow deliberate resume.
-      await page.mouse.move(0, 0);
-      await settle();
+        .getByRole("button", { name: "Resume slideshow", exact: true })
+        .focus();
+      await page.keyboard.press("Space");
+      await releaseCarousel(page);
       await page.clock.fastForward(8_100);
-      await position(page, 2);
-      await page
-        .getByRole("button", {
-          name: "Pause announcement rotation",
-          exact: true,
-        })
-        .click();
-      await page.locator("#landing-title").scrollIntoViewIfNeeded();
-      await releaseCarousel(page);
-      await page.clock.fastForward(16_100);
-      await position(page, 2);
+      await position(page, 1);
       await page.close();
     },
   );
@@ -221,21 +215,32 @@ try {
   });
 
   await check(
-    "Mobile manual default, wraparound, headline selection and image availability",
+    "Mobile autoplay, wraparound, headline selection and image availability",
     async () => {
-      const page = await open({ viewport: { width: 390, height: 844 } });
-      await expect(
-        page.getByRole("button", {
-          name: "Play announcement rotation",
-          exact: true,
-        }),
-      ).toBeVisible();
-      await page.clock.fastForward(16_100);
+      const page = await open({
+        viewport: { width: 390, height: 844 },
+        isMobile: true,
+        hasTouch: true,
+      });
+      await expect(page.locator(".public-carousel__playback")).toHaveCount(0);
+      await settle();
+      await page.clock.fastForward(8_100);
+      await position(page, 2);
+      await page
+        .getByRole("button", { name: "Next announcement", exact: true })
+        .tap();
+      await position(page, 3);
+      await settle();
+      await page.clock.fastForward(8_100);
       await position(page, 1);
+      await page.getByRole("button", { name: /^Show announcement 1:/ }).click();
       await page
         .getByRole("button", { name: "Previous announcement", exact: true })
         .click();
       await position(page, 3);
+      await releaseCarousel(page);
+      await page.clock.fastForward(8_100);
+      await position(page, 1);
       for (let index = 1; index <= 3; index++) {
         const choice = page.getByRole("button", {
           name: new RegExp(`^Show announcement ${index}:`),

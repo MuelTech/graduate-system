@@ -7,7 +7,7 @@ import {
   useState,
   useSyncExternalStore,
 } from "react";
-import { ArrowLeft, ArrowRight, Pause, Play } from "lucide-react";
+import { ArrowLeft, ArrowRight } from "lucide-react";
 import { publicSiteContent } from "@/content/public-site-content";
 import Image from "next/image";
 import Link from "next/link";
@@ -44,17 +44,13 @@ const slides = [
   },
 ];
 const intervalMs = 8_000;
-const desktopQuery = "(min-width: 900px)";
 const motionQuery = "(prefers-reduced-motion: reduce)";
 
 function subscribeEnvironment(onChange: () => void) {
-  const desktop = window.matchMedia(desktopQuery);
   const motion = window.matchMedia(motionQuery);
-  desktop.addEventListener("change", onChange);
   motion.addEventListener("change", onChange);
   document.addEventListener("visibilitychange", onChange);
   return () => {
-    desktop.removeEventListener("change", onChange);
     motion.removeEventListener("change", onChange);
     document.removeEventListener("visibilitychange", onChange);
   };
@@ -63,15 +59,14 @@ function subscribeEnvironment(onChange: () => void) {
 // A stable primitive snapshot also gives SSR and initial hydration the same state.
 function getEnvironment() {
   return (
-    (window.matchMedia(desktopQuery).matches ? 1 : 0) |
-    (!window.matchMedia(motionQuery).matches ? 2 : 0) |
-    (!document.hidden ? 4 : 0)
+    (!window.matchMedia(motionQuery).matches ? 1 : 0) |
+    (!document.hidden ? 2 : 0)
   );
 }
 
 export function AnnouncementsSection() {
   const [active, setActive] = useState(0);
-  const [mode, setMode] = useState<"auto" | "playing" | "paused">("auto");
+  const [paused, setPaused] = useState(false);
   const [hovered, setHovered] = useState(false);
   const [focusPaused, setFocusPaused] = useState(false);
   const [inView, setInView] = useState(false);
@@ -83,12 +78,10 @@ export function AnnouncementsSection() {
     getEnvironment,
     () => 0,
   );
-  const desktop = Boolean(environment & 1);
-  const motionAllowed = Boolean(environment & 2);
-  const documentVisible = Boolean(environment & 4);
-  const rotationRequested = mode === "playing" || (mode === "auto" && desktop);
+  const motionAllowed = Boolean(environment & 1);
+  const documentVisible = Boolean(environment & 2);
   const rotating =
-    rotationRequested &&
+    !paused &&
     motionAllowed &&
     documentVisible &&
     inView &&
@@ -106,16 +99,15 @@ export function AnnouncementsSection() {
 
   useEffect(() => {
     if (!rotating || slides.length < 2) return;
-    const timer = window.setInterval(
+    const timer = window.setTimeout(
       () => setActive((index) => (index + 1) % slides.length),
       intervalMs,
     );
-    return () => window.clearInterval(timer);
-  }, [rotating]);
+    return () => window.clearTimeout(timer);
+  }, [rotating, active]);
 
   function selectSlide(index: number) {
     const next = (index + slides.length) % slides.length;
-    setMode("paused");
     setActive(next);
     setAnnouncement(
       `Announcement ${next + 1} of ${slides.length}: ${slides[next].title}`,
@@ -123,10 +115,8 @@ export function AnnouncementsSection() {
   }
 
   function toggleRotation() {
-    setMode(rotationRequested ? "paused" : "playing");
-    // Explicit Play may resume with focus on its own control. The next focus
-    // change pauses again; mouse hover still suspends rotation until it leaves.
-    if (!rotationRequested) setFocusPaused(false);
+    setPaused(!paused);
+    if (paused) setFocusPaused(false);
   }
 
   return (
@@ -136,9 +126,18 @@ export function AnnouncementsSection() {
       role="region"
       aria-roledescription="carousel"
       aria-label="News & Announcements"
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
-      onFocusCapture={() => setFocusPaused(true)}
+      onPointerOver={(event) => {
+        // Reading the image/text should not make autoplay look inactive.
+        // Suspend while the pointer is over an action so it remains clickable.
+        if (event.pointerType === "mouse") {
+          setHovered(Boolean((event.target as Element).closest("a, button")));
+        }
+      }}
+      onPointerLeave={() => setHovered(false)}
+      onFocusCapture={(event) =>
+        setFocusPaused(event.target.matches(":focus-visible"))
+      }
+      onKeyDownCapture={() => setFocusPaused(true)}
       onBlurCapture={(event) => {
         if (!event.currentTarget.contains(event.relatedTarget))
           setFocusPaused(false);
@@ -147,6 +146,16 @@ export function AnnouncementsSection() {
       <div className="public-carousel__identity public-body-frame">
         <h1 id="landing-title">EARIST Graduate School</h1>
       </div>
+      {motionAllowed && (
+        <button
+          type="button"
+          className="public-carousel__rotation-toggle"
+          aria-controls={carouselId}
+          onClick={toggleRotation}
+        >
+          {paused ? "Resume slideshow" : "Pause slideshow"}
+        </button>
+      )}
       <div
         id={carouselId}
         className="public-carousel__viewport"
@@ -173,6 +182,7 @@ export function AnnouncementsSection() {
                   fill
                   sizes="100vw"
                   priority={index === 0}
+                  loading={index === 0 ? undefined : "eager"}
                 />
               </figure>
             )}
@@ -246,26 +256,6 @@ export function AnnouncementsSection() {
                 </button>
               ))}
             </div>
-            {motionAllowed && (
-              <button
-                type="button"
-                className="public-carousel__playback"
-                aria-label={
-                  rotationRequested
-                    ? "Pause announcement rotation"
-                    : "Play announcement rotation"
-                }
-                aria-controls={carouselId}
-                title={rotationRequested ? "Pause slideshow" : "Play slideshow"}
-                onClick={toggleRotation}
-              >
-                {rotationRequested ? (
-                  <Pause aria-hidden="true" size={16} />
-                ) : (
-                  <Play aria-hidden="true" size={16} />
-                )}
-              </button>
-            )}
           </div>
         </>
       )}

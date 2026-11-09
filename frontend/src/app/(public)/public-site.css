@@ -581,15 +581,27 @@
   background: #e7bd64;
   border-color: #e7bd64;
 }
-.earist-public .public-carousel__playback {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 44px;
-  min-height: 44px;
-  padding: 8px;
+.earist-public .public-carousel__rotation-toggle {
+  position: absolute;
+  z-index: 4;
+  top: 76px;
+  right: max(24px, calc((100% - 1200px) / 2));
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
   color: #fff;
   cursor: pointer;
+}
+.earist-public .public-carousel__rotation-toggle:focus {
+  width: auto;
+  height: auto;
+  min-height: 44px;
+  padding: 10px 14px;
+  border: 1px solid #fff;
+  background: #381419;
+  clip-path: none;
 }
 .earist-public .public-carousel button:focus-visible,
 .earist-public .public-carousel a:focus-visible {
@@ -750,9 +762,6 @@
   }
   .earist-public .public-carousel__indicators {
     justify-content: flex-start;
-  }
-  .earist-public .public-carousel__playback {
-    padding-inline: 8px;
   }
   .earist-public .public-opening__access {
     padding-block: 20px;
