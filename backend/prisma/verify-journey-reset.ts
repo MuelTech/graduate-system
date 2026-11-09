@@ -1,3 +1,4 @@
+import { accountEmailWhere, studentLifecycleEmailWhere } from "../src/utils/account-email";
 /**
  * WP6 — mutation → reseed → restored-state proof.
  * Mutates fixture-owned data only, reseeds, asserts canonical state returns.
@@ -18,7 +19,7 @@ import {
 const PASSWORD_HASH_PLACEHOLDER = "reset-check";
 
 async function journeyOf(email: string) {
-  const user = await prisma.user.findUniqueOrThrow({ where: { email } });
+  const user = await prisma.user.findUniqueOrThrow({ where: studentLifecycleEmailWhere(email) });
   const svc = new StudentThesisJourneyService();
   return svc.getJourney(user.id);
 }
@@ -58,7 +59,7 @@ async function main() {
   // ── A. PROPOSAL_READY gets an unwanted Proposal PASSED ──────────
   console.log("A) PROPOSAL_READY mutation → reseed");
   const proposalUser = await prisma.user.findUniqueOrThrow({
-    where: { email: "journey-proposal-ready@earist.edu.ph" },
+    where: studentLifecycleEmailWhere("journey-proposal-ready@earist.edu.ph"),
   });
   const proposalStudent = await prisma.student.findUniqueOrThrow({
     where: { userId: proposalUser.id },
@@ -67,7 +68,7 @@ async function main() {
     where: { studentId: proposalStudent.id },
   });
   const admin = await prisma.user.findUniqueOrThrow({
-    where: { email: "admin@earist.edu.ph" },
+    where: accountEmailWhere("admin@earist.edu.ph", "ADMIN"),
   });
   const junkSchedule = await prisma.defenseSchedule.create({
     data: {
@@ -95,7 +96,7 @@ async function main() {
   // ── B. FINAL_READY gets an unwanted Final PASSED ────────────────
   console.log("B) FINAL_READY mutation → reseed");
   const finalUser = await prisma.user.findUniqueOrThrow({
-    where: { email: "journey-final-ready@earist.edu.ph" },
+    where: studentLifecycleEmailWhere("journey-final-ready@earist.edu.ph"),
   });
   const finalStudent = await prisma.student.findUniqueOrThrow({
     where: { userId: finalUser.id },
@@ -129,7 +130,7 @@ async function main() {
   // ── C. TITLE_READY gets a fixture-owned thesis graph ────────────
   console.log("C) TITLE_READY mutation → reseed");
   const titleUser = await prisma.user.findUniqueOrThrow({
-    where: { email: "journey-title-ready@earist.edu.ph" },
+    where: studentLifecycleEmailWhere("journey-title-ready@earist.edu.ph"),
   });
   const titleStudent = await prisma.student.findUniqueOrThrow({
     where: { userId: titleUser.id },
@@ -196,7 +197,7 @@ async function main() {
   // ── F. ThesisRecord.assignmentId linked to active AdviserAssignment ─
   console.log("F) assignmentId link mutation → reseed");
   const approvedUser = await prisma.user.findUniqueOrThrow({
-    where: { email: "journey-adviser-approved@earist.edu.ph" },
+    where: studentLifecycleEmailWhere("journey-adviser-approved@earist.edu.ph"),
   });
   const approvedStudent = await prisma.student.findUniqueOrThrow({
     where: { userId: approvedUser.id },
@@ -212,7 +213,7 @@ async function main() {
   // ── Reseed and assert restoration ───────────────────────────────
   console.log("\nReseeding journey fixtures...");
   const passwordHash =
-    (await prisma.user.findFirst({ where: { email: "admin@earist.edu.ph" } }))
+    (await prisma.user.findFirst({ where: accountEmailWhere("admin@earist.edu.ph", "ADMIN") }))
       ?.passwordHash ?? PASSWORD_HASH_PLACEHOLDER;
   await seedStudentThesisJourneyFixtures(prisma, passwordHash);
 

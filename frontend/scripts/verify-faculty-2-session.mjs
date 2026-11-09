@@ -23,6 +23,20 @@ const identity = { id: "u1", role: "admin", accessToken: "signed-token", mustCha
 const serverUser = { id: "u1", email: "own@example.com", role: "STUDENT", mustChangePassword: false };
 const response = (status, body = {}) => new Response(JSON.stringify(body), { status });
 
+test("FACULTY-17A same-email sessions stay bound to distinct User IDs and reject a foreign same-email response", async () => {
+  const email = "person@gmail.com";
+  for (const [id, role] of [["shared-admin", "ADMIN"], ["shared-faculty", "FACULTY"]]) {
+    const token = { ...identity, id, email, role: role.toLowerCase(), accessToken: `token-${id}` };
+    let current = { id, email, role, mustChangePassword: false };
+    const { synchronizeCurrentSession } = load("lib/current-session.ts", {}, { fetch: async () => response(200, { user: current }) });
+    const result = await synchronizeCurrentSession(token, "http://backend");
+    assert.equal(result.id, id); assert.equal(result.accessToken, `token-${id}`); assert.equal(result.role, role.toLowerCase());
+    current = { ...current, id: id === "shared-admin" ? "shared-faculty" : "shared-admin" };
+    const denied = await synchronizeCurrentSession(token, "http://backend");
+    assert.equal(denied.id, id); assert.equal(denied.role, ""); assert.equal(denied.currentAccountError, "ACCOUNT_UNAVAILABLE");
+  }
+});
+
 test("session reload uses server identity and bypasses caches", async () => {
   let request;
   const { synchronizeCurrentSession } = load("lib/current-session.ts", {}, { fetch: async (...args) => {

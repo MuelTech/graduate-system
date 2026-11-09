@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const repo = vi.hoisted(() => ({
   findUserByEmail: vi.fn(),
+  findUserByEmailAndRole: vi.fn(),
   findStudentByApplicantId: vi.fn(),
   findStudentByStudentNumber: vi.fn(),
   findUserById: vi.fn(),
@@ -15,6 +16,7 @@ const repo = vi.hoisted(() => ({
 vi.mock("../../../src/repositories/auth.repository", () => ({
   AuthRepository: class {
     findUserByEmail = repo.findUserByEmail;
+    findUserByEmailAndRole = repo.findUserByEmailAndRole;
     findStudentByApplicantId = repo.findStudentByApplicantId;
     findStudentByStudentNumber = repo.findStudentByStudentNumber;
     findUserById = repo.findUserById;
@@ -191,11 +193,11 @@ describe("AuthService.login Applicant + staff roles (regression)", () => {
     ).rejects.toMatchObject({ statusCode: 400 });
   });
 
-  it("keeps Admin/Panelist/Other on the email + password path", async () => {
+  it("keeps Admin/Faculty on the email + password path", async () => {
     for (const role of ["admin", "panelist"]) {
       vi.clearAllMocks();
       bcryptMock.compare.mockResolvedValue(true);
-      repo.findUserByEmail.mockResolvedValue(
+      repo.findUserByEmailAndRole.mockResolvedValue(
         studentUser({ role: role.toUpperCase() }),
       );
       const svc = new AuthService();
@@ -206,7 +208,7 @@ describe("AuthService.login Applicant + staff roles (regression)", () => {
         password: "pw",
       });
 
-      expect(repo.findUserByEmail).toHaveBeenCalledWith(`${role}@example.com`);
+      expect(repo.findUserByEmailAndRole).toHaveBeenCalledWith(`${role}@example.com`, role.toUpperCase());
       expect(repo.findStudentByStudentNumber).not.toHaveBeenCalled();
       expect(result.user.role).toBe(role.toUpperCase());
     }
@@ -216,32 +218,32 @@ describe("AuthService.login Applicant + staff roles (regression)", () => {
 
 describe("FACULTY-2 email role and activity boundary", () => {
   it.each(["PANELIST", "FACULTY"])("authenticates %s through the existing academic login choice", async role => {
-    repo.findUserByEmail.mockResolvedValue(studentUser({ role }));
+    repo.findUserByEmailAndRole.mockResolvedValue(studentUser({ role }));
     const result = await new AuthService().login({ role: "panelist", email: "a@example.com", password: "pw" });
     expect(result.user.role).toBe(role);
     expect(jwtMock.sign.mock.calls[0][0]).toMatchObject({ role, userId: "user-1" });
   });
   it("denies an inactive future academic account", async () => {
-    repo.findUserByEmail.mockResolvedValue(studentUser({ role: "FACULTY", isActive: false }));
+    repo.findUserByEmailAndRole.mockResolvedValue(studentUser({ role: "FACULTY", isActive: false }));
     await expect(new AuthService().login({ role: "panelist", email: "a@example.com", password: "pw" }))
       .rejects.toMatchObject({ statusCode: 403 });
   });
   it.each(["ADMIN", "PANELIST", "APPLICANT", "STUDENT", "CUSTOM"])("rejects mismatched email role for %s", async (role) => {
-    repo.findUserByEmail.mockResolvedValue(studentUser({ role }));
+    repo.findUserByEmailAndRole.mockResolvedValue(studentUser({ role }));
     const selected = role === "ADMIN" ? "panelist" : "admin";
     await expect(new AuthService().login({ role: selected, email: "a@example.com", password: "pw" }))
-      .rejects.toMatchObject({ statusCode: 403 });
+      .rejects.toMatchObject({ statusCode: 401 });
     expect(jwtMock.sign).not.toHaveBeenCalled();
   });
   it.each(["other", "custom", "CUSTOM", "ADMIN", "__proto__", "constructor", "", null, {}, ["admin"]])("rejects unknown/forged selected role %j before lookup", async (role) => {
     await expect(new AuthService().login({ role, email: "a@example.com", password: "pw" } as never))
       .rejects.toMatchObject({ statusCode: 400 });
-    expect(repo.findUserByEmail).not.toHaveBeenCalled();
+    expect(repo.findUserByEmailAndRole).not.toHaveBeenCalled();
     expect(jwtMock.sign).not.toHaveBeenCalled();
   });
   it.each(["applicant", "student", "admin", "panelist", "faculty"])("rejects inactive %s", async (role) => {
     const user = studentUser({ isActive: false, role: role.toUpperCase() });
-    repo.findUserByEmail.mockResolvedValue(user);
+    repo.findUserByEmailAndRole.mockResolvedValue(user);
     repo.findStudentByApplicantId.mockResolvedValue({ user });
     repo.findStudentByStudentNumber.mockResolvedValue({ user });
     await expect(new AuthService().login({ role, email: "a@example.com", applicantId: "APP", studentNumber: "SN", password: "pw" }))
@@ -249,7 +251,7 @@ describe("FACULTY-2 email role and activity boundary", () => {
     expect(jwtMock.sign).not.toHaveBeenCalled();
   });
   it("allows a credential-gated account to authenticate for password change", async () => {
-    repo.findUserByEmail.mockResolvedValue(studentUser({ role: "ADMIN", mustChangePassword: true }));
+    repo.findUserByEmailAndRole.mockResolvedValue(studentUser({ role: "ADMIN", mustChangePassword: true }));
     const result = await new AuthService().login({ role: "admin", email: "a@example.com", password: "pw" });
     expect(result.user.mustChangePassword).toBe(true);
   });
@@ -258,21 +260,21 @@ describe("FACULTY-2 email role and activity boundary", () => {
 
 describe("FACULTY-14 canonical Faculty login choice", () => {
   it.each(["FACULTY", "PANELIST"])("accepts stored %s without rewriting identity", async role => {
-    repo.findUserByEmail.mockResolvedValue(studentUser({ role }));
+    repo.findUserByEmailAndRole.mockResolvedValue(studentUser({ role }));
     const result = await new AuthService().login({ role: "faculty", email: "academic@example.test", password: "pw" });
     expect(result.user.role).toBe(role);
     expect(jwtMock.sign.mock.calls[0][0]).toMatchObject({ role, userId: "user-1" });
   });
   it.each(["ADMIN", "CUSTOM", "STUDENT", "APPLICANT"])("denies Faculty selection for %s", async role => {
-    repo.findUserByEmail.mockResolvedValue(studentUser({ role }));
+    repo.findUserByEmailAndRole.mockResolvedValue(studentUser({ role }));
     await expect(new AuthService().login({ role: "faculty", email: "other@example.test", password: "pw" }))
-      .rejects.toMatchObject({ statusCode: 403 });
+      .rejects.toMatchObject({ statusCode: 401 });
     expect(jwtMock.sign).not.toHaveBeenCalled();
   });
   it.each(["FACULTY", "PANELIST"])("denies Administrator selection for %s", async role => {
-    repo.findUserByEmail.mockResolvedValue(studentUser({ role }));
+    repo.findUserByEmailAndRole.mockResolvedValue(studentUser({ role }));
     await expect(new AuthService().login({ role: "admin", email: "academic@example.test", password: "pw" }))
-      .rejects.toMatchObject({ statusCode: 403 });
+      .rejects.toMatchObject({ statusCode: 401 });
   });
 });
 

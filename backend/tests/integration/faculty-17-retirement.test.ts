@@ -43,7 +43,7 @@ describe.skipIf(!enabled)("FACULTY-17 isolated MariaDB retirement", () => {
   function preserved(state: Snapshot) {
     return Object.fromEntries(Object.entries(state.tables)
       .filter(([name]) => !["_prisma_migrations", "custom_roles", "role_feature_access"].includes(name))
-      .map(([name, rows]) => [name, name === "users" ? rows.map(({ custom_role_id, ...row }) => row) : rows]));
+      .map(([name, rows]) => [name, name === "users" ? rows.map(({ custom_role_id, email_admin_key, email_faculty_key, ...row }) => row) : rows]));
   }
   async function rawMigration() {
     const sql = readFileSync(`prisma/migrations/${migration}/migration.sql`, "utf8").replace(/--[^\n]*/g, "");
@@ -77,7 +77,7 @@ describe.skipIf(!enabled)("FACULTY-17 isolated MariaDB retirement", () => {
     for (const [id, role] of [["admin", "ADMIN"], ["student", "STUDENT"], ["applicant", "APPLICANT"],
       ["faculty", "FACULTY"], ["chair", "PANELIST"], ["rapporteur", "FACULTY"], ["facilitator", "FACULTY"], ["adviser", "FACULTY"]] as const) {
       await client.user.create({ data: { id, role, email: `${id}@example.invalid`, passwordHash: `synthetic-preserve-${id}`,
-        firstName: "Synthetic", lastName: id, mustChangePassword: id === "applicant" } });
+        firstName: "Synthetic", lastName: id, mustChangePassword: id === "applicant" }, select: { id: true } });
       if (["FACULTY", "PANELIST"].includes(role)) await client.panelist.create({ data: { id: `profile-${id}`, userId: id, isAvailableAsAdviser: id === "adviser" } });
     }
     await client.administratorAccess.create({ data: { userId: "admin", level: "RESTRICTED", createdById: "admin", updatedById: "admin" } });

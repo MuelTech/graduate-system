@@ -2,6 +2,7 @@ import type { Prisma } from "@prisma/client";
 import { OperationalAuthorization } from "./operational-authorization";
 import { validateDirectCapabilityKeys, type CapabilityKey } from "./capability-catalog";
 import { AppError } from "../utils/AppError";
+import { normalizeAccountEmail } from "../utils/account-email";
 
 /** Code-owned composition only. No request, environment or DB setting activates Faculty configuration. */
 export const FACULTY_CONFIGURATION_ENABLED: boolean = false;
@@ -43,6 +44,7 @@ export function parseFacultyPatch(input: unknown): FacultyPatch {
   }
   const data = input as Record<string, unknown>; const result: FacultyPatch = {};
   for (const key of requiredText) if (key in data) result[key] = text(data[key]) as string;
+  if (result.email) result.email = normalizeAccountEmail(result.email);
   if (result.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(result.email)) throw new AppError("A valid email address is required.", 400);
   for (const key of nullableText) if (key in data) result[key] = text(data[key], true);
   for (const key of booleans) if (key in data) {

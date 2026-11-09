@@ -2,9 +2,10 @@ import express from "express";
 import type { Server } from "node:http";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
-const repo = vi.hoisted(() => ({ findUserByEmail: vi.fn() }));
+const repo = vi.hoisted(() => ({ findUserByEmail: vi.fn(), findUserByEmailAndRole: vi.fn() }));
 vi.mock("../../../src/repositories/auth.repository", () => ({ AuthRepository: class {
   findUserByEmail = repo.findUserByEmail;
+  findUserByEmailAndRole = repo.findUserByEmailAndRole;
 } }));
 vi.mock("../../../src/config/database", () => ({ default: {} }));
 const compare = vi.hoisted(() => vi.fn());
@@ -25,6 +26,6 @@ describe("FACULTY-17 real HTTP retired-login boundary", () => {
       body: JSON.stringify({ role, email: "retired@example.invalid", password: "synthetic", selectedRole: "admin" }) });
     expect(response.status).toBe(400);
     expect(await response.json()).toEqual({ error: "Invalid selected login role." });
-    expect(repo.findUserByEmail).not.toHaveBeenCalled(); expect(compare).not.toHaveBeenCalled();
+    expect(repo.findUserByEmail).not.toHaveBeenCalled(); expect(repo.findUserByEmailAndRole).not.toHaveBeenCalled(); expect(compare).not.toHaveBeenCalled();
   });
 });

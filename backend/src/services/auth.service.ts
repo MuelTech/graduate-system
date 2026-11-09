@@ -5,6 +5,7 @@ import { AuthRepository } from '../repositories/auth.repository';
 import { RegisterInput, LoginInput, UserResponse, LoginResponse } from '../interfaces/auth.interfaces';
 import { Prisma, UserRole, AdmissionStatus, AlignmentStatus } from '@prisma/client';
 import { AppError } from '../utils/AppError';
+import { normalizeAccountEmail } from '../utils/account-email';
 
 export class AuthService {
     private authRepository = new AuthRepository();
@@ -72,13 +73,16 @@ export class AuthService {
 
     async register(data: RegisterInput): Promise<UserResponse> {
 
+        if (typeof data.email !== 'string') throw new AppError("A valid email address is required.", 400);
+        const email = normalizeAccountEmail(data.email);
+
         // Strict Gmail Exclusivity Rule
-        if (!data.email.toLowerCase().endsWith("@gmail.com")) {
+        if (!email.endsWith("@gmail.com")) {
             throw new AppError("Invalid email domain. Only @gmail.com account are permitted for applicants.", 400);
         }
 
         // 1. Check existing records
-        const existingUser = await this.authRepository.findUserByEmail(data.email);
+        const existingUser = await this.authRepository.findUserByEmail(email);
         if (existingUser) {
             throw new AppError("Email is already registered!", 409);
         }
@@ -116,7 +120,7 @@ export class AuthService {
 
         // 5. Construct payloads
         const userData: Prisma.UserCreateInput = {
-            email: data.email,
+            email,
             passwordHash: hashedPassword,
             firstName: data.firstName,
             lastName: data.lastName,
@@ -155,7 +159,13 @@ export class AuthService {
         }
 
         // 6. Save atomically
-        const newUser = await this.authRepository.registerApplicant(userData, studentData, bridgingWaiverData);
+        let newUser;
+        try {
+            newUser = await this.authRepository.registerApplicant(userData, studentData, bridgingWaiverData);
+        } catch (error) {
+            if ((error as { code?: string })?.code === 'P2002') throw new AppError("Email is already registered!", 409);
+            throw error;
+        }
 
         return { id: newUser.id, email: newUser.email, role: newUser.role, mustChangePassword: false }
     }
@@ -196,12 +206,12 @@ export class AuthService {
             }
         }
         else {
-            if (!data.email) throw new AppError("Email is required!", 400);
-            user = await this.authRepository.findUserByEmail(data.email);
+            if (typeof data.email !== 'string' || !data.email.trim()) throw new AppError("Email is required!", 400);
+            user = await this.authRepository.findUserByEmailAndRole(normalizeAccountEmail(data.email), roles[data.role]);
         }
 
         if (!user) {
-            throw new AppError("Invalid credentials!", 401);
+            throw new AppError("Invalid login credentials!", 401);
         }
 
         const isPasswordValid = await bcrypt.compare(data.password, user.passwordHash);
@@ -210,7 +220,7 @@ export class AuthService {
         }
 
         if (!(["faculty", "panelist"].includes(data.role) ? isAcademicAccountRole(user.role) : user.role === roles[data.role])) {
-            throw new AppError("Account does not match the selected login role.", 403);
+            throw new AppError("Invalid login credentials!", 401);
         }
         if (user.isActive !== true) {
             throw new AppError("Account is inactive.", 403);

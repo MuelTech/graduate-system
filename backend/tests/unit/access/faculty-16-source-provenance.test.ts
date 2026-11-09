@@ -9,7 +9,7 @@ const backend = path.resolve(__dirname, "../../.."), temporary = path.join(backe
 const launcher = "backend/scripts/faculty-cutover-rehearsal.cjs";
 const entry = "backend/src/cli/faculty-cutover-rehearsal.ts";
 const sourceFiles = [entry, "backend/src/access/cutover-rehearsal.ts", "backend/src/access/cutover-rehearsal.database.ts",
-  "backend/src/access/account-access.ts", "backend/src/access/capability-catalog.ts", "backend/src/utils/academic-account.ts"];
+  "backend/src/access/account-access.ts", "backend/src/access/capability-catalog.ts", "backend/src/utils/academic-account.ts", "backend/src/utils/account-email.ts"];
 const folders: string[] = [];
 function git(root: string, ...args: string[]) {
   return execFileSync("git", ["-C", root, ...args], { encoding: "utf8", stdio: "pipe" }).trim();

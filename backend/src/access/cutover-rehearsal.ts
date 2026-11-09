@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { resolveConfiguredAccountAccess } from "./account-access";
 import { validateDirectCapabilityKeys } from "./capability-catalog";
+import { hasEmailIdentityConflict } from "../utils/account-email";
 
 /** Operator-only, synthetic/disposable rehearsal. Never imported by the application. */
 export type Row = Record<string, string | number | null>;
@@ -135,7 +136,7 @@ export function validateManifest(baseline: Snapshot, input: unknown): asserts in
     "Retired Custom Roles schema/account requires separate disposition and the FACULTY-17 migration; conversion is unsupported.");
   requireValue(baseline.version === 1 && /^[a-f0-9]{40}$/.test(baseline.sourceCommit), "Invalid baseline version/commit.");
   requireValue(new Set(baseline.tables.users.map(row => row.user_id)).size === baseline.tables.users.length &&
-    new Set(baseline.tables.users.map(row => row.email)).size === baseline.tables.users.length, "Duplicate authoritative account identity.");
+    !hasEmailIdentityConflict(baseline.tables.users.map(row => ({ email: String(row.email), role: String(row.role) }))), "Duplicate authoritative account identity.");
   for (const mapping of m.mappings) {
     requireValue(mapping && typeof mapping === "object", "Invalid mapping.");
     exactKeys(mapping, ["userId", "disposition", "decision", "target"]);

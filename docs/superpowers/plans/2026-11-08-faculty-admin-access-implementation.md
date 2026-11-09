@@ -444,6 +444,8 @@ Sequence: **1 foundation → 2 auth → 3 identity compatibility → 4 Admin aut
 
 ### FACULTY-17A — Same-Gmail role-scoped Faculty/Admin accounts
 
+- **Status:** **FACULTY-17A implemented / pending independent review.** See the [implementation report](../reports/2026-11-10-faculty-17a-role-scoped-identity.md) for the pre-implementation uniqueness review, forward migration, role-scoped authentication/provisioning, synthetic evidence and deferred recovery boundary. No actual database access, provisioning or activation; FACULTY-17B/18 remain separate.
+
 - **Scope:** implement DR-4's approved separate-account/same-email policy. Replace global email-only account resolution with a role-scoped identity contract that can resolve one Faculty User and one Admin User sharing the same normalized Gmail/email while preserving distinct IDs, passwords, sessions, access grants and audit attribution.
 - **Non-goals:** combined Faculty/Admin account/session, workspace switcher, duplicate accounts within the same role, changing Applicant ID or Student Number login, weakening Applicant-to-Student promotion, or automatically merging existing accounts.
 - **Dependencies:** FACULTY-17; DR-4 policy approved. Complete technical design review before schema/auth changes.

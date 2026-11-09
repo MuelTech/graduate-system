@@ -1,3 +1,4 @@
+import { studentLifecycleEmailWhere } from "../src/utils/account-email";
 /**
  * WP6 — authoritative Journey fixture verification.
  * Asserts expected states via StudentThesisJourneyService (WP5).
@@ -286,7 +287,7 @@ async function main() {
   for (const key of JOURNEY_FIXTURE_KEYS) {
     const meta = journeyFixtureMeta().find((m) => m.key === key)!;
     const expected = JOURNEY_FIXTURE_EXPECTATIONS[key];
-    const user = await prisma.user.findUnique({ where: { email: meta.email } });
+    const user = await prisma.user.findUnique({ where: studentLifecycleEmailWhere(meta.email) });
     if (!user) {
       console.error(`FAIL ${key}: missing user ${meta.email}`);
       failures++;
@@ -331,7 +332,7 @@ async function main() {
   try {
     for (const key of ["STRIKE_READY", "STRIKE_ELIGIBLE"] as const) {
       const meta = journeyFixtureMeta().find((m) => m.key === key)!;
-      const user = await prisma.user.findUnique({ where: { email: meta.email } });
+      const user = await prisma.user.findUnique({ where: studentLifecycleEmailWhere(meta.email) });
       if (!user) continue;
       const expected = STRIKE_POLICY_ON_EXPECTATIONS[key];
       const journey = await svc.getJourney(user.id);

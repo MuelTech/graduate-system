@@ -1,4 +1,5 @@
 import { AppError } from "../utils/AppError";
+import { normalizeAccountEmail } from "../utils/account-email";
 import { resolveConfiguredAccountAccess, type AccountAccessSnapshot, type AdminAccessLevel } from "./account-access";
 import { validateDirectCapabilityKeys, type CapabilityKey } from "./capability-catalog";
 
@@ -46,7 +47,7 @@ export function validateAdministratorConfiguration(input: AdministratorAccessInp
 }
 export function parseAdministratorCreate(input: unknown) {
   const data = boundedObject(input, ["email", "firstName", "lastName", "level", "capabilityKeys"]);
-  const email = text(data.email);
+  const email = normalizeAccountEmail(text(data.email));
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new AppError("A valid email address is required.", 400);
   return { email, firstName: text(data.firstName), lastName: text(data.lastName),
     ...validateAdministratorConfiguration({ level: level(data.level), capabilityKeys: keys(data.capabilityKeys) }) };

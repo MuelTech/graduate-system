@@ -1,11 +1,17 @@
 import prisma from '../config/database';
-import { Prisma, User, Student, Program, UndergraduateProgram } from '@prisma/client';
+import { Prisma, User, Student, Program, UndergraduateProgram, UserRole } from '@prisma/client';
+import { accountEmailConflictWhere, accountEmailWhere } from '../utils/account-email';
 
 export class AuthRepository {
     async findUserByEmail(email: string): Promise <User | null> {
-        return prisma.user.findUnique({
-            where: { email },
+        // Registration existence check only: either slot blocks an Applicant.
+        return prisma.user.findFirst({
+            where: accountEmailConflictWhere(email),
         });
+    }
+
+    async findUserByEmailAndRole(email: string, role: UserRole): Promise<User | null> {
+        return prisma.user.findUnique({ where: accountEmailWhere(email, role) });
     }
 
     async findStudentByApplicantId(applicantId: string): Promise <(Student & { user: User}) | null> {

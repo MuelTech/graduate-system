@@ -1,3 +1,4 @@
+import { accountEmailWhere, studentLifecycleEmailWhere } from "../src/utils/account-email";
 import { isAcademicAccountRole } from "../src/utils/academic-account";
 /**
  * WP6 — deterministic, idempotent, RESETTABLE Student Thesis Journey fixtures.
@@ -188,7 +189,7 @@ async function ensureJourneyStudent(
   meta: { email: string; first: string; last: string; studentNumber: string },
 ) {
   const user = await prisma.user.upsert({
-    where: { email: meta.email },
+    where: studentLifecycleEmailWhere(meta.email),
     update: {},
     create: {
       email: meta.email,
@@ -465,13 +466,13 @@ export async function seedStudentThesisJourneyFixtures(
     (await prisma.program.findFirst({ where: { programType: "MASTERS" } })) ??
     (await prisma.program.findFirst());
   const admin = await prisma.user.findUnique({
-    where: { email: "admin@earist.edu.ph" },
+    where: accountEmailWhere("admin@earist.edu.ph", "ADMIN"),
   });
   const chairman = await prisma.user.findUnique({
-    where: { email: "panelist1@earist.edu.ph" },
+    where: accountEmailWhere("panelist1@earist.edu.ph", "PANELIST"),
   });
   const panelist = await prisma.user.findUnique({
-    where: { email: "panelist2@earist.edu.ph" },
+    where: accountEmailWhere("panelist2@earist.edu.ph", "PANELIST"),
   });
   if (!program || !admin || !chairman || !panelist) {
     console.error(

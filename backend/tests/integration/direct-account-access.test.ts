@@ -119,7 +119,7 @@ describe.skipIf(process.env.FACULTY_1_DB_TEST !== "1")("FACULTY-1 real MariaDB m
     client = new PrismaClient({ adapter: new PrismaMariaDb(url.toString().replace("mysql://", "mariadb://")) });
     await client.$connect();
     for (const [key, role] of [["actor", "ADMIN"], ["admin", "ADMIN"], ["faculty", "PANELIST"], ["student", "STUDENT"]] as const) {
-      await client.user.create({ data: { id: ids[key], email: `${ids[key]}@example.invalid`, firstName: "Synthetic", lastName: key, passwordHash: "unusable-test-hash", role } });
+      await client.user.create({ data: { id: ids[key], email: `${ids[key]}@example.invalid`, firstName: "Synthetic", lastName: key, passwordHash: "unusable-test-hash", role }, select: { id: true } });
     }
     await client.panelist.create({ data: { id: ids.profile, userId: ids.faculty, isExternal: true, isAvailableAsAdviser: false } });
     // Historical pre-FACULTY-1 schema only; never a target seed/account conversion.
@@ -179,7 +179,7 @@ describe.skipIf(process.env.FACULTY_1_DB_TEST !== "1")("FACULTY-1 real MariaDB m
 
   it("deploys the full committed chain and has no migrations on repeat deploy", () => {
     expect(deploy()).toContain("No pending migrations");
-  });
+  }, 60_000);
 
   it("does not bootstrap existing Admin, academic or CUSTOM accounts", async () => {
     for (const key of ["admin", "faculty", "custom"]) {
@@ -214,7 +214,7 @@ describe.skipIf(process.env.FACULTY_1_DB_TEST !== "1")("FACULTY-1 real MariaDB m
   it("keeps attribution and target User rows from cascading away", async () => {
     await client!.administratorAccess.create({ data: metadata() });
     await client!.accountCapabilityGrant.create({ data: grant() });
-    await expect(client!.user.delete({ where: { id: ids.admin } })).rejects.toMatchObject({ code: "P2003" });
+    await expect(client!.user.delete({ where: { id: ids.admin }, select: { id: true } })).rejects.toMatchObject({ code: "P2003" });
   });
 
   it("resolves persisted grants without enabling live authorization; revocation is reread", async () => {

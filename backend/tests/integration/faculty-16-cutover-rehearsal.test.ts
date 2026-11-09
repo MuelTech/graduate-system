@@ -56,7 +56,7 @@ describe.skipIf(!enabled)("FACULTY-16 isolated real MariaDB migration and cutove
     deploy();
     prisma = new PrismaClient({ adapter: new PrismaMariaDb(url.toString().replace("mysql://", "mariadb://")) }); await prisma.$connect();
     for (const [id, role] of [["operator", "ADMIN"], ["restricted", "ADMIN"], ["faculty", "PANELIST"], ["external", "PANELIST"], ["unresolved", "ADMIN"], ["student", "STUDENT"]] as const) {
-      await prisma.user.create({ data: { id, role, email: `${id}@example.invalid`, firstName: "Synthetic", lastName: id, passwordHash: `unusable-synthetic-${id}`, mustChangePassword: false } });
+      await prisma.user.create({ data: { id, role, email: `${id}@example.invalid`, firstName: "Synthetic", lastName: id, passwordHash: `unusable-synthetic-${id}`, mustChangePassword: false }, select: { id: true } });
     }
     for (const id of ["faculty", "external"]) await prisma.panelist.create({ data: { id: `profile-${id}`, userId: id, isExternal: id === "external", isAvailableAsAdviser: true } });
     await prisma.program.create({ data: { id: "program", programName: "Synthetic Preservation", programType: "MASTERS" } });
@@ -110,8 +110,9 @@ describe.skipIf(!enabled)("FACULTY-16 isolated real MariaDB migration and cutove
   it("deploys the clean committed chain, upgrades a populated synthetic snapshot and redeploys as no-op", () => {
     // FACULTY-17 contracts only the obsolete structures; all business records survive.
     for (const table of Object.keys(legacy.tables).filter(name => !["_prisma_migrations", "custom_roles", "role_feature_access"].includes(name))) {
-      const prior = table === "users" ? legacy.tables[table].map(({ custom_role_id, ...row }) => row) : legacy.tables[table];
-      expect(baseline.tables[table]).toEqual(prior);
+      const prior = table === "users" ? legacy.tables[table].map(({ custom_role_id, email_admin_key, email_faculty_key, ...row }) => row) : legacy.tables[table];
+      const current = table === "users" ? baseline.tables[table].map(({ email_admin_key, email_faculty_key, ...row }) => row) : baseline.tables[table];
+      expect(current).toEqual(prior);
     }
     expect(baseline.tables.administrator_access).toHaveLength(0); expect(baseline.tables.account_capability_grants).toHaveLength(0);
     expect(deploy()).toContain("No pending migrations");

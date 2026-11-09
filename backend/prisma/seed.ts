@@ -1,3 +1,4 @@
+import { accountEmailWhere, studentLifecycleEmailWhere } from "../src/utils/account-email";
 import prisma from "../src/config/database";
 import bcrypt from "bcryptjs";
 
@@ -383,7 +384,7 @@ async function main() {
 
   // 1. Admin Test Account
   await prisma.user.upsert({
-    where: { email: "admin@earist.edu.ph" },
+    where: accountEmailWhere("admin@earist.edu.ph", "ADMIN"),
     update: {},
     create: {
       email: "admin@earist.edu.ph",
@@ -397,7 +398,7 @@ async function main() {
 
   // 2. Panelists Test Account
   await prisma.user.upsert({
-    where: { email: "panelist1@earist.edu.ph" },
+    where: accountEmailWhere("panelist1@earist.edu.ph", "PANELIST"),
     update: {},
     create: {
       email: "panelist1@earist.edu.ph",
@@ -416,7 +417,7 @@ async function main() {
   console.log("Created Panelist1 test account");
 
   await prisma.user.upsert({
-    where: { email: "panelist2@earist.edu.ph" },
+    where: accountEmailWhere("panelist2@earist.edu.ph", "PANELIST"),
     update: {},
     create: {
       email: "panelist2@earist.edu.ph",
@@ -435,7 +436,7 @@ async function main() {
   console.log("Created Panelist2 test account");
 
   await prisma.user.upsert({
-    where: { email: "panelist3@earist.edu.ph" },
+    where: accountEmailWhere("panelist3@earist.edu.ph", "PANELIST"),
     update: {},
     create: {
       email: "panelist3@earist.edu.ph",
@@ -456,13 +457,13 @@ async function main() {
   // 3. Enrolled Student Test Accounts
   const firstProgram = await prisma.program.findFirst();
   const panelist1 = await prisma.user.findUnique({
-    where: { email: "panelist1@earist.edu.ph" },
+    where: accountEmailWhere("panelist1@earist.edu.ph", "PANELIST"),
   });
 
   if (firstProgram && panelist1) {
     // Student 1 - Jane Smith (enrolled, comp exam passed, thesis in progress)
     const student1 = await prisma.user.upsert({
-      where: { email: "student@earist.edu.ph" },
+      where: studentLifecycleEmailWhere("student@earist.edu.ph"),
       update: {},
       create: {
         email: "student@earist.edu.ph",
@@ -556,7 +557,7 @@ async function main() {
 
     // Student 2 - Juan Dela Cruz (enrolled, comp exam failed once)
     const student2 = await prisma.user.upsert({
-      where: { email: "student2@earist.edu.ph" },
+      where: studentLifecycleEmailWhere("student2@earist.edu.ph"),
       update: {},
       create: {
         email: "student2@earist.edu.ph",
@@ -601,7 +602,7 @@ async function main() {
 
     // Student 3 - Maria Santos (enrolled, no comp exam yet)
     await prisma.user.upsert({
-      where: { email: "student3@earist.edu.ph" },
+      where: studentLifecycleEmailWhere("student3@earist.edu.ph"),
       update: {},
       create: {
         email: "student3@earist.edu.ph",
@@ -627,7 +628,7 @@ async function main() {
 
     // Student 4 - Pedro Reyes (enrolled, comp exam failed twice - dismissed)
     const student4 = await prisma.user.upsert({
-      where: { email: "student4@earist.edu.ph" },
+      where: studentLifecycleEmailWhere("student4@earist.edu.ph"),
       update: {},
       create: {
         email: "student4@earist.edu.ph",
@@ -681,7 +682,7 @@ async function main() {
   if (allPrograms.length > 0 && allUndergradPrograms.length > 0) {
     // Applicant 1 - Aligned, Exam Passed, COR Verified (eligible for promotion)
     await prisma.user.upsert({
-      where: { email: "applicant1@earist.edu.ph" },
+      where: studentLifecycleEmailWhere("applicant1@earist.edu.ph"),
       update: {},
       create: {
         email: "applicant1@earist.edu.ph",
@@ -707,7 +708,7 @@ async function main() {
 
     // Applicant 2 - Pending Waiver
     await prisma.user.upsert({
-      where: { email: "applicant2@earist.edu.ph" },
+      where: studentLifecycleEmailWhere("applicant2@earist.edu.ph"),
       update: {},
       create: {
         email: "applicant2@earist.edu.ph",
@@ -747,7 +748,7 @@ async function main() {
 
     // Applicant 3 - Aligned, Exam Scheduled
     await prisma.user.upsert({
-      where: { email: "applicant3@earist.edu.ph" },
+      where: studentLifecycleEmailWhere("applicant3@earist.edu.ph"),
       update: {},
       create: {
         email: "applicant3@earist.edu.ph",
@@ -774,7 +775,7 @@ async function main() {
 
     // Applicant 4 - Cleared (waiver validated)
     await prisma.user.upsert({
-      where: { email: "applicant4@earist.edu.ph" },
+      where: studentLifecycleEmailWhere("applicant4@earist.edu.ph"),
       update: {},
       create: {
         email: "applicant4@earist.edu.ph",
@@ -870,7 +871,7 @@ async function main() {
       const undergradIndex = i % allUndergradPrograms.length;
 
       await prisma.user.upsert({
-        where: { email: app.email },
+        where: studentLifecycleEmailWhere(app.email),
         update: {},
         create: {
           email: app.email,
@@ -973,7 +974,7 @@ async function main() {
   for (const app of applicantsToSchedule) {
     try {
       const user = await prisma.user.findUnique({
-        where: { email: app.email },
+        where: studentLifecycleEmailWhere(app.email),
         include: { student: true },
       });
 
@@ -1123,19 +1124,19 @@ async function main() {
   // after `prisma db seed`.
   console.log("Seeding defense lobby fixtures...");
   const adminUser = await prisma.user.findUnique({
-    where: { email: "admin@earist.edu.ph" },
+    where: accountEmailWhere("admin@earist.edu.ph", "ADMIN"),
   });
   const panelUser1 = await prisma.user.findUnique({
-    where: { email: "panelist1@earist.edu.ph" },
+    where: accountEmailWhere("panelist1@earist.edu.ph", "PANELIST"),
   });
   const panelUser2 = await prisma.user.findUnique({
-    where: { email: "panelist2@earist.edu.ph" },
+    where: accountEmailWhere("panelist2@earist.edu.ph", "PANELIST"),
   });
   const panelUser3 = await prisma.user.findUnique({
-    where: { email: "panelist3@earist.edu.ph" },
+    where: accountEmailWhere("panelist3@earist.edu.ph", "PANELIST"),
   });
   const lobbyStudentUser = await prisma.user.findUnique({
-    where: { email: "student@earist.edu.ph" },
+    where: studentLifecycleEmailWhere("student@earist.edu.ph"),
   });
   const lobbyStudent = lobbyStudentUser
     ? await prisma.student.findUnique({ where: { userId: lobbyStudentUser.id } })
@@ -1429,7 +1430,7 @@ async function main() {
   // ── Defense eligibility fixtures (pass / fail cases) ───────────────
   console.log("Seeding defense eligibility fixtures...");
   const eligStudentUser = await prisma.user.findUnique({
-    where: { email: "student@earist.edu.ph" },
+    where: studentLifecycleEmailWhere("student@earist.edu.ph"),
   });
   const eligStudent = eligStudentUser
     ? await prisma.student.findUnique({ where: { userId: eligStudentUser.id } })
@@ -1537,7 +1538,7 @@ async function seedDefenseWorkflowFixtures(passwordHash: string) {
     return;
   }
   const admin = await prisma.user.findUnique({
-    where: { email: "admin@earist.edu.ph" },
+    where: accountEmailWhere("admin@earist.edu.ph", "ADMIN"),
   });
   if (!admin) {
     console.error("admin@earist.edu.ph missing — skipping workflow fixtures.");
@@ -1559,7 +1560,7 @@ async function seedDefenseWorkflowFixtures(passwordHash: string) {
   const panelistUsers: Record<string, string> = {};
   for (const p of extraPanelists) {
     const u = await prisma.user.upsert({
-      where: { email: p.email },
+      where: accountEmailWhere(p.email, "PANELIST"),
       update: {},
       create: {
         email: p.email,
@@ -1578,7 +1579,7 @@ async function seedDefenseWorkflowFixtures(passwordHash: string) {
   // ADMIN is created above; reuse it (do not rely on a stale findUnique below).
   for (const n of [1, 2, 3] as const) {
     const u = await prisma.user.findUnique({
-      where: { email: `panelist${n}@earist.edu.ph` },
+      where: accountEmailWhere(`panelist${n}@earist.edu.ph`, "PANELIST"),
     });
     if (u) panelistUsers[`panelist${n}@earist.edu.ph`] = u.id;
   }
@@ -1593,7 +1594,7 @@ async function seedDefenseWorkflowFixtures(passwordHash: string) {
     strikes?: number;
   }) {
     const user = await prisma.user.upsert({
-      where: { email: opts.email },
+      where: studentLifecycleEmailWhere(opts.email),
       update: {},
       create: {
         email: opts.email,
@@ -1955,7 +1956,7 @@ async function seedDefenseWorkflowFixtures(passwordHash: string) {
     compExam: "PASSED",
   });
   const adviser = await prisma.user.findUnique({
-    where: { email: "panelist1@earist.edu.ph" },
+    where: accountEmailWhere("panelist1@earist.edu.ph", "PANELIST"),
   });
   let eAssignment = await prisma.adviserAssignment.findFirst({
     where: { studentId: e.student.id, isActive: true },
@@ -2791,7 +2792,7 @@ async function seedDefenseWorkflowFixtures(passwordHash: string) {
       compExam: "PASSED",
     });
     const jUser = await prisma.user.findUnique({
-      where: { email: "doctoral-ready@earist.edu.ph" },
+      where: studentLifecycleEmailWhere("doctoral-ready@earist.edu.ph"),
     });
     const jStudent = jUser
       ? await prisma.student.findUnique({ where: { userId: jUser.id } })
@@ -2923,9 +2924,9 @@ async function seedEssayGradingReviewFixture(passwordHash: string) {
     });
   }
 
-  // 3. Fixture Applicant user + Student (email is unique -> idempotent).
+  // 3. Fixture Applicant user + Student (Applicant identity is unique -> idempotent).
   const fixtureUser = await prisma.user.upsert({
-    where: { email: FIXTURE_EMAIL },
+    where: studentLifecycleEmailWhere(FIXTURE_EMAIL),
     update: { firstName: "UIUX", lastName: "Essay Fixture" },
     create: {
       email: FIXTURE_EMAIL,

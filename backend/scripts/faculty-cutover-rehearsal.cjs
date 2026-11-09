@@ -10,7 +10,7 @@ const launcher = "backend/scripts/faculty-cutover-rehearsal.cjs";
 const entry = "backend/src/cli/faculty-cutover-rehearsal.ts";
 // Closed application module graph: no working-tree .js/.ts or ignored dist fallback.
 const sources = [entry, "backend/src/access/cutover-rehearsal.ts", "backend/src/access/cutover-rehearsal.database.ts",
-  "backend/src/access/account-access.ts", "backend/src/access/capability-catalog.ts", "backend/src/utils/academic-account.ts"].sort();
+  "backend/src/access/account-access.ts", "backend/src/access/capability-catalog.ts", "backend/src/utils/academic-account.ts", "backend/src/utils/account-email.ts"].sort();
 const externalModules = new Set(["node:crypto", "node:fs", "mysql2/promise", "dotenv/config"]);
 function git(...args) {
   // Do not let inherited alternate index/worktree/object settings hide the relevant checkout.
