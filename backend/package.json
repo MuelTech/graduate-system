@@ -18,6 +18,7 @@
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:studio": "prisma studio",
+    "faculty:cutover:rehearse": "node dist/cli/faculty-cutover-rehearsal.js",
     "storage:backfill": "node dist/cli/storage-backfill.js",
     "storage:backfill:apply": "node dist/cli/storage-backfill.js --apply",
     "storage:readiness": "node dist/cli/storage-readiness.js",

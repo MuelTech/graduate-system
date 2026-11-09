@@ -1,0 +1,547 @@
+{
+  "version": 1,
+  "date": "2026-11-09",
+  "timezone": "Asia/Manila",
+  "startingHead": "d4141dcdc46843f815811b1995c9542a8c978c31",
+  "environment": "Fresh workspace data directory, separate loopback MariaDB process at 127.0.0.1:33316, UUID disposable schemas, synthetic fixtures only",
+  "summary": {
+    "databaseVersion": "10.4.32-MariaDB",
+    "migrationCount": 56,
+    "tableCount": 73,
+    "accountCount": 6,
+    "gs020PdfSha256": "19792406d9b7bcffe72415797d388f855d164ba28d68939f2a4737b14a68b8da",
+    "restoredBusinessDigest": "51218dcbef38747fa8f1373932d6a2a472737d79b9f512763fc40f61fe2c7c68",
+    "cleanChain": true,
+    "populatedUpgrade": true,
+    "sqlBackupRestored": true,
+    "appliedBatches": 4,
+    "restorationBatches": 4,
+    "heldOutCustomAccounts": 1
+  },
+  "integrity": {
+    "beforeDigest": "51218dcbef38747fa8f1373932d6a2a472737d79b9f512763fc40f61fe2c7c68",
+    "afterDigest": "ac525a21c20a51210b2828e77eb2d2e07c9c9035a576fe8324e1c28329f9867e",
+    "tables": [
+      {
+        "table": "_prisma_migrations",
+        "beforeCount": 56,
+        "afterCount": 56,
+        "beforeDigest": "799e0e6fcc581677fbcc979fcff285a200ed61badc6148191760b7480b2eead6",
+        "afterDigest": "799e0e6fcc581677fbcc979fcff285a200ed61badc6148191760b7480b2eead6"
+      },
+      {
+        "table": "account_capability_grants",
+        "beforeCount": 0,
+        "afterCount": 2,
+        "beforeDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "afterDigest": "73710c3b64bf7233793c36d28e6d56c41f87a9ed0007510aa6c936733d981869"
+      },
+      {
+        "table": "acknowledgement_receipts",
+        "beforeCount": 0,
+        "afterCount": 0,
+        "beforeDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "afterDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "table": "administrator_access",
+        "beforeCount": 0,
+        "afterCount": 2,
+        "beforeDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "afterDigest": "d59986c21e0c80c7f50b429cc7a370f3981b74020f690f3a1aec6c75e7c8c589"
+      },
+      {
+        "table": "administrator_access_lock",
+        "beforeCount": 1,
+        "afterCount": 1,
+        "beforeDigest": "bb41eeeedb7789a3482cc74a1ac8d84effb2a508b753948130e3958c39004120",
+        "afterDigest": "bb41eeeedb7789a3482cc74a1ac8d84effb2a508b753948130e3958c39004120"
+      },
+      {
+        "table": "adviser_assignments",
+        "beforeCount": 1,
+        "afterCount": 1,
+        "beforeDigest": "b75abf55d3fb0f425672d3da17aca93424b1bef0883d832d6b650a5f17761c8e",
+        "afterDigest": "b75abf55d3fb0f425672d3da17aca93424b1bef0883d832d6b650a5f17761c8e"
+      },
+      {
+        "table": "adviser_certifications",
+        "beforeCount": 1,
+        "afterCount": 1,
+        "beforeDigest": "fada0f1af36b5662c361fbf5fb8ba7db5cc748d91e33bf62f044cb090d8e2dca",
+        "afterDigest": "fada0f1af36b5662c361fbf5fb8ba7db5cc748d91e33bf62f044cb090d8e2dca"
+      },
+      {
+        "table": "adviser_request_official_records",
+        "beforeCount": 1,
+        "afterCount": 1,
+        "beforeDigest": "a04dc78174a0aea80cce48d8f0b53fed5987abf796560c6ce7e2b9e4ec4a306d",
+        "afterDigest": "a04dc78174a0aea80cce48d8f0b53fed5987abf796560c6ce7e2b9e4ec4a306d"
+      },
+      {
+        "table": "adviser_request_signed_states",
+        "beforeCount": 1,
+        "afterCount": 1,
+        "beforeDigest": "fbd750006d143cdd6434c2eda86b25446393471afb3df45b8cc941ae200135b9",
+        "afterDigest": "fbd750006d143cdd6434c2eda86b25446393471afb3df45b8cc941ae200135b9"
+      },
+      {
+        "table": "adviser_requests",
+        "beforeCount": 1,
+        "afterCount": 1,
+        "beforeDigest": "98d881e60b9d6d74f721446b6ea95d65b3256c7bea6a4bad0ed3413470c4794f",
+        "afterDigest": "98d881e60b9d6d74f721446b6ea95d65b3256c7bea6a4bad0ed3413470c4794f"
+      },
+      {
+        "table": "applicant_answers",
+        "beforeCount": 0,
+        "afterCount": 0,
+        "beforeDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "afterDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "table": "applicant_bridging_waivers",
+        "beforeCount": 0,
+        "afterCount": 0,
+        "beforeDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "afterDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "table": "audit_logs",
+        "beforeCount": 1,
+        "afterCount": 5,
+        "beforeDigest": "bbc6eda0414105852aec5f5cb18c2d2905723f9de9219cc264678b2603ce5716",
+        "afterDigest": "eec0dd3fb925392dd8ac0107624c2f9616e8fc607afa3eea255f6ee0caf5f9fd"
+      },
+      {
+        "table": "chatbot_faqs",
+        "beforeCount": 0,
+        "afterCount": 0,
+        "beforeDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "afterDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "table": "comp_exam_records",
+        "beforeCount": 0,
+        "afterCount": 0,
+        "beforeDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "afterDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "table": "cor_extractions",
+        "beforeCount": 0,
+        "afterCount": 0,
+        "beforeDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "afterDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "table": "cor_records",
+        "beforeCount": 0,
+        "afterCount": 0,
+        "beforeDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "afterDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "table": "cor_uploads",
+        "beforeCount": 0,
+        "afterCount": 0,
+        "beforeDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "afterDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "table": "curriculum_waivers",
+        "beforeCount": 0,
+        "afterCount": 0,
+        "beforeDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "afterDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "table": "custom_roles",
+        "beforeCount": 1,
+        "afterCount": 1,
+        "beforeDigest": "c724ad68cce21c394678549f7fb223cca1efbccaff7bb69ac5e6610d750c19d1",
+        "afterDigest": "c724ad68cce21c394678549f7fb223cca1efbccaff7bb69ac5e6610d750c19d1"
+      },
+      {
+        "table": "defense_annotation_comments",
+        "beforeCount": 0,
+        "afterCount": 0,
+        "beforeDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "afterDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "table": "defense_annotations",
+        "beforeCount": 0,
+        "afterCount": 0,
+        "beforeDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "afterDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "table": "defense_conclusions",
+        "beforeCount": 0,
+        "afterCount": 0,
+        "beforeDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "afterDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "table": "defense_schedules",
+        "beforeCount": 1,
+        "afterCount": 1,
+        "beforeDigest": "95c5860061a929a66c36ebb8aab5f5171ed03d4e0f46b1d239b3fa80dce58e2a",
+        "afterDigest": "95c5860061a929a66c36ebb8aab5f5171ed03d4e0f46b1d239b3fa80dce58e2a"
+      },
+      {
+        "table": "e_library",
+        "beforeCount": 0,
+        "afterCount": 0,
+        "beforeDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "afterDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "table": "email_logs",
+        "beforeCount": 0,
+        "afterCount": 0,
+        "beforeDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "afterDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "table": "email_templates",
+        "beforeCount": 0,
+        "afterCount": 0,
+        "beforeDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "afterDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "table": "entrance_exam_applications",
+        "beforeCount": 1,
+        "afterCount": 1,
+        "beforeDigest": "b43e24874157b27b5dc160fcb757c37ab208d05faf81a7e00482a79afd5fea5f",
+        "afterDigest": "b43e24874157b27b5dc160fcb757c37ab208d05faf81a7e00482a79afd5fea5f"
+      },
+      {
+        "table": "entrance_exam_scores",
+        "beforeCount": 1,
+        "afterCount": 1,
+        "beforeDigest": "8996cef2b1ab2533e2ec8d2c4164b83484e8b34f29f7d089c754ec92bb7a7429",
+        "afterDigest": "8996cef2b1ab2533e2ec8d2c4164b83484e8b34f29f7d089c754ec92bb7a7429"
+      },
+      {
+        "table": "exam_content_imports",
+        "beforeCount": 0,
+        "afterCount": 0,
+        "beforeDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "afterDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "table": "exam_content_revisions",
+        "beforeCount": 0,
+        "afterCount": 0,
+        "beforeDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "afterDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "table": "exam_media",
+        "beforeCount": 0,
+        "afterCount": 0,
+        "beforeDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "afterDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "table": "exam_options",
+        "beforeCount": 0,
+        "afterCount": 0,
+        "beforeDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "afterDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "table": "exam_question_selection",
+        "beforeCount": 0,
+        "afterCount": 0,
+        "beforeDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "afterDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "table": "exam_questions",
+        "beforeCount": 0,
+        "afterCount": 0,
+        "beforeDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "afterDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "table": "exam_result_decisions",
+        "beforeCount": 0,
+        "afterCount": 0,
+        "beforeDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "afterDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "table": "exam_revision_media",
+        "beforeCount": 0,
+        "afterCount": 0,
+        "beforeDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "afterDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "table": "exam_revision_options",
+        "beforeCount": 0,
+        "afterCount": 0,
+        "beforeDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "afterDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "table": "exam_revision_questions",
+        "beforeCount": 0,
+        "afterCount": 0,
+        "beforeDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "afterDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "table": "exam_schedule_amendments",
+        "beforeCount": 0,
+        "afterCount": 0,
+        "beforeDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "afterDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "table": "exam_slots",
+        "beforeCount": 1,
+        "afterCount": 1,
+        "beforeDigest": "8b8663a40248b331a9e5189248e322dac675d3dde7ab392b4a1fd809adbbd0b0",
+        "afterDigest": "8b8663a40248b331a9e5189248e322dac675d3dde7ab392b4a1fd809adbbd0b0"
+      },
+      {
+        "table": "expert_evaluation_requests",
+        "beforeCount": 0,
+        "afterCount": 0,
+        "beforeDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "afterDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "table": "expert_evaluations",
+        "beforeCount": 0,
+        "afterCount": 0,
+        "beforeDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "afterDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "table": "grammarian_certifications",
+        "beforeCount": 0,
+        "afterCount": 0,
+        "beforeDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "afterDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "table": "manuscript_distributions",
+        "beforeCount": 0,
+        "afterCount": 0,
+        "beforeDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "afterDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "table": "manuscript_submissions",
+        "beforeCount": 0,
+        "afterCount": 0,
+        "beforeDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "afterDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "table": "memos",
+        "beforeCount": 0,
+        "afterCount": 0,
+        "beforeDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "afterDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "table": "notifications",
+        "beforeCount": 0,
+        "afterCount": 0,
+        "beforeDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "afterDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "table": "oral_exam_scores",
+        "beforeCount": 0,
+        "afterCount": 0,
+        "beforeDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "afterDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "table": "oral_exam_summary",
+        "beforeCount": 0,
+        "afterCount": 0,
+        "beforeDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "afterDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "table": "panel_assignments",
+        "beforeCount": 1,
+        "afterCount": 1,
+        "beforeDigest": "41408863c5d6293ab7d965aa92ec43c9082a9fb7752dbc3b6bc9d17679ad2c72",
+        "afterDigest": "41408863c5d6293ab7d965aa92ec43c9082a9fb7752dbc3b6bc9d17679ad2c72"
+      },
+      {
+        "table": "panelists",
+        "beforeCount": 2,
+        "afterCount": 2,
+        "beforeDigest": "ff218a29ea88f648cbf5659aa89f6e6a3f330fe0c019a8eaa771840db66f3106",
+        "afterDigest": "d1a9b8ef17d41073d7325f82e10c8ddbc161ef3bde48c69e300ab71f67950227"
+      },
+      {
+        "table": "plagiarism_results",
+        "beforeCount": 0,
+        "afterCount": 0,
+        "beforeDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "afterDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "table": "programs",
+        "beforeCount": 1,
+        "afterCount": 1,
+        "beforeDigest": "447473a44c8f6d7a7f53ad52110356c48424be8b674cdc1777b8a0e15c23e085",
+        "afterDigest": "447473a44c8f6d7a7f53ad52110356c48424be8b674cdc1777b8a0e15c23e085"
+      },
+      {
+        "table": "rap_report_signatures",
+        "beforeCount": 0,
+        "afterCount": 0,
+        "beforeDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "afterDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "table": "rap_reports",
+        "beforeCount": 0,
+        "afterCount": 0,
+        "beforeDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "afterDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "table": "requirements_checklist",
+        "beforeCount": 0,
+        "afterCount": 0,
+        "beforeDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "afterDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "table": "research_var_signatures",
+        "beforeCount": 0,
+        "afterCount": 0,
+        "beforeDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "afterDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "table": "research_variable_forms",
+        "beforeCount": 0,
+        "afterCount": 0,
+        "beforeDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "afterDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "table": "residency_tracking",
+        "beforeCount": 0,
+        "afterCount": 0,
+        "beforeDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "afterDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "table": "role_feature_access",
+        "beforeCount": 2,
+        "afterCount": 2,
+        "beforeDigest": "cc6d8e7ee27e32f327fbaf273d94416f4d21e9509c8a9e1051b7e7f34f600f32",
+        "afterDigest": "cc6d8e7ee27e32f327fbaf273d94416f4d21e9509c8a9e1051b7e7f34f600f32"
+      },
+      {
+        "table": "school_year_calendar",
+        "beforeCount": 0,
+        "afterCount": 0,
+        "beforeDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "afterDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "table": "statistician_certifications",
+        "beforeCount": 0,
+        "afterCount": 0,
+        "beforeDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "afterDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "table": "student_calendars",
+        "beforeCount": 0,
+        "afterCount": 0,
+        "beforeDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "afterDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "table": "student_files",
+        "beforeCount": 0,
+        "afterCount": 0,
+        "beforeDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "afterDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "table": "student_requirements",
+        "beforeCount": 0,
+        "afterCount": 0,
+        "beforeDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "afterDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "table": "students",
+        "beforeCount": 1,
+        "afterCount": 1,
+        "beforeDigest": "c7ce2a77ebe4fe1a4c6ab76f0d399daef8e4c489155ea34c46d6c226c20632b2",
+        "afterDigest": "c7ce2a77ebe4fe1a4c6ab76f0d399daef8e4c489155ea34c46d6c226c20632b2"
+      },
+      {
+        "table": "system_settings",
+        "beforeCount": 0,
+        "afterCount": 0,
+        "beforeDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "afterDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "table": "thesis_documents",
+        "beforeCount": 1,
+        "afterCount": 1,
+        "beforeDigest": "af632dda4a494a929c7862151073d962cf0d0ecdd7befc769568550b476075ce",
+        "afterDigest": "af632dda4a494a929c7862151073d962cf0d0ecdd7befc769568550b476075ce"
+      },
+      {
+        "table": "thesis_records",
+        "beforeCount": 1,
+        "afterCount": 1,
+        "beforeDigest": "e97c2ed7d2428d24f4bc1d008d31c90e62b90b323d263bd36aaae0620d75b64b",
+        "afterDigest": "e97c2ed7d2428d24f4bc1d008d31c90e62b90b323d263bd36aaae0620d75b64b"
+      },
+      {
+        "table": "thesis_titles",
+        "beforeCount": 0,
+        "afterCount": 0,
+        "beforeDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "afterDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "table": "undergraduate_programs",
+        "beforeCount": 0,
+        "afterCount": 0,
+        "beforeDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "afterDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "table": "users",
+        "beforeCount": 6,
+        "afterCount": 6,
+        "beforeDigest": "8f0fffd9a1078bcda2aa886c88ac6496b646242d78c7a50c7b9ec4a368f3a40f",
+        "afterDigest": "266b85c5da1d81e03570f1027c7e1c0f2406fd3d6f55de7715e9e972eff09c2d"
+      }
+    ]
+  },
+  "evidenceClass": "Agent-local isolated real-MariaDB rehearsal; not hosted CI or owner QA",
+  "faculty4ContentionGate": "OPEN - exact harness not executed",
+  "faculty12ContentionGate": "OPEN - exact five-case harness not executed",
+  "activationGates": {
+    "ADMINISTRATOR_MANAGEMENT_ENABLED": false,
+    "DIRECT_ACCESS_ENFORCEMENT_ENABLED": false,
+    "OPERATIONAL_ENFORCEMENT_ENABLED": false
+  },
+  "actualEnvironmentInventoryOrCutover": false
+}
