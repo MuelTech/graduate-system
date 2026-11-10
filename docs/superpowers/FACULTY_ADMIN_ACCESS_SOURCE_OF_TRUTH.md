@@ -274,7 +274,7 @@ Refine—not blindly restore—the earlier richer operational overview while ret
 
 Render only authoritative, current, account-scoped information. Do not show irrelevant zero-value cards or infer Adviser, Defense, or Essay Evaluation authority from counts, links, or dashboard projections. Waiting-only dependencies never contribute to Pending Tasks. External Faculty must not receive Adviser/advisee sections. Preserve separate Faculty/Admin account identity and cache isolation.
 
-**Acceptance boundary:** UIUX-3E must receive focused verification, independent source/diff review, and project-owner browser/visual acceptance before FACULTY-18 begins. It is a separate pre-FACULTY-18 prerequisite, not a new permission, workflow, or part of FACULTY-18 activation.
+**Acceptance boundary:** UIUX-3E required focused verification, independent source/diff review, and project-owner browser/visual acceptance before FACULTY-18. **This prerequisite is now satisfied / accepted at `9a5aa785f472900d845bdc07cd2ce46c38a0aa1a` on 2026-11-10.** UIUX-3E remains a separate pre-FACULTY-18 package and does not authorize a new permission, workflow, database cutover, bootstrap, or activation. FACULTY-18 retains its own remaining readiness and environment-authorization gates.
 
 ---
 
