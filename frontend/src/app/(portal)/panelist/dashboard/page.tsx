@@ -171,6 +171,10 @@ function LoadError({
 
 /* ------------------------------------------------------------------- rows */
 
+function toFacultyHref(href: string): string {
+  return href.replace(/^\/panelist(?=\/|$)/, "/faculty");
+}
+
 function TaskRow({ task }: { task: PanelistAttentionTask }) {
   const Icon = CATEGORY_ICON[task.category] ?? ClipboardList;
   return (
@@ -193,7 +197,7 @@ function TaskRow({ task }: { task: PanelistAttentionTask }) {
         </p>
       </div>
       <Link
-        href={task.href}
+        href={toFacultyHref(task.href)}
         className={cn(
           buttonVariants({ variant: "outline", size: "sm" }),
           "shrink-0 justify-between",
@@ -210,7 +214,7 @@ function ActiveDefenseRow({ item }: { item: ActiveDefenseItem }) {
   return (
     <li>
       <Link
-        href={item.href}
+        href={toFacultyHref(item.href)}
         className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-(--earist-surface-gray) p-3 transition-colors hover:bg-(--earist-surface-light-red) focus-visible:ring-2 focus-visible:ring-(--earist-primary) focus-visible:outline-none"
       >
         <span className="min-w-0">
@@ -240,7 +244,7 @@ function UpcomingDefenseSummary({ item }: { item: UpcomingDefenseItem }) {
   return (
     <li>
       <Link
-        href={item.href}
+        href={toFacultyHref(item.href)}
         className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-(--earist-surface-gray) p-3 transition-colors hover:bg-(--earist-surface-light-red) focus-visible:ring-2 focus-visible:ring-(--earist-primary) focus-visible:outline-none"
       >
         <span className="min-w-0">
@@ -284,7 +288,7 @@ function WaitingRow({ item }: { item: WaitingItem }) {
   return (
     <li>
       <Link
-        href={item.href}
+        href={toFacultyHref(item.href)}
         className="flex items-center justify-between gap-2 rounded-lg bg-(--earist-surface-gray) p-3 transition-colors hover:bg-(--earist-surface-light-red) focus-visible:ring-2 focus-visible:ring-(--earist-primary) focus-visible:outline-none"
       >
         {body}
@@ -428,7 +432,7 @@ export default function PanelistDashboard() {
             value: pendingEssayCount,
             supporting: "Applicant entrance exam essays awaiting grading",
             icon: ClipboardCheck,
-            href: "/panelist/essay-evaluations",
+            href: "/faculty/essay-evaluations",
           },
         ]
       : []),
@@ -557,7 +561,7 @@ export default function PanelistDashboard() {
         description="Your next scheduled assigned defenses."
         action={
           <Link
-            href="/panelist/defenses"
+            href="/faculty/defenses"
             className="text-xs font-medium text-(--earist-secondary) hover:underline"
           >
             View All Defenses
@@ -607,7 +611,7 @@ export default function PanelistDashboard() {
                 </p>
               </div>
               <Link
-                href={nextDefense.href}
+                href={toFacultyHref(nextDefense.href)}
                 className={cn(
                   buttonVariants({ size: "sm" }),
                   "mt-3 w-full bg-(--earist-primary) hover:bg-(--earist-primary)/90 sm:w-auto",
@@ -651,7 +655,7 @@ export default function PanelistDashboard() {
         description="Your latest notification records."
         action={
           <Link
-            href="/panelist/notifications"
+            href="/faculty/notifications"
             className="text-xs font-medium text-(--earist-secondary) hover:underline"
           >
             View all notifications

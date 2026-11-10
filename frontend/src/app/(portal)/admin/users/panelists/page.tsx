@@ -3,6 +3,16 @@
 import { useState } from "react";
 import { PanelistResponse } from "@/types";
 import { Card, CardContent } from "@/components/ui/card";
+import {
+  TableCard,
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+} from "@/components/ui/table";
+import { PageHeader } from "@/components/ui/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -338,29 +348,20 @@ export default function AdminFacultyPage() {
   const labelClass = "mb-1 block text-xs font-medium text-(--earist-secondary)";
 
   return (
-    <div className="space-y-4">
-      {/* Page Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2
-            className="text-2xl font-bold text-(--earist-primary)"
-            style={{ fontFamily: '"Calibri", sans-serif' }}
+    <div className="space-y-6">
+      <PageHeader
+        title="Faculty Management"
+        description="Manage internal and external faculty accounts, essay evaluation access, and adviser eligibility."
+        actions={
+          <Button
+            onClick={() => setShowCreateModal(true)}
+            className="bg-(--earist-primary) text-white hover:bg-(--earist-primary)/90"
           >
-            Faculty Management
-          </h2>
-          <p className="text-sm text-(--earist-body-text)">
-            Manage internal and external faculty accounts, essay evaluation
-            access, and adviser eligibility
-          </p>
-        </div>
-        <Button
-          onClick={() => setShowCreateModal(true)}
-          className="bg-(--earist-primary) text-white hover:bg-(--earist-primary)/90"
-        >
-          <Plus className="mr-1 h-4 w-4" />
-          Add Faculty
-        </Button>
-      </div>
+            <Plus className="mr-1 h-4 w-4" />
+            Add Faculty
+          </Button>
+        }
+      />
 
       {/* Summary Cards */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
@@ -451,213 +452,190 @@ export default function AdminFacultyPage() {
       </Card>
 
       {/* Faculty Table */}
-      <Card>
-        <CardContent className="p-0">
-          {isLoading ? (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="h-6 w-6 animate-spin text-(--earist-primary)" />
-              <span className="ml-2 text-sm text-(--earist-body-text)">
-                Loading faculty accounts...
-              </span>
-            </div>
-          ) : paginatedFaculty.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-12 text-center">
-              <UserX className="mb-4 h-12 w-12 text-gray-300" />
-              <p className="text-sm text-(--earist-body-text)">
-                No faculty accounts found
-              </p>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-(--earist-border-gray) bg-(--earist-surface-gray)">
-                    <th className="px-4 py-3 text-left font-semibold text-(--earist-secondary)">
-                      Name & Email
-                    </th>
-                    <th className="px-4 py-3 text-left font-semibold text-(--earist-secondary)">
-                      Qualification & Affiliation
-                    </th>
-                    <th className="px-4 py-3 text-center font-semibold text-(--earist-secondary)">
-                      Classification
-                    </th>
-                    <th className="px-4 py-3 text-center font-semibold text-(--earist-secondary)">
-                      Essay Evaluation
-                    </th>
-                    <th className="px-4 py-3 text-center font-semibold text-(--earist-secondary)">
-                      Adviser
-                    </th>
-                    <th className="px-4 py-3 text-center font-semibold text-(--earist-secondary)">
-                      Status
-                    </th>
-                    <th className="px-4 py-3 text-right font-semibold text-(--earist-secondary)">
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {paginatedFaculty.map((faculty) => (
-                    <tr
-                      key={faculty.id}
-                      className="border-b border-(--earist-border-gray) last:border-0 hover:bg-gray-50"
+      <TableCard>
+        {isLoading ? (
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="h-6 w-6 animate-spin text-(--earist-primary)" />
+            <span className="ml-2 text-sm text-(--earist-body-text)">
+              Loading faculty accounts...
+            </span>
+          </div>
+        ) : paginatedFaculty.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-12 text-center">
+            <UserX className="mb-4 h-12 w-12 text-gray-300" />
+            <p className="text-sm text-(--earist-body-text)">
+              No faculty accounts found
+            </p>
+          </div>
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow className="hover:bg-transparent">
+                <TableHead>Name & Email</TableHead>
+                <TableHead>Qualification & Affiliation</TableHead>
+                <TableHead className="text-center">Classification</TableHead>
+                <TableHead className="text-center">Essay Evaluation</TableHead>
+                <TableHead className="text-center">Adviser</TableHead>
+                <TableHead className="text-center">Status</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {paginatedFaculty.map((faculty) => (
+                <TableRow key={faculty.id}>
+                  <TableCell>
+                    <p className="font-medium text-(--earist-primary)">
+                      {formatDisplayName(faculty)}
+                    </p>
+                    <p className="text-xs text-(--earist-body-text)">
+                      {faculty.email}
+                    </p>
+                  </TableCell>
+                  <TableCell className="text-xs text-(--earist-body-text)">
+                    <p className="font-medium text-foreground">
+                      {faculty.qualification}
+                    </p>
+                    <p>{faculty.affiliation}</p>
+                  </TableCell>
+                  <TableCell className="text-center">
+                    <Badge
+                      className={
+                        faculty.isExternal
+                          ? "bg-purple-100 text-purple-700"
+                          : "bg-blue-100 text-blue-700"
+                      }
                     >
-                      <td className="px-4 py-3">
-                        <p className="font-medium text-(--earist-primary)">
-                          {formatDisplayName(faculty)}
-                        </p>
-                        <p className="text-xs text-(--earist-body-text)">
-                          {faculty.email}
-                        </p>
-                      </td>
-                      <td className="px-4 py-3 text-xs text-(--earist-body-text)">
-                        <p className="font-medium text-foreground">
-                          {faculty.qualification}
-                        </p>
-                        <p>{faculty.affiliation}</p>
-                      </td>
-                      <td className="px-4 py-3 text-center">
-                        <Badge
-                          className={
-                            faculty.isExternal
-                              ? "bg-purple-100 text-purple-700"
-                              : "bg-blue-100 text-blue-700"
-                          }
-                        >
-                          {faculty.isExternal ? "External" : "Internal"}
-                        </Badge>
-                      </td>
-                      <td className="px-4 py-3 text-center">
-                        <Badge
-                          className={
-                            faculty.canEvaluateEssays
-                              ? "bg-emerald-100 text-emerald-700"
-                              : "bg-gray-100 text-gray-500"
-                          }
-                        >
-                          {faculty.canEvaluateEssays ? "Enabled" : "Disabled"}
-                        </Badge>
-                      </td>
-                      <td className="px-4 py-3 text-center">
-                        {faculty.isExternal ? (
-                          <Badge className="bg-gray-100 text-gray-400">
-                            N/A
-                          </Badge>
-                        ) : (
-                          <Badge
-                            className={
-                              faculty.isAvailableAsAdviser
-                                ? "bg-green-100 text-green-700"
-                                : "bg-gray-100 text-gray-500"
-                            }
-                          >
-                            {faculty.isAvailableAsAdviser ? "Yes" : "No"}
-                          </Badge>
-                        )}
-                      </td>
-                      <td className="px-4 py-3 text-center">
-                        <Badge
-                          className={
-                            faculty.isActive
-                              ? "bg-green-100 text-green-700"
-                              : "bg-gray-100 text-gray-500"
-                          }
-                        >
-                          {faculty.isActive ? "Active" : "Inactive"}
-                        </Badge>
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="flex justify-end gap-1">
-                          <button
-                            onClick={() => openViewModal(faculty)}
-                            className="rounded p-1.5 text-(--earist-body-text) hover:bg-(--earist-surface-gray)"
-                            title="View Details"
-                          >
-                            <Eye className="h-4 w-4" />
-                          </button>
-                          <button
-                            onClick={() => openEditModal(faculty)}
-                            className="rounded p-1.5 text-(--earist-body-text) hover:bg-(--earist-surface-gray)"
-                            title="Edit Faculty"
-                          >
-                            <Edit className="h-4 w-4" />
-                          </button>
-                          <button
-                            onClick={() =>
-                              updateMutation.mutate({
-                                id: faculty.id,
-                                isActive: !faculty.isActive,
-                              })
-                            }
-                            disabled={updateMutation.isPending}
-                            className={`rounded p-1.5 transition-colors ${
-                              faculty.isActive
-                                ? "text-red-600 hover:bg-red-50"
-                                : "text-green-600 hover:bg-green-50"
-                            } ${updateMutation.isPending ? "cursor-not-allowed opacity-50" : ""}`}
-                            title={faculty.isActive ? "Deactivate" : "Activate"}
-                          >
-                            <Power className="h-4 w-4" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+                      {faculty.isExternal ? "External" : "Internal"}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-center">
+                    <Badge
+                      className={
+                        faculty.canEvaluateEssays
+                          ? "bg-emerald-100 text-emerald-700"
+                          : "bg-gray-100 text-gray-500"
+                      }
+                    >
+                      {faculty.canEvaluateEssays ? "Enabled" : "Disabled"}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-center">
+                    {faculty.isExternal ? (
+                      <Badge className="bg-gray-100 text-gray-400">N/A</Badge>
+                    ) : (
+                      <Badge
+                        className={
+                          faculty.isAvailableAsAdviser
+                            ? "bg-green-100 text-green-700"
+                            : "bg-gray-100 text-gray-500"
+                        }
+                      >
+                        {faculty.isAvailableAsAdviser ? "Yes" : "No"}
+                      </Badge>
+                    )}
+                  </TableCell>
+                  <TableCell className="text-center">
+                    <Badge
+                      className={
+                        faculty.isActive
+                          ? "bg-green-100 text-green-700"
+                          : "bg-gray-100 text-gray-500"
+                      }
+                    >
+                      {faculty.isActive ? "Active" : "Inactive"}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex justify-end gap-1">
+                      <button
+                        onClick={() => openViewModal(faculty)}
+                        className="rounded p-1.5 text-(--earist-body-text) hover:bg-(--earist-surface-gray)"
+                        title="View Details"
+                      >
+                        <Eye className="h-4 w-4" />
+                      </button>
+                      <button
+                        onClick={() => openEditModal(faculty)}
+                        className="rounded p-1.5 text-(--earist-body-text) hover:bg-(--earist-surface-gray)"
+                        title="Edit Faculty"
+                      >
+                        <Edit className="h-4 w-4" />
+                      </button>
+                      <button
+                        onClick={() =>
+                          updateMutation.mutate({
+                            id: faculty.id,
+                            isActive: !faculty.isActive,
+                          })
+                        }
+                        disabled={updateMutation.isPending}
+                        className={`rounded p-1.5 transition-colors ${
+                          faculty.isActive
+                            ? "text-red-600 hover:bg-red-50"
+                            : "text-green-600 hover:bg-green-50"
+                        } ${updateMutation.isPending ? "cursor-not-allowed opacity-50" : ""}`}
+                        title={faculty.isActive ? "Deactivate" : "Activate"}
+                      >
+                        <Power className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
 
-          {/* Pagination */}
-          {totalPages > 1 && (
-            <div className="flex items-center justify-between border-t border-(--earist-border-gray) px-4 py-3">
-              <p className="text-xs text-(--earist-body-text)">
-                Showing {(page - 1) * pageSize + 1}–
-                {Math.min(page * pageSize, filteredFaculty.length)} of{" "}
-                {filteredFaculty.length} faculty members
-              </p>
-              <Pagination>
-                <PaginationContent>
-                  <PaginationItem>
-                    <PaginationPrevious
-                      onClick={() => setPage((p) => Math.max(1, p - 1))}
-                      className={
-                        page === 1
-                          ? "pointer-events-none opacity-50"
-                          : "cursor-pointer"
-                      }
-                    />
-                  </PaginationItem>
-                  {Array.from({ length: totalPages }, (_, i) => i + 1).map(
-                    (pageNum) => (
-                      <PaginationItem key={pageNum}>
-                        <PaginationLink
-                          onClick={() => setPage(pageNum)}
-                          isActive={pageNum === page}
-                          className="cursor-pointer"
-                        >
-                          {pageNum}
-                        </PaginationLink>
-                      </PaginationItem>
-                    ),
-                  )}
-                  <PaginationItem>
-                    <PaginationNext
-                      onClick={() =>
-                        setPage((p) => Math.min(totalPages, p + 1))
-                      }
-                      className={
-                        page === totalPages
-                          ? "pointer-events-none opacity-50"
-                          : "cursor-pointer"
-                      }
-                    />
-                  </PaginationItem>
-                </PaginationContent>
-              </Pagination>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between border-t border-(--earist-border-gray) px-4 py-3">
+            <p className="text-xs text-(--earist-body-text)">
+              Showing {(page - 1) * pageSize + 1}–
+              {Math.min(page * pageSize, filteredFaculty.length)} of{" "}
+              {filteredFaculty.length} faculty members
+            </p>
+            <Pagination>
+              <PaginationContent>
+                <PaginationItem>
+                  <PaginationPrevious
+                    onClick={() => setPage((p) => Math.max(1, p - 1))}
+                    className={
+                      page === 1
+                        ? "pointer-events-none opacity-50"
+                        : "cursor-pointer"
+                    }
+                  />
+                </PaginationItem>
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map(
+                  (pageNum) => (
+                    <PaginationItem key={pageNum}>
+                      <PaginationLink
+                        onClick={() => setPage(pageNum)}
+                        isActive={pageNum === page}
+                        className="cursor-pointer"
+                      >
+                        {pageNum}
+                      </PaginationLink>
+                    </PaginationItem>
+                  ),
+                )}
+                <PaginationItem>
+                  <PaginationNext
+                    onClick={() =>
+                      setPage((p) => Math.min(totalPages, p + 1))
+                    }
+                    className={
+                      page === totalPages
+                        ? "pointer-events-none opacity-50"
+                        : "cursor-pointer"
+                    }
+                  />
+                </PaginationItem>
+              </PaginationContent>
+            </Pagination>
+          </div>
+        )}
+      </TableCard>
 
       {/* ======================== */}
       {/* CREATE FACULTY MODAL     */}

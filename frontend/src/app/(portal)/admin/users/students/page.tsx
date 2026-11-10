@@ -8,6 +8,15 @@ import { cn } from "@/lib/utils";
 import { PageHeader } from "@/components/ui/page-header";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent } from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCard,
+  TableCell,
+  TableHead as SharedTableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -161,46 +170,32 @@ function ThesisProgressCell({
 
 function TableShell({ children }: { children: React.ReactNode }) {
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full min-w-[860px] table-fixed border-collapse">
-        <colgroup>
-          <col className="w-[26%]" />
-          <col className="w-[22%]" />
-          <col className="w-[15%]" />
-          <col className="w-[17%]" />
-          <col className="w-[14%]" />
-          <col className="w-[6%]" />
-        </colgroup>
-        {children}
-      </table>
-    </div>
+    <Table className="min-w-[860px] table-fixed">
+      <colgroup>
+        <col className="w-[26%]" />
+        <col className="w-[22%]" />
+        <col className="w-[15%]" />
+        <col className="w-[17%]" />
+        <col className="w-[14%]" />
+        <col className="w-[6%]" />
+      </colgroup>
+      {children}
+    </Table>
   );
 }
 
 function TableHead() {
   return (
-    <thead>
-      <tr className="border-b border-(--earist-border-gray) bg-(--earist-surface-gray)">
-        <th className="px-4 py-3 text-left text-xs font-semibold text-(--earist-body-text)">
-          Student
-        </th>
-        <th className="px-4 py-3 text-left text-xs font-semibold text-(--earist-body-text)">
-          Program
-        </th>
-        <th className="px-4 py-3 text-left text-xs font-semibold text-(--earist-body-text)">
-          Comprehensive Exam
-        </th>
-        <th className="px-4 py-3 text-left text-xs font-semibold text-(--earist-body-text)">
-          Thesis Progress
-        </th>
-        <th className="px-4 py-3 text-left text-xs font-semibold text-(--earist-body-text)">
-          Student Status
-        </th>
-        <th className="px-4 py-3 text-right text-xs font-semibold text-(--earist-body-text)">
-          Action
-        </th>
-      </tr>
-    </thead>
+    <TableHeader>
+      <TableRow className="hover:bg-(--earist-surface-gray)">
+        <SharedTableHead>Student</SharedTableHead>
+        <SharedTableHead>Program</SharedTableHead>
+        <SharedTableHead>Comprehensive Exam</SharedTableHead>
+        <SharedTableHead>Thesis Progress</SharedTableHead>
+        <SharedTableHead>Student Status</SharedTableHead>
+        <SharedTableHead className="text-right">Action</SharedTableHead>
+      </TableRow>
+    </TableHeader>
   );
 }
 
@@ -208,36 +203,33 @@ function TableSkeleton() {
   return (
     <TableShell>
       <TableHead />
-      <tbody aria-hidden="true">
+      <TableBody aria-hidden="true">
         {Array.from({ length: 6 }).map((_, index) => (
-          <tr
-            key={index}
-            className="border-b border-(--earist-border-gray) last:border-0"
-          >
-            <td className="px-4 py-3 align-top">
+          <TableRow key={index}>
+            <TableCell>
               <Skeleton className="h-4 w-32" />
               <Skeleton className="mt-2 h-3 w-24" />
               <Skeleton className="mt-2 h-3 w-40" />
-            </td>
-            <td className="px-4 py-3 align-top">
+            </TableCell>
+            <TableCell>
               <Skeleton className="h-4 w-32" />
-            </td>
-            <td className="px-4 py-3 align-top">
+            </TableCell>
+            <TableCell>
               <Skeleton className="h-4 w-20" />
-            </td>
-            <td className="px-4 py-3 align-top">
+            </TableCell>
+            <TableCell>
               <Skeleton className="h-4 w-24" />
               <Skeleton className="mt-2 h-3 w-16" />
-            </td>
-            <td className="px-4 py-3 align-top">
+            </TableCell>
+            <TableCell>
               <Skeleton className="h-5 w-20 rounded-full" />
-            </td>
-            <td className="px-4 py-3 align-top">
+            </TableCell>
+            <TableCell>
               <Skeleton className="ml-auto h-8 w-8 rounded-md" />
-            </td>
-          </tr>
+            </TableCell>
+          </TableRow>
         ))}
-      </tbody>
+      </TableBody>
     </TableShell>
   );
 }
@@ -541,73 +533,68 @@ export default function AdminStudentsPage() {
       )}
 
       {/* List */}
-      <Card className="overflow-hidden py-0">
-        <CardContent className="min-w-0 p-0">
-          {isLoading ? (
-            <TableSkeleton />
-          ) : filterRequestFailed || loadFailedWithoutData ? (
-            <ErrorState
-              onRetry={() => studentsQuery.refetch()}
-              retrying={isFetching}
-            />
-          ) : students.length === 0 ? (
-            <EmptyState filtered={isFiltered} onClear={clearFilters} />
-          ) : (
-            <TableShell>
-              <TableHead />
-              <tbody>
-                {students.map((student) => (
-                  <tr
-                    key={student.id}
-                    className="border-b border-(--earist-border-gray) last:border-0 hover:bg-(--earist-surface-gray)/60"
-                  >
-                    <td className="px-4 py-3 align-top">
-                      <p className="text-sm font-semibold break-words text-foreground">
-                        {student.firstName} {student.lastName}
-                      </p>
-                      <p className="mt-0.5 text-xs break-words text-(--earist-body-text)">
-                        {student.studentNumber}
-                      </p>
-                      <p className="mt-0.5 text-xs break-words text-(--earist-body-text)">
-                        {student.email}
-                      </p>
-                    </td>
-                    <td className="px-4 py-3 align-top">
-                      <p className="text-sm break-words text-(--earist-body-text)">
-                        {student.program?.programName ?? "—"}
-                      </p>
-                    </td>
-                    <td className="px-4 py-3 align-top">
-                      <CompExamCell status={student.compExamStatus} />
-                    </td>
-                    <td className="px-4 py-3 align-top">
-                      <ThesisProgressCell
-                        stage={student.thesisStage}
-                        status={student.thesisStatus}
-                      />
-                    </td>
-                    <td className="px-4 py-3 align-top">
-                      <StudentStatusBadge status={student.admissionStatus} />
-                    </td>
-                    <td className="px-4 py-3 text-right align-top">
-                      <Link
-                        href={`/admin/users/students/${student.id}`}
-                        aria-label={`View student ${student.firstName} ${student.lastName}`}
-                        className={cn(
-                          buttonVariants({ variant: "ghost", size: "icon" }),
-                          "ml-auto",
-                        )}
-                      >
-                        <Eye className="h-4 w-4" aria-hidden="true" />
-                      </Link>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </TableShell>
-          )}
-        </CardContent>
-      </Card>
+      <TableCard>
+        {isLoading ? (
+          <TableSkeleton />
+        ) : filterRequestFailed || loadFailedWithoutData ? (
+          <ErrorState
+            onRetry={() => studentsQuery.refetch()}
+            retrying={isFetching}
+          />
+        ) : students.length === 0 ? (
+          <EmptyState filtered={isFiltered} onClear={clearFilters} />
+        ) : (
+          <TableShell>
+            <TableHead />
+            <TableBody>
+              {students.map((student) => (
+                <TableRow key={student.id}>
+                  <TableCell>
+                    <p className="text-sm font-semibold break-words text-foreground">
+                      {student.firstName} {student.lastName}
+                    </p>
+                    <p className="mt-0.5 text-xs break-words text-(--earist-body-text)">
+                      {student.studentNumber}
+                    </p>
+                    <p className="mt-0.5 text-xs break-words text-(--earist-body-text)">
+                      {student.email}
+                    </p>
+                  </TableCell>
+                  <TableCell>
+                    <p className="text-sm break-words text-(--earist-body-text)">
+                      {student.program?.programName ?? "—"}
+                    </p>
+                  </TableCell>
+                  <TableCell>
+                    <CompExamCell status={student.compExamStatus} />
+                  </TableCell>
+                  <TableCell>
+                    <ThesisProgressCell
+                      stage={student.thesisStage}
+                      status={student.thesisStatus}
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <StudentStatusBadge status={student.admissionStatus} />
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <Link
+                      href={`/admin/users/students/${student.id}`}
+                      aria-label={`View student ${student.firstName} ${student.lastName}`}
+                      className={cn(
+                        buttonVariants({ variant: "ghost", size: "icon" }),
+                        "ml-auto",
+                      )}
+                    >
+                      <Eye className="h-4 w-4" aria-hidden="true" />
+                    </Link>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </TableShell>
+        )}
+      </TableCard>
 
       {/* Pagination */}
       {!isLoading && students.length > 0 && (

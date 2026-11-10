@@ -10,7 +10,7 @@ function isFacultyRole(role?: string | null): boolean {
 
 function getDefaultDashboardForRole(role?: string | null): string {
   if (isFacultyRole(role)) {
-    return "/panelist/dashboard";
+    return "/faculty/dashboard";
   }
   return `/${role || "applicant"}/dashboard`;
 }
@@ -62,6 +62,16 @@ export default auth((req: NextRequest & { auth: Session | null }) => {
       );
     }
 
+    // Redirect legacy /admin/users/panelists -> /admin/users/faculty in browser bar
+    if (path.startsWith("/admin/users/panelists")) {
+      const canonicalUrl = req.nextUrl.clone();
+      canonicalUrl.pathname = path.replace(
+        "/admin/users/panelists",
+        "/admin/users/faculty",
+      );
+      return NextResponse.redirect(canonicalUrl);
+    }
+
     // Rewrite /admin/users/faculty -> /admin/users/panelists seamlessly
     if (path.startsWith("/admin/users/faculty")) {
       const targetPath = path.replace(
@@ -91,21 +101,28 @@ export default auth((req: NextRequest & { auth: Session | null }) => {
     }
   }
 
-  // Support both /panelist/* and /faculty/* seamlessly for Faculty users
+  // Redirect legacy /panelist/* -> /faculty/* in browser bar
+  if (path.startsWith("/panelist")) {
+    if (!isFacultyRole(role)) {
+      return NextResponse.redirect(
+        new URL(getDefaultDashboardForRole(role), req.url),
+      );
+    }
+    const canonicalUrl = req.nextUrl.clone();
+    canonicalUrl.pathname = path.replace(/^\/panelist/, "/faculty");
+    return NextResponse.redirect(canonicalUrl);
+  }
+
+  // Rewrite canonical /faculty/* -> /panelist/* route folder seamlessly
   if (path.startsWith("/faculty")) {
     if (!isFacultyRole(role)) {
       return NextResponse.redirect(
         new URL(getDefaultDashboardForRole(role), req.url),
       );
     }
-    const rewrittenPath = path.replace(/^\/faculty/, "/panelist");
-    return NextResponse.rewrite(new URL(rewrittenPath, req.url));
-  }
-
-  if (path.startsWith("/panelist") && !isFacultyRole(role)) {
-    return NextResponse.redirect(
-      new URL(getDefaultDashboardForRole(role), req.url),
-    );
+    const rewrittenUrl = req.nextUrl.clone();
+    rewrittenUrl.pathname = path.replace(/^\/faculty/, "/panelist");
+    return NextResponse.rewrite(rewrittenUrl);
   }
 });
 

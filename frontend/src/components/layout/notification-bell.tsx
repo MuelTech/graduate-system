@@ -43,14 +43,14 @@ export function NotificationBell({
     role === "ADMIN"
       ? "/admin/notifications"
       : isFaculty
-      ? "/panelist/notifications"
+      ? "/faculty/notifications"
       : "/student/notifications";
 
   const announcementsPath =
     role === "ADMIN"
       ? "/admin/memos"
       : isFaculty
-      ? "/panelist/announcements"
+      ? "/faculty/announcements"
       : "/student/announcements";
 
   return (

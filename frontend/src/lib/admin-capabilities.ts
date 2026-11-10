@@ -75,7 +75,7 @@ export const ADMIN_CAPABILITY_GROUPS: AdminCapabilityGroup[] = [
         key: ADMIN_CAPABILITIES.USERS_FACULTY,
         label: "Faculty",
         description: "Create and manage internal & external faculty accounts",
-        href: "/admin/users/panelists",
+        href: "/admin/users/faculty",
       },
     ],
   },

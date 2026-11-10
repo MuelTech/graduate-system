@@ -12,6 +12,15 @@ import { cn } from "@/lib/utils";
 import { PageHeader } from "@/components/ui/page-header";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent } from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCard,
+  TableCell,
+  TableHead as SharedTableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { IconTooltipButton } from "@/components/ui/tooltip";
@@ -175,42 +184,30 @@ function CapacityCell({
 
 function TableShell({ children }: { children: React.ReactNode }) {
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full min-w-[860px] table-fixed border-collapse">
-        <colgroup>
-          <col className="w-[26%]" />
-          <col className="w-[21%]" />
-          <col className="w-[21%]" />
-          <col className="w-[13%]" />
-          <col className="w-[19%]" />
-        </colgroup>
-        {children}
-      </table>
-    </div>
+    <Table className="min-w-[860px] table-fixed">
+      <colgroup>
+        <col className="w-[26%]" />
+        <col className="w-[21%]" />
+        <col className="w-[21%]" />
+        <col className="w-[13%]" />
+        <col className="w-[19%]" />
+      </colgroup>
+      {children}
+    </Table>
   );
 }
 
 function TableHead() {
   return (
-    <thead>
-      <tr className="border-b border-(--earist-border-gray) bg-(--earist-surface-gray)">
-        <th className="px-4 py-3 text-left text-xs font-semibold text-(--earist-body-text)">
-          Program
-        </th>
-        <th className="px-4 py-3 text-left text-xs font-semibold text-(--earist-body-text)">
-          Schedule
-        </th>
-        <th className="px-4 py-3 text-left text-xs font-semibold text-(--earist-body-text)">
-          Capacity
-        </th>
-        <th className="px-4 py-3 text-left text-xs font-semibold text-(--earist-body-text)">
-          Availability
-        </th>
-        <th className="px-4 py-3 text-right text-xs font-semibold text-(--earist-body-text)">
-          Action
-        </th>
-      </tr>
-    </thead>
+    <TableHeader>
+      <TableRow className="hover:bg-(--earist-surface-gray)">
+        <SharedTableHead>Program</SharedTableHead>
+        <SharedTableHead>Schedule</SharedTableHead>
+        <SharedTableHead>Capacity</SharedTableHead>
+        <SharedTableHead>Availability</SharedTableHead>
+        <SharedTableHead className="text-right">Action</SharedTableHead>
+      </TableRow>
+    </TableHeader>
   );
 }
 
@@ -218,33 +215,30 @@ function TableSkeleton() {
   return (
     <TableShell>
       <TableHead />
-      <tbody aria-hidden="true">
+      <TableBody aria-hidden="true">
         {Array.from({ length: 6 }).map((_, index) => (
-          <tr
-            key={index}
-            className="border-b border-(--earist-border-gray) last:border-0"
-          >
-            <td className="px-4 py-3 align-top">
+          <TableRow key={index}>
+            <TableCell>
               <Skeleton className="h-4 w-40" />
-            </td>
-            <td className="px-4 py-3 align-top">
+            </TableCell>
+            <TableCell>
               <Skeleton className="h-4 w-32" />
               <Skeleton className="mt-2 h-4 w-20" />
-            </td>
-            <td className="px-4 py-3 align-top">
+            </TableCell>
+            <TableCell>
               <Skeleton className="h-4 w-28" />
               <Skeleton className="mt-2 h-3 w-24" />
               <Skeleton className="mt-2 h-1.5 w-24 rounded-full" />
-            </td>
-            <td className="px-4 py-3 align-top">
+            </TableCell>
+            <TableCell>
               <Skeleton className="h-5 w-16 rounded-full" />
-            </td>
-            <td className="px-4 py-3 align-top">
+            </TableCell>
+            <TableCell>
               <Skeleton className="ml-auto h-8 w-28 rounded-md" />
-            </td>
-          </tr>
+            </TableCell>
+          </TableRow>
         ))}
-      </tbody>
+      </TableBody>
     </TableShell>
   );
 }
@@ -715,82 +709,74 @@ export default function AdminExamSchedulesPage() {
       )}
 
       {/* Table */}
-      <Card className="overflow-hidden py-0">
-        <CardContent className="min-w-0 p-0">
-          {isLoading ? (
-            <TableSkeleton />
-          ) : loadFailedWithoutData ? (
-            <ErrorState
-              onRetry={() => slotsQuery.refetch()}
-              retrying={isFetching}
-            />
-          ) : filteredSlots.length === 0 ? (
-            <EmptyState
-              hasAnySchedules={hasAnySchedules}
-              onClear={clearFilters}
-              onCreate={openCreate}
-            />
-          ) : (
-            <TableShell>
-              <TableHead />
-              <tbody>
-                {pageItems.map((slot) => {
-                  const slotAvailability = resolveExamScheduleAvailability(
-                    slot,
-                    now,
-                  );
-                  return (
-                    <tr
-                      key={slot.id}
-                      className="border-b border-(--earist-border-gray) last:border-0 hover:bg-(--earist-surface-gray)/60"
-                    >
-                      <td className="px-4 py-3 align-top">
-                        <p className="text-sm font-medium break-words text-foreground">
-                          {slot.program?.programName ?? "Program unavailable"}
-                        </p>
-                      </td>
-                      <td className="px-4 py-3 align-top">
-                        <p className="text-sm font-medium break-words text-foreground">
-                          {formatScheduleDate(slot.examDate)}
-                        </p>
-                        <p className="mt-0.5 text-sm break-words text-(--earist-body-text)">
-                          {formatScheduleTime(slot.examTime)}
-                        </p>
-                      </td>
-                      <td className="px-4 py-3 align-top">
-                        <CapacityCell
-                          slotsTaken={slot.slotsTaken}
-                          maxSlots={slot.maxSlots}
-                          onViewBookings={(trigger) => {
-                            bookingReturnFocus.current = trigger;
-                            setBookingSlot(slot);
-                          }}
-                        />
-                      </td>
-                      <td className="px-4 py-3 align-top">
-                        <AvailabilityBadge availability={slotAvailability} />
-                      </td>
-                      <td className="px-4 py-3 align-top">
-                        <div className="flex justify-end">
-                          <IconTooltipButton
-                            label="Edit schedule"
-                            onClick={() => openEdit(slot)}
-                          >
-                            <Pencil
-                              className="h-4 w-4"
-                              aria-hidden="true"
-                            />
-                          </IconTooltipButton>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </TableShell>
-          )}
-        </CardContent>
-      </Card>
+      <TableCard>
+        {isLoading ? (
+          <TableSkeleton />
+        ) : loadFailedWithoutData ? (
+          <ErrorState
+            onRetry={() => slotsQuery.refetch()}
+            retrying={isFetching}
+          />
+        ) : filteredSlots.length === 0 ? (
+          <EmptyState
+            hasAnySchedules={hasAnySchedules}
+            onClear={clearFilters}
+            onCreate={openCreate}
+          />
+        ) : (
+          <TableShell>
+            <TableHead />
+            <TableBody>
+              {pageItems.map((slot) => {
+                const slotAvailability = resolveExamScheduleAvailability(
+                  slot,
+                  now,
+                );
+                return (
+                  <TableRow key={slot.id}>
+                    <TableCell>
+                      <p className="text-sm font-medium break-words text-foreground">
+                        {slot.program?.programName ?? "Program unavailable"}
+                      </p>
+                    </TableCell>
+                    <TableCell>
+                      <p className="text-sm font-medium break-words text-foreground">
+                        {formatScheduleDate(slot.examDate)}
+                      </p>
+                      <p className="mt-0.5 text-sm break-words text-(--earist-body-text)">
+                        {formatScheduleTime(slot.examTime)}
+                      </p>
+                    </TableCell>
+                    <TableCell>
+                      <CapacityCell
+                        slotsTaken={slot.slotsTaken}
+                        maxSlots={slot.maxSlots}
+                        onViewBookings={(trigger) => {
+                          bookingReturnFocus.current = trigger;
+                          setBookingSlot(slot);
+                        }}
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <AvailabilityBadge availability={slotAvailability} />
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex justify-end">
+                        <IconTooltipButton
+                          label="Edit schedule"
+                          onClick={() => openEdit(slot)}
+                        >
+                          <Pencil className="h-4 w-4" aria-hidden="true" />
+                        </IconTooltipButton>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </TableShell>
+        )}
+      </TableCard>
 
       <ScheduleBookingsDialog
         slot={bookingSlot}

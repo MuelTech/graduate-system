@@ -8,6 +8,15 @@ import { cn } from "@/lib/utils";
 import { PageHeader } from "@/components/ui/page-header";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent } from "@/components/ui/card";
+import {
+  TableCard,
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+} from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -285,174 +294,153 @@ export default function FacultyEssayEvaluationsPage() {
       </Card>
 
       {/* Table */}
-      <Card className="overflow-hidden py-0">
-        <CardContent className="p-0">
-          {isLoading ? (
-            <div className="space-y-3 p-6">
-              {Array.from({ length: 5 }).map((_, idx) => (
-                <Skeleton key={idx} className="h-12 w-full rounded-lg" />
-              ))}
-            </div>
-          ) : isError ? (
-            <div className="flex flex-col items-center justify-center gap-3 px-6 py-14 text-center">
-              <AlertCircle className="h-8 w-8 text-(--earist-secondary)" />
-              <div className="space-y-1">
-                <p className="text-sm font-semibold text-(--earist-primary)">
-                  Unable to load essay evaluations
-                </p>
-                <p className="text-sm text-(--earist-body-text)">
-                  Something went wrong while loading the submissions. Please try
-                  again.
-                </p>
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => void recordsQuery.refetch()}
-              >
-                Retry
-              </Button>
-            </div>
-          ) : pageRows.length === 0 ? (
-            <div className="flex flex-col items-center justify-center gap-2 px-6 py-14 text-center">
-              <ClipboardCheck className="h-10 w-10 text-(--earist-body-text)/40" />
+      <TableCard>
+        {isLoading ? (
+          <div className="space-y-3 p-6">
+            {Array.from({ length: 5 }).map((_, idx) => (
+              <Skeleton key={idx} className="h-12 w-full rounded-lg" />
+            ))}
+          </div>
+        ) : isError ? (
+          <div className="flex flex-col items-center justify-center gap-3 px-6 py-14 text-center">
+            <AlertCircle className="h-8 w-8 text-(--earist-secondary)" />
+            <div className="space-y-1">
               <p className="text-sm font-semibold text-(--earist-primary)">
-                {isFiltered
-                  ? "No essay submissions match the current filters"
-                  : "No entrance exam essay submissions yet"}
+                Unable to load essay evaluations
               </p>
-              <p className="max-w-sm text-xs text-(--earist-body-text)">
-                {isFiltered
-                  ? "Try clearing your search or status filter."
-                  : "Completed applicant entrance exams will appear here for essay evaluation."}
+              <p className="text-sm text-(--earist-body-text)">
+                Something went wrong while loading the submissions. Please try
+                again.
               </p>
             </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-(--earist-border-gray) bg-(--earist-surface-gray)">
-                    <th className="px-4 py-3 text-left font-semibold text-(--earist-secondary)">
-                      Applicant
-                    </th>
-                    <th className="px-4 py-3 text-left font-semibold text-(--earist-secondary)">
-                      Program
-                    </th>
-                    <th className="px-4 py-3 text-left font-semibold text-(--earist-secondary)">
-                      Exam Schedule
-                    </th>
-                    <th className="px-4 py-3 text-center font-semibold text-(--earist-secondary)">
-                      Evaluation Status
-                    </th>
-                    <th className="px-4 py-3 text-right font-semibold text-(--earist-secondary)">
-                      Action
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {pageRows.map((row) => (
-                    <tr
-                      key={row.id}
-                      className="border-b border-(--earist-border-gray) last:border-0 hover:bg-gray-50"
-                    >
-                      <td className="px-4 py-3">
-                        <p className="font-semibold text-(--earist-primary)">
-                          {row.name}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => void recordsQuery.refetch()}
+            >
+              Retry
+            </Button>
+          </div>
+        ) : pageRows.length === 0 ? (
+          <div className="flex flex-col items-center justify-center gap-2 px-6 py-14 text-center">
+            <ClipboardCheck className="h-10 w-10 text-(--earist-body-text)/40" />
+            <p className="text-sm font-semibold text-(--earist-primary)">
+              {isFiltered
+                ? "No essay submissions match the current filters"
+                : "No entrance exam essay submissions yet"}
+            </p>
+            <p className="max-w-sm text-xs text-(--earist-body-text)">
+              {isFiltered
+                ? "Try clearing your search or status filter."
+                : "Completed applicant entrance exams will appear here for essay evaluation."}
+            </p>
+          </div>
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow className="hover:bg-transparent">
+                <TableHead>Applicant</TableHead>
+                <TableHead>Program</TableHead>
+                <TableHead>Exam Schedule</TableHead>
+                <TableHead className="text-center">Evaluation Status</TableHead>
+                <TableHead className="text-right">Action</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {pageRows.map((row) => (
+                <TableRow key={row.id}>
+                  <TableCell>
+                    <p className="font-semibold text-(--earist-primary)">
+                      {row.name}
+                    </p>
+                    <p className="text-xs text-(--earist-body-text)">
+                      {row.pinnacleId} · {row.email}
+                    </p>
+                  </TableCell>
+                  <TableCell className="text-xs text-(--earist-body-text)">
+                    {row.programName}
+                  </TableCell>
+                  <TableCell className="text-xs text-(--earist-body-text)">
+                    {row.examDate ? (
+                      <div>
+                        <p>{formatExamDate(row.examDate)}</p>
+                        <p className="text-[11px] text-gray-500">
+                          {formatExamTime(row.examTime)}
                         </p>
-                        <p className="text-xs text-(--earist-body-text)">
-                          {row.pinnacleId} · {row.email}
-                        </p>
-                      </td>
-                      <td className="px-4 py-3 text-xs text-(--earist-body-text)">
-                        {row.programName}
-                      </td>
-                      <td className="px-4 py-3 text-xs text-(--earist-body-text)">
-                        {row.examDate ? (
-                          <div>
-                            <p>{formatExamDate(row.examDate)}</p>
-                            <p className="text-[11px] text-gray-500">
-                              {formatExamTime(row.examTime)}
-                            </p>
-                          </div>
-                        ) : (
-                          "—"
-                        )}
-                      </td>
-                      <td className="px-4 py-3 text-center">
-                        <Badge
-                          className={
-                            row.isEvaluated
-                              ? "bg-emerald-100 text-emerald-700"
-                              : "bg-amber-100 text-amber-800"
-                          }
-                        >
-                          {row.isEvaluated
-                            ? "Evaluated"
-                            : "Pending Evaluation"}
-                        </Badge>
-                      </td>
-                      <td className="px-4 py-3 text-right">
-                        <Link
-                          href={`/panelist/essay-evaluations/${row.id}`}
-                          className={cn(
-                            buttonVariants({
-                              variant: row.isEvaluated ? "outline" : "default",
-                              size: "sm",
-                            }),
-                            !row.isEvaluated &&
-                              "bg-(--earist-primary) text-white hover:bg-(--earist-primary)/90",
-                          )}
-                        >
-                          {row.isEvaluated
-                            ? "View Evaluation"
-                            : "Evaluate Essay"}
-                          <ChevronRight className="ml-1 h-4 w-4" />
-                        </Link>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-
-          {/* Pagination */}
-          {totalPages > 1 && (
-            <div className="flex items-center justify-between border-t border-(--earist-border-gray) px-4 py-3">
-              <p className="text-xs text-(--earist-body-text)">
-                Showing {(currentPage - 1) * PAGE_SIZE + 1}–
-                {Math.min(currentPage * PAGE_SIZE, total)} of {total} submissions
-              </p>
-              <Pagination className="mx-0 w-auto">
-                <PaginationContent>
-                  <PaginationItem>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => setPage((p) => Math.max(1, p - 1))}
-                      disabled={currentPage === 1}
-                    >
-                      <ChevronLeft className="h-4 w-4" />
-                    </Button>
-                  </PaginationItem>
-                  <PaginationItem>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() =>
-                        setPage((p) => Math.min(totalPages, p + 1))
+                      </div>
+                    ) : (
+                      "—"
+                    )}
+                  </TableCell>
+                  <TableCell className="text-center">
+                    <Badge
+                      className={
+                        row.isEvaluated
+                          ? "bg-emerald-100 text-emerald-700"
+                          : "bg-amber-100 text-amber-800"
                       }
-                      disabled={currentPage === totalPages}
                     >
-                      <ChevronRight className="h-4 w-4" />
-                    </Button>
-                  </PaginationItem>
-                </PaginationContent>
-              </Pagination>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+                      {row.isEvaluated ? "Evaluated" : "Pending Evaluation"}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <Link
+                      href={`/faculty/essay-evaluations/${row.id}`}
+                      className={cn(
+                        buttonVariants({
+                          variant: row.isEvaluated ? "outline" : "default",
+                          size: "sm",
+                        }),
+                        !row.isEvaluated &&
+                          "bg-(--earist-primary) text-white hover:bg-(--earist-primary)/90",
+                      )}
+                    >
+                      {row.isEvaluated ? "View Evaluation" : "Evaluate Essay"}
+                      <ChevronRight className="ml-1 h-4 w-4" />
+                    </Link>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
+
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between border-t border-(--earist-border-gray) px-4 py-3">
+            <p className="text-xs text-(--earist-body-text)">
+              Showing {(currentPage - 1) * PAGE_SIZE + 1}–
+              {Math.min(currentPage * PAGE_SIZE, total)} of {total} submissions
+            </p>
+            <Pagination className="mx-0 w-auto">
+              <PaginationContent>
+                <PaginationItem>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setPage((p) => Math.max(1, p - 1))}
+                    disabled={currentPage === 1}
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                </PaginationItem>
+                <PaginationItem>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() =>
+                      setPage((p) => Math.min(totalPages, p + 1))
+                    }
+                    disabled={currentPage === totalPages}
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </PaginationItem>
+              </PaginationContent>
+            </Pagination>
+          </div>
+        )}
+      </TableCard>
     </div>
   );
 }

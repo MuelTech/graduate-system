@@ -9,7 +9,7 @@ export default function DefenseLobbyRedirect() {
   const router = useRouter();
   useEffect(() => {
     if (params?.scheduleId) {
-      router.replace(`/panelist/defense-workspace/${params.scheduleId}`);
+      router.replace(`/faculty/defense-workspace/${params.scheduleId}`);
     }
   }, [params?.scheduleId, router]);
   return (

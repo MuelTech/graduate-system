@@ -649,7 +649,7 @@ export default function PanelistDefensesPage() {
 
                       {action.kind === "workspace" && scheduleId ? (
                         <Link
-                          href={"/panelist/defense-workspace/" + scheduleId}
+                          href={"/faculty/defense-workspace/" + scheduleId}
                           aria-label={action.label + " for " + studentName}
                           className={cn(
                             buttonVariants({ size: "default" }),

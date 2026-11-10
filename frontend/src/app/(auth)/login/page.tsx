@@ -128,7 +128,7 @@ function LoginForm() {
         }
       } else {
         const targetDashboard =
-          role === "faculty" ? "/panelist/dashboard" : `/${role}/dashboard`;
+          role === "faculty" ? "/faculty/dashboard" : `/${role}/dashboard`;
         router.push(targetDashboard); // Successfully logged in! Redirect to dashboard/home.
       }
     } catch (err) {

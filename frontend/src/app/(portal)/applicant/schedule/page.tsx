@@ -3,7 +3,17 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
+import { PageHeader } from "@/components/ui/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCard,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -95,19 +105,11 @@ export default function ApplicantSchedulePage() {
   const isScheduled = !!applicant?.confirmedSlot;
 
   return (
-    <div className="space-y-4">
-      {/* Page Header */}
-      <div>
-        <h2
-          className="text-2xl font-bold text-(--earist-primary)"
-          style={{ fontFamily: '"Calibri", sans-serif' }}
-        >
-          Exam Slot Selection
-        </h2>
-        <p className="text-sm text-(--earist-body-text)">
-          Select your entrance examination schedule
-        </p>
-      </div>
+    <div className="space-y-6">
+      <PageHeader
+        title="Exam Slot Selection"
+        description="Select your entrance examination schedule"
+      />
 
       {/* Alignment Gate — Locked State */}
       {isLocked && (
@@ -219,90 +221,76 @@ export default function ApplicantSchedulePage() {
 
           {/* Table View */}
           {viewMode === "table" && (
-            <Card>
-              <CardContent className="p-0">
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b border-(--earist-border-gray) bg-(--earist-surface-gray)">
-                        <th className="px-4 py-3 text-left font-semibold text-(--earist-secondary)">
-                          Exam Date
-                        </th>
-                        <th className="px-4 py-3 text-left font-semibold text-(--earist-secondary)">
-                          Exam Time
-                        </th>
-                        <th className="px-4 py-3 text-center font-semibold text-(--earist-secondary)">
-                          Slots Left
-                        </th>
-                        <th className="px-4 py-3 text-right font-semibold text-(--earist-secondary)">
-                          Action
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {availableSlots.length === 0 && (
-                        <tr>
-                          <td
-                            colSpan={4}
-                            className="py-4 text-center text-gray-500"
+            <TableCard>
+              <Table>
+                <TableHeader>
+                  <TableRow className="hover:bg-(--earist-surface-gray)">
+                    <TableHead>Exam Date</TableHead>
+                    <TableHead>Exam Time</TableHead>
+                    <TableHead className="text-center">Slots Left</TableHead>
+                    <TableHead className="text-right">Action</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {availableSlots.length === 0 && (
+                    <TableRow>
+                      <TableCell
+                        colSpan={4}
+                        className="py-8 text-center text-gray-500"
+                      >
+                        No available slots found.
+                      </TableCell>
+                    </TableRow>
+                  )}
+                  {availableSlots.map((slot) => {
+                    const slotsLeft = slot.maxSlots - slot.slotsTaken;
+                    const isFull = slotsLeft <= 0;
+                    const isPastSlot = isPast(slot.examDate, slot.examTime);
+                    const isDisabled = isFull || isPastSlot;
+                    return (
+                      <TableRow
+                        key={slot.id}
+                        className={isDisabled ? "opacity-50" : ""}
+                      >
+                        <TableCell className="font-semibold text-foreground">
+                          {formatDate(slot.examDate)}
+                        </TableCell>
+                        <TableCell className="text-(--earist-body-text)">
+                          {formatTime(slot.examTime)}
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <Badge
+                            className={
+                              isDisabled
+                                ? "bg-red-100 text-red-700"
+                                : slotsLeft <= 5
+                                  ? "bg-amber-100 text-amber-700"
+                                  : "bg-green-100 text-green-700"
+                            }
                           >
-                            No available slots found.
-                          </td>
-                        </tr>
-                      )}
-                      {availableSlots.map((slot) => {
-                        const slotsLeft = slot.maxSlots - slot.slotsTaken;
-                        const isFull = slotsLeft <= 0;
-                        const isPastSlot = isPast(slot.examDate, slot.examTime);
-                        const isDisabled = isFull || isPastSlot;
-                        return (
-                          <tr
-                            key={slot.id}
-                            className={`border-b border-(--earist-border-gray) last:border-0 ${
-                              isDisabled ? "opacity-50" : ""
-                            }`}
+                            {isPastSlot ? "Expired" : isFull ? "Full" : `${slotsLeft} left`}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Button
+                            size="sm"
+                            disabled={isDisabled}
+                            onClick={() => setConfirmSlot(slot)}
+                            className={
+                              isDisabled
+                                ? "cursor-not-allowed bg-gray-200 text-gray-400"
+                                : "bg-(--earist-primary) text-white hover:bg-(--earist-primary)/90"
+                            }
                           >
-                            <td className="px-4 py-3 font-medium text-(--earist-primary)">
-                              {formatDate(slot.examDate)}
-                            </td>
-                            <td className="px-4 py-3 text-(--earist-body-text)">
-                              {formatTime(slot.examTime)}
-                            </td>
-                            <td className="px-4 py-3 text-center">
-                              <Badge
-                                className={
-                                  isDisabled
-                                    ? "bg-red-100 text-red-700"
-                                    : slotsLeft <= 5
-                                      ? "bg-amber-100 text-amber-700"
-                                      : "bg-green-100 text-green-700"
-                                }
-                              >
-                                {isPastSlot ? "Expired" : isFull ? "Full" : `${slotsLeft} left`}
-                              </Badge>
-                            </td>
-                            <td className="px-4 py-3 text-right">
-                              <Button
-                                size="sm"
-                                disabled={isDisabled}
-                                onClick={() => setConfirmSlot(slot)}
-                                className={
-                                  isDisabled
-                                    ? "cursor-not-allowed bg-gray-200 text-gray-400"
-                                    : "bg-(--earist-primary) text-white hover:bg-(--earist-primary)/90"
-                                }
-                              >
-                                Select This Slot
-                              </Button>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              </CardContent>
-            </Card>
+                            Select This Slot
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </TableCard>
           )}
 
           {/* Calendar View */}

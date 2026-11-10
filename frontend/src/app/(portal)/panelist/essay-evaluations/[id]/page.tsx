@@ -50,7 +50,7 @@ export default function FacultyEssayEvaluationDetailPage() {
           items={[
             {
               label: "Essay Evaluations",
-              href: "/panelist/essay-evaluations",
+              href: "/faculty/essay-evaluations",
             },
             { label: "Evaluation Record" },
           ]}
@@ -92,7 +92,7 @@ export default function FacultyEssayEvaluationDetailPage() {
                 </Button>
               )}
               <Link
-                href="/panelist/essay-evaluations"
+                href="/faculty/essay-evaluations"
                 className={cn(buttonVariants({ variant: "ghost", size: "sm" }))}
               >
                 Back to Essay Evaluations
@@ -116,7 +116,7 @@ export default function FacultyEssayEvaluationDetailPage() {
     <div className="mx-auto w-full max-w-5xl space-y-6">
       <Breadcrumb
         items={[
-          { label: "Essay Evaluations", href: "/panelist/essay-evaluations" },
+          { label: "Essay Evaluations", href: "/faculty/essay-evaluations" },
           { label: fullName || "Applicant Essay" },
         ]}
       />
@@ -126,7 +126,7 @@ export default function FacultyEssayEvaluationDetailPage() {
         description={`${pinnacleId} · ${record.program.programName}`}
         actions={
           <Link
-            href="/panelist/essay-evaluations"
+            href="/faculty/essay-evaluations"
             className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
           >
             <ArrowLeft className="mr-1.5 h-4 w-4" />

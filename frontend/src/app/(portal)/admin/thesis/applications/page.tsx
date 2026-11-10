@@ -6,7 +6,15 @@ import { apiClientRequest } from "@/lib/api.client";
 import { cn } from "@/lib/utils";
 import { PageHeader } from "@/components/ui/page-header";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Card, CardContent } from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCard,
+  TableCell,
+  TableHead as SharedTableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { DefenseApplicationFilters } from "@/components/admin/defense-applications/filters";
 import {
@@ -55,37 +63,35 @@ function TableShell({
   children: React.ReactNode;
 }) {
   return (
-    <div className="overflow-x-auto">
-      <table
-        className={cn(
-          "w-full table-fixed border-collapse",
-          variant === "schedule" ? "min-w-[960px]" : "min-w-[900px]",
+    <Table
+      className={cn(
+        "table-fixed",
+        variant === "schedule" ? "min-w-[960px]" : "min-w-[900px]",
+      )}
+    >
+      <colgroup>
+        {variant === "schedule" ? (
+          <>
+            <col className="w-[22%]" />
+            <col className="w-[13%]" />
+            <col className="w-[18%]" />
+            <col className="w-[19%]" />
+            <col className="w-[13%]" />
+            <col className="w-[15%]" />
+          </>
+        ) : (
+          <>
+            <col className="w-[26%]" />
+            <col className="w-[15%]" />
+            <col className="w-[13%]" />
+            <col className="w-[16%]" />
+            <col className="w-[13%]" />
+            <col className="w-[17%]" />
+          </>
         )}
-      >
-        <colgroup>
-          {variant === "schedule" ? (
-            <>
-              <col className="w-[22%]" />
-              <col className="w-[13%]" />
-              <col className="w-[18%]" />
-              <col className="w-[19%]" />
-              <col className="w-[13%]" />
-              <col className="w-[15%]" />
-            </>
-          ) : (
-            <>
-              <col className="w-[26%]" />
-              <col className="w-[15%]" />
-              <col className="w-[13%]" />
-              <col className="w-[16%]" />
-              <col className="w-[13%]" />
-              <col className="w-[17%]" />
-            </>
-          )}
-        </colgroup>
-        {children}
-      </table>
-    </div>
+      </colgroup>
+      {children}
+    </Table>
   );
 }
 
@@ -107,21 +113,14 @@ const SCHEDULE_HEADERS = [
 function TableHead({ variant }: { variant: ApplicationTableVariant }) {
   const headers = variant === "schedule" ? SCHEDULE_HEADERS : APPLICATION_HEADERS;
   return (
-    <thead>
-      <tr className="border-b border-(--earist-border-gray) bg-(--earist-surface-gray)">
+    <TableHeader>
+      <TableRow className="hover:bg-(--earist-surface-gray)">
         {headers.map((label) => (
-          <th
-            key={label}
-            className="px-4 py-3 text-left text-xs font-semibold text-(--earist-body-text)"
-          >
-            {label}
-          </th>
+          <SharedTableHead key={label}>{label}</SharedTableHead>
         ))}
-        <th className="px-4 py-3 text-right text-xs font-semibold text-(--earist-body-text)">
-          Action
-        </th>
-      </tr>
-    </thead>
+        <SharedTableHead className="text-right">Action</SharedTableHead>
+      </TableRow>
+    </TableHeader>
   );
 }
 
@@ -129,51 +128,48 @@ function TableSkeleton({ variant }: { variant: ApplicationTableVariant }) {
   return (
     <TableShell variant={variant}>
       <TableHead variant={variant} />
-      <tbody aria-hidden="true">
+      <TableBody aria-hidden="true">
         {Array.from({ length: 6 }).map((_, index) => (
-          <tr
-            key={index}
-            className="border-b border-(--earist-border-gray) last:border-0"
-          >
-            <td className="px-4 py-3 align-top">
+          <TableRow key={index}>
+            <TableCell>
               <Skeleton className="h-4 w-40" />
               <Skeleton className="mt-2 h-3 w-32" />
-            </td>
-            <td className="px-4 py-3 align-top">
+            </TableCell>
+            <TableCell>
               <Skeleton className="h-4 w-24" />
-            </td>
+            </TableCell>
             {variant === "schedule" ? (
               <>
-                <td className="px-4 py-3 align-top">
+                <TableCell>
                   <Skeleton className="h-4 w-28" />
                   <Skeleton className="mt-2 h-3 w-16" />
-                </td>
-                <td className="px-4 py-3 align-top">
+                </TableCell>
+                <TableCell>
                   <Skeleton className="h-4 w-32" />
-                </td>
-                <td className="px-4 py-3 align-top">
+                </TableCell>
+                <TableCell>
                   <Skeleton className="h-5 w-24 rounded-full" />
-                </td>
+                </TableCell>
               </>
             ) : (
               <>
-                <td className="px-4 py-3 align-top">
+                <TableCell>
                   <Skeleton className="h-4 w-24" />
-                </td>
-                <td className="px-4 py-3 align-top">
+                </TableCell>
+                <TableCell>
                   <Skeleton className="h-4 w-28" />
-                </td>
-                <td className="px-4 py-3 align-top">
+                </TableCell>
+                <TableCell>
                   <Skeleton className="h-5 w-24 rounded-full" />
-                </td>
+                </TableCell>
               </>
             )}
-            <td className="px-4 py-3 align-top">
+            <TableCell>
               <Skeleton className="ml-auto h-8 w-36 rounded-md" />
-            </td>
-          </tr>
+            </TableCell>
+          </TableRow>
         ))}
-      </tbody>
+      </TableBody>
     </TableShell>
   );
 }
@@ -399,65 +395,63 @@ export default function AdminDefenseApplicationsPage() {
         {isFetching && !isLoading ? "Updating defense applications." : ""}
       </p>
 
-      <Card className="overflow-hidden py-0">
-        <CardContent className="min-w-0 p-0">
-          {isLoading ? (
-            <TableSkeleton variant={renderedVariant} />
-          ) : filterRequestFailed || loadFailedWithoutData ? (
-            <div className="flex flex-col items-center justify-center gap-3 px-6 py-14 text-center">
-              <AlertCircle
-                className="h-8 w-8 text-(--earist-secondary)"
+      <TableCard>
+        {isLoading ? (
+          <TableSkeleton variant={renderedVariant} />
+        ) : filterRequestFailed || loadFailedWithoutData ? (
+          <div className="flex flex-col items-center justify-center gap-3 px-6 py-14 text-center">
+            <AlertCircle
+              className="h-8 w-8 text-(--earist-secondary)"
+              aria-hidden="true"
+            />
+            <div className="space-y-1">
+              <p className="text-sm font-semibold text-(--earist-primary)">
+                Unable to load defense applications
+              </p>
+              <p className="text-sm text-(--earist-body-text)">
+                The applications for the current view could not be loaded.
+                Please try again.
+              </p>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => applicationsQuery.refetch()}
+              disabled={isFetching}
+            >
+              <RefreshCw
+                className={cn("mr-2 h-4 w-4", isFetching && "animate-spin")}
                 aria-hidden="true"
               />
-              <div className="space-y-1">
-                <p className="text-sm font-semibold text-(--earist-primary)">
-                  Unable to load defense applications
-                </p>
-                <p className="text-sm text-(--earist-body-text)">
-                  The applications for the current view could not be loaded.
-                  Please try again.
-                </p>
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => applicationsQuery.refetch()}
-                disabled={isFetching}
-              >
-                <RefreshCw
-                  className={cn("mr-2 h-4 w-4", isFetching && "animate-spin")}
-                  aria-hidden="true"
-                />
-                Retry
+              Retry
+            </Button>
+          </div>
+        ) : items.length === 0 ? (
+          <div className="flex flex-col items-center justify-center gap-2 px-6 py-14 text-center">
+            <p className="text-sm font-medium text-(--earist-primary)">
+              {emptyMessage}
+            </p>
+            {isFiltered && (
+              <Button variant="outline" size="sm" onClick={clearFilters}>
+                Clear filters
               </Button>
-            </div>
-          ) : items.length === 0 ? (
-            <div className="flex flex-col items-center justify-center gap-2 px-6 py-14 text-center">
-              <p className="text-sm font-medium text-(--earist-primary)">
-                {emptyMessage}
-              </p>
-              {isFiltered && (
-                <Button variant="outline" size="sm" onClick={clearFilters}>
-                  Clear filters
-                </Button>
-              )}
-            </div>
-          ) : (
-            <TableShell variant={renderedVariant}>
-              <TableHead variant={renderedVariant} />
-              <tbody>
-                {items.map((app) => (
-                  <DefenseApplicationRow
-                    key={app.id}
-                    app={app}
-                    variant={renderedVariant}
-                  />
-                ))}
-              </tbody>
-            </TableShell>
-          )}
-        </CardContent>
-      </Card>
+            )}
+          </div>
+        ) : (
+          <TableShell variant={renderedVariant}>
+            <TableHead variant={renderedVariant} />
+            <TableBody>
+              {items.map((app) => (
+                <DefenseApplicationRow
+                  key={app.id}
+                  app={app}
+                  variant={renderedVariant}
+                />
+              ))}
+            </TableBody>
+          </TableShell>
+        )}
+      </TableCard>
 
       {!isLoading && total > 0 && (
         <div className="flex flex-col items-center justify-between gap-3 sm:flex-row">

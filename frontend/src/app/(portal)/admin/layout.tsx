@@ -39,8 +39,9 @@ interface AuthMeResponse {
 /** Nested admin routes stay visually active on their parent nav entry. */
 function isNavActive(pathname: string, href: string): boolean {
   if (
-    href === "/admin/users/panelists" &&
-    pathname.startsWith("/admin/users/faculty")
+    href === "/admin/users/faculty" &&
+    (pathname.startsWith("/admin/users/faculty") ||
+      pathname.startsWith("/admin/users/panelists"))
   ) {
     return true;
   }
@@ -55,7 +56,7 @@ const allNavItems = [
     children: [
       { href: "/admin/users/applicants", label: "Applicants" },
       { href: "/admin/users/students", label: "Students" },
-      { href: "/admin/users/panelists", label: "Faculty" },
+      { href: "/admin/users/faculty", label: "Faculty" },
       { href: "/admin/users/administrators", label: "Administrators" },
     ],
   },

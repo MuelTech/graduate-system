@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
+import { TableCell, TableRow } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
 import { CalendarClock, Eye, FileText } from "lucide-react";
 import type { ApprovedApplicationDto } from "@/types";
@@ -139,21 +140,21 @@ export function DefenseApplicationRow({
     const venue = parseVenueOrLink(schedule?.venueOrLink);
     const action = activeScheduleAction(schedule?.sessionStatus);
     return (
-      <tr className="border-b border-(--earist-border-gray) last:border-0 hover:bg-(--earist-surface-gray)/60">
-        <td className="px-4 py-3 align-top">
+      <TableRow>
+        <TableCell>
           <p className="text-sm font-semibold break-words text-foreground">
             {studentName}
           </p>
           <p className="mt-0.5 text-xs break-words text-(--earist-body-text)">
             {identitySecondary}
           </p>
-        </td>
-        <td className="px-4 py-3 align-top">
+        </TableCell>
+        <TableCell>
           <p className="text-sm break-words text-(--earist-body-text)">
             {STAGE_LABELS[app.stage] ?? app.stage}
           </p>
-        </td>
-        <td className="px-4 py-3 align-top">
+        </TableCell>
+        <TableCell>
           {schedule?.defenseDate ? (
             <>
               <p className="text-sm break-words text-foreground">
@@ -166,8 +167,8 @@ export function DefenseApplicationRow({
           ) : (
             <p className="text-sm text-(--earist-body-text)">Not set</p>
           )}
-        </td>
-        <td className="px-4 py-3 align-top">
+        </TableCell>
+        <TableCell>
           {venue.kind === "url" ? (
             <a
               href={venue.href}
@@ -187,8 +188,8 @@ export function DefenseApplicationRow({
           ) : (
             <p className="text-sm text-(--earist-body-text)">Not set</p>
           )}
-        </td>
-        <td className="px-4 py-3 align-top">
+        </TableCell>
+        <TableCell>
           <Badge
             variant="outline"
             className={cn(
@@ -198,8 +199,8 @@ export function DefenseApplicationRow({
           >
             {sessionStatusLabel(schedule?.sessionStatus)}
           </Badge>
-        </td>
-        <td className="px-4 py-3 text-right align-top">
+        </TableCell>
+        <TableCell className="text-right">
           {schedule ? (
             action.kind === "record" ? (
               <ActionButton
@@ -221,47 +222,47 @@ export function DefenseApplicationRow({
           ) : (
             <span className="ml-auto text-sm text-(--earist-body-text)">—</span>
           )}
-        </td>
-      </tr>
+        </TableCell>
+      </TableRow>
     );
   }
 
   const action = applicationAction(app);
 
   return (
-    <tr className="border-b border-(--earist-border-gray) last:border-0 hover:bg-(--earist-surface-gray)/60">
-      <td className="px-4 py-3 align-top">
+    <TableRow>
+      <TableCell>
         <p className="text-sm font-semibold break-words text-foreground">
           {studentName}
         </p>
         <p className="mt-0.5 text-xs break-words text-(--earist-body-text)">
           {identitySecondary}
         </p>
-      </td>
-      <td className="px-4 py-3 align-top">
+      </TableCell>
+      <TableCell>
         <p className="text-sm break-words text-(--earist-body-text)">
           {STAGE_LABELS[app.stage] ?? app.stage}
         </p>
-      </td>
-      <td className="px-4 py-3 align-top">
+      </TableCell>
+      <TableCell>
         <p className="text-sm break-words text-(--earist-body-text)">
           {formatSubmitted(app.createdAt)}
         </p>
-      </td>
-      <td className="px-4 py-3 align-top">
+      </TableCell>
+      <TableCell>
         <p className="text-sm break-words text-(--earist-body-text)">
           {docCount} document{docCount === 1 ? "" : "s"} submitted
         </p>
-      </td>
-      <td className="px-4 py-3 align-top">
+      </TableCell>
+      <TableCell>
         <Badge
           variant="outline"
           className={cn("font-medium", STATUS_BADGE_CLASS[statusKey])}
         >
           {displayStatusLabel(app)}
         </Badge>
-      </td>
-      <td className="px-4 py-3 text-right align-top">
+      </TableCell>
+      <TableCell className="text-right">
         <ActionButton
           href={action.href}
           label={action.label}
@@ -274,7 +275,7 @@ export function DefenseApplicationRow({
             )
           }
         />
-      </td>
-    </tr>
+      </TableCell>
+    </TableRow>
   );
 }

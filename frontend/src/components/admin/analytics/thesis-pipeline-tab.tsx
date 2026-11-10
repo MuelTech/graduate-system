@@ -11,6 +11,14 @@ import {
   CheckCircle2,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -418,56 +426,54 @@ export function ThesisPipelineTab({ data }: ThesisPipelineTabProps) {
           </CardHeader>
 
           <CardContent className="p-0">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs text-(--earist-body-text)">
-                <thead className="bg-(--earist-surface-gray) text-[11px] font-semibold text-(--earist-body-text) border-b border-(--earist-border-gray)">
-                  <tr>
-                    <th scope="col" className="px-3 py-3 text-center">Rank</th>
-                    <th scope="col" className="px-4 py-3">Manuscript Title & Author</th>
-                    <th scope="col" className="px-3 py-3">Program</th>
-                    <th scope="col" className="px-3 py-3 text-center">Year</th>
-                    <th scope="col" className="px-3 py-3 text-center">Downloads</th>
-                    <th scope="col" className="px-3 py-3 text-center">Views</th>
-                    <th scope="col" className="px-4 py-3 text-right">STRIKE Clearance</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-(--earist-border-gray)">
-                  {filteredManuscripts.length === 0 ? (
-                    <tr>
-                      <td colSpan={7} className="px-4 py-8 text-center text-xs text-gray-400">
-                        No manuscripts match your query.
-                      </td>
-                    </tr>
-                  ) : (
-                    filteredManuscripts.map((m) => (
-                      <tr key={m.id} className="hover:bg-(--earist-surface-gray)/60 transition-colors">
-                        <td className="px-3 py-3 text-center font-bold text-foreground">
-                          {m.rank}
-                        </td>
-                        <td className="px-4 py-3">
-                          <p className="font-semibold text-foreground line-clamp-1">{m.title}</p>
-                          <p className="text-[11px] text-gray-500">{m.author}</p>
-                        </td>
-                        <td className="px-3 py-3 text-xs text-(--earist-body-text)">
-                          {m.program.replace("Master in ", "").replace("Master of Science in ", "MS ")}
-                        </td>
-                        <td className="px-3 py-3 text-center text-xs">{m.publishedYear}</td>
-                        <td className="px-3 py-3 text-center font-bold text-(--earist-primary)">
-                          {m.downloads}
-                        </td>
-                        <td className="px-3 py-3 text-center text-gray-500">{m.views}</td>
-                        <td className="px-4 py-3 text-right">
-                          <span className="inline-flex items-center gap-1 text-[11px] font-medium text-(--earist-success)">
-                            <CheckCircle2 className="h-3 w-3" />
-                            Verified (&lt;20%)
-                          </span>
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
+            <Table>
+              <TableHeader>
+                <TableRow className="hover:bg-(--earist-surface-gray)">
+                  <TableHead className="text-center">Rank</TableHead>
+                  <TableHead>Manuscript Title & Author</TableHead>
+                  <TableHead>Program</TableHead>
+                  <TableHead className="text-center">Year</TableHead>
+                  <TableHead className="text-center">Downloads</TableHead>
+                  <TableHead className="text-center">Views</TableHead>
+                  <TableHead className="text-right">STRIKE Clearance</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredManuscripts.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={7} className="py-8 text-center text-xs text-gray-400">
+                      No manuscripts match your query.
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  filteredManuscripts.map((m) => (
+                    <TableRow key={m.id}>
+                      <TableCell className="text-center font-bold text-foreground">
+                        {m.rank}
+                      </TableCell>
+                      <TableCell>
+                        <p className="font-semibold text-foreground line-clamp-1">{m.title}</p>
+                        <p className="text-[11px] text-gray-500">{m.author}</p>
+                      </TableCell>
+                      <TableCell className="text-xs text-(--earist-body-text)">
+                        {m.program.replace("Master in ", "").replace("Master of Science in ", "MS ")}
+                      </TableCell>
+                      <TableCell className="text-center text-xs">{m.publishedYear}</TableCell>
+                      <TableCell className="text-center font-bold text-(--earist-primary)">
+                        {m.downloads}
+                      </TableCell>
+                      <TableCell className="text-center text-gray-500">{m.views}</TableCell>
+                      <TableCell className="text-right">
+                        <span className="inline-flex items-center gap-1 text-[11px] font-medium text-(--earist-success)">
+                          <CheckCircle2 className="h-3 w-3" />
+                          Verified (&lt;20%)
+                        </span>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
           </CardContent>
         </Card>
       </div>

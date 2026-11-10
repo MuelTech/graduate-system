@@ -12,7 +12,7 @@ export default function ScoringRedirect() {
   const router = useRouter();
   useEffect(() => {
     if (params?.id) {
-      router.replace(`/panelist/defense-workspace/${params.id}`);
+      router.replace(`/faculty/defense-workspace/${params.id}`);
     }
   }, [params?.id, router]);
   return (

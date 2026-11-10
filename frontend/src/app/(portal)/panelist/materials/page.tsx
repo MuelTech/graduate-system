@@ -7,5 +7,5 @@ import { redirect } from "next/navigation";
  * This compatibility route forwards to the single entry point.
  */
 export default function PanelistMaterialsIndexRedirect() {
-  redirect("/panelist/defenses");
+  redirect("/faculty/defenses");
 }

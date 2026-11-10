@@ -37,18 +37,21 @@ interface FacultyProfileAccess {
  * compatibility route families that resolve into that same context.
  */
 const MY_DEFENSES_CONTEXT_ROUTES = [
+  "/faculty/defenses",
+  "/faculty/defense-workspace",
+  "/faculty/scoring",
+  "/faculty/defense-lobby",
+  "/faculty/materials",
   "/panelist/defenses",
   "/panelist/defense-workspace",
   "/panelist/scoring",
   "/panelist/defense-lobby",
   "/panelist/materials",
-  "/faculty/defenses",
-  "/faculty/defense-workspace",
 ];
 
 function isNavItemActive(pathname: string, href: string): boolean {
-  const normalizedPathname = pathname.replace(/^\/faculty/, "/panelist");
-  if (href === "/panelist/defenses") {
+  const normalizedPathname = pathname.replace(/^\/panelist/, "/faculty");
+  if (href === "/faculty/defenses") {
     return MY_DEFENSES_CONTEXT_ROUTES.some(
       (base) =>
         normalizedPathname === base || normalizedPathname.startsWith(`${base}/`),
@@ -88,25 +91,25 @@ export default function PanelistLayout({
     false;
 
   const navItems = [
-    { href: "/panelist/dashboard", label: "Dashboard", icon: LayoutDashboard },
-    { href: "/panelist/profile", label: "Profile", icon: User },
+    { href: "/faculty/dashboard", label: "Dashboard", icon: LayoutDashboard },
+    { href: "/faculty/profile", label: "Profile", icon: User },
     ...(canEvaluateEssays
       ? [
           {
-            href: "/panelist/essay-evaluations",
+            href: "/faculty/essay-evaluations",
             label: "Essay Evaluations",
             icon: ClipboardCheck,
           },
         ]
       : []),
-    { href: "/panelist/defenses", label: "My Defenses", icon: FileCheck2 },
+    { href: "/faculty/defenses", label: "My Defenses", icon: FileCheck2 },
     ...(!isExternal
-      ? [{ href: "/panelist/advisees", label: "My Advisees", icon: Users }]
+      ? [{ href: "/faculty/advisees", label: "My Advisees", icon: Users }]
       : []),
-    { href: "/panelist/signatures", label: "E-Signatures", icon: PenTool },
-    { href: "/panelist/repository", label: "Repository", icon: Library },
+    { href: "/faculty/signatures", label: "E-Signatures", icon: PenTool },
+    { href: "/faculty/repository", label: "Repository", icon: Library },
     {
-      href: "/panelist/announcements",
+      href: "/faculty/announcements",
       label: "Announcements",
       icon: Megaphone,
     },
@@ -147,7 +150,7 @@ export default function PanelistLayout({
       >
         {/* Logo */}
         <div className="flex h-16 items-center justify-between border-b border-white/10 px-4">
-          <Link href="/panelist/dashboard" className="flex items-center gap-2">
+          <Link href="/faculty/dashboard" className="flex items-center gap-2">
             <GraduationCap className="h-7 w-7 text-(--earist-accent)" />
             {!collapsed && (
               <div className="flex flex-col">

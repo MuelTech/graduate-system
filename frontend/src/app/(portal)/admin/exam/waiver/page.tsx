@@ -3,7 +3,17 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiClientRequest } from "@/lib/api.client";
+import { PageHeader } from "@/components/ui/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCard,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Waiver } from "@/types";
@@ -140,19 +150,11 @@ export default function AdminWaiverValidationPage() {
   };
 
   return (
-    <div className="space-y-4">
-      {/* Page Header */}
-      <div>
-        <h2
-          className="text-2xl font-bold text-(--earist-primary)"
-          style={{ fontFamily: '"Calibri", sans-serif' }}
-        >
-          Bridging Waiver Validation Queue
-        </h2>
-        <p className="text-sm text-(--earist-body-text)">
-          Review and validate bridging waivers for misaligned applicants
-        </p>
-      </div>
+    <div className="space-y-6">
+      <PageHeader
+        title="Bridging Waiver Validation Queue"
+        description="Review and validate bridging waivers for misaligned applicants"
+      />
 
       {/* Summary Cards */}
       <div className="grid grid-cols-3 gap-3">
@@ -223,104 +225,88 @@ export default function AdminWaiverValidationPage() {
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         {/* Waiver Queue Table */}
         <div className="lg:col-span-2">
-          <Card>
-            <CardContent className="p-0">
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-(--earist-border-gray) bg-(--earist-surface-gray)">
-                      <th className="px-4 py-3 text-left font-semibold text-(--earist-secondary)">
-                        Applicant
-                      </th>
-                      <th className="px-4 py-3 text-left font-semibold text-(--earist-secondary)">
-                        Undergraduate Course
-                      </th>
-                      <th className="px-4 py-3 text-left font-semibold text-(--earist-secondary)">
-                        Intended Program
-                      </th>
-                      <th className="px-4 py-3 text-left font-semibold text-(--earist-secondary)">
-                        Submitted
-                      </th>
-                      <th className="px-4 py-3 text-center font-semibold text-(--earist-secondary)">
-                        Status
-                      </th>
-                      <th className="px-4 py-3 text-right font-semibold text-(--earist-secondary)">
-                        Action
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {isLoading ? (
-                      <tr>
-                        <td
-                          colSpan={6}
-                          className="py-8 text-center text-gray-500"
+          <TableCard>
+            <Table>
+              <TableHeader>
+                <TableRow className="hover:bg-(--earist-surface-gray)">
+                  <TableHead>Applicant</TableHead>
+                  <TableHead>Undergraduate Course</TableHead>
+                  <TableHead>Intended Program</TableHead>
+                  <TableHead>Submitted</TableHead>
+                  <TableHead className="text-center">Status</TableHead>
+                  <TableHead className="text-right">Action</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {isLoading ? (
+                  <TableRow>
+                    <TableCell
+                      colSpan={6}
+                      className="py-8 text-center text-gray-500"
+                    >
+                      Loading waivers...
+                    </TableCell>
+                  </TableRow>
+                ) : paginatedWaivers.length === 0 ? (
+                  <TableRow>
+                    <TableCell
+                      colSpan={6}
+                      className="py-8 text-center text-gray-500"
+                    >
+                      No waivers found.
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  paginatedWaivers.map((waiver: Waiver) => (
+                    <TableRow
+                      key={waiver.id}
+                      className={
+                        selectedWaiverId === waiver.id
+                          ? "bg-(--earist-surface-light-red)"
+                          : ""
+                      }
+                    >
+                      <TableCell>
+                        <div>
+                          <p className="font-semibold text-foreground">
+                            {waiver.student?.user?.firstName}{" "}
+                            {waiver.student?.user?.lastName}
+                          </p>
+                          <p className="text-xs text-(--earist-body-text)">
+                            {waiver.student?.pinnacleApplicantId}
+                          </p>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-xs text-(--earist-body-text)">
+                        {waiver.undergraduateProgram?.programName || "N/A"}
+                      </TableCell>
+                      <TableCell className="text-xs text-(--earist-body-text)">
+                        {waiver.intendedProgram?.programName || "N/A"}
+                      </TableCell>
+                      <TableCell className="text-xs text-(--earist-body-text)">
+                        {new Date(waiver.createdAt).toLocaleDateString()}
+                      </TableCell>
+                      <TableCell className="text-center">
+                        {getStatusBadge(waiver.status)}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <button
+                          onClick={() => {
+                            setSelectedWaiverId(waiver.id);
+                            setAdminNotes("");
+                          }}
+                          className="rounded p-1.5 text-(--earist-body-text) hover:bg-(--earist-surface-gray)"
+                          title="Review"
                         >
-                          Loading waivers...
-                        </td>
-                      </tr>
-                    ) : paginatedWaivers.length === 0 ? (
-                      <tr>
-                        <td
-                          colSpan={6}
-                          className="py-8 text-center text-gray-500"
-                        >
-                          No waivers found.
-                        </td>
-                      </tr>
-                    ) : (
-                      paginatedWaivers.map((waiver: Waiver) => (
-                        <tr
-                          key={waiver.id}
-                          className={`border-b border-(--earist-border-gray) last:border-0 ${
-                            selectedWaiverId === waiver.id
-                              ? "bg-(--earist-surface-light-red)"
-                              : ""
-                          }`}
-                        >
-                          <td className="px-4 py-3">
-                            <div>
-                              <p className="font-medium text-(--earist-primary)">
-                                {waiver.student?.user?.firstName}{" "}
-                                {waiver.student?.user?.lastName}
-                              </p>
-                              <p className="text-xs text-(--earist-body-text)">
-                                {waiver.student?.pinnacleApplicantId}
-                              </p>
-                            </div>
-                          </td>
-                          <td className="px-4 py-3 text-xs text-(--earist-body-text)">
-                            {waiver.undergraduateProgram?.programName || "N/A"}
-                          </td>
-                          <td className="px-4 py-3 text-xs text-(--earist-body-text)">
-                            {waiver.intendedProgram?.programName || "N/A"}
-                          </td>
-                          <td className="px-4 py-3 text-xs text-(--earist-body-text)">
-                            {new Date(waiver.createdAt).toLocaleDateString()}
-                          </td>
-                          <td className="px-4 py-3 text-center">
-                            {getStatusBadge(waiver.status)}
-                          </td>
-                          <td className="px-4 py-3 text-right">
-                            <button
-                              onClick={() => {
-                                setSelectedWaiverId(waiver.id);
-                                setAdminNotes("");
-                              }}
-                              className="rounded p-1.5 text-(--earist-body-text) hover:bg-(--earist-surface-gray)"
-                              title="Review"
-                            >
-                              <Eye className="h-4 w-4" />
-                            </button>
-                          </td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </CardContent>
-          </Card>
+                          <Eye className="h-4 w-4" />
+                        </button>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </TableCard>
           {totalPages > 1 && (
             <div className="mt-4 flex justify-center">
               <Pagination>

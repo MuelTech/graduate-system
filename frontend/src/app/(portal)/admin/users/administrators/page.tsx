@@ -12,6 +12,16 @@ import {
   type AdminCapabilityKey,
 } from "@/lib/admin-capabilities";
 import { Card, CardContent } from "@/components/ui/card";
+import {
+  TableCard,
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+} from "@/components/ui/table";
+import { PageHeader } from "@/components/ui/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -424,29 +434,20 @@ export default function AdminAdministratorsPage() {
       editForm.adminCapabilities.length > 0);
 
   return (
-    <div className="space-y-4">
-      {/* Page Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2
-            className="text-2xl font-bold text-(--earist-primary)"
-            style={{ fontFamily: '"Calibri", sans-serif' }}
+    <div className="space-y-6">
+      <PageHeader
+        title="Administrators Management"
+        description="Manage Full Administrators and Restricted Administrators with scoped module permissions."
+        actions={
+          <Button
+            onClick={() => setShowCreateModal(true)}
+            className="bg-(--earist-primary) text-white hover:bg-(--earist-primary)/90"
           >
-            Administrators Management
-          </h2>
-          <p className="text-sm text-(--earist-body-text)">
-            Manage Full Administrators and Restricted Administrators with
-            scoped module permissions
-          </p>
-        </div>
-        <Button
-          onClick={() => setShowCreateModal(true)}
-          className="bg-(--earist-primary) text-white hover:bg-(--earist-primary)/90"
-        >
-          <Plus className="mr-1 h-4 w-4" />
-          Add Administrator
-        </Button>
-      </div>
+            <Plus className="mr-1 h-4 w-4" />
+            Add Administrator
+          </Button>
+        }
+      />
 
       {/* Summary Cards */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -529,181 +530,162 @@ export default function AdminAdministratorsPage() {
       </Card>
 
       {/* Administrators Table */}
-      <Card>
-        <CardContent className="p-0">
-          {isLoading ? (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="h-6 w-6 animate-spin text-(--earist-primary)" />
-              <span className="ml-2 text-sm text-(--earist-body-text)">
-                Loading administrators...
-              </span>
-            </div>
-          ) : paginatedAdmins.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-12 text-center">
-              <UserX className="mb-4 h-12 w-12 text-gray-300" />
-              <p className="text-sm text-(--earist-body-text)">
-                No administrators found
-              </p>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-(--earist-border-gray) bg-(--earist-surface-gray)">
-                    <th className="px-4 py-3 text-left font-semibold text-(--earist-secondary)">
-                      Name
-                    </th>
-                    <th className="px-4 py-3 text-left font-semibold text-(--earist-secondary)">
-                      Email
-                    </th>
-                    <th className="px-4 py-3 text-center font-semibold text-(--earist-secondary)">
-                      Access Level
-                    </th>
-                    <th className="px-4 py-3 text-left font-semibold text-(--earist-secondary)">
-                      Granted Access
-                    </th>
-                    <th className="px-4 py-3 text-center font-semibold text-(--earist-secondary)">
-                      Status
-                    </th>
-                    <th className="px-4 py-3 text-right font-semibold text-(--earist-secondary)">
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {paginatedAdmins.map((admin) => (
-                    <tr
-                      key={admin.id}
-                      className="border-b border-(--earist-border-gray) last:border-0 hover:bg-gray-50"
+      <TableCard>
+        {isLoading ? (
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="h-6 w-6 animate-spin text-(--earist-primary)" />
+            <span className="ml-2 text-sm text-(--earist-body-text)">
+              Loading administrators...
+            </span>
+          </div>
+        ) : paginatedAdmins.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-12 text-center">
+            <UserX className="mb-4 h-12 w-12 text-gray-300" />
+            <p className="text-sm text-(--earist-body-text)">
+              No administrators found
+            </p>
+          </div>
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow className="hover:bg-transparent">
+                <TableHead>Name</TableHead>
+                <TableHead>Email</TableHead>
+                <TableHead className="text-center">Access Level</TableHead>
+                <TableHead>Granted Access</TableHead>
+                <TableHead className="text-center">Status</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {paginatedAdmins.map((admin) => (
+                <TableRow key={admin.id}>
+                  <TableCell>
+                    <p className="font-medium text-(--earist-primary)">
+                      {formatDisplayName(admin)}
+                    </p>
+                  </TableCell>
+                  <TableCell className="text-xs text-(--earist-body-text)">
+                    {admin.email}
+                  </TableCell>
+                  <TableCell className="text-center">
+                    <Badge
+                      className={
+                        admin.adminAccessLevel === "FULL"
+                          ? "bg-purple-100 text-purple-700"
+                          : "bg-blue-100 text-blue-700"
+                      }
                     >
-                      <td className="px-4 py-3">
-                        <p className="font-medium text-(--earist-primary)">
-                          {formatDisplayName(admin)}
-                        </p>
-                      </td>
-                      <td className="px-4 py-3 text-xs text-(--earist-body-text)">
-                        {admin.email}
-                      </td>
-                      <td className="px-4 py-3 text-center">
-                        <Badge
-                          className={
-                            admin.adminAccessLevel === "FULL"
-                              ? "bg-purple-100 text-purple-700"
-                              : "bg-blue-100 text-blue-700"
-                          }
-                        >
-                          {admin.adminAccessLevel === "FULL"
-                            ? "Full Administrator"
-                            : "Restricted Administrator"}
-                        </Badge>
-                      </td>
-                      <td className="px-4 py-3 text-xs text-(--earist-body-text)">
-                        {formatCapabilitySummary(admin)}
-                      </td>
-                      <td className="px-4 py-3 text-center">
-                        <Badge
-                          className={
-                            admin.isActive
-                              ? "bg-green-100 text-green-700"
-                              : "bg-gray-100 text-gray-500"
-                          }
-                        >
-                          {admin.isActive ? "Active" : "Inactive"}
-                        </Badge>
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="flex justify-end gap-1">
-                          <button
-                            onClick={() => openViewModal(admin)}
-                            className="rounded p-1.5 text-(--earist-body-text) hover:bg-(--earist-surface-gray)"
-                            title="View Details"
-                          >
-                            <Eye className="h-4 w-4" />
-                          </button>
-                          <button
-                            onClick={() => openEditModal(admin)}
-                            className="rounded p-1.5 text-(--earist-body-text) hover:bg-(--earist-surface-gray)"
-                            title="Edit Administrator"
-                          >
-                            <Edit className="h-4 w-4" />
-                          </button>
-                          <button
-                            onClick={() =>
-                              statusMutation.mutate({
-                                id: admin.id,
-                                isActive: !admin.isActive,
-                              })
-                            }
-                            disabled={statusMutation.isPending}
-                            className={`rounded p-1.5 transition-colors ${
-                              admin.isActive
-                                ? "text-red-600 hover:bg-red-50"
-                                : "text-green-600 hover:bg-green-50"
-                            } ${statusMutation.isPending ? "cursor-not-allowed opacity-50" : ""}`}
-                            title={admin.isActive ? "Deactivate" : "Activate"}
-                          >
-                            <Power className="h-4 w-4" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+                      {admin.adminAccessLevel === "FULL"
+                        ? "Full Administrator"
+                        : "Restricted Administrator"}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-xs text-(--earist-body-text)">
+                    {formatCapabilitySummary(admin)}
+                  </TableCell>
+                  <TableCell className="text-center">
+                    <Badge
+                      className={
+                        admin.isActive
+                          ? "bg-green-100 text-green-700"
+                          : "bg-gray-100 text-gray-500"
+                      }
+                    >
+                      {admin.isActive ? "Active" : "Inactive"}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex justify-end gap-1">
+                      <button
+                        onClick={() => openViewModal(admin)}
+                        className="rounded p-1.5 text-(--earist-body-text) hover:bg-(--earist-surface-gray)"
+                        title="View Details"
+                      >
+                        <Eye className="h-4 w-4" />
+                      </button>
+                      <button
+                        onClick={() => openEditModal(admin)}
+                        className="rounded p-1.5 text-(--earist-body-text) hover:bg-(--earist-surface-gray)"
+                        title="Edit Administrator"
+                      >
+                        <Edit className="h-4 w-4" />
+                      </button>
+                      <button
+                        onClick={() =>
+                          statusMutation.mutate({
+                            id: admin.id,
+                            isActive: !admin.isActive,
+                          })
+                        }
+                        disabled={statusMutation.isPending}
+                        className={`rounded p-1.5 transition-colors ${
+                          admin.isActive
+                            ? "text-red-600 hover:bg-red-50"
+                            : "text-green-600 hover:bg-green-50"
+                        } ${statusMutation.isPending ? "cursor-not-allowed opacity-50" : ""}`}
+                        title={admin.isActive ? "Deactivate" : "Activate"}
+                      >
+                        <Power className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
 
-          {/* Pagination */}
-          {totalPages > 1 && (
-            <div className="flex items-center justify-between border-t border-(--earist-border-gray) px-4 py-3">
-              <p className="text-xs text-(--earist-body-text)">
-                Showing {(page - 1) * pageSize + 1}–
-                {Math.min(page * pageSize, filteredAdmins.length)} of{" "}
-                {filteredAdmins.length} administrators
-              </p>
-              <Pagination>
-                <PaginationContent>
-                  <PaginationItem>
-                    <PaginationPrevious
-                      onClick={() => setPage((p) => Math.max(1, p - 1))}
-                      className={
-                        page === 1
-                          ? "pointer-events-none opacity-50"
-                          : "cursor-pointer"
-                      }
-                    />
-                  </PaginationItem>
-                  {Array.from({ length: totalPages }, (_, i) => i + 1).map(
-                    (pageNum) => (
-                      <PaginationItem key={pageNum}>
-                        <PaginationLink
-                          onClick={() => setPage(pageNum)}
-                          isActive={pageNum === page}
-                          className="cursor-pointer"
-                        >
-                          {pageNum}
-                        </PaginationLink>
-                      </PaginationItem>
-                    ),
-                  )}
-                  <PaginationItem>
-                    <PaginationNext
-                      onClick={() =>
-                        setPage((p) => Math.min(totalPages, p + 1))
-                      }
-                      className={
-                        page === totalPages
-                          ? "pointer-events-none opacity-50"
-                          : "cursor-pointer"
-                      }
-                    />
-                  </PaginationItem>
-                </PaginationContent>
-              </Pagination>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between border-t border-(--earist-border-gray) px-4 py-3">
+            <p className="text-xs text-(--earist-body-text)">
+              Showing {(page - 1) * pageSize + 1}–
+              {Math.min(page * pageSize, filteredAdmins.length)} of{" "}
+              {filteredAdmins.length} administrators
+            </p>
+            <Pagination>
+              <PaginationContent>
+                <PaginationItem>
+                  <PaginationPrevious
+                    onClick={() => setPage((p) => Math.max(1, p - 1))}
+                    className={
+                      page === 1
+                        ? "pointer-events-none opacity-50"
+                        : "cursor-pointer"
+                    }
+                  />
+                </PaginationItem>
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map(
+                  (pageNum) => (
+                    <PaginationItem key={pageNum}>
+                      <PaginationLink
+                        onClick={() => setPage(pageNum)}
+                        isActive={pageNum === page}
+                        className="cursor-pointer"
+                      >
+                        {pageNum}
+                      </PaginationLink>
+                    </PaginationItem>
+                  ),
+                )}
+                <PaginationItem>
+                  <PaginationNext
+                    onClick={() =>
+                      setPage((p) => Math.min(totalPages, p + 1))
+                    }
+                    className={
+                      page === totalPages
+                        ? "pointer-events-none opacity-50"
+                        : "cursor-pointer"
+                    }
+                  />
+                </PaginationItem>
+              </PaginationContent>
+            </Pagination>
+          </div>
+        )}
+      </TableCard>
 
       {/* ============================ */}
       {/* CREATE ADMINISTRATOR MODAL   */}

@@ -7,5 +7,5 @@ import { redirect } from "next/navigation";
  * `/panelist/defense-workspace/[scheduleId]` workspace is unchanged.
  */
 export default function PanelistScoringIndexRedirect() {
-  redirect("/panelist/defenses");
+  redirect("/faculty/defenses");
 }
