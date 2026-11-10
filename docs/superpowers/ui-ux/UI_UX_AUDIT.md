@@ -1708,6 +1708,60 @@ The standalone **Waiting on Others** card repeats the visual weight and card rhy
 - **Known cleanup:** `stageManuscriptDocType` helper in `frontend/src/lib/panelist-defenses.ts` is now unused and remains intact pending an authorized cleanup.
 - **Acceptance:** requires a project-owner manual browser check. Do **not** register UIUX-3D as an additional Approved Reference; UIUX-3B My Defenses remains the eighth, UIUX-4A Student Dashboard is the ninth, UIUX-2H Admin Entrance Exam Schedules is the tenth, UIUX-2I Admin COR Verification is the eleventh, and independently accepted UIUX-2K Admin Defense Applications is the twelfth. UIUX-3A Dashboard FIX-1 / UIUX-3C Defense Workspace are not covered by UIUX-3D.
 
+
+# 10C. Faculty Dashboard richer operational overview — deferred until after FACULTY-18
+
+**Status: DOCUMENTED / DEFERRED / NOT IMPLEMENTED.** This is a project-owner-requested post-FACULTY-18 UI/UX refinement. It is not part of FACULTY-18 integrated acceptance, release evidence, environment cutover, or controlled activation.
+
+### Why this finding exists
+
+The earlier richer Faculty/Panelist Dashboard reference was implemented under UIUX-3A at 990210051756cf2713fcedc61ad9cdfd0555ea08. FACULTY-14 later replaced the dashboard page implementation at cbf15478e38d3c483c417e45888aefd6577ed303 with a leaner Your Work + Needs Your Attention composition. The current FACULTY-14 source uses dynamic Faculty work relevance, but no longer presents the earlier operational overview sections: Upcoming Defenses, Pending Tasks, Active Defense, Upcoming Defense Sessions, Waiting on Others, and Recent Notifications.
+
+The project owner supplied the earlier richer dashboard screenshot on 2026-11-10 and requested that its useful structure be restored/refined after FACULTY-18. The earlier screenshot is a structural reference, not a pixel-perfect mandate and not proof that the old implementation is accepted.
+
+### Deferred design direction
+
+After FACULTY-18 is complete, prepare a separately scoped Faculty Dashboard UI/UX refinement that combines the useful richer overview with the current FACULTY-13/14 dynamic access architecture.
+
+The design should consider this hierarchy:
+
+1. **Page header** with a clear Faculty Dashboard description and a bounded refresh action where useful.
+2. **Your Work** — concise, account-scoped summaries for only relevant responsibilities (for example Essay Evaluations, My Advisees, and My Defenses), avoiding duplicate information.
+3. **Upcoming Defenses** and **Pending Tasks** — operational summary metrics only when the corresponding work area is relevant. Upcoming Defenses counts future assigned sessions; Pending Tasks counts only actions currently requiring this authenticated Faculty account.
+4. **Needs Your Attention** — actionable responsibilities with accurate status, context, and exact authorized deep links.
+5. **Active Defense** — conditional, shown only for sessions currently in progress where the account has an exact active assignment.
+6. **Upcoming Defense Sessions** — next scheduled assigned session prominently, followed by a small bounded list of subsequent sessions.
+7. **Waiting on Others** — compact, collapsible, independently counted informational context. Keep it visually and semantically separate from actionable tasks; it never contributes to Pending Tasks. Hide it when no reliable waiting records exist.
+8. **Recent Notifications** — a small recent list from the authenticated account's notification records, never an audit-log substitute.
+
+### Non-negotiable architecture and presentation boundaries
+
+- Preserve FACULTY-13/14 dynamic work relevance. Essay Evaluations, My Advisees, and My Defenses appear only when the authenticated account has the corresponding relevant work.
+- A richer dashboard must not become a fixed grid of irrelevant zero-value cards. Do not show Adviser sections to External Faculty or to Faculty without an authoritative Adviser relationship.
+- Use only minimized, current, account-scoped read models. Do not scan an entire essay queue merely to compute dashboard totals.
+- A dashboard count, card, visible link, or client-side projection never authorizes a resource or mutation. Backend/API authorization remains authoritative at every protected boundary.
+- Keep actionable tasks separate from waiting-only dependencies. Never inflate Pending Tasks with items awaiting another actor.
+- Preserve same-Gmail Faculty/Admin separation, User-ID-scoped sessions, account-specific query keys/cache isolation, and no cross-account data reuse.
+- Preserve exact Defense role/assignment ownership, AdviserAssignment authority, signed evidence, and notification privacy.
+- Do not add workflow mutations, new grants, new capabilities, a fifth conceptual login role, a new portal tree, or a generic Adviser/Defense permission.
+- Retain responsive layout, keyboard/focus accessibility, meaningful loading/empty/error/retry states, and truthful date/time/venue presentation.
+
+### Acceptance requirements for the future package
+
+The post-FACULTY-18 task must:
+- inspect the current live dashboard and its actual read-model/API contracts before designing;
+- reconcile the old richer composition with the current dynamic Faculty architecture rather than reverting FACULTY-14 wholesale;
+- verify evaluator-only, Adviser-only, Defense-only, mixed-responsibility, External Faculty, and no-work account states;
+- verify counts and task ordering against authoritative records;
+- verify account switching/cache invalidation and direct API denial independently of hidden navigation;
+- verify desktop, tablet/mobile, keyboard/focus, loading, empty, error, refresh, and notification states in a real browser;
+- include a microcopy review against USER_FACING_COPY_SOURCE_OF_TRUTH.md;
+- receive independent source/diff review and explicit project-owner visual acceptance before being registered as an approved reference.
+
+### Scheduling boundary
+
+Do not implement this during FACULTY-18. FACULTY-18 must remain focused on its canonical integrated authorization, migration, readiness, release-evidence, and separately authorized activation scope. Once FACULTY-18 stops with its acceptance/release state accurately recorded, the project owner may authorize this separate UI/UX refinement.
+
 # 11. Audit limitations
 
 This document is an initial repository-based audit, not a claim that every screen has been visually inspected in a running browser.
