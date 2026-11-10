@@ -129,6 +129,21 @@ Two read-only `research` subagents investigated Part A and Part B in parallel be
 12. `backend/tests/unit/routes/faculty-external-adviser-isolation.routes.test.ts`
 13. `docs/superpowers/reports/2026-11-10-uiux-3e-faculty-portal-refinement.md`
 
+### 5.3 Final Bounded Correction — External Faculty Isolation across Effective Access, GS-020, and GS-017 (starting HEAD `4e866d37649d1abf8964aa2205cbef2d997c8b20`)
+
+1. `backend/src/services/effective-access.service.ts`
+2. `backend/src/services/adviser-request-record.service.ts`
+3. `backend/src/services/adviser-certification-record.service.ts`
+4. `backend/tests/unit/routes/faculty-13-effective-access.routes.test.ts`
+5. `backend/tests/unit/services/adviser-request-record.service.test.ts`
+6. `backend/tests/unit/services/adviser-certification-document.service.test.ts`
+7. `backend/tests/unit/services/faculty-8-official-records.test.ts`
+8. `backend/tests/unit/routes/faculty-external-adviser-isolation.routes.test.ts`
+9. `docs/superpowers/reports/2026-11-10-uiux-3e-faculty-portal-refinement.md`
+10. `docs/superpowers/ui-ux/UI_UX_AUDIT.md`
+11. `docs/superpowers/ui-ux/SYSTEM_UI_UX_PLAYBOOK.md`
+12. `docs/superpowers/plans/2026-11-08-faculty-admin-access-implementation.md`
+
 ---
 
 ## 6. Initial UIUX-3E Verification & Evidence Record
@@ -218,3 +233,52 @@ Two read-only `research` subagents investigated Part A and Part B in parallel be
 - **Playwright synthetic browser verification:** **NOT RUN** (not executed for this bounded correction; left to project-owner local browser QA).
 - **Project-owner browser/visual QA and independent review:** **PENDING**.
 - **Safety boundaries confirmed:** Zero database access, zero migrations, all activation gates (`ADMINISTRATOR_MANAGEMENT_ENABLED`, `DIRECT_ACCESS_ENFORCEMENT_ENABLED`, `OPERATIONAL_ENFORCEMENT_ENABLED`) remain `false`, and FACULTY-18 was not started.
+
+---
+
+## 8. Final Bounded Correction — External Faculty Adviser Isolation Across `/auth/me`, GS-020, and GS-017
+
+- **Starting HEAD for final correction:** `4e866d37649d1abf8964aa2205cbef2d997c8b20`
+- **Status:** **IMPLEMENTED / PENDING INDEPENDENT REVIEW** (not visually accepted; Playwright **NOT RUN**; project-owner browser QA **PENDING**)
+
+### 8.1 Correction A — `/auth/me` Effective Access (`backend/src/services/effective-access.service.ts`)
+
+- Updated `EffectiveAccessService.currentAccount(account)` to resolve authoritative current `Panelist.isExternal` directly via `this.defenses.isExternalFaculty(account.id)` (`PanelistDashboardRepository.isExternalFaculty` -> `PanelistRepository.isExternalFaculty`) in parallel with `countSoleActiveAdvisees` and `countReadableAssignments`.
+- **External Faculty without anomalous active `AdviserAssignment`:** Returns `myAdvisees: { relevant: false, activeAdviseeCount: 0, addressedRequestCount: 0, issuedCertificationCount: 0 }` and does **not** query `requests.countMyAdviserRequests` or `certifications.countOwnIssuedSources`. Preserves exact `myDefenses` assignment counts/relevance and `essayEvaluations` capability relevance.
+- **External Faculty with anomalous active `AdviserAssignment`:** Preserves DR-5 fail-closed conflict (`AppError("External Faculty cannot serve as Thesis Adviser.", 409)`) without exposing Adviser counts or workspace data.
+- **Internal Faculty:** Preserves all existing FACULTY-13 behavior (active advisees, historical addressed requests, issued GS-017 certifications, unavailable-for-new-assignments retention, Defense assignments, Essay Evaluator capability).
+
+### 8.2 Correction B — GS-020 Official Adviser Request Records (`backend/src/services/adviser-request-record.service.ts`)
+
+- Protected `GET /adviser/requests/records` (`list()`) and `GET /adviser/requests/:id/pdf` (`generatePdf()` via `source()`) by enforcing `isAcademicAccountRole(actor.role) && await this.panelists.isExternalFaculty(actor.userId)` inside `currentActor(actor)` BEFORE querying `prisma.adviserRequestOfficialRecord`.
+- **External Faculty:** Denied with `AppError("External Faculty cannot serve as Thesis Adviser.", 403)` before touching official records or rendering PDFs.
+- **Internal Faculty / Students / Authorized Admins:** Preserved existing access to finalized GS-020 records and PDFs; zero historical signed records/hashes rewritten or modified.
+
+### 8.3 Correction C — GS-017 Adviser Certification Records (`backend/src/services/adviser-certification-record.service.ts`)
+
+- Protected both `listSources()` (`GET /adviser-certifications`) and `getSource()` (`GET /adviser-certifications/:certificationId/pdf`) via a shared `currentActor(actor)` guard enforcing `isAcademicAccountRole(actor.role) && await this.panelists.isExternalFaculty(actor.userId)` BEFORE querying `prisma.adviserCertification`.
+- **External Faculty:** Denied with `AppError("External Faculty cannot serve as Thesis Adviser.", 403)` across metadata listing, source retrieval, and PDF generation before reading certification rows or invoking the renderer.
+- **Internal Faculty / Students / Authorized Admins:** Preserved existing access, ownership, Student reads, and Admin capability rules without modifying historical signatures or document bindings.
+
+### 8.4 Final Bounded Correction Verification Results
+
+- **Focused backend suites (`npx vitest run ...` in `backend`):** **11 files / 335 tests PASS**:
+  - `tests/unit/routes/faculty-13-effective-access.routes.test.ts` (73/73 PASS)
+  - `tests/unit/services/adviser-request-record.service.test.ts` (33/33 PASS)
+  - `tests/unit/services/adviser-certification-document.service.test.ts` (50/50 PASS)
+  - `tests/unit/services/faculty-8-official-records.test.ts` (64/64 PASS)
+  - `tests/unit/routes/faculty-external-adviser-isolation.routes.test.ts` (6/6 PASS)
+  - `tests/unit/routes/faculty-8-private-records.routes.test.ts` (21/21 PASS)
+  - `tests/unit/services/adviser-request.service.test.ts` (29/29 PASS)
+  - `tests/unit/services/adviser-workspace.service.test.ts` (25/25 PASS)
+  - `tests/unit/services/panelist-dashboard.service.test.ts` (6/6 PASS)
+  - `tests/unit/services/panelist-dashboard.rules.test.ts` (21/21 PASS)
+  - `tests/unit/repositories/panelist-dashboard.repository.test.ts` (7/7 PASS)
+- **Untouched controller unit tests note:** Running `tests/unit/controllers/adviser-certification-document.controller.test.ts` (10/13 pass, 3 fail) and `tests/unit/controllers/adviser-request-record.controller.test.ts` (9/12 pass, 3 fail) failed only on their pre-existing mock fallback (`current.role = "CUSTOM"`, retired in FACULTY-17, returning 503 vs 403 for `CHAIRMAN`/`RAPPORTEUR`/`FACILITATOR`). Those two files were not modified and use mocked `ThesisService` classes rather than the changed services.
+- **Backend TypeScript (`npx tsc --noEmit` in `backend`):** **PASS** (0 errors)
+- **Backend ESLint:** Not configured in `backend` (not run).
+- **Frontend build / TypeScript / regression suites:** Not re-run (zero frontend code changed in this correction).
+- **`git diff --check`:** **PASS**
+- **Playwright synthetic browser verification:** **NOT RUN** (left to project-owner local browser QA).
+- **Project-owner browser/visual QA and independent review:** **PENDING**.
+- **Safety boundaries confirmed:** Zero database access or migrations, all activation gates (`ADMINISTRATOR_MANAGEMENT_ENABLED`, `DIRECT_ACCESS_ENFORCEMENT_ENABLED`, `OPERATIONAL_ENFORCEMENT_ENABLED`) remain `false`, FACULTY-4/FACULTY-12 readiness gates remain open, and FACULTY-18 was not started.

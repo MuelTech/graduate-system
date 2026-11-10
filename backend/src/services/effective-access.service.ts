@@ -38,35 +38,42 @@ export class EffectiveAccessService {
     // unavailable/not-applicable, distinct from a valid all-zero work summary.
     if (isAcademicAccountRole(account.role) && response.configuredAccess.status === "RESOLVED") {
       try {
-        const [activeAdviseeCount, addressedRequestCount, issuedCertificationCount, assignmentCount] = await Promise.all([
+        const [activeAdviseeCount, assignmentCount, isExternal] = await Promise.all([
           this.advisees.countSoleActiveAdvisees(account.id),
-          this.requests.countMyAdviserRequests(account.id),
-          this.certifications.countOwnIssuedSources(account.id),
           this.defenses.countReadableAssignments(account.id),
+          this.defenses.isExternalFaculty(account.id),
         ]);
         // A broken read model must never masquerade as legitimate zero work.
-        if ([activeAdviseeCount, addressedRequestCount, issuedCertificationCount, assignmentCount]
+        if (!Number.isSafeInteger(activeAdviseeCount) || activeAdviseeCount < 0
+          || !Number.isSafeInteger(assignmentCount) || assignmentCount < 0) {
+          throw new AppError("Faculty work could not be established.", 503);
+        }
+        if (isExternal && activeAdviseeCount > 0) {
+          throw new AppError(EXTERNAL_ACTIVE_ADVISER_MESSAGE, 409);
+        }
+        const [addressedRequestCount, issuedCertificationCount] = isExternal
+          ? [0, 0]
+          : await Promise.all([
+              this.requests.countMyAdviserRequests(account.id),
+              this.certifications.countOwnIssuedSources(account.id),
+            ]);
+        if (!isExternal && [addressedRequestCount, issuedCertificationCount]
           .some(count => !Number.isSafeInteger(count) || count < 0)) {
           throw new AppError("Faculty work could not be established.", 503);
         }
-        if (activeAdviseeCount > 0) {
-          const panelistExternal = (
-            account.panelist as { isExternal?: boolean } | null
-          )?.isExternal;
-          const isExternal =
-            typeof panelistExternal === "boolean"
-              ? panelistExternal
-              : await this.advisees.isExternalFaculty(account.id);
-          if (isExternal) {
-            throw new AppError(EXTERNAL_ACTIVE_ADVISER_MESSAGE, 409);
-          }
-        }
         facultyWork = {
           essayEvaluations: { relevant: response.configuredAccess.capabilities.includes("essay.evaluate") },
-          myAdvisees: {
-            relevant: activeAdviseeCount > 0 || addressedRequestCount > 0 || issuedCertificationCount > 0,
-            activeAdviseeCount, addressedRequestCount, issuedCertificationCount,
-          },
+          myAdvisees: isExternal
+            ? {
+                relevant: false,
+                activeAdviseeCount: 0,
+                addressedRequestCount: 0,
+                issuedCertificationCount: 0,
+              }
+            : {
+                relevant: activeAdviseeCount > 0 || addressedRequestCount > 0 || issuedCertificationCount > 0,
+                activeAdviseeCount, addressedRequestCount, issuedCertificationCount,
+              },
           myDefenses: { relevant: assignmentCount > 0, assignmentCount },
         };
       } catch (error) {

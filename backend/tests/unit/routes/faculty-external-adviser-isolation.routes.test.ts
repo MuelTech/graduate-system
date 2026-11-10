@@ -8,6 +8,8 @@ const database = vi.hoisted(() => ({
   panelist: { findUnique: vi.fn() },
   adviserRequest: { findMany: vi.fn() },
   adviserAssignment: { findMany: vi.fn() },
+  adviserRequestOfficialRecord: { findMany: vi.fn(), findUnique: vi.fn() },
+  adviserCertification: { findMany: vi.fn(), findUnique: vi.fn() },
   thesisRecord: { findFirst: vi.fn() },
   panelAssignment: { findMany: vi.fn() },
   rapReportSignature: { findMany: vi.fn() },
@@ -155,6 +157,10 @@ beforeEach(() => {
   });
   database.adviserAssignment.findMany.mockResolvedValue([]);
   database.adviserRequest.findMany.mockResolvedValue([]);
+  database.adviserRequestOfficialRecord.findMany.mockResolvedValue([]);
+  database.adviserRequestOfficialRecord.findUnique.mockResolvedValue(null);
+  database.adviserCertification.findMany.mockResolvedValue([]);
+  database.adviserCertification.findUnique.mockResolvedValue(null);
   database.thesisRecord.findFirst.mockResolvedValue(null);
   database.panelAssignment.findMany.mockResolvedValue([]);
   database.rapReportSignature.findMany.mockResolvedValue([]);
@@ -284,5 +290,30 @@ describe("UIUX-3E Part B HTTP/controller boundaries — External Faculty Adviser
     const errRes = await getAs(INTERNAL_ID, "/defense/panelist/dashboard");
     expect(errRes.response.status).toBeGreaterThanOrEqual(400);
     expect(errRes.body.needsAttention).toBeUndefined();
+  });
+
+  it("denies External Faculty GS-020 official Adviser request records/PDFs and GS-017 certifications/PDFs over HTTP before DB record lookup", async () => {
+    for (const path of [
+      "/adviser/requests/records",
+      "/adviser/requests/req-1/pdf",
+      "/adviser-certifications",
+      "/adviser-certifications/cert-1/pdf",
+    ]) {
+      const { response, body } = await getAs(EXTERNAL_ID, path);
+      expect(response.status).toBe(403);
+      expect(body).toEqual({ error: "External Faculty cannot serve as Thesis Adviser." });
+    }
+    expect(database.adviserRequestOfficialRecord.findMany).not.toHaveBeenCalled();
+    expect(database.adviserRequestOfficialRecord.findUnique).not.toHaveBeenCalled();
+    expect(database.adviserCertification.findMany).not.toHaveBeenCalled();
+    expect(database.adviserCertification.findUnique).not.toHaveBeenCalled();
+
+    const intReqRecords = await getAs(INTERNAL_ID, "/adviser/requests/records");
+    expect(intReqRecords.response.status).toBe(200);
+    expect(intReqRecords.body).toEqual([]);
+
+    const intCertRecords = await getAs(INTERNAL_ID, "/adviser-certifications");
+    expect(intCertRecords.response.status).toBe(200);
+    expect(intCertRecords.body).toEqual([]);
   });
 });

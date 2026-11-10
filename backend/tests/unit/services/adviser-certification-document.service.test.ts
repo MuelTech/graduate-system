@@ -3,7 +3,7 @@ import path from "node:path";
 import { PDFDocument } from "pdf-lib";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
-const db = vi.hoisted(() => ({ adviserCertification: { findUnique: vi.fn(), findMany: vi.fn() } }));
+const db = vi.hoisted(() => ({ adviserCertification: { findUnique: vi.fn(), findMany: vi.fn() }, panelist: { findUnique: vi.fn() } }));
 vi.mock("../../../src/config/database", () => ({ default: db }));
 import { OfficialDefenseDocumentService } from "../../../src/services/official-defense-document.service";
 import { AdviserCertificationRecordService, type AdviserCertificationSource } from "../../../src/services/adviser-certification-record.service";
@@ -35,7 +35,7 @@ function source(stage = "PROPOSAL_DEFENSE"): AdviserCertificationSource {
 }
 
 const admin = { userId: "admin", role: "ADMIN" };
-beforeEach(() => { vi.clearAllMocks(); db.adviserCertification.findUnique.mockResolvedValue(source()); db.adviserCertification.findMany.mockResolvedValue([source()]); });
+beforeEach(() => { vi.clearAllMocks(); db.panelist.findUnique.mockResolvedValue({ isExternal: false }); db.adviserCertification.findUnique.mockResolvedValue(source()); db.adviserCertification.findMany.mockResolvedValue([source()]); });
 
 function setup() {
   const render = vi.fn(async () => Buffer.from("%PDF-1.7\nGS-017"));
@@ -153,4 +153,32 @@ describe("PREDEF-1B/1C exact GS-017 mapping and ownership", () => {
     expect(doc.getPage(0).getWidth()).toBeCloseTo(595.28);
     expect(doc.getPage(0).getHeight()).toBeCloseTo(841.89);
   });
+
+  it.each(["FACULTY", "PANELIST"] as const)(
+    "UIUX-3E: denies External %s from listing or downloading GS-017 certifications before querying certification data",
+    async (role) => {
+      db.panelist.findUnique.mockResolvedValue({ isExternal: true });
+      const { service, render } = setup();
+      const recordSvc = new AdviserCertificationRecordService();
+
+      await expect(recordSvc.listSources({ userId: "issuer", role }, "thesis-1", "PROPOSAL")).rejects.toMatchObject({
+        statusCode: 403,
+        message: "External Faculty cannot serve as Thesis Adviser.",
+      });
+      await expect(recordSvc.getSource("cert-1", { userId: "issuer", role })).rejects.toMatchObject({
+        statusCode: 403,
+        message: "External Faculty cannot serve as Thesis Adviser.",
+      });
+      await expect(service.listAdviserCertifications({ userId: "issuer", role }, "thesis-1", "PROPOSAL")).rejects.toMatchObject({
+        statusCode: 403,
+      });
+      await expect(service.generateAdviserCertificationPdf("cert-1", { userId: "issuer", role })).rejects.toMatchObject({
+        statusCode: 403,
+      });
+
+      expect(db.adviserCertification.findMany).not.toHaveBeenCalled();
+      expect(db.adviserCertification.findUnique).not.toHaveBeenCalled();
+      expect(render).not.toHaveBeenCalled();
+    },
+  );
 });

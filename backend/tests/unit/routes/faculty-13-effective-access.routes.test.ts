@@ -5,6 +5,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vites
 
 const database = vi.hoisted(() => ({
   user: { findUnique: vi.fn() },
+  panelist: { findUnique: vi.fn() },
   adviserAssignment: { findMany: vi.fn() },
   adviserRequest: { count: vi.fn() },
   adviserCertification: { count: vi.fn() },
@@ -85,6 +86,11 @@ beforeEach(() => {
   account = academic();
   assignments = []; requests = []; certifications = []; defenses = [];
   database.user.findUnique.mockImplementation(async ({ where }) => where.id === selfId ? structuredClone(account) : academic());
+  database.panelist.findUnique.mockImplementation(async ({ where }) =>
+    where.userId === selfId && account?.panelist
+      ? { isExternal: account.panelist.isExternal }
+      : { isExternal: false },
+  );
   database.adviserAssignment.findMany.mockImplementation(async ({ where }) => assignments
     .filter(row => row.adviserId === where.adviserId && row.isActive === where.isActive)
     .map(row => ({ student: { adviserAssignments: assignments
@@ -233,8 +239,8 @@ describe("FACULTY-13 My Advisees authority reduction", () => {
     expect(body.facultyWork.myAdvisees).toEqual({ relevant: true, activeAdviseeCount: 0, addressedRequestCount: 1, issuedCertificationCount: 0 });
     expect(database.adviserRequest.count).toHaveBeenCalledWith({ where: { requestedAdviserId: selfId } });
   });
-  it.each([false, true])("issued GS-017 and addressed request remain visible without a relationship, External=%s", async external => {
-    account.panelist.isExternal = external;
+  it("Internal Faculty retains issued GS-017 and addressed request relevance without a relationship", async () => {
+    account.panelist.isExternal = false;
     requests.push({ requestedAdviserId: selfId });
     certifications.push(certification(), certification(selfId, "FINAL_DEFENSE"), certification(otherId),
       certification(selfId, "PROPOSAL_DEFENSE", "DRAFT"), certification(selfId, "TITLE_DEFENSE"));
@@ -243,6 +249,30 @@ describe("FACULTY-13 My Advisees authority reduction", () => {
     expect(database.adviserCertification.count).toHaveBeenCalledWith({ where: {
       adviserId: selfId, status: "ISSUED", defenseStage: { in: ["PROPOSAL_DEFENSE", "FINAL_DEFENSE"] },
     } });
+  });
+  it("UIUX-3E: External Faculty with zero active advisees hides historical Adviser requests and GS-017 counts without querying them", async () => {
+    account.panelist.isExternal = true;
+    requests.push({ requestedAdviserId: selfId });
+    certifications.push(certification(), certification(selfId, "FINAL_DEFENSE"));
+    defenses.push(defense(selfId, true, "SCHEDULED"));
+
+    const { response, body } = await me();
+    expect(response.status).toBe(200);
+    expect(body.facultyWork.myAdvisees).toEqual({
+      relevant: false,
+      activeAdviseeCount: 0,
+      addressedRequestCount: 0,
+      issuedCertificationCount: 0,
+    });
+    expect(body.facultyWork.myDefenses).toEqual({ relevant: true, assignmentCount: 1 });
+    expect(database.adviserRequest.count).not.toHaveBeenCalled();
+    expect(database.adviserCertification.count).not.toHaveBeenCalled();
+  });
+  it("UIUX-3E: panelist classification failure in /auth/me fails closed rather than returning partial work", async () => {
+    database.panelist.findUnique.mockRejectedValueOnce(new Error("panelist DB error"));
+    const { response, body } = await me();
+    expect(response.status).toBe(503);
+    expect(body.facultyWork).toBeUndefined();
   });
   it("own issued GS-017 alone retains relevance without an active relationship", async () => {
     certifications.push(certification());

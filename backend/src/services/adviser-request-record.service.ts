@@ -2,7 +2,9 @@ import { privateRecordAuthorization, PrivateRecordAuthorization } from "../acces
 import { ACADEMIC_ACCOUNT_ROLES, isAcademicAccountRole } from "../utils/academic-account";
 import type { AdviserRequestOfficialRecord, Prisma } from "@prisma/client";
 import prisma from "../config/database";
+import { PanelistRepository } from "../repositories/panelist.repository";
 import { AppError } from "../utils/AppError";
+import { EXTERNAL_ACTIVE_ADVISER_MESSAGE } from "./active-adviser.rules";
 import { renderAdviserRequest } from "../documents/official-defense/adviser-request/adviser-request.renderer";
 import { loadOfficialFormLogos } from "./official-form-assets";
 import { sanitizeOfficialNamePart } from "./official-defense-document-filename";
@@ -72,11 +74,20 @@ function snapshotOf(row: AdviserRequestOfficialRecord & { request: { status: str
 
 /** Read-only metadata and on-demand PDF; never rebuild a legacy request from current profiles. */
 export class AdviserRequestRecordService {
-  constructor(private readonly authorization: PrivateRecordAuthorization = privateRecordAuthorization) {}
+  constructor(
+    private readonly authorization: PrivateRecordAuthorization = privateRecordAuthorization,
+    private readonly panelists: PanelistRepository = new PanelistRepository(),
+  ) {}
   private async currentActor(actor: AdviserRequestRecordActor) {
     actor = await this.authorization.current(actor);
     assertActor(actor);
     if (actor.role === "ADMIN") await this.authorization.admin(actor, "adviser.requests.view");
+    if (
+      isAcademicAccountRole(actor.role) &&
+      (await this.panelists.isExternalFaculty(actor.userId))
+    ) {
+      throw new AppError(EXTERNAL_ACTIVE_ADVISER_MESSAGE, 403);
+    }
     return actor;
   }
   private async source(id: string, actor: AdviserRequestRecordActor): Promise<RecordSource> {

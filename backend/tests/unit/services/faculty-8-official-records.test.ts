@@ -3,6 +3,7 @@ import { signedRequestEvidence, STUDENT_SIGNATURE } from "../../fixtures/adviser
 const db = vi.hoisted(() => ({
   adviserCertification: { findUnique: vi.fn(), findMany: vi.fn() },
   adviserRequestOfficialRecord: { findUnique: vi.fn(), findMany: vi.fn() },
+  panelist: { findUnique: vi.fn() },
   defenseSchedule: { findUnique: vi.fn(), findMany: vi.fn() },
   panelAssignment: { findUnique: vi.fn(), findMany: vi.fn() },
   oralExamScore: { findUnique: vi.fn(), count: vi.fn(), updateMany: vi.fn() },
@@ -58,6 +59,7 @@ function score() {
 }
 beforeEach(() => {
   vi.resetAllMocks(); account(); render.mockResolvedValue(Buffer.from("%PDF-1.7\nexact record"));
+  db.panelist.findUnique.mockResolvedValue({ isExternal: false });
   db.adviserCertification.findUnique.mockResolvedValue(certification()); db.adviserCertification.findMany.mockResolvedValue([certification()]);
   db.adviserRequestOfficialRecord.findUnique.mockResolvedValue(requestRecord()); db.adviserRequestOfficialRecord.findMany.mockResolvedValue([requestRecord()]);
   db.defenseSchedule.findMany.mockResolvedValue([]); db.defenseSchedule.findUnique.mockResolvedValue(schedule());
@@ -99,6 +101,20 @@ describe("FACULTY-8 GS-017 context and exact issuer ownership", () => {
   });
   it("unrelated capability never authorizes GS-017", async () => {
     account(["defense.records.view"]); await expect(docs.generateAdviserCertificationPdf("cert", actor)).rejects.toMatchObject({ statusCode: 404 });
+    expect(render).not.toHaveBeenCalled();
+  });
+  it("UIUX-3E: denies External Faculty GS-017 and GS-020 reads/PDFs before accessing protected records under active authorization", async () => {
+    account([], { id: "ext-issuer", role: "FACULTY", administratorAccess: null, panelist: { isActive: true } });
+    db.panelist.findUnique.mockResolvedValue({ isExternal: true });
+    await expect(certs.listSources({ userId: "ext-issuer", role: "FACULTY" }, "thesis", "PROPOSAL")).rejects.toMatchObject({ statusCode: 403 });
+    await expect(certs.getSource("cert", { userId: "ext-issuer", role: "FACULTY" })).rejects.toMatchObject({ statusCode: 403 });
+    await expect(docs.generateAdviserCertificationPdf("cert", { userId: "ext-issuer", role: "FACULTY" })).rejects.toMatchObject({ statusCode: 403 });
+    await expect(requests.list({ userId: "ext-issuer", role: "FACULTY" })).rejects.toMatchObject({ statusCode: 403 });
+    await expect(requests.generatePdf("req", { userId: "ext-issuer", role: "FACULTY" })).rejects.toMatchObject({ statusCode: 403 });
+    expect(db.adviserCertification.findMany).not.toHaveBeenCalled();
+    expect(db.adviserCertification.findUnique).not.toHaveBeenCalled();
+    expect(db.adviserRequestOfficialRecord.findMany).not.toHaveBeenCalled();
+    expect(db.adviserRequestOfficialRecord.findUnique).not.toHaveBeenCalled();
     expect(render).not.toHaveBeenCalled();
   });
 });

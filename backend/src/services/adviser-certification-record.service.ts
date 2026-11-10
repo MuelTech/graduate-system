@@ -2,7 +2,9 @@ import { privateRecordAuthorization, PrivateRecordAuthorization } from "../acces
 import { ACADEMIC_ACCOUNT_ROLES, isAcademicAccountRole } from "../utils/academic-account";
 import prisma from "../config/database";
 import type { Prisma } from "@prisma/client";
+import { PanelistRepository } from "../repositories/panelist.repository";
 import { AppError } from "../utils/AppError";
+import { EXTERNAL_ACTIVE_ADVISER_MESSAGE } from "./active-adviser.rules";
 import { isValidCertifiedFinalManuscript, isValidCertifiedProposalManuscript } from "./proposal-adviser-review.rules";
 
 export interface CertificationActor { userId: string; role: string }
@@ -67,7 +69,22 @@ function authorizeActor(actor: CertificationActor): void {
 }
 
 export class AdviserCertificationRecordService {
-  constructor(private readonly authorization: PrivateRecordAuthorization = privateRecordAuthorization) {}
+  constructor(
+    private readonly authorization: PrivateRecordAuthorization = privateRecordAuthorization,
+    private readonly panelists: PanelistRepository = new PanelistRepository(),
+  ) {}
+
+  private async currentActor(actor: CertificationActor): Promise<CertificationActor> {
+    actor = await this.authorization.current(actor);
+    authorizeActor(actor);
+    if (
+      isAcademicAccountRole(actor.role) &&
+      (await this.panelists.isExternalFaculty(actor.userId))
+    ) {
+      throw new AppError(EXTERNAL_ACTIVE_ADVISER_MESSAGE, 403);
+    }
+    return actor;
+  }
 
   /** Internal self-access reduction of listSources' exact academic issuer scope.
    * Never loads signatures/documents and never confers current Adviser authority.
@@ -92,8 +109,7 @@ export class AdviserCertificationRecordService {
       schedule.manuscriptDocumentId === row.reviewedDocumentId);
   }
   async getSource(id: string, actor: CertificationActor): Promise<AdviserCertificationSource> {
-    actor = await this.authorization.current(actor);
-    authorizeActor(actor);
+    actor = await this.currentActor(actor);
     const row = await prisma.adviserCertification.findUnique({ where: { id }, select: CERTIFICATION_SELECT });
     const authorized = row && ((actor.role === "ADMIN" && await this.adminContext(row, actor))
       || (actor.role === "STUDENT" && row.thesis.student.userId === actor.userId)
@@ -103,8 +119,7 @@ export class AdviserCertificationRecordService {
   }
 
   async listSources(actor: CertificationActor, thesisId?: string, stage?: string): Promise<AdviserCertificationSource[]> {
-    actor = await this.authorization.current(actor);
-    authorizeActor(actor);
+    actor = await this.currentActor(actor);
     if (stage !== undefined && stage !== "PROPOSAL" && stage !== "FINAL") {
       throw new AppError("GS-017 stage must be Proposal or Final.", 400);
     }
