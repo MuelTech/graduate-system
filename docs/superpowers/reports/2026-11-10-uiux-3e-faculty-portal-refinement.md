@@ -118,21 +118,22 @@ Two read-only `research` subagents investigated Part A and Part B in parallel be
 ### 6.1 Automated Verifier & Unit Suites (Executed — PASS)
 
 - `node scripts/verify-faculty-14-portal.mjs` (in `frontend`): **44 / 44 PASS** (includes new UIUX-3E Part A `isFacultyNavAreaVisible` and layout snapshot-filtering checks, plus UIUX-3E Part B `projectFacultyDashboard` across all 8 responsibility combinations, task/waiting separation, and date/time formatting).
-- `node scripts/verify-adv6-adviser-actions.mjs` (in `frontend`): **10 / 10 PASS**
+- `node scripts/verify-adv6-adviser-actions.mjs` (in `frontend`): **19 / 19 PASS**
 - `node scripts/verify-adv7-fix1-my-advisees-ux.mjs` (in `frontend`): **10 / 10 PASS**
 - `node scripts/verify-cdw4-workspace.mjs` (in `frontend`): **9 / 9 PASS**
 - `node scripts/verify-cdw2-contracts.mjs` (in `frontend`): **11 / 11 PASS**
 - `node scripts/verify-faculty-2-session.mjs` (in `frontend`): **19 / 19 PASS**
 - `node scripts/verify-faculty-3-compatibility.mjs` (in `frontend`): **8 / 8 PASS**
 - `npx vitest run tests/unit/services/panelist-dashboard.rules.test.ts` (in `backend`): **21 / 21 PASS**
-- Note: Historical `verify-adv7-navigation-consolidation.mjs` (6/8 pass, 2 fail) fails at baseline because its single-line regex pre-dates FACULTY-14's multi-line `area` properties in `layout.tsx`.
+- `node scripts/verify-adv7-navigation-consolidation.mjs` (in `frontend`): **6 / 8 — 2 FAIL** ("My Advisees is the sole Adviser sidebar entry…" and "My Advisees base and nested routes keep generic active matching"). Its single-line `{ href, label }` regex does not match the multi-line `My Defenses` / `My Advisees` entries that carry FACULTY-14 `area` properties. UIUX-3E did not change the `navItems` declaration (only the `.filter(...)` call), so this is **inferred** to be a pre-existing failure; it was **not re-executed at the starting HEAD** to confirm.
 
 ### 6.2 TypeScript, Scoped ESLint, Production Build, and Diff Check (Executed — PASS)
 
 - Frontend TypeScript (`node node_modules/typescript/bin/tsc --noEmit`): **PASS** (0 errors)
 - Scoped ESLint (`npx eslint "src/lib/faculty-access.ts" "src/lib/panelist-dashboard.ts" "src/app/(portal)/panelist/layout.tsx" "src/app/(portal)/panelist/dashboard/page.tsx" "scripts/verify-faculty-14-portal.mjs" "scripts/faculty-14-fixture-server.mjs" "e2e/faculty-portal.spec.ts"`): **PASS** (0 errors, 0 warnings)
 - Frontend Production Build (`npm run build` in `frontend`): **PASS** (compiled in 10.2s, TypeScript 7.4s, 69/69 static and dynamic routes generated)
-- `git diff --check`: **PASS**
+- `git diff --check`: **PASS** (final, after removing trailing blank lines at EOF in three files)
+- **Timing caveat:** TypeScript, scoped ESLint, production build, and the frontend verifiers ran **before** two later changes: (1) the Part A Playwright test in `frontend/e2e/faculty-portal.spec.ts` was rewritten to hold `/auth/me` deterministically with `page.route`, and (2) trailing blank lines at EOF were removed from `faculty-portal.spec.ts`, `verify-faculty-14-portal.mjs`, and `panelist-dashboard.ts`. Application source was unchanged apart from the EOF whitespace. Per project-owner instruction, these checks were **not re-run** after those edits. Scoped ESLint was run once, before the final one-line TypeScript fix in `dashboard/page.tsx` (removing an invalid generic argument from `apiClientRequest`); after that fix, TypeScript was re-run and passed.
 
 ### 6.3 Synthetic Playwright Browser Verification & Manual/Visual QA Status
 
