@@ -246,6 +246,23 @@ Common account/profile/notification surfaces may remain where already accepted.
 
 Dynamic navigation is a usability projection of authority, not the authority itself. Backend/API checks must enforce every protected read/write action even when a link is hidden.
 
+### Deferred post-FACULTY-18 dashboard presentation refinement
+
+The current dynamic Faculty access model does not require the Faculty Dashboard to be reduced to only a minimal list of relevant work links. After FACULTY-18 integrated acceptance, the project owner intends to refine the dashboard using the richer operational overview shown in the earlier Faculty Dashboard reference, while retaining FACULTY-13/14 account-scoped dynamic relevance and authorization boundaries.
+
+The deferred presentation target may include:
+- a compact Your Work summary for only the Faculty responsibilities relevant to the authenticated account;
+- Upcoming Defenses and Pending Tasks summary metrics when the corresponding work area is relevant;
+- Needs Your Attention with actionable tasks and exact deep links;
+- a conditional Active Defense section;
+- Upcoming Defense Sessions, prioritizing the next scheduled assigned defense and a small number of subsequent sessions;
+- Waiting on Others as a compact, collapsible informational subsection with its own count, visually distinct from actionable work;
+- Recent Notifications sourced from the authenticated account's notification records.
+
+Render sections from authoritative, current, account-scoped data only. Do not show irrelevant zero-value cards or infer Adviser, Defense, or Essay Evaluation authority from a count, navigation link, or dashboard projection. Waiting-only dependencies must never contribute to Pending Tasks. External Faculty must not receive Adviser/advisee sections. Preserve the separate Faculty/Admin account identity and cache isolation.
+
+This is a deferred UI/UX refinement after FACULTY-18, not a change to the Faculty access model, not a new permission, and not part of FACULTY-18 acceptance or activation. Track its design and acceptance requirements in the UI/UX Audit and System UI/UX Playbook; implement only through a separately scoped post-FACULTY-18 UI/UX task.
+
 ---
 
 ## 10. Faculty Management
