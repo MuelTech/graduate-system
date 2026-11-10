@@ -1,10 +1,14 @@
 /**
- * UIUX-3A — Panelist dashboard read-model contract.
+ * UIUX-3A / UIUX-3E — Panelist dashboard read-model contract and dynamic
+ * account-scoped projection helpers.
  *
  * Mirrors backend `GET /thesis/defense/panelist/dashboard` (PanelistDashboardView).
- * The backend owns eligibility/labels; this module only transports the DTO and
- * formats wall-clock date/time values without timezone shifts.
+ * The backend owns eligibility/labels; this module only transports the DTO,
+ * formats wall-clock date/time values without timezone shifts, and projects
+ * dashboard sections from the authenticated account's FacultyWork relevance.
  */
+
+import type { FacultyWork } from "./faculty-access";
 
 export type PanelistAttentionCategory =
   | "EVALUATION"
@@ -125,3 +129,85 @@ export const MAX_VISIBLE_TASKS = 5;
 export const MAX_VISIBLE_NOTIFICATIONS = 5;
 export const MAX_VISIBLE_WAITING = 3;
 export const MAX_VISIBLE_OTHER_UPCOMING = 3;
+
+export function isAdviserTask(
+  task: Pick<PanelistAttentionTask, "category">,
+): boolean {
+  return (
+    task.category === "ADVISER_REQUEST" ||
+    task.category === "ADVISER_MANUSCRIPT_REVIEW"
+  );
+}
+
+export function isAdviserWaitingItem(
+  item: Pick<WaitingItem, "id" | "href">,
+): boolean {
+  return (
+    item.id.startsWith("wait:adviser") ||
+    Boolean(
+      item.href &&
+        /^\/panelist\/(?:advisees|adviser-requests|adviser-reviews)(?:\/|$)/.test(
+          item.href,
+        ),
+    )
+  );
+}
+
+export interface FacultyDashboardProjection {
+  hasDetailedWork: boolean;
+  showUpcomingDefensesKpi: boolean;
+  showPendingTasksKpi: boolean;
+  showNeedsAttention: boolean;
+  showUpcomingDefensesSection: boolean;
+  attention: PanelistAttentionTask[];
+  waiting: WaitingItem[];
+  activeDefenses: ActiveDefenseItem[];
+  upcomingDefenses: UpcomingDefenseItem[];
+  upcomingDefensesCount: number | null;
+  pendingTasksCount: number | null;
+}
+
+/**
+ * Pure presentation projection from the authenticated account's FacultyWork
+ * relevance and `GET /thesis/defense/panelist/dashboard` read model.
+ * Never fabricates tasks or derives authorization from counts.
+ */
+export function projectFacultyDashboard(
+  work: FacultyWork,
+  data?: PanelistDashboard | null,
+): FacultyDashboardProjection {
+  const hasDetailedWork = Boolean(
+    work.myAdvisees.relevant || work.myDefenses.relevant,
+  );
+  const attention = (data?.needsAttention ?? []).filter((task) =>
+    isAdviserTask(task) ? work.myAdvisees.relevant : work.myDefenses.relevant,
+  );
+  const waiting = (data?.waitingOnOthers ?? []).filter((item) =>
+    isAdviserWaitingItem(item)
+      ? work.myAdvisees.relevant
+      : work.myDefenses.relevant,
+  );
+  const activeDefenses = work.myDefenses.relevant
+    ? (data?.activeDefenses ?? [])
+    : [];
+  const upcomingDefenses = work.myDefenses.relevant
+    ? (data?.upcomingDefenses ?? [])
+    : [];
+  return {
+    hasDetailedWork,
+    showUpcomingDefensesKpi: work.myDefenses.relevant,
+    showPendingTasksKpi: hasDetailedWork,
+    showNeedsAttention: hasDetailedWork,
+    showUpcomingDefensesSection: work.myDefenses.relevant,
+    attention,
+    waiting,
+    activeDefenses,
+    upcomingDefenses,
+    upcomingDefensesCount: work.myDefenses.relevant
+      ? data
+        ? data.kpis.upcomingDefenses
+        : null
+      : null,
+    pendingTasksCount: hasDetailedWork ? (data ? attention.length : null) : null,
+  };
+}

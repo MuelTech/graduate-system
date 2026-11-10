@@ -20,6 +20,11 @@ const allWork = {
 const defaults = () => ({
   work: structuredClone(allWork),
   accessFailure: 0,
+  accessDelay: 0,
+  dashboardFailure: 0,
+  dashboardData: null,
+  notificationsFailure: 0,
+  notificationsData: null,
   queueFailure: 0,
   detailFailure: 0,
   gradeFailure: 0,
@@ -111,6 +116,8 @@ const fixture = createServer(async (req, res) => {
       ? "legacy"
       : "future";
   if (path === "/api/auth/me") {
+    if (state.accessDelay)
+      await new Promise((resolve) => setTimeout(resolve, state.accessDelay));
     if (state.accessFailure)
       return json(
         { error: "Synthetic unavailable account" },
@@ -134,7 +141,21 @@ const fixture = createServer(async (req, res) => {
       facultyWork: state.work,
     });
   }
-  if (path === "/api/notifications") return json([]);
+  if (path === "/api/notifications") {
+    if (state.notificationsFailure)
+      return json(
+        { error: "Synthetic unavailable notifications" },
+        state.notificationsFailure,
+      );
+    if (state.notificationsData) {
+      return json(
+        Array.isArray(state.notificationsData)
+          ? state.notificationsData
+          : (state.notificationsData[identity] ?? []),
+      );
+    }
+    return json([]);
+  }
   if (path === "/api/panelists/me")
     return json({
       isExternal: state.external,
@@ -142,7 +163,15 @@ const fixture = createServer(async (req, res) => {
       officeAffiliation: "Synthetic Graduate School",
       highestEducationalAttainment: "Doctorate",
     });
-  if (path === "/api/thesis/defense/panelist/dashboard")
+  if (path === "/api/thesis/defense/panelist/dashboard") {
+    if (state.dashboardFailure)
+      return json(
+        { error: "Synthetic unavailable dashboard" },
+        state.dashboardFailure,
+      );
+    if (state.dashboardData) {
+      return json(state.dashboardData[identity] ?? state.dashboardData);
+    }
     return json({
       kpis: { upcomingDefenses: 0, pendingTasks: 0 },
       needsAttention: [],
@@ -150,6 +179,7 @@ const fixture = createServer(async (req, res) => {
       upcomingDefenses: [],
       waitingOnOthers: [],
     });
+  }
   if (path === "/api/thesis/adviser/workspace")
     return json({ activeAdvisees: [], incomingRequests: [], reviewTasks: [] });
   if (

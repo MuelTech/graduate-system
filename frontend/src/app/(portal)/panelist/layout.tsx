@@ -6,6 +6,7 @@ import {
   FacultyRouteGate,
   useFacultyAccess,
 } from "@/components/faculty/faculty-access-provider";
+import { isFacultyNavAreaVisible } from "@/lib/faculty-access";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ChatbotWidget } from "@/components/chatbot/chatbot-widget";
@@ -213,10 +214,11 @@ function FacultyShell({ children }: { children: React.ReactNode }) {
         >
           <ul className="space-y-1">
             {navItems
-              .filter(
-                (item) =>
-                  !("area" in item) ||
-                  (item.area && access.work?.[item.area].relevant === true),
+              .filter((item) =>
+                isFacultyNavAreaVisible(
+                  access.snapshot,
+                  "area" in item ? item.area : undefined,
+                ),
               )
               .map((item) => {
                 const isActive = isNavItemActive(pathname, item.href);

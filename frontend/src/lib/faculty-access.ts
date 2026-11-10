@@ -108,3 +108,17 @@ export function facultyAreaForPath(path: string): FacultyArea | null {
     return "myDefenses";
   return null;
 }
+
+/** Presentation-only navigation visibility check. Retains the last confirmed
+ * same-account FacultyWork snapshot while a routine `/auth/me` refresh is in
+ * flight, while withholding conditional links before initial resolution, after
+ * revocation (`relevant: false`), or on access error (`snapshot === null`).
+ * Never authorizes protected route content or API requests.
+ */
+export function isFacultyNavAreaVisible(
+  snapshot: FacultyWork | null | undefined,
+  area?: FacultyArea,
+): boolean {
+  if (!area) return true;
+  return snapshot?.[area]?.relevant === true;
+}

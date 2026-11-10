@@ -1711,7 +1711,7 @@ The standalone **Waiting on Others** card repeats the visual weight and card rhy
 
 # 10C. UIUX-3E — Faculty Portal UI/UX refinement (PREREQUISITE BEFORE FACULTY-18)
 
-**Status: DOCUMENTED / NOT IMPLEMENTED / NOT VISUALLY ACCEPTED.** On 2026-11-10, the project owner moved this package from after FACULTY-18 to a separate prerequisite before FACULTY-18. UIUX-3E combines Faculty sidebar navigation stability and richer Faculty Dashboard refinement. It is not part of FACULTY-18 implementation or activation.
+**Status: IMPLEMENTED / PENDING INDEPENDENT REVIEW (NOT VISUALLY ACCEPTED; NOT AN APPROVED REFERENCE).** On 2026-11-10, the project owner moved this package from after FACULTY-18 to a separate prerequisite before FACULTY-18. UIUX-3E combines Faculty sidebar navigation stability and richer Faculty Dashboard refinement on `feat/faculty-admin-access` (see [implementation report](../reports/2026-11-10-uiux-3e-faculty-portal-refinement.md)). It is not part of FACULTY-18 implementation or activation.
 
 ### Why this package is needed
 
@@ -1773,6 +1773,12 @@ The package must:
 ### Scheduling boundary
 
 UIUX-3E is a **separate prerequisite before FACULTY-18**. Complete its implementation, independent review, and project-owner browser/visual acceptance before starting FACULTY-18. Do not fold it into FACULTY-18 or treat it as permission to change authorization, workflow, database, or activation policy.
+
+### Implementation summary and verification status (2026-11-10)
+
+- **Part A (Sidebar navigation stability):** `isFacultyNavAreaVisible(access.snapshot, ...)` in `frontend/src/lib/faculty-access.ts` and `frontend/src/app/(portal)/panelist/layout.tsx` retains confirmed same-account conditional navigation items during routine `/auth/me` revalidation while keeping protected route content gated by `FacultyRouteGate`, removing revoked areas once a fresh response returns `relevant: false`, and failing closed on access error (`snapshot === null`).
+- **Part B (Richer Faculty Dashboard):** `projectFacultyDashboard` in `frontend/src/lib/panelist-dashboard.ts` and `frontend/src/app/(portal)/panelist/dashboard/page.tsx` implement the dynamic nine-section operational overview (`PageHeader` with bounded `Refresh`, `Your Work`, conditional `Upcoming Defenses` & `Pending Tasks` KPIs, conditional `Active Defense`, `Needs Your Attention` with >5 task expansion, embedded compact collapsible `Waiting on Others` with independent count never included in `Pending Tasks`, conditional `Upcoming Defense Sessions` with highlighted `Next Defense`, and `Recent Notifications` from `GET /notifications`).
+- **Verification:** `verify-faculty-14-portal.mjs` (44/44 PASS), related frontend verifiers (`verify-adv6-adviser-actions.mjs`, `verify-adv7-fix1-my-advisees-ux.mjs`, `verify-cdw4-workspace.mjs`, `verify-cdw2-contracts.mjs`, `verify-faculty-2-session.mjs`, `verify-faculty-3-compatibility.mjs` PASS), backend `panelist-dashboard.rules.test.ts` (21/21 PASS), frontend TypeScript (`tsc --noEmit` PASS), scoped ESLint PASS, frontend production build (`npm run build` PASS), and `git diff --check` PASS. Synthetic Playwright browser verification (`e2e/faculty-portal.spec.ts`) was not completed after updating a Part A request-holding test and is **not claimed as browser QA PASS**. Hosted CI is **not observed**. Independent review and project-owner browser/visual acceptance remain **pending**.
 # 11. Audit limitations
 
 This document is an initial repository-based audit, not a claim that every screen has been visually inspected in a running browser.
