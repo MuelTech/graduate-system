@@ -472,20 +472,24 @@ Sequence: **1 foundation → 2 auth → 3 identity compatibility → 4 Admin aut
 
 - **Scope:** execute final cross-domain authorization, migration and multi-account UI acceptance; assemble coverage ledger/release checklist; perform only explicitly authorized environment cutover/activation from reviewed 16 manifest.
 - **Non-goals:** new functionality, cleanup, institution-policy decisions, hidden repairs, deployment without environment authorization.
-- **Dependencies:** 1–17B, all blocking decisions for the specific target environment resolved, independently reviewed remote HEADs and appropriate owner UI acceptance. DR-1 actual Full Administrator designation/bootstrap and any live DR-2 account disposition require separate explicit environment authorization. FACULTY-4/FACULTY-12 exact real-MariaDB readiness gates must be closed with their required evidence. If live action is not authorized, deliver reviewable release evidence and stop.
+- **Dependencies:** FACULTY-0–17B plus **UIUX-3E completed, independently reviewed, and explicitly accepted by the project owner before FACULTY-18 starts**; all blocking decisions for the specific target environment resolved; independently reviewed remote HEADs and appropriate owner UI acceptance. DR-1 actual Full Administrator designation/bootstrap and any live DR-2 account disposition require separate explicit environment authorization. FACULTY-4/FACULTY-12 exact real-MariaDB readiness gates must be closed with their required evidence. If live action is not authorized, deliver reviewable release evidence and stop.
 - **Expected areas:** tests/verifiers and release/acceptance docs; production corrections require a bounded fix to the owning package.
 - **Migration impact:** apply only reviewed migrations/manifest in the specifically authorized environment after consistent backup/restore proof; no new unreviewed schema.
 - **Authorization/UI impact:** no legacy broad ADMIN bypass coexists with Restricted accounts; role-only identity does not imply academic authority; final frontend/backend parity.
 - **Verification:** broad backend suite, affected frontend verifiers, both type/build checks, isolated real-DB migration/contention tests, all scenarios in section 7, actual browser/manual QA and independent source review. Record hosted CI separately.
 - **Stop condition:** acceptance/release state reported accurately and no remaining required work hidden; stop. Further contractions/features require new authorization.
 
-### Deferred post-FACULTY-18 UI/UX follow-up (outside this package)
+### UIUX-3E — Faculty Portal UI/UX refinement (separate prerequisite before FACULTY-18)
 
-The project owner requested a separate refinement of the Faculty Dashboard after FACULTY-18. Track it in docs/superpowers/ui-ux/UI_UX_AUDIT.md (UIUX-3E) and docs/superpowers/ui-ux/SYSTEM_UI_UX_PLAYBOOK.md.
+The project owner moved the previously post-FACULTY-18 dashboard refinement forward and combined it with the Faculty sidebar flicker/layout-shift correction. Track the bounded package in docs/superpowers/ui-ux/UI_UX_AUDIT.md (UIUX-3E) and docs/superpowers/ui-ux/SYSTEM_UI_UX_PLAYBOOK.md.
 
-The future refinement should reconcile the earlier richer operational overview (Upcoming Defenses, Pending Tasks, Needs Your Attention, conditional Active Defense, Upcoming Defense Sessions, compact/collapsible Waiting on Others, and Recent Notifications) with the current FACULTY-13/14 dynamic, account-scoped Faculty access model. Preserve relevant-only work areas, no irrelevant zero-value cards, exact backend authorization, separate actionable vs waiting semantics, and same-Gmail Faculty/Admin cache isolation.
+**Part A — Sidebar navigation stability:** investigate the reported flicker/vertical shifting during route navigation. Current source suggests the Faculty access reader temporarily sets the work projection to null while /auth/me refreshes, while sidebar links are filtered from that transient projection; confirm the runtime cause in a real browser. Preserve the last confirmed same-account navigation presentation during routine refresh without using it to authorize protected content or API operations. Remove links when a successful fresh response confirms access loss; fail closed on revocation or access-resolution failure. Preserve account-switch/logout isolation, mobile drawer, desktop collapse, keyboard/focus, active-route matching, and immersive Defense Workspace behavior.
 
-**This is not FACULTY-18 scope or a FACULTY-18 acceptance/activation dependency.** Do not implement it during FACULTY-18. Start only as a separately authorized post-FACULTY-18 UI/UX task, with independent review and project-owner visual acceptance.
+**Part B — Richer Faculty Dashboard:** refine—not blindly restore—the earlier operational overview: relevant Your Work summaries; conditional Upcoming Defenses and Pending Tasks; actionable Needs Your Attention; conditional Active Defense; next Upcoming Defense Session plus a bounded list; compact/collapsible Waiting on Others with an independent count; and recent account-scoped Notifications.
+
+Preserve FACULTY-13/14 dynamic relevance, no irrelevant zero-value cards, External Faculty Adviser restrictions, minimized account-scoped read models, exact backend authorization, Faculty/Admin same-Gmail cache isolation, and the distinction between actionable Pending Tasks and waiting-only information. No new grants, capabilities, workflow mutations, role, portal tree, or activation policy is authorized.
+
+UIUX-3E requires focused automated checks, real-browser desktop/mobile/keyboard/access-revalidation QA, independent source/diff review, and explicit project-owner browser/visual acceptance. **It is a separate prerequisite before FACULTY-18, not part of FACULTY-18 implementation or activation.** Complete and accept UIUX-3E before starting FACULTY-18.
 
 ## 7. Required verification matrix
 
