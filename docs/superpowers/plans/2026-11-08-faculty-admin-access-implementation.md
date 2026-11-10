@@ -479,6 +479,14 @@ Sequence: **1 foundation → 2 auth → 3 identity compatibility → 4 Admin aut
 - **Verification:** broad backend suite, affected frontend verifiers, both type/build checks, isolated real-DB migration/contention tests, all scenarios in section 7, actual browser/manual QA and independent source review. Record hosted CI separately.
 - **Stop condition:** acceptance/release state reported accurately and no remaining required work hidden; stop. Further contractions/features require new authorization.
 
+### Deferred post-FACULTY-18 UI/UX follow-up (outside this package)
+
+The project owner requested a separate refinement of the Faculty Dashboard after FACULTY-18. Track it in docs/superpowers/ui-ux/UI_UX_AUDIT.md (UIUX-3E) and docs/superpowers/ui-ux/SYSTEM_UI_UX_PLAYBOOK.md.
+
+The future refinement should reconcile the earlier richer operational overview (Upcoming Defenses, Pending Tasks, Needs Your Attention, conditional Active Defense, Upcoming Defense Sessions, compact/collapsible Waiting on Others, and Recent Notifications) with the current FACULTY-13/14 dynamic, account-scoped Faculty access model. Preserve relevant-only work areas, no irrelevant zero-value cards, exact backend authorization, separate actionable vs waiting semantics, and same-Gmail Faculty/Admin cache isolation.
+
+**This is not FACULTY-18 scope or a FACULTY-18 acceptance/activation dependency.** Do not implement it during FACULTY-18. Start only as a separately authorized post-FACULTY-18 UI/UX task, with independent review and project-owner visual acceptance.
+
 ## 7. Required verification matrix
 
 Each backend row includes direct HTTP, guessed resource ID and direct service-boundary checks where applicable. Browser navigation does not substitute for these tests.
