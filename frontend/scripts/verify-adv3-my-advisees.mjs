@@ -134,11 +134,17 @@ test("the page exposes no raw internals or ambiguous detail affordances", () => 
 
 test("sidebar keeps My Advisees as the Adviser entry point", () => {
   const layout = read(LAYOUT);
+  const navStart = layout.indexOf("const navItems = [");
+  const navEnd = layout.indexOf("];", navStart);
+  assert.notEqual(navStart, -1);
+  assert.notEqual(navEnd, -1);
+  const navBlock = layout.slice(navStart, navEnd);
+  const items = [...navBlock.matchAll(/href:\s*"([^"]+)"[^}]*?label:\s*"([^"]+)"/gs)]
+    .map((m) => ({ href: m[1], label: m[2] }));
 
-  assert.match(layout, /href: "\/panelist\/advisees", label: "My Advisees"/);
-  assert.match(layout, /href: "\/panelist\/defenses", label: "My Defenses"/);
-  assert.doesNotMatch(layout, /href: "\/panelist\/adviser-requests"/);
-  assert.doesNotMatch(layout, /href: "\/panelist\/adviser-reviews"/);
+  assert.ok(items.some((item) => item.href === "/panelist/advisees" && item.label === "My Advisees"));
+  assert.ok(items.some((item) => item.href === "/panelist/defenses" && item.label === "My Defenses"));
+  assert.doesNotMatch(layout, /href:\s*"\/panelist\/adviser-(?:requests|reviews)"/);
 
   // My Defenses active-route behavior remains untouched.
   assert.match(layout, /MY_DEFENSES_CONTEXT_ROUTES/);

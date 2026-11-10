@@ -5,7 +5,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vites
 
 const db = vi.hoisted(() => ({
   user: { findUnique: vi.fn(), findMany: vi.fn(), count: vi.fn() },
-  panelist: { findFirst: vi.fn() },
+  panelist: { findFirst: vi.fn(), findUnique: vi.fn() },
   student: { findUnique: vi.fn() },
   adviserAssignment: { findMany: vi.fn() },
   adviserRequest: { findMany: vi.fn(), findUnique: vi.fn(), updateMany: vi.fn() },
@@ -51,6 +51,7 @@ beforeEach(() => {
     mustChangePassword: false, panelist: { isActive: true }, administratorAccess: null, capabilityGrants: [] };
   db.user.findUnique.mockImplementation(async () => account);
   db.panelist.findFirst.mockResolvedValue({ id: "profile-preserved", userId: "academic-1" });
+  db.panelist.findUnique.mockResolvedValue({ isExternal: false });
   db.adviserRequest.findMany.mockResolvedValue([]);
   db.adviserRequest.findUnique.mockResolvedValue({ id: "request-1", requestedAdviserId: "academic-1", status: "PENDING", adviserStatus: "PENDING", deanStatus: "PENDING" });
   db.adviserRequest.updateMany.mockResolvedValue({ count: 1 });

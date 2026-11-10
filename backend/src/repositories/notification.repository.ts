@@ -32,10 +32,13 @@ export class NotificationRepository {
         });
     }
 
-    async markAsRead(id: string) {
-        return await prisma.notification.update({
-            where: { id },
+    async markAsRead(id: string, userId: string) {
+        await prisma.notification.updateMany({
+            where: { id, userId },
             data: { isRead: true }
+        });
+        return await prisma.notification.findFirst({
+            where: { id, userId },
         });
     }
 }

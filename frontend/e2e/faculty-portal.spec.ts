@@ -917,7 +917,7 @@ test("UIUX-3E Part A: sidebar stays stable without vertical shift during route n
 
   // Protected destination content is gated by FacultyRouteGate during revalidation
   await expect(
-    page.getByRole("status", { name: "Loading Faculty access" }),
+    page.getByRole("status", { name: "Loading account access" }),
   ).toBeVisible();
 
   // While /auth/me refresh is in flight, conditional links remain visible and E-Signatures does not shift

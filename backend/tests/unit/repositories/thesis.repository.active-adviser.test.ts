@@ -25,6 +25,15 @@ describe("ThesisRepository.getActiveAdviserAssignment", () => {
     await expect(repo.getActiveAdviserAssignment("student-1")).resolves.toBeNull();
     expect(prismaMock.adviserAssignment.findMany).toHaveBeenCalledWith({
       where: { studentId: "student-1", isActive: true },
+      include: {
+        adviser: {
+          select: {
+            isActive: true,
+            role: true,
+            panelist: { select: { isActive: true, isExternal: true } },
+          },
+        },
+      },
       orderBy: { assignedDate: "desc" },
     });
   });

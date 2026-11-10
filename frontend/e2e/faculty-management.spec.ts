@@ -85,6 +85,7 @@ async function setup(page: Page) {
         body: JSON.stringify(body),
       });
     if (method === "OPTIONS") return request.fulfill({ status: 204, headers });
+    if (url.pathname === "/api/auth/me") return request.continue();
     if (!url.pathname.startsWith("/api/admin/panelists")) return respond([]);
     if (state.delay) await state.delay;
     if (state.failure)

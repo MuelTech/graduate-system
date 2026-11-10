@@ -201,12 +201,18 @@ test("the detail page exposes no persistence terminology", () => {
 
 test("My Advisees sidebar behavior remains intact", () => {
   const layout = read(LAYOUT);
+  const navStart = layout.indexOf("const navItems = [");
+  const navEnd = layout.indexOf("];", navStart);
+  assert.notEqual(navStart, -1);
+  assert.notEqual(navEnd, -1);
+  const navBlock = layout.slice(navStart, navEnd);
+  const items = [...navBlock.matchAll(/href:\s*"([^"]+)"[^}]*?label:\s*"([^"]+)"/gs)]
+    .map((m) => ({ href: m[1], label: m[2] }));
 
-  assert.match(layout, /href: "\/panelist\/advisees", label: "My Advisees"/);
+  assert.ok(items.some((item) => item.href === "/panelist/advisees" && item.label === "My Advisees"));
   assert.match(layout, /pathname\.startsWith\(`\$\{href\}\/`\)/);
   assert.match(layout, /MY_DEFENSES_CONTEXT_ROUTES/);
-  assert.doesNotMatch(layout, /href: "\/panelist\/adviser-requests"/);
-  assert.doesNotMatch(layout, /href: "\/panelist\/adviser-reviews"/);
+  assert.doesNotMatch(layout, /href:\s*"\/panelist\/adviser-(?:requests|reviews)"/);
 });
 
 test("frontend detail types match the accepted DTO and contain no raw relations", () => {

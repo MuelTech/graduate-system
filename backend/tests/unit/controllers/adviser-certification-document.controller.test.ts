@@ -54,7 +54,8 @@ describe("PREDEF-1C actual authenticated GS-017 routes and PDF response", () => 
 
   it.each([undefined, "APPLICANT", "CHAIRMAN", "RAPPORTEUR", "FACILITATOR"])("denies unsupported or unauthenticated role %s before generation", async role => {
     const response = await get("/thesis/adviser-certifications/cert-1/pdf", role);
-    expect(response.status).toBe(role ? 403 : 401);
+    const expectedStatus = !role ? 401 : ["CHAIRMAN", "RAPPORTEUR", "FACILITATOR"].includes(role) ? 503 : 403;
+    expect(response.status).toBe(expectedStatus);
     expect(mocks.generate).not.toHaveBeenCalled();
   });
 

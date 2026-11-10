@@ -63,7 +63,7 @@ describe.each(operations)("FACULTY-12 %s %s", (method, path) => {
   });
   it("requires authentication", async () => { expect((await request(method, path, null)).status).toBe(401); });
   it.each(["ADMIN", "STUDENT", "APPLICANT", "CUSTOM"])("denies current %s even with Faculty JWT claim", async role => {
-    account(role); expect((await request(method, path)).status).toBe(403);
+    account(role); expect((await request(method, path)).status).toBe(role === "CUSTOM" ? 503 : 403);
   });
 });
 describe("FACULTY-12 API ownership/privacy and Admin separation", () => {

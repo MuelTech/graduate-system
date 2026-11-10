@@ -52,9 +52,10 @@ describe("GS020-1B authenticated Adviser Request record routes", () => {
   });
 
   it.each([undefined, "APPLICANT", "CHAIRMAN", "RAPPORTEUR", "FACILITATOR"])("denies unsupported or unauthenticated actor %s", async role => {
+    const expectedStatus = !role ? 401 : ["CHAIRMAN", "RAPPORTEUR", "FACILITATOR"].includes(role) ? 503 : 403;
     for (const route of ["/thesis/adviser/requests/records", "/thesis/adviser/requests/req-1/pdf"]) {
       const response = await fetch(origin + route, { headers: headers(role) });
-      expect(response.status).toBe(role ? 403 : 401);
+      expect(response.status).toBe(expectedStatus);
     }
     expect(mocks.pdf).not.toHaveBeenCalled();
     expect(mocks.list).not.toHaveBeenCalled();

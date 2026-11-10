@@ -12,14 +12,23 @@ const requestsPath = "src/app/(portal)/panelist/adviser-requests/page.tsx";
 const reviewsPath = "src/app/(portal)/panelist/adviser-reviews/page.tsx";
 const dashboard = read("../backend/src/services/panelist-dashboard.rules.ts");
 
+function readPanelistNavItems() {
+  const navStart = layout.indexOf("const navItems = [");
+  const navEnd = layout.indexOf("];", navStart);
+  assert.notEqual(navStart, -1);
+  assert.notEqual(navEnd, -1);
+  const navBlock = layout.slice(navStart, navEnd);
+  return [...navBlock.matchAll(/href:\s*"(\/panelist\/[^"]+)"[^}]*?label:\s*"([^"]+)"/gs)]
+    .map((match) => ({ href: match[1], label: match[2] }));
+}
+
 test("My Advisees is the sole Adviser sidebar entry without reordering other items", () => {
-  const labels = [...layout.matchAll(/\{ href: "\/panelist\/[^"]+", label: "([^"]+)"/g)]
-    .map((match) => match[1]);
+  const labels = readPanelistNavItems().map((item) => item.label);
   assert.deepEqual(labels, [
-    "Dashboard", "Profile", "My Defenses", "My Advisees",
+    "Dashboard", "Profile", "Essay Evaluations", "My Defenses", "My Advisees",
     "E-Signatures", "Repository", "Announcements", "Notifications",
   ]);
-  assert.doesNotMatch(layout, /href: "\/panelist\/adviser-(?:requests|reviews)"/);
+  assert.doesNotMatch(layout, /href:\s*"\/panelist\/adviser-(?:requests|reviews)"/);
 });
 
 test("legacy Adviser Requests index is a server-only redirect", () => {
@@ -49,7 +58,7 @@ test("legacy routes do not fetch, mutate, render, or inspect exact task IDs", ()
 
 test("My Advisees base and nested routes keep generic active matching", () => {
   assert.match(layout, /return pathname === href \|\| pathname\.startsWith\(\x60\$\{href\}\/\x60\);/);
-  assert.match(layout, /href: "\/panelist\/advisees", label: "My Advisees"/);
+  assert.ok(readPanelistNavItems().some((item) => item.href === "/panelist/advisees" && item.label === "My Advisees"));
 });
 
 test("My Defenses special active-route family remains intact", () => {
