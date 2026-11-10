@@ -1,4 +1,5 @@
 import { FACULTY_CONFIGURATION_ENABLED } from "../access/faculty-configuration";
+import { EXTERNAL_ACTIVE_ADVISER_MESSAGE } from "../services/active-adviser.rules";
 import { AppError } from "../utils/AppError";
 import prisma from "../config/database";
 
@@ -17,6 +18,20 @@ export class PanelistRepository {
             select: { isExternal: true },
         });
         return panelist?.isExternal === true;
+    }
+
+    /**
+     * Fail-closed active Internal Faculty validation for Adviser-only official records.
+     * Denies missing, inactive, or External Panelist profiles with 403 and propagates DB errors.
+     */
+    async assertActiveInternalFaculty(userId: string): Promise<void> {
+        const panelist = await prisma.panelist.findUnique({
+            where: { userId },
+            select: { isActive: true, isExternal: true },
+        });
+        if (!panelist || panelist.isActive !== true || panelist.isExternal !== false) {
+            throw new AppError(EXTERNAL_ACTIVE_ADVISER_MESSAGE, 403);
+        }
     }
 
     async updateAvailability(id: string, isAvailableAsAdviser: boolean) {

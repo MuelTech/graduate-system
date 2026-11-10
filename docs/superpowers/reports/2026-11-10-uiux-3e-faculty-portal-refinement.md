@@ -144,6 +144,21 @@ Two read-only `research` subagents investigated Part A and Part B in parallel be
 11. `docs/superpowers/ui-ux/SYSTEM_UI_UX_PLAYBOOK.md`
 12. `docs/superpowers/plans/2026-11-08-faculty-admin-access-implementation.md`
 
+### 5.4 Final Bounded Correction — Fail-Closed Active Internal Panelist Profile Validation (starting HEAD `369cb328160f68c8d1d5fb82b0ad6b82ba6bc854`)
+
+1. `backend/src/repositories/panelist.repository.ts`
+2. `backend/src/services/adviser-request-record.service.ts`
+3. `backend/src/services/adviser-certification-record.service.ts`
+4. `backend/tests/unit/repositories/panelist.repository.test.ts` (new)
+5. `backend/tests/unit/services/adviser-request-record.service.test.ts`
+6. `backend/tests/unit/services/adviser-certification-document.service.test.ts`
+7. `backend/tests/unit/services/faculty-8-official-records.test.ts`
+8. `backend/tests/unit/routes/faculty-external-adviser-isolation.routes.test.ts`
+9. `docs/superpowers/reports/2026-11-10-uiux-3e-faculty-portal-refinement.md`
+10. `docs/superpowers/ui-ux/UI_UX_AUDIT.md`
+11. `docs/superpowers/ui-ux/SYSTEM_UI_UX_PLAYBOOK.md`
+12. `docs/superpowers/plans/2026-11-08-faculty-admin-access-implementation.md`
+
 ---
 
 ## 6. Initial UIUX-3E Verification & Evidence Record
@@ -282,3 +297,40 @@ Two read-only `research` subagents investigated Part A and Part B in parallel be
 - **Playwright synthetic browser verification:** **NOT RUN** (left to project-owner local browser QA).
 - **Project-owner browser/visual QA and independent review:** **PENDING**.
 - **Safety boundaries confirmed:** Zero database access or migrations, all activation gates (`ADMINISTRATOR_MANAGEMENT_ENABLED`, `DIRECT_ACCESS_ENFORCEMENT_ENABLED`, `OPERATIONAL_ENFORCEMENT_ENABLED`) remain `false`, FACULTY-4/FACULTY-12 readiness gates remain open, and FACULTY-18 was not started.
+
+---
+
+## 9. Final Bounded Correction — Fail-Closed Active Internal Panelist Profile Validation
+
+- **Starting HEAD for final bounded correction:** `369cb328160f68c8d1d5fb82b0ad6b82ba6bc854`
+- **Status:** **IMPLEMENTED / PENDING INDEPENDENT REVIEW** (not visually accepted; Playwright **NOT RUN**; project-owner browser QA **PENDING**)
+
+### 9.1 Shared Active Internal Panelist Validation (`backend/src/repositories/panelist.repository.ts`)
+
+- Added `PanelistRepository.assertActiveInternalFaculty(userId)`, querying `prisma.panelist.findUnique({ where: { userId }, select: { isActive: true, isExternal: true } })` and establishing all three conditions:
+  1. The `Panelist` profile exists (`panelist !== null`).
+  2. `Panelist.isActive === true`.
+  3. `Panelist.isExternal === false`.
+- Missing, inactive, or External Panelist profiles fail closed with `AppError("External Faculty cannot serve as Thesis Adviser.", 403)`; database errors propagate cleanly without being masked as missing/denied.
+- Existing `PanelistRepository.isExternalFaculty(userId)` semantics (`panelist?.isExternal === true`) were intentionally preserved untouched so unrelated Defense and effective-access callers do not change behavior.
+
+### 9.2 Protected GS-020 and GS-017 Boundaries
+
+- **GS-020 (`backend/src/services/adviser-request-record.service.ts`):** `AdviserRequestRecordService.currentActor(actor)` now calls `await this.panelists.assertActiveInternalFaculty(actor.userId)` whenever `isAcademicAccountRole(actor.role)` is true, protecting `list()` (`GET /adviser/requests/records`) and `generatePdf()` (`GET /adviser/requests/:id/pdf` via `source()`) before querying `prisma.adviserRequestOfficialRecord`.
+- **GS-017 (`backend/src/services/adviser-certification-record.service.ts`):** `AdviserCertificationRecordService.currentActor(actor)` now calls `await this.panelists.assertActiveInternalFaculty(actor.userId)` whenever `isAcademicAccountRole(actor.role)` is true, protecting `listSources()` (`GET /adviser-certifications`), `getSource()`, and downstream PDF generation (`GET /adviser-certifications/:certificationId/pdf`) before querying `prisma.adviserCertification`.
+- **Preserved access:** Active Internal Faculty (`isActive: true, isExternal: false`), Students (`STUDENT`), authorized Admins (`ADMIN`), and External Faculty Defense access are all preserved without modifying historical signed records, hashes, or workflows. Note: in full HTTP route stacks with active upstream middleware checks, missing/inactive `User.panelist` profiles already fail closed with 403 (`"Current account access is unavailable."`) before reaching the controller, while direct `PanelistRepository.assertActiveInternalFaculty` lookups fail closed at the service boundary with 403 (`"External Faculty cannot serve as Thesis Adviser."`) before GS-020/GS-017 DB queries.
+
+### 9.3 Active Internal Panelist Validation Verification Results
+
+- **Focused backend suites (`npx vitest run ...` in `backend`):** **5 files / 168 tests PASS**:
+  - `tests/unit/repositories/panelist.repository.test.ts` (8/8 PASS)
+  - `tests/unit/services/adviser-request-record.service.test.ts` (35/35 PASS)
+  - `tests/unit/services/adviser-certification-document.service.test.ts` (52/52 PASS)
+  - `tests/unit/services/faculty-8-official-records.test.ts` (66/66 PASS)
+  - `tests/unit/routes/faculty-external-adviser-isolation.routes.test.ts` (7/7 PASS)
+- **Backend TypeScript (`npx tsc --noEmit` in `backend`):** **PASS** (0 errors)
+- **`git diff --check`:** **PASS**
+- **Frontend build / TypeScript / verifiers:** Not re-run (zero frontend code changed in this correction).
+- **Playwright synthetic browser verification:** **NOT RUN** (left to project-owner local browser QA).
+- **Project-owner browser/visual QA and independent review:** **PENDING**.
+- **Safety boundaries confirmed:** Zero database access or migrations, all exported activation flags in `backend/src/access/*.ts` (`ADMINISTRATOR_MANAGEMENT_ENABLED`, `DIRECT_ACCESS_ENFORCEMENT_ENABLED`, `OPERATIONAL_ENFORCEMENT_ENABLED`, `PRIVATE_RECORD_ENFORCEMENT_ENABLED`, `FACULTY_CONFIGURATION_ENABLED`, `FACULTY_ESSAY_EVALUATION_ENABLED`, `DEFENSE_ADVISER_CAPABILITY_ENFORCEMENT_ENABLED`, `ADMISSION_STUDENT_CAPABILITY_ENFORCEMENT_ENABLED`, `EXAM_ADMINISTRATION_CAPABILITY_ENFORCEMENT_ENABLED`) remain `false`, and FACULTY-18 was not started.

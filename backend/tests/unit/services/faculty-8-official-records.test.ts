@@ -59,7 +59,7 @@ function score() {
 }
 beforeEach(() => {
   vi.resetAllMocks(); account(); render.mockResolvedValue(Buffer.from("%PDF-1.7\nexact record"));
-  db.panelist.findUnique.mockResolvedValue({ isExternal: false });
+  db.panelist.findUnique.mockResolvedValue({ isActive: true, isExternal: false });
   db.adviserCertification.findUnique.mockResolvedValue(certification()); db.adviserCertification.findMany.mockResolvedValue([certification()]);
   db.adviserRequestOfficialRecord.findUnique.mockResolvedValue(requestRecord()); db.adviserRequestOfficialRecord.findMany.mockResolvedValue([requestRecord()]);
   db.defenseSchedule.findMany.mockResolvedValue([]); db.defenseSchedule.findUnique.mockResolvedValue(schedule());
@@ -103,20 +103,34 @@ describe("FACULTY-8 GS-017 context and exact issuer ownership", () => {
     account(["defense.records.view"]); await expect(docs.generateAdviserCertificationPdf("cert", actor)).rejects.toMatchObject({ statusCode: 404 });
     expect(render).not.toHaveBeenCalled();
   });
-  it("UIUX-3E: denies External Faculty GS-017 and GS-020 reads/PDFs before accessing protected records under active authorization", async () => {
-    account([], { id: "ext-issuer", role: "FACULTY", administratorAccess: null, panelist: { isActive: true } });
-    db.panelist.findUnique.mockResolvedValue({ isExternal: true });
-    await expect(certs.listSources({ userId: "ext-issuer", role: "FACULTY" }, "thesis", "PROPOSAL")).rejects.toMatchObject({ statusCode: 403 });
-    await expect(certs.getSource("cert", { userId: "ext-issuer", role: "FACULTY" })).rejects.toMatchObject({ statusCode: 403 });
-    await expect(docs.generateAdviserCertificationPdf("cert", { userId: "ext-issuer", role: "FACULTY" })).rejects.toMatchObject({ statusCode: 403 });
-    await expect(requests.list({ userId: "ext-issuer", role: "FACULTY" })).rejects.toMatchObject({ statusCode: 403 });
-    await expect(requests.generatePdf("req", { userId: "ext-issuer", role: "FACULTY" })).rejects.toMatchObject({ statusCode: 403 });
-    expect(db.adviserCertification.findMany).not.toHaveBeenCalled();
-    expect(db.adviserCertification.findUnique).not.toHaveBeenCalled();
-    expect(db.adviserRequestOfficialRecord.findMany).not.toHaveBeenCalled();
-    expect(db.adviserRequestOfficialRecord.findUnique).not.toHaveBeenCalled();
-    expect(render).not.toHaveBeenCalled();
-  });
+  it.each([
+    ["External Faculty", { isActive: true, isExternal: true }],
+    ["missing Panelist profile", null],
+    ["inactive Panelist profile", { isActive: false, isExternal: false }],
+  ])(
+    "UIUX-3E: denies %s GS-017 and GS-020 reads/PDFs before accessing protected records under active authorization",
+    async (_label, panelistProfile) => {
+      account([], { id: "ext-issuer", role: "FACULTY", administratorAccess: null, panelist: { isActive: true } });
+      db.panelist.findUnique.mockResolvedValue(panelistProfile);
+      for (const run of [
+        () => certs.listSources({ userId: "ext-issuer", role: "FACULTY" }, "thesis", "PROPOSAL"),
+        () => certs.getSource("cert", { userId: "ext-issuer", role: "FACULTY" }),
+        () => docs.generateAdviserCertificationPdf("cert", { userId: "ext-issuer", role: "FACULTY" }),
+        () => requests.list({ userId: "ext-issuer", role: "FACULTY" }),
+        () => requests.generatePdf("req", { userId: "ext-issuer", role: "FACULTY" }),
+      ]) {
+        await expect(run()).rejects.toMatchObject({
+          statusCode: 403,
+          message: "External Faculty cannot serve as Thesis Adviser.",
+        });
+      }
+      expect(db.adviserCertification.findMany).not.toHaveBeenCalled();
+      expect(db.adviserCertification.findUnique).not.toHaveBeenCalled();
+      expect(db.adviserRequestOfficialRecord.findMany).not.toHaveBeenCalled();
+      expect(db.adviserRequestOfficialRecord.findUnique).not.toHaveBeenCalled();
+      expect(render).not.toHaveBeenCalled();
+    },
+  );
 });
 
 describe("FACULTY-8 GS-020 current capability and immutable record", () => {

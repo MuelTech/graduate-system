@@ -29,7 +29,7 @@ describe("GS020-1B finalized Adviser Request authorization and PDF mapping", () 
     vi.clearAllMocks();
     db.adviserRequestOfficialRecord.findUnique.mockResolvedValue(officialRecord());
     db.adviserRequestOfficialRecord.findMany.mockResolvedValue([officialRecord()]);
-    db.panelist.findUnique.mockResolvedValue({ isExternal: false });
+    db.panelist.findUnique.mockResolvedValue({ isActive: true, isExternal: false });
     db.student.findUnique.mockRejectedValue(new Error("Mutable profiles must not be consulted"));
     db.adviserAssignment.findFirst.mockRejectedValue(new Error("Current Adviser must not be consulted"));
   });
@@ -117,22 +117,42 @@ describe("GS020-1B finalized Adviser Request authorization and PDF mapping", () 
   });
 
   it.each(["FACULTY", "PANELIST"] as const)(
-    "UIUX-3E: denies External %s from GS-020 list and PDF before querying official records",
+    "UIUX-3E: denies External, missing-profile, or inactive %s from GS-020 list and PDF before querying official records",
     async (role) => {
-      db.panelist.findUnique.mockResolvedValue({ isExternal: true });
       const spy = vi.spyOn(renderer, "renderAdviserRequest");
+      for (const panelistProfile of [
+        { isActive: true, isExternal: true },
+        null,
+        { isActive: false, isExternal: false },
+      ]) {
+        db.panelist.findUnique.mockResolvedValue(panelistProfile);
 
-      await expect(service.list({ userId: "adviser-user", role })).rejects.toMatchObject({
-        statusCode: 403,
-        message: "External Faculty cannot serve as Thesis Adviser.",
-      });
-      await expect(service.generatePdf("req-1", { userId: "adviser-user", role })).rejects.toMatchObject({
-        statusCode: 403,
-        message: "External Faculty cannot serve as Thesis Adviser.",
-      });
+        await expect(service.list({ userId: "adviser-user", role })).rejects.toMatchObject({
+          statusCode: 403,
+          message: "External Faculty cannot serve as Thesis Adviser.",
+        });
+        await expect(service.generatePdf("req-1", { userId: "adviser-user", role })).rejects.toMatchObject({
+          statusCode: 403,
+          message: "External Faculty cannot serve as Thesis Adviser.",
+        });
+      }
       expect(db.adviserRequestOfficialRecord.findMany).not.toHaveBeenCalled();
       expect(db.adviserRequestOfficialRecord.findUnique).not.toHaveBeenCalled();
       expect(spy).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each(["STUDENT", "ADMIN"] as const)(
+    "UIUX-3E: preserves %s GS-020 access without requiring a Panelist profile",
+    async (role) => {
+      db.panelist.findUnique.mockResolvedValue(null);
+      const userId = role === "STUDENT" ? "student-user" : "admin-user";
+
+      await expect(service.list({ userId, role })).resolves.toHaveLength(1);
+      await expect(service.generatePdf("req-1", { userId, role })).resolves.toMatchObject({
+        filename: "Sam-Student-Adviser-Request.pdf",
+      });
+      expect(db.panelist.findUnique).not.toHaveBeenCalled();
     },
   );
 });

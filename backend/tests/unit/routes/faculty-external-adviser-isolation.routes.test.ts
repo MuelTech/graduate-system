@@ -153,7 +153,9 @@ beforeEach(() => {
   );
   database.panelist.findUnique.mockImplementation(async ({ where }) => {
     const account = accounts[where.userId];
-    return account?.panelist ? { isExternal: account.panelist.isExternal } : null;
+    return account?.panelist
+      ? { isActive: account.panelist.isActive, isExternal: account.panelist.isExternal }
+      : null;
   });
   database.adviserAssignment.findMany.mockResolvedValue([]);
   database.adviserRequest.findMany.mockResolvedValue([]);
@@ -315,5 +317,40 @@ describe("UIUX-3E Part B HTTP/controller boundaries — External Faculty Adviser
     const intCertRecords = await getAs(INTERNAL_ID, "/adviser-certifications");
     expect(intCertRecords.response.status).toBe(200);
     expect(intCertRecords.body).toEqual([]);
+  });
+
+  it("denies missing or inactive Panelist profiles on GS-020 and GS-017 routes before DB record lookup", async () => {
+    for (const profile of [null, { isActive: false, isExternal: false }]) {
+      database.panelist.findUnique.mockResolvedValue(profile);
+      for (const path of [
+        "/adviser/requests/records",
+        "/adviser/requests/req-1/pdf",
+        "/adviser-certifications",
+        "/adviser-certifications/cert-1/pdf",
+      ]) {
+        const { response, body } = await getAs(INTERNAL_ID, path);
+        expect(response.status).toBe(403);
+        expect(body).toEqual({ error: "External Faculty cannot serve as Thesis Adviser." });
+      }
+    }
+    for (const accountProfile of [
+      null,
+      { isActive: false, isExternal: false, isAvailableAsAdviser: true },
+    ]) {
+      accounts[INTERNAL_ID].panelist = accountProfile;
+      for (const path of [
+        "/adviser/requests/records",
+        "/adviser/requests/req-1/pdf",
+        "/adviser-certifications",
+        "/adviser-certifications/cert-1/pdf",
+      ]) {
+        const { response } = await getAs(INTERNAL_ID, path);
+        expect(response.status).toBe(403);
+      }
+    }
+    expect(database.adviserRequestOfficialRecord.findMany).not.toHaveBeenCalled();
+    expect(database.adviserRequestOfficialRecord.findUnique).not.toHaveBeenCalled();
+    expect(database.adviserCertification.findMany).not.toHaveBeenCalled();
+    expect(database.adviserCertification.findUnique).not.toHaveBeenCalled();
   });
 });

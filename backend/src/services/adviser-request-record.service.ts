@@ -4,7 +4,6 @@ import type { AdviserRequestOfficialRecord, Prisma } from "@prisma/client";
 import prisma from "../config/database";
 import { PanelistRepository } from "../repositories/panelist.repository";
 import { AppError } from "../utils/AppError";
-import { EXTERNAL_ACTIVE_ADVISER_MESSAGE } from "./active-adviser.rules";
 import { renderAdviserRequest } from "../documents/official-defense/adviser-request/adviser-request.renderer";
 import { loadOfficialFormLogos } from "./official-form-assets";
 import { sanitizeOfficialNamePart } from "./official-defense-document-filename";
@@ -82,11 +81,8 @@ export class AdviserRequestRecordService {
     actor = await this.authorization.current(actor);
     assertActor(actor);
     if (actor.role === "ADMIN") await this.authorization.admin(actor, "adviser.requests.view");
-    if (
-      isAcademicAccountRole(actor.role) &&
-      (await this.panelists.isExternalFaculty(actor.userId))
-    ) {
-      throw new AppError(EXTERNAL_ACTIVE_ADVISER_MESSAGE, 403);
+    if (isAcademicAccountRole(actor.role)) {
+      await this.panelists.assertActiveInternalFaculty(actor.userId);
     }
     return actor;
   }

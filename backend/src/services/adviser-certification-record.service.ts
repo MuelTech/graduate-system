@@ -4,7 +4,6 @@ import prisma from "../config/database";
 import type { Prisma } from "@prisma/client";
 import { PanelistRepository } from "../repositories/panelist.repository";
 import { AppError } from "../utils/AppError";
-import { EXTERNAL_ACTIVE_ADVISER_MESSAGE } from "./active-adviser.rules";
 import { isValidCertifiedFinalManuscript, isValidCertifiedProposalManuscript } from "./proposal-adviser-review.rules";
 
 export interface CertificationActor { userId: string; role: string }
@@ -77,11 +76,8 @@ export class AdviserCertificationRecordService {
   private async currentActor(actor: CertificationActor): Promise<CertificationActor> {
     actor = await this.authorization.current(actor);
     authorizeActor(actor);
-    if (
-      isAcademicAccountRole(actor.role) &&
-      (await this.panelists.isExternalFaculty(actor.userId))
-    ) {
-      throw new AppError(EXTERNAL_ACTIVE_ADVISER_MESSAGE, 403);
+    if (isAcademicAccountRole(actor.role)) {
+      await this.panelists.assertActiveInternalFaculty(actor.userId);
     }
     return actor;
   }
