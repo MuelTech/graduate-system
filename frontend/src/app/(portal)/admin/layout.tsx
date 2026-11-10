@@ -3,8 +3,11 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useQuery } from "@tanstack/react-query";
 import { ChatbotWidget } from "@/components/chatbot/chatbot-widget";
 import { signOut, useSession } from "next-auth/react";
+import { apiClientRequest } from "@/lib/api.client";
+import { canAdminAccessPath } from "@/lib/admin-capabilities";
 import {
   LayoutDashboard,
   Users,
@@ -15,7 +18,6 @@ import {
   Settings,
   HardDrive,
   Library,
-  Bell,
   Menu,
   X,
   LogOut,
@@ -25,12 +27,27 @@ import {
 } from "lucide-react";
 import { NotificationBell } from "@/components/layout/notification-bell";
 
+interface AuthMeResponse {
+  user: {
+    id: string;
+    role: string;
+    adminAccessLevel?: "FULL" | "RESTRICTED" | null;
+    adminCapabilities?: string[] | null;
+  };
+}
+
 /** Nested admin routes stay visually active on their parent nav entry. */
 function isNavActive(pathname: string, href: string): boolean {
+  if (
+    href === "/admin/users/panelists" &&
+    pathname.startsWith("/admin/users/faculty")
+  ) {
+    return true;
+  }
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
-const navItems = [
+const allNavItems = [
   { href: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard },
   {
     label: "User Management",
@@ -38,8 +55,8 @@ const navItems = [
     children: [
       { href: "/admin/users/applicants", label: "Applicants" },
       { href: "/admin/users/students", label: "Students" },
-      { href: "/admin/users/panelists", label: "Panelists" },
-      { href: "/admin/users/roles", label: "Custom Roles" },
+      { href: "/admin/users/panelists", label: "Faculty" },
+      { href: "/admin/users/administrators", label: "Administrators" },
     ],
   },
   {
@@ -68,7 +85,6 @@ const navItems = [
   { href: "/admin/settings/storage", label: "Storage Health", icon: HardDrive },
   { href: "/admin/memos", label: "Announcements & Memos", icon: Megaphone },
   { href: "/admin/repository", label: "Repository", icon: Library },
-  { href: "/admin/notifications", label: "Notifications", icon: Bell },
 ];
 
 /** Shared focus treatment for sidebar controls (Playbook §25). */
@@ -85,12 +101,47 @@ export default function AdminLayout({
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
   const [openMenus, setOpenMenus] = useState<Record<string, boolean>>({
-    "User Management":
-      pathname.startsWith("/admin/users") ||
-      pathname.startsWith("/admin/users"),
+    "User Management": pathname.startsWith("/admin/users"),
     "Exam Management": pathname.startsWith("/admin/exam"),
     "Thesis Management": pathname.startsWith("/admin/thesis"),
   });
+
+  // Zero-flicker capability check: uses session values immediately while
+  // caching /auth/me for 60s so sidebar items never jump on navigation.
+  const { data: authMe } = useQuery<AuthMeResponse>({
+    queryKey: ["authMe"],
+    queryFn: async () => (await apiClientRequest("/auth/me")) as AuthMeResponse,
+    staleTime: 60_000,
+    refetchOnWindowFocus: false,
+  });
+
+  const accessLevel =
+    authMe?.user?.adminAccessLevel ??
+    session?.user?.adminAccessLevel ??
+    "FULL";
+  const capabilities =
+    authMe?.user?.adminCapabilities ??
+    session?.user?.adminCapabilities ??
+    null;
+
+  const navItems = allNavItems
+    .map((item) => {
+      if ("children" in item && item.children) {
+        const visibleChildren = item.children.filter((child) =>
+          canAdminAccessPath(child.href, accessLevel, capabilities),
+        );
+        if (visibleChildren.length === 0) return null;
+        return { ...item, children: visibleChildren };
+      }
+      if (
+        item.href &&
+        !canAdminAccessPath(item.href, accessLevel, capabilities)
+      ) {
+        return null;
+      }
+      return item;
+    })
+    .filter((item): item is NonNullable<typeof item> => item !== null);
 
   const toggleMenu = (label: string) => {
     setOpenMenus((prev) => ({ ...prev, [label]: !prev[label] }));

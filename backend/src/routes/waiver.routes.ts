@@ -1,6 +1,9 @@
 import { Router } from "express";
-import { authenticateJWT } from "../middlewares/auth.middleware";
-import { requireRole } from "../middlewares/auth.middleware";
+import {
+  authenticateJWT,
+  requireRole,
+  requireAdminCapability,
+} from "../middlewares/auth.middleware";
 import {
   getMyWaiver,
   downloadWaiverForm,
@@ -16,8 +19,8 @@ router.get("/me", authenticateJWT, getMyWaiver);
 router.get("/me/download", authenticateJWT, downloadWaiverForm);
 
 // Admin Routes
-router.get("/", authenticateJWT, requireRole(["ADMIN"]), getAdminWaiverQueue);
-router.put("/:id/validate", authenticateJWT, requireRole(["ADMIN"]), validateWaiver);
-router.put("/:id/reject", authenticateJWT, requireRole(["ADMIN"]), rejectWaiver);
+router.get("/", authenticateJWT, requireRole(["ADMIN"]), requireAdminCapability("waivers.manage"), getAdminWaiverQueue);
+router.put("/:id/validate", authenticateJWT, requireRole(["ADMIN"]), requireAdminCapability("waivers.manage"), validateWaiver);
+router.put("/:id/reject", authenticateJWT, requireRole(["ADMIN"]), requireAdminCapability("waivers.manage"), rejectWaiver);
 
 export default router;

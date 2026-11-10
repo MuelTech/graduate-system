@@ -2,41 +2,27 @@
 
 import { Router } from "express";
 import { AdminStudentController } from "../controllers/admin-student.controller";
-import { authenticateJWT, requireRole } from "../middlewares/auth.middleware";
+import {
+  authenticateJWT,
+  requireRole,
+  requireAdminCapability,
+} from "../middlewares/auth.middleware";
 
 const router = Router();
 const controller = new AdminStudentController();
 
+router.use(authenticateJWT, requireRole(["ADMIN"]), requireAdminCapability("students.manage"));
+
 // List all students
-router.get(
-  "/",
-  authenticateJWT,
-  requireRole(["ADMIN"]),
-  controller.listStudents
-);
+router.get("/", controller.listStudents);
 
 // Get student detail
-router.get(
-  "/:id",
-  authenticateJWT,
-  requireRole(["ADMIN"]),
-  controller.getStudentDetail
-);
+router.get("/:id", controller.getStudentDetail);
 
 // Get the student's authoritative Thesis Journey (ADMIN read-only)
-router.get(
-  "/:id/journey",
-  authenticateJWT,
-  requireRole(["ADMIN"]),
-  controller.getStudentJourney
-);
+router.get("/:id/journey", controller.getStudentJourney);
 
 // Update comprehensive exam status
-router.put(
-  "/:id/comprehensive-exam",
-  authenticateJWT,
-  requireRole(["ADMIN"]),
-  controller.updateCompExamStatus
-);
+router.put("/:id/comprehensive-exam", controller.updateCompExamStatus);
 
 export default router;

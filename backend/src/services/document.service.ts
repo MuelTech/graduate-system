@@ -269,7 +269,7 @@ const MODEL_REGISTRY: Record<string, ModelConfig> = {
         },
         getOwnerId: (r) => r.thesis?.student?.user?.id ?? null,
         getExtraAuthCheck: (record, userId, userRole) => {
-            if (userRole !== "PANELIST") return false;
+            if (userRole !== "FACULTY" && userRole !== "PANELIST") return false;
             return canPanelistAccessThesisDocument(record, userId);
         },
     },
@@ -312,8 +312,8 @@ const MODEL_REGISTRY: Record<string, ModelConfig> = {
         },
         getOwnerId: (r) => r.thesis?.student?.user?.id ?? null,
         getExtraAuthCheck: (record, _userId, userRole) => {
-            // Any active authenticated student, panelist, or admin can stream a published manuscript
-            if (record.isPublic && (userRole === "STUDENT" || userRole === "PANELIST" || userRole === "ADMIN")) {
+            // Any active authenticated student, faculty/panelist, or admin can stream a published manuscript
+            if (record.isPublic && (userRole === "STUDENT" || userRole === "FACULTY" || userRole === "PANELIST" || userRole === "ADMIN")) {
                 return true;
             }
             return false;

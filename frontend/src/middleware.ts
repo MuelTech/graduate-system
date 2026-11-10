@@ -2,14 +2,22 @@ import { auth } from "@/auth";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import type { Session } from "next-auth";
+import { canAdminAccessPath } from "@/lib/admin-capabilities";
+
+function isFacultyRole(role?: string | null): boolean {
+  return role === "faculty" || role === "panelist";
+}
+
+function getDefaultDashboardForRole(role?: string | null): string {
+  if (isFacultyRole(role)) {
+    return "/panelist/dashboard";
+  }
+  return `/${role || "applicant"}/dashboard`;
+}
 
 export default auth((req: NextRequest & { auth: Session | null }) => {
   const token = req.auth;
   const path = req.nextUrl.pathname;
-
-  console.log(
-    `[Middleware] Path: ${path} | Has Token: ${!!token} | Role: ${token?.user?.role}`,
-  );
 
   if (!token) {
     return NextResponse.redirect(new URL("/login", req.url));
@@ -18,30 +26,86 @@ export default auth((req: NextRequest & { auth: Session | null }) => {
   const role = token.user?.role;
   const mustChangePassword = token.user?.mustChangePassword;
 
-  // Force panelists to change password on first login
-  if (role === "panelist" && mustChangePassword && path !== "/change-password") {
+  // Force faculty and administrators to change default password on first login
+  if (
+    (isFacultyRole(role) || role === "admin") &&
+    mustChangePassword &&
+    path !== "/change-password"
+  ) {
     return NextResponse.redirect(new URL("/change-password", req.url));
   }
 
-  // Allow change-password page access for panelists
-  if (path === "/change-password" && role === "panelist") {
+  // Allow change-password page access for faculty and administrators
+  if (
+    path === "/change-password" &&
+    (isFacultyRole(role) || role === "admin")
+  ) {
     return NextResponse.next();
   }
 
   if (path.startsWith("/applicant") && role !== "applicant") {
-    return NextResponse.redirect(new URL(`/${role}/dashboard`, req.url));
+    return NextResponse.redirect(
+      new URL(getDefaultDashboardForRole(role), req.url),
+    );
   }
 
   if (path.startsWith("/student") && role !== "student") {
-    return NextResponse.redirect(new URL(`/${role}/dashboard`, req.url));
+    return NextResponse.redirect(
+      new URL(getDefaultDashboardForRole(role), req.url),
+    );
   }
 
-  if (path.startsWith("/admin") && role !== "admin") {
-    return NextResponse.redirect(new URL(`/${role}/dashboard`, req.url));
+  if (path.startsWith("/admin")) {
+    if (role !== "admin") {
+      return NextResponse.redirect(
+        new URL(getDefaultDashboardForRole(role), req.url),
+      );
+    }
+
+    // Rewrite /admin/users/faculty -> /admin/users/panelists seamlessly
+    if (path.startsWith("/admin/users/faculty")) {
+      const targetPath = path.replace(
+        "/admin/users/faculty",
+        "/admin/users/panelists",
+      );
+      if (
+        !canAdminAccessPath(
+          targetPath,
+          token.user?.adminAccessLevel,
+          token.user?.adminCapabilities,
+        )
+      ) {
+        return NextResponse.redirect(new URL("/admin/dashboard", req.url));
+      }
+      return NextResponse.rewrite(new URL(targetPath, req.url));
+    }
+
+    if (
+      !canAdminAccessPath(
+        path,
+        token.user?.adminAccessLevel,
+        token.user?.adminCapabilities,
+      )
+    ) {
+      return NextResponse.redirect(new URL("/admin/dashboard", req.url));
+    }
   }
 
-  if (path.startsWith("/panelist") && role !== "panelist") {
-    return NextResponse.redirect(new URL(`/${role}/dashboard`, req.url));
+  // Support both /panelist/* and /faculty/* seamlessly for Faculty users
+  if (path.startsWith("/faculty")) {
+    if (!isFacultyRole(role)) {
+      return NextResponse.redirect(
+        new URL(getDefaultDashboardForRole(role), req.url),
+      );
+    }
+    const rewrittenPath = path.replace(/^\/faculty/, "/panelist");
+    return NextResponse.rewrite(new URL(rewrittenPath, req.url));
+  }
+
+  if (path.startsWith("/panelist") && !isFacultyRole(role)) {
+    return NextResponse.redirect(
+      new URL(getDefaultDashboardForRole(role), req.url),
+    );
   }
 });
 
@@ -51,6 +115,7 @@ export const config = {
     "/student/:path*",
     "/admin/:path*",
     "/panelist/:path*",
+    "/faculty/:path*",
     "/change-password",
   ],
 };

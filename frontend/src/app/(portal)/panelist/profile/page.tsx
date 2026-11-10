@@ -1,165 +1,264 @@
 "use client";
 
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { apiClientRequest } from "@/lib/api.client";
 import { cn } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
+import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/ui/page-header";
 import { Skeleton } from "@/components/ui/skeleton";
-import { CircleAlert, RefreshCw, UserCheck } from "lucide-react";
+import {
+  CircleAlert,
+  RefreshCw,
+  UserCheck,
+  User,
+  GraduationCap,
+  ShieldCheck,
+} from "lucide-react";
 
-interface PanelistProfile {
+interface FacultyProfileResponse {
   id: string;
   isExternal: boolean;
   isAvailableAsAdviser: boolean;
-  specialization?: string | null;
+  canEvaluateEssays?: boolean;
+  highestEducationalAttainment?: string | null;
   officeAffiliation?: string | null;
+  specialization?: string | null;
+  user?: {
+    id: string;
+    title?: string | null;
+    firstName: string;
+    lastName: string;
+    suffix?: string | null;
+    email: string;
+  };
 }
 
-/**
- * UIUX-3A: the adviser-availability control moved here from the dashboard.
- * Uses the existing /panelists/me + /panelists/me/availability API and the
- * existing business semantics (external panelists are never adviser-eligible).
- */
-export default function PanelistProfile() {
-  const queryClient = useQueryClient();
+function formatFacultyName(user?: FacultyProfileResponse["user"]) {
+  if (!user) return "Faculty Member";
+  return [user.title, user.firstName, user.lastName, user.suffix]
+    .filter(Boolean)
+    .join(" ");
+}
 
+export default function FacultyProfilePage() {
   const {
     data: profile,
     isLoading,
     isError,
     isFetching,
     refetch,
-  } = useQuery<PanelistProfile>({
+  } = useQuery<FacultyProfileResponse>({
     queryKey: ["panelistProfile"],
     queryFn: async () =>
-      (await apiClientRequest("/panelists/me")) as PanelistProfile,
-  });
-
-  const toggleMutation = useMutation({
-    mutationFn: async (isAvailable: boolean) =>
-      apiClientRequest("/panelists/me/availability", {
-        method: "PATCH",
-        body: JSON.stringify({ isAvailable }),
-      }),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ["panelistProfile"] });
-    },
+      (await apiClientRequest("/panelists/me")) as FacultyProfileResponse,
   });
 
   const isExternal = profile?.isExternal === true;
-  const saving = toggleMutation.isPending;
-  const saveError = toggleMutation.isError;
+  const canEvaluateEssays = profile?.canEvaluateEssays === true;
 
   return (
     <div className="space-y-6">
       <PageHeader
         title="Profile"
-        description="Manage your profile and adviser availability."
+        description="View your faculty profile and assigned academic access."
       />
 
-      <Card className="max-w-2xl">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-base">
-            <UserCheck
-              className="h-4 w-4 text-(--earist-secondary)"
-              aria-hidden="true"
-            />
-            Adviser Availability
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          {isLoading ? (
-            <div className="flex items-center justify-between gap-4" aria-busy="true">
-              <Skeleton className="h-5 w-56" />
-              <Skeleton className="h-5 w-10 rounded-full" />
-            </div>
-          ) : isError || !profile ? (
-            <div className="flex flex-col items-start gap-2 py-2">
-              <p className="flex items-center gap-2 text-sm text-(--earist-body-text)">
-                <CircleAlert
+      {isLoading ? (
+        <div className="grid max-w-4xl gap-6 md:grid-cols-2" aria-busy="true">
+          <Card>
+            <CardHeader>
+              <Skeleton className="h-5 w-44" />
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <Skeleton className="h-4 w-56" />
+              <Skeleton className="h-4 w-48" />
+              <Skeleton className="h-4 w-64" />
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <Skeleton className="h-5 w-44" />
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <Skeleton className="h-5 w-52" />
+              <Skeleton className="h-5 w-48" />
+            </CardContent>
+          </Card>
+        </div>
+      ) : isError || !profile ? (
+        <Card className="max-w-2xl">
+          <CardContent className="flex flex-col items-start gap-2 py-6">
+            <p className="flex items-center gap-2 text-sm text-(--earist-body-text)">
+              <CircleAlert
+                className="h-4 w-4 text-(--earist-secondary)"
+                aria-hidden="true"
+              />
+              Unable to load your faculty profile.
+            </p>
+            <button
+              type="button"
+              onClick={() => void refetch()}
+              disabled={isFetching}
+              className="inline-flex items-center text-sm font-medium text-(--earist-secondary) hover:underline disabled:opacity-60"
+            >
+              <RefreshCw
+                className={cn(
+                  "mr-1.5 h-3.5 w-3.5",
+                  isFetching && "animate-spin",
+                )}
+                aria-hidden="true"
+              />
+              Retry
+            </button>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="grid max-w-4xl gap-6 md:grid-cols-2">
+          {/* Personal & Academic Information */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-base text-(--earist-primary)">
+                <User
                   className="h-4 w-4 text-(--earist-secondary)"
                   aria-hidden="true"
                 />
-                Unable to load your availability setting.
-              </p>
-              <button
-                type="button"
-                onClick={() => void refetch()}
-                disabled={isFetching}
-                className="inline-flex items-center text-sm font-medium text-(--earist-secondary) hover:underline disabled:opacity-60"
-              >
-                <RefreshCw
-                  className={cn(
-                    "mr-1.5 h-3.5 w-3.5",
-                    isFetching && "animate-spin",
-                  )}
-                  aria-hidden="true"
-                />
-                Retry
-              </button>
-            </div>
-          ) : (
-            <>
-              <div className="flex items-start justify-between gap-4">
-                <div className="min-w-0 space-y-1">
-                  <Label htmlFor="adviser-availability" className="text-sm font-medium">
-                    Available as Thesis/Dissertation Adviser
-                  </Label>
+                Faculty Information
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4 text-sm">
+              <div>
+                <p className="text-xs text-(--earist-body-text)">Full Name</p>
+                <p className="font-semibold text-(--earist-primary)">
+                  {formatFacultyName(profile.user)}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs text-(--earist-body-text)">
+                  Email Address
+                </p>
+                <p className="text-foreground">
+                  {profile.user?.email || "—"}
+                </p>
+              </div>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <div>
                   <p className="text-xs text-(--earist-body-text)">
-                    When available, students may select you as an adviser from
-                    your Title Defense panel. This does not create an adviser
-                    assignment by itself.
+                    Highest Qualification
+                  </p>
+                  <p className="text-foreground">
+                    {profile.highestEducationalAttainment || "Not specified"}
                   </p>
                 </div>
-                <div className="flex shrink-0 items-center gap-2 pt-0.5">
-                  <Switch
-                    id="adviser-availability"
-                    size="default"
-                    checked={profile.isAvailableAsAdviser}
-                    disabled={saving || isExternal}
-                    onCheckedChange={(checked) =>
-                      toggleMutation.mutate(checked)
-                    }
-                    aria-label="Available as Thesis/Dissertation Adviser"
-                  />
-                  <span
-                    className={cn(
-                      "text-xs font-medium",
-                      profile.isAvailableAsAdviser
-                        ? "text-(--earist-body-text)"
-                        : "text-(--earist-body-text)",
-                    )}
-                  >
-                    {saving
-                      ? "Saving…"
-                      : profile.isAvailableAsAdviser
-                        ? "Available"
-                        : "Not available"}
-                  </span>
+                <div>
+                  <p className="text-xs text-(--earist-body-text)">
+                    Specialization
+                  </p>
+                  <p className="text-foreground">
+                    {profile.specialization || "Not specified"}
+                  </p>
                 </div>
               </div>
-
-              {isExternal ? (
+              <div>
                 <p className="text-xs text-(--earist-body-text)">
-                  External panelists cannot serve as thesis/dissertation
-                  advisers; this setting is unavailable for your account.
+                  Office / College Affiliation
                 </p>
-              ) : null}
+                <p className="text-foreground">
+                  {profile.officeAffiliation || "Not specified"}
+                </p>
+              </div>
+            </CardContent>
+          </Card>
 
-              {saveError ? (
-                <p className="flex items-center gap-1.5 text-xs text-destructive">
-                  <CircleAlert className="h-3.5 w-3.5" aria-hidden="true" />
-                  {(toggleMutation.error as Error)?.message ||
-                    "Unable to update your availability. Please try again."}
-                </p>
-              ) : null}
-            </>
-          )}
-        </CardContent>
-      </Card>
+          {/* Classification & Assigned Access */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-base text-(--earist-primary)">
+                <ShieldCheck
+                  className="h-4 w-4 text-(--earist-secondary)"
+                  aria-hidden="true"
+                />
+                Classification & Academic Access
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center justify-between gap-3 rounded-lg border border-(--earist-border-gray) bg-(--earist-surface-gray) p-3">
+                <div className="space-y-0.5">
+                  <p className="text-sm font-medium text-foreground">
+                    Faculty Classification
+                  </p>
+                  <p className="text-xs text-(--earist-body-text)">
+                    {isExternal
+                      ? "External faculty member invited for defense committees"
+                      : "Internal EARIST Graduate School faculty member"}
+                  </p>
+                </div>
+                <Badge
+                  className={
+                    isExternal
+                      ? "bg-purple-100 text-purple-700"
+                      : "bg-blue-100 text-blue-700"
+                  }
+                >
+                  {isExternal ? "External Faculty" : "Internal Faculty"}
+                </Badge>
+              </div>
+
+              <div className="flex items-center justify-between gap-3 rounded-lg border border-(--earist-border-gray) bg-(--earist-surface-gray) p-3">
+                <div className="space-y-0.5">
+                  <p className="flex items-center gap-1.5 text-sm font-medium text-foreground">
+                    <UserCheck className="h-4 w-4 text-(--earist-secondary)" />
+                    Thesis / Dissertation Adviser Eligibility
+                  </p>
+                  <p className="text-xs text-(--earist-body-text)">
+                    {isExternal
+                      ? "External faculty cannot serve as thesis/dissertation advisers."
+                      : "Managed by the Graduate School Administrator."}
+                  </p>
+                </div>
+                <Badge
+                  className={
+                    isExternal
+                      ? "bg-gray-100 text-gray-600"
+                      : profile.isAvailableAsAdviser
+                        ? "bg-green-100 text-green-700"
+                        : "bg-gray-100 text-gray-600"
+                  }
+                >
+                  {isExternal
+                    ? "Not Applicable"
+                    : profile.isAvailableAsAdviser
+                      ? "Available"
+                      : "Not Available"}
+                </Badge>
+              </div>
+
+              <div className="flex items-center justify-between gap-3 rounded-lg border border-(--earist-border-gray) bg-(--earist-surface-gray) p-3">
+                <div className="space-y-0.5">
+                  <p className="flex items-center gap-1.5 text-sm font-medium text-foreground">
+                    <GraduationCap className="h-4 w-4 text-(--earist-secondary)" />
+                    Entrance Exam Essay Evaluation
+                  </p>
+                  <p className="text-xs text-(--earist-body-text)">
+                    {canEvaluateEssays
+                      ? "You are authorized to evaluate applicant entrance exam essays."
+                      : "Assigned by the Administrator to designated Program Chairs / Evaluators."}
+                  </p>
+                </div>
+                <Badge
+                  className={
+                    canEvaluateEssays
+                      ? "bg-emerald-100 text-emerald-700"
+                      : "bg-gray-100 text-gray-600"
+                  }
+                >
+                  {canEvaluateEssays ? "Enabled" : "Not Enabled"}
+                </Badge>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
     </div>
   );
 }

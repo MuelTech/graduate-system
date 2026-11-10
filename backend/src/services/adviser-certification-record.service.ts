@@ -58,8 +58,12 @@ export function personName(user: { firstName: string; lastName: string } | null 
   return `${user?.firstName ?? ""} ${user?.lastName ?? ""}`.trim();
 }
 
+function isFacultyActor(role: string): boolean {
+  return role === "FACULTY" || role === "PANELIST";
+}
+
 function authorizeActor(actor: CertificationActor): void {
-  if (!actor.userId || !["ADMIN", "STUDENT", "PANELIST"].includes(actor.role)) {
+  if (!actor.userId || !["ADMIN", "STUDENT", "FACULTY", "PANELIST"].includes(actor.role)) {
     throw new AppError("Adviser certification not found.", 404);
   }
 }
@@ -70,7 +74,7 @@ export class AdviserCertificationRecordService {
     const row = await prisma.adviserCertification.findUnique({ where: { id }, select: CERTIFICATION_SELECT });
     const authorized = row && (actor.role === "ADMIN"
       || (actor.role === "STUDENT" && row.thesis.student.userId === actor.userId)
-      || (actor.role === "PANELIST" && row.adviserId === actor.userId));
+      || (isFacultyActor(actor.role) && row.adviserId === actor.userId));
     if (!authorized) throw new AppError("Adviser certification not found.", 404);
     return row;
   }
@@ -87,7 +91,7 @@ export class AdviserCertificationRecordService {
         defenseStage: stage ? (stage === "PROPOSAL" ? "PROPOSAL_DEFENSE" : "FINAL_DEFENSE") : { in: ["PROPOSAL_DEFENSE", "FINAL_DEFENSE"] },
         ...(thesisId ? { thesisId } : {}),
         ...(actor.role === "STUDENT" ? { thesis: { student: { userId: actor.userId } } } : {}),
-        ...(actor.role === "PANELIST" ? { adviserId: actor.userId } : {}),
+        ...(isFacultyActor(actor.role) ? { adviserId: actor.userId } : {}),
       },
       select: CERTIFICATION_SELECT,
       orderBy: { signedAt: "desc" },

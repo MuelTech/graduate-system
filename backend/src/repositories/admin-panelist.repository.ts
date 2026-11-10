@@ -47,6 +47,14 @@ const userSelect = {
             lastName: true,
         },
     },
+    _count: {
+        select: {
+            adviserAssignments: {
+                where: { isActive: true },
+            },
+            panelAssignments: true,
+        },
+    },
 };
 
 export class AdminPanelistRepository {
@@ -78,7 +86,7 @@ export class AdminPanelistRepository {
                     firstName: data.firstName,
                     lastName: data.lastName,
                     suffix: data.suffix || null,
-                    role: UserRole.PANELIST,
+                    role: UserRole.FACULTY,
                     isActive: true,
                     mustChangePassword: true,
                     createdById: adminId,
@@ -87,10 +95,11 @@ export class AdminPanelistRepository {
             });
 
             const isExternal = Boolean(data.isExternal);
-            // Hard invariant: external panelists cannot be adviser-available.
+            // Hard invariant: external faculty cannot be adviser-available.
             const isAvailableAsAdviser = isExternal
                 ? false
                 : data.isAvailableAsAdviser !== false;
+            const canEvaluateEssays = Boolean(data.canEvaluateEssays);
 
             const panelist = await tx.panelist.create({
                 data: {
@@ -100,6 +109,7 @@ export class AdminPanelistRepository {
                     specialization: data.specialization,
                     isExternal,
                     isAvailableAsAdviser,
+                    canEvaluateEssays,
                 },
                 include: { user: { select: userSelect } },
             });
@@ -132,6 +142,9 @@ export class AdminPanelistRepository {
             if (data.suffix !== undefined) {
                 userData.suffix = data.suffix || null;
             }
+            if (typeof data.email === "string" && data.email.trim()) {
+                userData.email = data.email.trim();
+            }
             if (typeof data.isActive === "boolean") {
                 userData.isActive = data.isActive;
             }
@@ -150,6 +163,10 @@ export class AdminPanelistRepository {
                     isExternal: panelistRecord.isExternal,
                     isAvailableAsAdviser: panelistRecord.isAvailableAsAdviser,
                 });
+            const canEvaluateEssays =
+                typeof data.canEvaluateEssays === "boolean"
+                    ? data.canEvaluateEssays
+                    : panelistRecord.canEvaluateEssays;
 
             return tx.panelist.update({
                 where: { id },
@@ -168,6 +185,8 @@ export class AdminPanelistRepository {
                             : data.specialization,
                     isExternal,
                     isAvailableAsAdviser,
+                    canEvaluateEssays,
+                    ...(typeof data.isActive === "boolean" ? { isActive: data.isActive } : {}),
                 },
                 include: { user: { select: userSelect } },
             });

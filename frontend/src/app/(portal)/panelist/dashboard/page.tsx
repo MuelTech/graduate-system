@@ -3,7 +3,9 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
+import { useSession } from "next-auth/react";
 import { apiClientRequest } from "@/lib/api.client";
+import type { ApiApplication } from "@/types";
 import { cn } from "@/lib/utils";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -15,6 +17,7 @@ import {
   ChevronRight,
   CircleAlert,
   CirclePlay,
+  ClipboardCheck,
   ClipboardList,
   Clock,
   FileSignature,
@@ -298,6 +301,38 @@ function WaitingRow({ item }: { item: WaitingItem }) {
 
 export default function PanelistDashboard() {
   const [showAllTasks, setShowAllTasks] = useState(false);
+  const { data: session } = useSession();
+
+  const { data: profileData } = useQuery<{ canEvaluateEssays?: boolean }>({
+    queryKey: ["panelistProfile"],
+    queryFn: async () =>
+      (await apiClientRequest("/panelists/me")) as {
+        canEvaluateEssays?: boolean;
+      },
+    staleTime: 60_000,
+    refetchOnWindowFocus: false,
+  });
+
+  const canEvaluateEssays =
+    profileData?.canEvaluateEssays ??
+    session?.user?.facultyProfile?.canEvaluateEssays ??
+    false;
+
+  const { data: examApps = [] } = useQuery<ApiApplication[]>({
+    queryKey: ["examRecords"],
+    queryFn: async () => {
+      const res = await apiClientRequest("/exam/applications");
+      return Array.isArray(res) ? (res as ApiApplication[]) : [];
+    },
+    enabled: canEvaluateEssays,
+    staleTime: 30_000,
+  });
+
+  const pendingEssayCount = canEvaluateEssays
+    ? examApps.filter(
+        (app) => app.status === "TAKEN" && !app.essayEvaluationCompleted,
+      ).length
+    : 0;
 
   const {
     data,
@@ -377,13 +412,26 @@ export default function PanelistDashboard() {
       value: kpis.upcomingDefenses,
       supporting: "Future scheduled sessions assigned to you",
       icon: CalendarClock,
+      href: undefined as string | undefined,
     },
     {
       label: "Pending Tasks",
       value: kpis.pendingTasks,
       supporting: "Actions currently requiring you",
       icon: ClipboardList,
+      href: undefined as string | undefined,
     },
+    ...(canEvaluateEssays
+      ? [
+          {
+            label: "Pending Essay Evaluations",
+            value: pendingEssayCount,
+            supporting: "Applicant entrance exam essays awaiting grading",
+            icon: ClipboardCheck,
+            href: "/panelist/essay-evaluations",
+          },
+        ]
+      : []),
   ];
 
   return (
@@ -410,7 +458,12 @@ export default function PanelistDashboard() {
 
       {/* 1. Summary KPIs */}
       <section aria-label="Summary metrics">
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div
+          className={cn(
+            "grid grid-cols-1 gap-4",
+            kpiCards.length === 3 ? "sm:grid-cols-3" : "sm:grid-cols-2",
+          )}
+        >
           {kpiCards.map((kpi) => (
             <Card key={kpi.label}>
               <CardContent className="flex items-start justify-between gap-3">
@@ -424,6 +477,15 @@ export default function PanelistDashboard() {
                   <p className="text-xs text-(--earist-body-text)">
                     {kpi.supporting}
                   </p>
+                  {kpi.href ? (
+                    <Link
+                      href={kpi.href}
+                      className="inline-flex items-center pt-1 text-xs font-medium text-(--earist-secondary) hover:underline"
+                    >
+                      Open Essay Evaluations
+                      <ChevronRight className="ml-0.5 h-3.5 w-3.5" />
+                    </Link>
+                  ) : null}
                 </div>
                 <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-(--earist-surface-gray) text-(--earist-secondary)">
                   <kpi.icon className="h-5 w-5" aria-hidden="true" />

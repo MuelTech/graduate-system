@@ -11,7 +11,7 @@ import { NotificationItem } from "@/types/index";
 export function NotificationBell({
   role = "STUDENT",
 }: {
-  role?: "STUDENT" | "ADMIN" | "PANELIST";
+  role?: "STUDENT" | "ADMIN" | "PANELIST" | "FACULTY";
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const queryClient = useQueryClient();
@@ -37,17 +37,19 @@ export function NotificationBell({
   const unreadCount = notifications.filter((n: NotificationItem) => !n.isRead).length;
   const recentNotifications = notifications.slice(0, 5); // Show top 5 in dropdown
 
+  const isFaculty = role === "PANELIST" || role === "FACULTY";
+
   const basePath =
     role === "ADMIN"
       ? "/admin/notifications"
-      : role === "PANELIST"
+      : isFaculty
       ? "/panelist/notifications"
       : "/student/notifications";
 
   const announcementsPath =
     role === "ADMIN"
       ? "/admin/memos"
-      : role === "PANELIST"
+      : isFaculty
       ? "/panelist/announcements"
       : "/student/announcements";
 

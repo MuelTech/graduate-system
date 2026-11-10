@@ -11,6 +11,8 @@ model User {
   email                              String                    @unique
   passwordHash                       String                    @map("password_hash")
   role                               UserRole                  @default(APPLICANT)
+  adminAccessLevel                   AdminAccessLevel?         @default(FULL) @map("admin_access_level")
+  adminCapabilities                  Json?                     @map("admin_capabilities")
   customRoleId                       String?                   @map("custom_role_id")
   title                              String?
   firstName                          String                    @map("first_name")
@@ -125,6 +127,7 @@ model Panelist {
   specialization               String?
   isExternal                   Boolean  @default(false) @map("is_external")
   isAvailableAsAdviser         Boolean  @default(true) @map("is_available_as_adviser")
+  canEvaluateEssays            Boolean  @default(false) @map("can_evaluate_essays")
   isActive                     Boolean  @default(true) @map("is_active")
   createdAt                    DateTime @default(now()) @map("created_at")
   user                         User     @relation(fields: [userId], references: [id])
@@ -1429,11 +1432,19 @@ enum EmailStatus {
 enum UserRole {
   ADMIN
   STUDENT
+  FACULTY
   PANELIST
   CUSTOM
   APPLICANT
 
   @@map("user_role")
+}
+
+enum AdminAccessLevel {
+  FULL
+  RESTRICTED
+
+  @@map("admin_access_level")
 }
 
 enum AdmissionStatus {

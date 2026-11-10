@@ -62,4 +62,22 @@ export class AuthController {
             }
         }
     }
+
+    getMe = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+        try {
+            const userId = req.user?.userId;
+            if (!userId) {
+                res.status(401).json({ error: "Unauthorized" });
+                return;
+            }
+            const user = await this.authService.getMe(userId);
+            res.status(200).json(user);
+        } catch (error: unknown) {
+            if (error instanceof AppError) {
+                res.status(error.statusCode).json({ error: error.message });
+            } else {
+                res.status(500).json({ error: "An unexpected error occurred." });
+            }
+        }
+    }
 }

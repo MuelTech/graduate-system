@@ -304,10 +304,10 @@ export function evaluateCandidateEligibility(
       reason: `Role ${input.defenseRole} is not eligible for adviser candidacy. Only Chairman and Panelist may be requested.`,
     };
   }
-  if (input.userRole !== "PANELIST") {
+  if (input.userRole !== "FACULTY" && input.userRole !== "PANELIST") {
     return {
       eligible: false,
-      reason: "Adviser candidate must have a PANELIST user role.",
+      reason: "Adviser candidate must have a FACULTY user role.",
     };
   }
   if (!input.userIsActive) {

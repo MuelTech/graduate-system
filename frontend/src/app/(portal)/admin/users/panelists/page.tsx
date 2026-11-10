@@ -17,7 +17,6 @@ import {
   Power,
   X,
   Loader2,
-  UserCheck,
   UserX,
   Info,
 } from "lucide-react";
@@ -64,7 +63,7 @@ const SPECIALIZATION_OPTIONS = [
 const selectClass =
   "w-full rounded-lg border border-(--earist-border-gray) bg-white px-3 py-2 text-sm text-(--earist-body-text) focus:border-(--earist-primary) focus:outline-none";
 
-interface PanelistFormData {
+interface FacultyFormData {
   title: string;
   firstName: string;
   lastName: string;
@@ -75,14 +74,15 @@ interface PanelistFormData {
   specialization: string;
   isExternal: boolean;
   isAvailableAsAdviser: boolean;
+  canEvaluateEssays: boolean;
 }
 
-interface PanelistEditData extends PanelistFormData {
+interface FacultyEditData extends FacultyFormData {
   isActive: boolean;
   newPassword: string;
 }
 
-const emptyCreateForm: PanelistFormData = {
+const emptyCreateForm: FacultyFormData = {
   title: "",
   firstName: "",
   lastName: "",
@@ -93,9 +93,10 @@ const emptyCreateForm: PanelistFormData = {
   specialization: "",
   isExternal: false,
   isAvailableAsAdviser: true,
+  canEvaluateEssays: false,
 };
 
-type PanelistRow = {
+type FacultyRow = {
   id: string;
   title: string;
   firstName: string;
@@ -108,6 +109,9 @@ type PanelistRow = {
   isExternal: boolean;
   isActive: boolean;
   isAvailableAsAdviser: boolean;
+  canEvaluateEssays: boolean;
+  adviserAssignmentsCount: number;
+  panelAssignmentsCount: number;
   createdAt: string;
   userCreatedAt: string;
   userUpdatedAt: string;
@@ -115,12 +119,12 @@ type PanelistRow = {
   updatedByName?: string;
 };
 
-function formatDisplayName(p: PanelistRow) {
+function formatDisplayName(p: FacultyRow) {
   const parts = [p.title, p.firstName, p.lastName, p.suffix].filter(Boolean);
   return parts.join(" ") || p.firstName + " " + p.lastName;
 }
 
-function mapPanelist(p: PanelistResponse): PanelistRow {
+function mapFaculty(p: PanelistResponse): FacultyRow {
   return {
     id: p.id,
     title: p.user.title || "",
@@ -134,15 +138,22 @@ function mapPanelist(p: PanelistResponse): PanelistRow {
     isExternal: p.isExternal,
     isActive: p.user.isActive,
     isAvailableAsAdviser: p.isAvailableAsAdviser,
+    canEvaluateEssays: p.canEvaluateEssays ?? false,
+    adviserAssignmentsCount: p.user?._count?.adviserAssignments ?? 0,
+    panelAssignmentsCount: p.user?._count?.panelAssignments ?? 0,
     createdAt: p.createdAt,
     userCreatedAt: p.user.createdAt,
     userUpdatedAt: p.user.updatedAt || p.user.createdAt,
-    createdByName: p.user?.createdBy ? `${p.user.createdBy.firstName} ${p.user.createdBy.lastName}` : undefined,
-    updatedByName: p.user?.updatedBy ? `${p.user.updatedBy.firstName} ${p.user.updatedBy.lastName}` : undefined,
+    createdByName: p.user?.createdBy
+      ? `${p.user.createdBy.firstName} ${p.user.createdBy.lastName}`
+      : undefined,
+    updatedByName: p.user?.updatedBy
+      ? `${p.user.updatedBy.firstName} ${p.user.updatedBy.lastName}`
+      : undefined,
   };
 }
 
-export default function AdminPanelistsPage() {
+export default function AdminFacultyPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
   const [page, setPage] = useState(1);
@@ -151,28 +162,33 @@ export default function AdminPanelistsPage() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showViewModal, setShowViewModal] = useState(false);
-  const [selectedPanelist, setSelectedPanelist] = useState<PanelistRow | null>(null);
+  const [selectedFaculty, setSelectedFaculty] = useState<FacultyRow | null>(
+    null,
+  );
 
-  const [createForm, setCreateForm] = useState<PanelistFormData>({ ...emptyCreateForm });
-  const [editForm, setEditForm] = useState<PanelistEditData>({
+  const [createForm, setCreateForm] = useState<FacultyFormData>({
+    ...emptyCreateForm,
+  });
+  const [editForm, setEditForm] = useState<FacultyEditData>({
     ...emptyCreateForm,
     isAvailableAsAdviser: false,
+    canEvaluateEssays: false,
     isActive: true,
     newPassword: "",
   });
 
   const queryClient = useQueryClient();
 
-  const { data: panelists = [], isLoading } = useQuery({
+  const { data: facultyList = [], isLoading } = useQuery({
     queryKey: ["adminPanelists"],
     queryFn: async () => {
       const res = await apiClientRequest("/admin/panelists");
-      return (Array.isArray(res) ? res : []).map(mapPanelist);
+      return (Array.isArray(res) ? res : []).map(mapFaculty);
     },
   });
 
   const createMutation = useMutation({
-    mutationFn: async (data: PanelistFormData) => {
+    mutationFn: async (data: FacultyFormData) => {
       return apiClientRequest("/admin/panelists", {
         method: "POST",
         body: JSON.stringify({
@@ -188,6 +204,7 @@ export default function AdminPanelistsPage() {
           isAvailableAsAdviser: data.isExternal
             ? false
             : data.isAvailableAsAdviser,
+          canEvaluateEssays: data.canEvaluateEssays,
         }),
       });
     },
@@ -195,12 +212,13 @@ export default function AdminPanelistsPage() {
       queryClient.invalidateQueries({ queryKey: ["adminPanelists"] });
       setShowCreateModal(false);
       setCreateForm({ ...emptyCreateForm });
-      toast.success("Panelist created successfully!", {
-        description: "Default password is the panelist's LAST NAME in all caps.",
+      toast.success("Faculty account created successfully!", {
+        description:
+          "Default password is the faculty member's LAST NAME in all caps.",
       });
     },
     onError: (error: Error) => {
-      toast.error(error.message || "Failed to create panelist.");
+      toast.error(error.message || "Failed to create faculty account.");
     },
   });
 
@@ -221,7 +239,7 @@ export default function AdminPanelistsPage() {
   });
 
   const editMutation = useMutation({
-    mutationFn: async ({ id, data }: { id: string; data: PanelistEditData }) => {
+    mutationFn: async ({ id, data }: { id: string; data: FacultyEditData }) => {
       const payload: Record<string, unknown> = {
         title: data.title || null,
         firstName: data.firstName,
@@ -235,6 +253,7 @@ export default function AdminPanelistsPage() {
         isAvailableAsAdviser: data.isExternal
           ? false
           : data.isAvailableAsAdviser,
+        canEvaluateEssays: data.canEvaluateEssays,
         isActive: data.isActive,
       };
       if (data.newPassword.trim()) {
@@ -247,16 +266,17 @@ export default function AdminPanelistsPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["adminPanelists"] });
+      queryClient.invalidateQueries({ queryKey: ["panelistProfile"] });
       setShowEditModal(false);
-      setSelectedPanelist(null);
-      toast.success("Panelist updated successfully.");
+      setSelectedFaculty(null);
+      toast.success("Faculty account updated successfully.");
     },
     onError: (error: Error) => {
-      toast.error(error.message || "Failed to update panelist.");
+      toast.error(error.message || "Failed to update faculty account.");
     },
   });
 
-  const filteredPanelists = panelists.filter((p) => {
+  const filteredFaculty = facultyList.filter((p) => {
     const searchLower = searchQuery.toLowerCase();
     const matchesSearch =
       formatDisplayName(p).toLowerCase().includes(searchLower) ||
@@ -268,43 +288,48 @@ export default function AdminPanelistsPage() {
 
     if (typeFilter === "internal") return !p.isExternal;
     if (typeFilter === "external") return p.isExternal;
+    if (typeFilter === "evaluator") return p.canEvaluateEssays;
+    if (typeFilter === "adviser")
+      return !p.isExternal && p.isAvailableAsAdviser;
     if (typeFilter === "active") return p.isActive;
     if (typeFilter === "inactive") return !p.isActive;
     return true;
   });
 
-  const totalPages = Math.ceil(filteredPanelists.length / pageSize);
-  const paginatedPanelists = filteredPanelists.slice(
+  const totalPages = Math.ceil(filteredFaculty.length / pageSize);
+  const paginatedFaculty = filteredFaculty.slice(
     (page - 1) * pageSize,
-    page * pageSize
+    page * pageSize,
   );
 
-  const activeCount = panelists.filter((p) => p.isActive).length;
-  const internalCount = panelists.filter((p) => !p.isExternal).length;
-  const externalCount = panelists.filter((p) => p.isExternal).length;
-  const adviserCount = panelists.filter(
+  const activeCount = facultyList.filter((p) => p.isActive).length;
+  const internalCount = facultyList.filter((p) => !p.isExternal).length;
+  const externalCount = facultyList.filter((p) => p.isExternal).length;
+  const evaluatorCount = facultyList.filter((p) => p.canEvaluateEssays).length;
+  const adviserCount = facultyList.filter(
     (p) => !p.isExternal && p.isAvailableAsAdviser,
   ).length;
 
-  function openViewModal(panelist: PanelistRow) {
-    setSelectedPanelist(panelist);
+  function openViewModal(faculty: FacultyRow) {
+    setSelectedFaculty(faculty);
     setShowViewModal(true);
   }
 
-  function openEditModal(panelist: PanelistRow) {
-    setSelectedPanelist(panelist);
+  function openEditModal(faculty: FacultyRow) {
+    setSelectedFaculty(faculty);
     setEditForm({
-      title: panelist.title,
-      firstName: panelist.firstName,
-      lastName: panelist.lastName,
-      suffix: panelist.suffix,
-      email: panelist.email,
-      qualification: panelist.qualification,
-      affiliation: panelist.affiliation,
-      specialization: panelist.specialization,
-      isExternal: panelist.isExternal,
-      isAvailableAsAdviser: panelist.isAvailableAsAdviser,
-      isActive: panelist.isActive,
+      title: faculty.title,
+      firstName: faculty.firstName,
+      lastName: faculty.lastName,
+      suffix: faculty.suffix,
+      email: faculty.email,
+      qualification: faculty.qualification,
+      affiliation: faculty.affiliation,
+      specialization: faculty.specialization,
+      isExternal: faculty.isExternal,
+      isAvailableAsAdviser: faculty.isAvailableAsAdviser,
+      canEvaluateEssays: faculty.canEvaluateEssays,
+      isActive: faculty.isActive,
       newPassword: "",
     });
     setShowEditModal(true);
@@ -321,10 +346,11 @@ export default function AdminPanelistsPage() {
             className="text-2xl font-bold text-(--earist-primary)"
             style={{ fontFamily: '"Calibri", sans-serif' }}
           >
-            Panelist Management
+            Faculty Management
           </h2>
           <p className="text-sm text-(--earist-body-text)">
-            Manage faculty and external panelist accounts
+            Manage internal and external faculty accounts, essay evaluation
+            access, and adviser eligibility
           </p>
         </div>
         <Button
@@ -332,34 +358,54 @@ export default function AdminPanelistsPage() {
           className="bg-(--earist-primary) text-white hover:bg-(--earist-primary)/90"
         >
           <Plus className="mr-1 h-4 w-4" />
-          Add Panelist
+          Add Faculty
         </Button>
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
         <Card>
           <CardContent className="p-3">
             <p className="text-xs text-(--earist-body-text)">Active</p>
-            <p className="text-lg font-bold text-(--earist-primary)">{activeCount}</p>
+            <p className="text-lg font-bold text-(--earist-primary)">
+              {activeCount}
+            </p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-3">
             <p className="text-xs text-(--earist-body-text)">Internal</p>
-            <p className="text-lg font-bold text-(--earist-primary)">{internalCount}</p>
+            <p className="text-lg font-bold text-(--earist-primary)">
+              {internalCount}
+            </p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-3">
             <p className="text-xs text-(--earist-body-text)">External</p>
-            <p className="text-lg font-bold text-(--earist-primary)">{externalCount}</p>
+            <p className="text-lg font-bold text-(--earist-primary)">
+              {externalCount}
+            </p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-3">
-            <p className="text-xs text-(--earist-body-text)">Available as Adviser</p>
-            <p className="text-lg font-bold text-(--earist-primary)">{adviserCount}</p>
+            <p className="text-xs text-(--earist-body-text)">
+              Essay Evaluators
+            </p>
+            <p className="text-lg font-bold text-(--earist-primary)">
+              {evaluatorCount}
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-3">
+            <p className="text-xs text-(--earist-body-text)">
+              Available as Adviser
+            </p>
+            <p className="text-lg font-bold text-(--earist-primary)">
+              {adviserCount}
+            </p>
           </CardContent>
         </Card>
       </div>
@@ -391,9 +437,11 @@ export default function AdminPanelistsPage() {
                 }}
                 className="rounded-lg border border-(--earist-border-gray) px-3 py-2 text-sm text-(--earist-body-text) focus:border-(--earist-primary) focus:outline-none"
               >
-                <option value="all">All Panelists</option>
-                <option value="internal">Internal (Faculty)</option>
-                <option value="external">External</option>
+                <option value="all">All Faculty</option>
+                <option value="internal">Internal Faculty</option>
+                <option value="external">External Faculty</option>
+                <option value="evaluator">Essay Evaluators</option>
+                <option value="adviser">Available as Adviser</option>
                 <option value="active">Active</option>
                 <option value="inactive">Inactive</option>
               </select>
@@ -402,20 +450,22 @@ export default function AdminPanelistsPage() {
         </CardContent>
       </Card>
 
-      {/* Panelists Table */}
+      {/* Faculty Table */}
       <Card>
         <CardContent className="p-0">
           {isLoading ? (
             <div className="flex items-center justify-center py-12">
               <Loader2 className="h-6 w-6 animate-spin text-(--earist-primary)" />
               <span className="ml-2 text-sm text-(--earist-body-text)">
-                Loading panelists...
+                Loading faculty accounts...
               </span>
             </div>
-          ) : paginatedPanelists.length === 0 ? (
+          ) : paginatedFaculty.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 text-center">
               <UserX className="mb-4 h-12 w-12 text-gray-300" />
-              <p className="text-sm text-(--earist-body-text)">No panelists found</p>
+              <p className="text-sm text-(--earist-body-text)">
+                No faculty accounts found
+              </p>
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -423,19 +473,19 @@ export default function AdminPanelistsPage() {
                 <thead>
                   <tr className="border-b border-(--earist-border-gray) bg-(--earist-surface-gray)">
                     <th className="px-4 py-3 text-left font-semibold text-(--earist-secondary)">
-                      Name
+                      Name & Email
                     </th>
                     <th className="px-4 py-3 text-left font-semibold text-(--earist-secondary)">
-                      Email
-                    </th>
-                    <th className="px-4 py-3 text-left font-semibold text-(--earist-secondary)">
-                      Qualification
-                    </th>
-                    <th className="px-4 py-3 text-left font-semibold text-(--earist-secondary)">
-                      Affiliation
+                      Qualification & Affiliation
                     </th>
                     <th className="px-4 py-3 text-center font-semibold text-(--earist-secondary)">
-                      Type
+                      Classification
+                    </th>
+                    <th className="px-4 py-3 text-center font-semibold text-(--earist-secondary)">
+                      Essay Evaluation
+                    </th>
+                    <th className="px-4 py-3 text-center font-semibold text-(--earist-secondary)">
+                      Adviser
                     </th>
                     <th className="px-4 py-3 text-center font-semibold text-(--earist-secondary)">
                       Status
@@ -446,77 +496,105 @@ export default function AdminPanelistsPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {paginatedPanelists.map((panelist) => (
+                  {paginatedFaculty.map((faculty) => (
                     <tr
-                      key={panelist.id}
+                      key={faculty.id}
                       className="border-b border-(--earist-border-gray) last:border-0 hover:bg-gray-50"
                     >
                       <td className="px-4 py-3">
                         <p className="font-medium text-(--earist-primary)">
-                          {formatDisplayName(panelist)}
+                          {formatDisplayName(faculty)}
+                        </p>
+                        <p className="text-xs text-(--earist-body-text)">
+                          {faculty.email}
                         </p>
                       </td>
                       <td className="px-4 py-3 text-xs text-(--earist-body-text)">
-                        {panelist.email}
-                      </td>
-                      <td className="px-4 py-3 text-xs text-(--earist-body-text)">
-                        {panelist.qualification}
-                      </td>
-                      <td className="px-4 py-3 text-xs text-(--earist-body-text)">
-                        {panelist.affiliation}
+                        <p className="font-medium text-foreground">
+                          {faculty.qualification}
+                        </p>
+                        <p>{faculty.affiliation}</p>
                       </td>
                       <td className="px-4 py-3 text-center">
                         <Badge
                           className={
-                            panelist.isExternal
+                            faculty.isExternal
                               ? "bg-purple-100 text-purple-700"
                               : "bg-blue-100 text-blue-700"
                           }
                         >
-                          {panelist.isExternal ? "External" : "Internal"}
+                          {faculty.isExternal ? "External" : "Internal"}
                         </Badge>
                       </td>
                       <td className="px-4 py-3 text-center">
                         <Badge
                           className={
-                            panelist.isActive
+                            faculty.canEvaluateEssays
+                              ? "bg-emerald-100 text-emerald-700"
+                              : "bg-gray-100 text-gray-500"
+                          }
+                        >
+                          {faculty.canEvaluateEssays ? "Enabled" : "Disabled"}
+                        </Badge>
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        {faculty.isExternal ? (
+                          <Badge className="bg-gray-100 text-gray-400">
+                            N/A
+                          </Badge>
+                        ) : (
+                          <Badge
+                            className={
+                              faculty.isAvailableAsAdviser
+                                ? "bg-green-100 text-green-700"
+                                : "bg-gray-100 text-gray-500"
+                            }
+                          >
+                            {faculty.isAvailableAsAdviser ? "Yes" : "No"}
+                          </Badge>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <Badge
+                          className={
+                            faculty.isActive
                               ? "bg-green-100 text-green-700"
                               : "bg-gray-100 text-gray-500"
                           }
                         >
-                          {panelist.isActive ? "Active" : "Inactive"}
+                          {faculty.isActive ? "Active" : "Inactive"}
                         </Badge>
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex justify-end gap-1">
                           <button
-                            onClick={() => openViewModal(panelist)}
+                            onClick={() => openViewModal(faculty)}
                             className="rounded p-1.5 text-(--earist-body-text) hover:bg-(--earist-surface-gray)"
-                            title="View"
+                            title="View Details"
                           >
                             <Eye className="h-4 w-4" />
                           </button>
                           <button
-                            onClick={() => openEditModal(panelist)}
+                            onClick={() => openEditModal(faculty)}
                             className="rounded p-1.5 text-(--earist-body-text) hover:bg-(--earist-surface-gray)"
-                            title="Edit"
+                            title="Edit Faculty"
                           >
                             <Edit className="h-4 w-4" />
                           </button>
                           <button
                             onClick={() =>
                               updateMutation.mutate({
-                                id: panelist.id,
-                                isActive: !panelist.isActive,
+                                id: faculty.id,
+                                isActive: !faculty.isActive,
                               })
                             }
                             disabled={updateMutation.isPending}
                             className={`rounded p-1.5 transition-colors ${
-                              panelist.isActive
+                              faculty.isActive
                                 ? "text-red-600 hover:bg-red-50"
                                 : "text-green-600 hover:bg-green-50"
-                            } ${updateMutation.isPending ? "opacity-50 cursor-not-allowed" : ""}`}
-                            title={panelist.isActive ? "Deactivate" : "Activate"}
+                            } ${updateMutation.isPending ? "cursor-not-allowed opacity-50" : ""}`}
+                            title={faculty.isActive ? "Deactivate" : "Activate"}
                           >
                             <Power className="h-4 w-4" />
                           </button>
@@ -534,8 +612,8 @@ export default function AdminPanelistsPage() {
             <div className="flex items-center justify-between border-t border-(--earist-border-gray) px-4 py-3">
               <p className="text-xs text-(--earist-body-text)">
                 Showing {(page - 1) * pageSize + 1}–
-                {Math.min(page * pageSize, filteredPanelists.length)} of{" "}
-                {filteredPanelists.length} panelists
+                {Math.min(page * pageSize, filteredFaculty.length)} of{" "}
+                {filteredFaculty.length} faculty members
               </p>
               <Pagination>
                 <PaginationContent>
@@ -560,11 +638,13 @@ export default function AdminPanelistsPage() {
                           {pageNum}
                         </PaginationLink>
                       </PaginationItem>
-                    )
+                    ),
                   )}
                   <PaginationItem>
                     <PaginationNext
-                      onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                      onClick={() =>
+                        setPage((p) => Math.min(totalPages, p + 1))
+                      }
                       className={
                         page === totalPages
                           ? "pointer-events-none opacity-50"
@@ -580,14 +660,14 @@ export default function AdminPanelistsPage() {
       </Card>
 
       {/* ======================== */}
-      {/* CREATE PANELIST MODAL    */}
+      {/* CREATE FACULTY MODAL     */}
       {/* ======================== */}
       {showCreateModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-xl bg-white p-6 shadow-xl">
+          <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl bg-white p-6 shadow-xl">
             <div className="mb-4 flex items-center justify-between">
               <h3 className="text-lg font-bold text-(--earist-primary)">
-                Add New Panelist
+                Add New Faculty
               </h3>
               <button
                 onClick={() => setShowCreateModal(false)}
@@ -603,19 +683,20 @@ export default function AdminPanelistsPage() {
               <div className="text-sm text-amber-800">
                 <p className="font-semibold">Default Password</p>
                 <p>
-                  The panelist&apos;s default password is their{" "}
-                  <strong>LAST NAME in ALL CAPS</strong> (e.g., &quot;Marcial&quot; →{" "}
+                  The faculty member&apos;s default password is their{" "}
+                  <strong>LAST NAME in ALL CAPS</strong> (e.g.,
+                  &quot;Marcial&quot; →{" "}
                   <code className="rounded bg-amber-100 px-1 py-0.5 font-mono text-xs">
                     MARCIAL
                   </code>
-                  ). The panelist will be required to change this password upon
-                  first login.
+                  ). They will be required to change this password upon first
+                  login.
                 </p>
               </div>
             </div>
 
             <div className="space-y-3">
-              {/* Title + Suffix */}
+              {/* Title + First Name + Suffix */}
               <div className="grid grid-cols-3 gap-3">
                 <div>
                   <Label className={labelClass}>Title</Label>
@@ -640,7 +721,10 @@ export default function AdminPanelistsPage() {
                     type="text"
                     value={createForm.firstName}
                     onChange={(e) =>
-                      setCreateForm({ ...createForm, firstName: e.target.value })
+                      setCreateForm({
+                        ...createForm,
+                        firstName: e.target.value,
+                      })
                     }
                     placeholder="First Name"
                   />
@@ -686,7 +770,7 @@ export default function AdminPanelistsPage() {
                   onChange={(e) =>
                     setCreateForm({ ...createForm, email: e.target.value })
                   }
-                  placeholder="panelist@example.com"
+                  placeholder="faculty@earist.edu.ph"
                 />
               </div>
 
@@ -757,7 +841,7 @@ export default function AdminPanelistsPage() {
               </div>
 
               {/* Is External */}
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 pt-1">
                 <input
                   type="checkbox"
                   id="create-isExternal"
@@ -767,7 +851,6 @@ export default function AdminPanelistsPage() {
                     setCreateForm({
                       ...createForm,
                       isExternal,
-                      // External panelists cannot serve as advisers.
                       isAvailableAsAdviser: isExternal
                         ? false
                         : createForm.isAvailableAsAdviser,
@@ -779,41 +862,79 @@ export default function AdminPanelistsPage() {
                   htmlFor="create-isExternal"
                   className="text-sm text-(--earist-body-text)"
                 >
-                  External Panelist
+                  External Faculty (non-EARIST panel member)
                 </Label>
               </div>
 
-              <div className="border-t border-(--earist-border-gray) pt-3">
-                <div className="flex items-center justify-between">
-                  <Label className="text-sm text-(--earist-body-text)">
-                    Available as Adviser
-                  </Label>
-                  <div className="flex items-center gap-2">
-                    <Switch
-                      checked={createForm.isAvailableAsAdviser}
-                      disabled={createForm.isExternal}
-                      onCheckedChange={(checked) =>
-                        setCreateForm({
-                          ...createForm,
-                          isAvailableAsAdviser: checked,
-                        })
-                      }
-                    />
-                    <span className="text-xs text-(--earist-body-text)">
-                      {createForm.isAvailableAsAdviser ? "Yes" : "No"}
-                    </span>
+              <div className="space-y-3 border-t border-(--earist-border-gray) pt-3">
+                {/* Essay Evaluation Access */}
+                <div>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <Label className="text-sm text-(--earist-body-text)">
+                        Essay Evaluation Access (Program Chair / Evaluator)
+                      </Label>
+                      <p className="text-xs text-gray-500">
+                        Allows this faculty member to grade applicant entrance
+                        exam essays.
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Switch
+                        checked={createForm.canEvaluateEssays}
+                        onCheckedChange={(checked) =>
+                          setCreateForm({
+                            ...createForm,
+                            canEvaluateEssays: checked,
+                          })
+                        }
+                      />
+                      <span className="text-xs text-(--earist-body-text)">
+                        {createForm.canEvaluateEssays ? "Enabled" : "Disabled"}
+                      </span>
+                    </div>
                   </div>
                 </div>
-                {createForm.isExternal && (
-                  <p className="mt-1 text-xs text-(--earist-body-text)">
-                    External panelists cannot serve as thesis/dissertation
-                    advisers.
-                  </p>
-                )}
+
+                {/* Available as Adviser */}
+                <div>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <Label className="text-sm text-(--earist-body-text)">
+                        Available as Adviser
+                      </Label>
+                      <p className="text-xs text-gray-500">
+                        Only Internal Faculty can serve as thesis/dissertation
+                        advisers.
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Switch
+                        checked={createForm.isAvailableAsAdviser}
+                        disabled={createForm.isExternal}
+                        onCheckedChange={(checked) =>
+                          setCreateForm({
+                            ...createForm,
+                            isAvailableAsAdviser: checked,
+                          })
+                        }
+                      />
+                      <span className="text-xs text-(--earist-body-text)">
+                        {createForm.isAvailableAsAdviser ? "Yes" : "No"}
+                      </span>
+                    </div>
+                  </div>
+                  {createForm.isExternal && (
+                    <p className="mt-1 text-xs text-amber-700">
+                      External faculty cannot serve as thesis/dissertation
+                      advisers.
+                    </p>
+                  )}
+                </div>
               </div>
             </div>
 
-            <div className="mt-4 flex gap-3">
+            <div className="mt-5 flex gap-3">
               <Button
                 variant="outline"
                 onClick={() => setShowCreateModal(false)}
@@ -834,7 +955,7 @@ export default function AdminPanelistsPage() {
                 {createMutation.isPending && (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 )}
-                Add Panelist
+                Add Faculty
               </Button>
             </div>
           </div>
@@ -842,19 +963,19 @@ export default function AdminPanelistsPage() {
       )}
 
       {/* ======================== */}
-      {/* EDIT PANELIST MODAL      */}
+      {/* EDIT FACULTY MODAL       */}
       {/* ======================== */}
-      {showEditModal && selectedPanelist && (
+      {showEditModal && selectedFaculty && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-xl bg-white p-6 shadow-xl">
+          <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl bg-white p-6 shadow-xl">
             <div className="mb-4 flex items-center justify-between">
               <h3 className="text-lg font-bold text-(--earist-primary)">
-                Edit Panelist
+                Edit Faculty
               </h3>
               <button
                 onClick={() => {
                   setShowEditModal(false);
-                  setSelectedPanelist(null);
+                  setSelectedFaculty(null);
                 }}
                 className="rounded-full p-1 text-(--earist-body-text) hover:bg-(--earist-surface-gray)"
               >
@@ -863,7 +984,7 @@ export default function AdminPanelistsPage() {
             </div>
 
             <div className="space-y-3">
-              {/* Title + Suffix */}
+              {/* Title + First Name + Suffix */}
               <div className="grid grid-cols-3 gap-3">
                 <div>
                   <Label className={labelClass}>Title</Label>
@@ -934,7 +1055,7 @@ export default function AdminPanelistsPage() {
                   onChange={(e) =>
                     setEditForm({ ...editForm, email: e.target.value })
                   }
-                  placeholder="panelist@example.com"
+                  placeholder="faculty@earist.edu.ph"
                 />
               </div>
 
@@ -996,7 +1117,7 @@ export default function AdminPanelistsPage() {
               </div>
 
               {/* Is External */}
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 pt-1">
                 <input
                   type="checkbox"
                   id="edit-isExternal"
@@ -1017,39 +1138,78 @@ export default function AdminPanelistsPage() {
                   htmlFor="edit-isExternal"
                   className="text-sm text-(--earist-body-text)"
                 >
-                  External Panelist
+                  External Faculty (non-EARIST panel member)
                 </Label>
               </div>
 
-              <div className="border-t border-(--earist-border-gray) pt-3">
-                {/* Is Available as Adviser */}
+              <div className="space-y-3 border-t border-(--earist-border-gray) pt-3">
+                {/* Essay Evaluation Access */}
                 <div className="flex items-center justify-between">
-                  <Label className="text-sm text-(--earist-body-text)">Available as Adviser</Label>
+                  <div>
+                    <Label className="text-sm text-(--earist-body-text)">
+                      Essay Evaluation Access
+                    </Label>
+                    <p className="text-xs text-gray-500">
+                      Allows grading applicant entrance exam essays.
+                    </p>
+                  </div>
                   <div className="flex items-center gap-2">
                     <Switch
-                      checked={editForm.isAvailableAsAdviser}
-                      disabled={editForm.isExternal}
-                      onCheckedChange={(checked) => setEditForm({ ...editForm, isAvailableAsAdviser: checked })}
+                      checked={editForm.canEvaluateEssays}
+                      onCheckedChange={(checked) =>
+                        setEditForm({
+                          ...editForm,
+                          canEvaluateEssays: checked,
+                        })
+                      }
                     />
                     <span className="text-xs text-(--earist-body-text)">
-                      {editForm.isAvailableAsAdviser ? "Yes" : "No"}
+                      {editForm.canEvaluateEssays ? "Enabled" : "Disabled"}
                     </span>
                   </div>
                 </div>
-                {editForm.isExternal && (
-                  <p className="mt-1 text-xs text-(--earist-body-text)">
-                    External panelists cannot serve as thesis/dissertation
-                    advisers.
-                  </p>
-                )}
+
+                {/* Available as Adviser */}
+                <div>
+                  <div className="flex items-center justify-between">
+                    <Label className="text-sm text-(--earist-body-text)">
+                      Available as Adviser
+                    </Label>
+                    <div className="flex items-center gap-2">
+                      <Switch
+                        checked={editForm.isAvailableAsAdviser}
+                        disabled={editForm.isExternal}
+                        onCheckedChange={(checked) =>
+                          setEditForm({
+                            ...editForm,
+                            isAvailableAsAdviser: checked,
+                          })
+                        }
+                      />
+                      <span className="text-xs text-(--earist-body-text)">
+                        {editForm.isAvailableAsAdviser ? "Yes" : "No"}
+                      </span>
+                    </div>
+                  </div>
+                  {editForm.isExternal && (
+                    <p className="mt-1 text-xs text-amber-700">
+                      External faculty cannot serve as thesis/dissertation
+                      advisers.
+                    </p>
+                  )}
+                </div>
 
                 {/* Account Status */}
-                <div className="mt-3 flex items-center justify-between">
-                  <Label className="text-sm text-(--earist-body-text)">Account Status</Label>
+                <div className="flex items-center justify-between">
+                  <Label className="text-sm text-(--earist-body-text)">
+                    Account Status
+                  </Label>
                   <div className="flex items-center gap-2">
                     <Switch
                       checked={editForm.isActive}
-                      onCheckedChange={(checked) => setEditForm({ ...editForm, isActive: checked })}
+                      onCheckedChange={(checked) =>
+                        setEditForm({ ...editForm, isActive: checked })
+                      }
                     />
                     <span className="text-xs text-(--earist-body-text)">
                       {editForm.isActive ? "Active" : "Inactive"}
@@ -1058,7 +1218,7 @@ export default function AdminPanelistsPage() {
                 </div>
 
                 {/* New Password */}
-                <div className="mt-3">
+                <div>
                   <Label className={labelClass}>
                     New Password (leave blank to keep current)
                   </Label>
@@ -1074,12 +1234,12 @@ export default function AdminPanelistsPage() {
               </div>
             </div>
 
-            <div className="mt-4 flex gap-3">
+            <div className="mt-5 flex gap-3">
               <Button
                 variant="outline"
                 onClick={() => {
                   setShowEditModal(false);
-                  setSelectedPanelist(null);
+                  setSelectedFaculty(null);
                 }}
                 className="flex-1"
               >
@@ -1093,7 +1253,10 @@ export default function AdminPanelistsPage() {
                   !editForm.email.trim()
                 }
                 onClick={() =>
-                  editMutation.mutate({ id: selectedPanelist.id, data: editForm })
+                  editMutation.mutate({
+                    id: selectedFaculty.id,
+                    data: editForm,
+                  })
                 }
                 className="flex-1 bg-(--earist-primary) text-white hover:bg-(--earist-primary)/90"
               >
@@ -1108,19 +1271,19 @@ export default function AdminPanelistsPage() {
       )}
 
       {/* ======================== */}
-      {/* VIEW PANELIST MODAL      */}
+      {/* VIEW FACULTY MODAL       */}
       {/* ======================== */}
-      {showViewModal && selectedPanelist && (
+      {showViewModal && selectedFaculty && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-lg rounded-xl bg-white p-6 shadow-xl">
+          <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl bg-white p-6 shadow-xl">
             <div className="mb-4 flex items-center justify-between">
               <h3 className="text-lg font-bold text-(--earist-primary)">
-                Panelist Details
+                Faculty Details
               </h3>
               <button
                 onClick={() => {
                   setShowViewModal(false);
-                  setSelectedPanelist(null);
+                  setSelectedFaculty(null);
                 }}
                 className="rounded-full p-1 text-(--earist-body-text) hover:bg-(--earist-surface-gray)"
               >
@@ -1129,98 +1292,156 @@ export default function AdminPanelistsPage() {
             </div>
 
             <div className="space-y-4">
-              {/* Name */}
-              <div>
-                <p className="text-xs text-(--earist-body-text)">Name</p>
-                <p className="font-medium text-(--earist-primary)">
-                  {formatDisplayName(selectedPanelist)}
-                </p>
-              </div>
-
-              {/* Email */}
-              <div>
-                <p className="text-xs text-(--earist-body-text)">Email</p>
-                <p className="text-sm text-(--earist-body-text)">
-                  {selectedPanelist.email}
-                </p>
-              </div>
-
-              {/* Qualification */}
-              <div>
-                <p className="text-xs text-(--earist-body-text)">Qualification</p>
-                <p className="text-sm text-(--earist-body-text)">
-                  {selectedPanelist.qualification}
-                </p>
-              </div>
-
-              {/* Affiliation */}
-              <div>
-                <p className="text-xs text-(--earist-body-text)">Affiliation</p>
-                <p className="text-sm text-(--earist-body-text)">
-                  {selectedPanelist.affiliation}
-                </p>
-              </div>
-
-              {/* Specialization */}
-              <div>
-                <p className="text-xs text-(--earist-body-text)">Specialization</p>
-                <p className="text-sm text-(--earist-body-text)">
-                  {selectedPanelist.specialization}
-                </p>
-              </div>
-
-              {/* Type & Status row */}
-              <div className="grid grid-cols-2 gap-4">
+              {/* Name & Email */}
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div>
-                  <p className="text-xs text-(--earist-body-text)">Type</p>
+                  <p className="text-xs text-(--earist-body-text)">Name</p>
+                  <p className="font-semibold text-(--earist-primary)">
+                    {formatDisplayName(selectedFaculty)}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-(--earist-body-text)">Email</p>
+                  <p className="text-sm text-(--earist-body-text)">
+                    {selectedFaculty.email}
+                  </p>
+                </div>
+              </div>
+
+              {/* Qualification, Affiliation, Specialization */}
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                <div>
+                  <p className="text-xs text-(--earist-body-text)">
+                    Qualification
+                  </p>
+                  <p className="text-sm text-(--earist-body-text)">
+                    {selectedFaculty.qualification}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-(--earist-body-text)">
+                    Affiliation
+                  </p>
+                  <p className="text-sm text-(--earist-body-text)">
+                    {selectedFaculty.affiliation}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-(--earist-body-text)">
+                    Specialization
+                  </p>
+                  <p className="text-sm text-(--earist-body-text)">
+                    {selectedFaculty.specialization}
+                  </p>
+                </div>
+              </div>
+
+              {/* Classification, Essay Evaluation, Adviser, Status */}
+              <div className="grid grid-cols-2 gap-3 rounded-lg border border-(--earist-border-gray) bg-(--earist-surface-gray) p-3 sm:grid-cols-4">
+                <div>
+                  <p className="mb-1 text-xs text-(--earist-body-text)">
+                    Classification
+                  </p>
                   <Badge
                     className={
-                      selectedPanelist.isExternal
+                      selectedFaculty.isExternal
                         ? "bg-purple-100 text-purple-700"
                         : "bg-blue-100 text-blue-700"
                     }
                   >
-                    {selectedPanelist.isExternal ? "External" : "Internal"}
+                    {selectedFaculty.isExternal ? "External" : "Internal"}
                   </Badge>
                 </div>
                 <div>
-                  <p className="text-xs text-(--earist-body-text)">Status</p>
+                  <p className="mb-1 text-xs text-(--earist-body-text)">
+                    Essay Eval
+                  </p>
                   <Badge
                     className={
-                      selectedPanelist.isActive
+                      selectedFaculty.canEvaluateEssays
+                        ? "bg-emerald-100 text-emerald-700"
+                        : "bg-gray-100 text-gray-500"
+                    }
+                  >
+                    {selectedFaculty.canEvaluateEssays ? "Enabled" : "Disabled"}
+                  </Badge>
+                </div>
+                <div>
+                  <p className="mb-1 text-xs text-(--earist-body-text)">
+                    Adviser
+                  </p>
+                  {selectedFaculty.isExternal ? (
+                    <Badge className="bg-gray-100 text-gray-400">N/A</Badge>
+                  ) : (
+                    <Badge
+                      className={
+                        selectedFaculty.isAvailableAsAdviser
+                          ? "bg-green-100 text-green-700"
+                          : "bg-gray-100 text-gray-500"
+                      }
+                    >
+                      {selectedFaculty.isAvailableAsAdviser ? "Yes" : "No"}
+                    </Badge>
+                  )}
+                </div>
+                <div>
+                  <p className="mb-1 text-xs text-(--earist-body-text)">
+                    Status
+                  </p>
+                  <Badge
+                    className={
+                      selectedFaculty.isActive
                         ? "bg-green-100 text-green-700"
                         : "bg-gray-100 text-gray-500"
                     }
                   >
-                    {selectedPanelist.isActive ? "Active" : "Inactive"}
+                    {selectedFaculty.isActive ? "Active" : "Inactive"}
                   </Badge>
                 </div>
               </div>
 
-              {/* Adviser */}
-              <div>
-                <p className="text-xs text-(--earist-body-text)">
-                  Available as Adviser
+              {/* Assignment Summary */}
+              <div className="border-t border-(--earist-border-gray) pt-3">
+                <p className="mb-2 text-xs font-semibold tracking-wide text-(--earist-primary) uppercase">
+                  Academic Assignment Summary
                 </p>
-                <Badge
-                  className={
-                    selectedPanelist.isAvailableAsAdviser
-                      ? "bg-green-100 text-green-700"
-                      : "bg-gray-100 text-gray-500"
-                  }
-                >
-                  {selectedPanelist.isAvailableAsAdviser ? "Yes" : "No"}
-                </Badge>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="rounded-lg border border-(--earist-border-gray) p-3">
+                    <p className="text-xs text-(--earist-body-text)">
+                      Active Advisees
+                    </p>
+                    <p className="text-lg font-bold text-(--earist-primary)">
+                      {selectedFaculty.isExternal
+                        ? "N/A"
+                        : selectedFaculty.adviserAssignmentsCount}
+                    </p>
+                  </div>
+                  <div className="rounded-lg border border-(--earist-border-gray) p-3">
+                    <p className="text-xs text-(--earist-body-text)">
+                      Defense Committee Assignments
+                    </p>
+                    <p className="text-lg font-bold text-(--earist-primary)">
+                      {selectedFaculty.panelAssignmentsCount}
+                    </p>
+                  </div>
+                </div>
               </div>
 
               {/* Account History */}
               <div className="border-t border-(--earist-border-gray) pt-4">
-                <p className="text-xs font-semibold text-(--earist-primary) uppercase tracking-wide mb-3">Account History</p>
+                <p className="mb-3 text-xs font-semibold tracking-wide text-(--earist-primary) uppercase">
+                  Account History
+                </p>
                 <div className="space-y-2">
                   <div className="flex justify-between">
-                    <span className="text-xs text-(--earist-body-text)">Created At</span>
+                    <span className="text-xs text-(--earist-body-text)">
+                      Created At
+                    </span>
                     <span className="text-sm text-gray-900">
-                      {new Date(selectedPanelist.userCreatedAt || selectedPanelist.createdAt).toLocaleDateString("en-US", {
+                      {new Date(
+                        selectedFaculty.userCreatedAt ||
+                          selectedFaculty.createdAt,
+                      ).toLocaleDateString("en-US", {
                         year: "numeric",
                         month: "long",
                         day: "numeric",
@@ -1229,16 +1450,25 @@ export default function AdminPanelistsPage() {
                       })}
                     </span>
                   </div>
-                  {selectedPanelist.createdByName && (
+                  {selectedFaculty.createdByName && (
                     <div className="flex justify-between">
-                      <span className="text-xs text-(--earist-body-text)">Created By</span>
-                      <span className="text-sm text-gray-900">{selectedPanelist.createdByName}</span>
+                      <span className="text-xs text-(--earist-body-text)">
+                        Created By
+                      </span>
+                      <span className="text-sm text-gray-900">
+                        {selectedFaculty.createdByName}
+                      </span>
                     </div>
                   )}
                   <div className="flex justify-between">
-                    <span className="text-xs text-(--earist-body-text)">Last Updated</span>
+                    <span className="text-xs text-(--earist-body-text)">
+                      Last Updated
+                    </span>
                     <span className="text-sm text-gray-900">
-                      {new Date(selectedPanelist.userUpdatedAt || selectedPanelist.createdAt).toLocaleDateString("en-US", {
+                      {new Date(
+                        selectedFaculty.userUpdatedAt ||
+                          selectedFaculty.createdAt,
+                      ).toLocaleDateString("en-US", {
                         year: "numeric",
                         month: "long",
                         day: "numeric",
@@ -1247,10 +1477,14 @@ export default function AdminPanelistsPage() {
                       })}
                     </span>
                   </div>
-                  {selectedPanelist.updatedByName && (
+                  {selectedFaculty.updatedByName && (
                     <div className="flex justify-between">
-                      <span className="text-xs text-(--earist-body-text)">Updated By</span>
-                      <span className="text-sm text-gray-900">{selectedPanelist.updatedByName}</span>
+                      <span className="text-xs text-(--earist-body-text)">
+                        Updated By
+                      </span>
+                      <span className="text-sm text-gray-900">
+                        {selectedFaculty.updatedByName}
+                      </span>
                     </div>
                   )}
                 </div>
@@ -1262,7 +1496,7 @@ export default function AdminPanelistsPage() {
                 variant="outline"
                 onClick={() => {
                   setShowViewModal(false);
-                  setSelectedPanelist(null);
+                  setSelectedFaculty(null);
                 }}
                 className="flex-1"
               >
@@ -1271,12 +1505,12 @@ export default function AdminPanelistsPage() {
               <Button
                 onClick={() => {
                   setShowViewModal(false);
-                  openEditModal(selectedPanelist);
+                  openEditModal(selectedFaculty);
                 }}
                 className="flex-1 bg-(--earist-primary) text-white hover:bg-(--earist-primary)/90"
               >
                 <Edit className="mr-1 h-4 w-4" />
-                Edit Panelist
+                Edit Faculty
               </Button>
             </div>
           </div>

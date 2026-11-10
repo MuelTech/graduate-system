@@ -14,7 +14,7 @@ import {
 import { AppError } from "../utils/AppError";
 
 /** Account-level route protection only. Session CHAIRMAN assignment is authoritative. */
-export const CONCLUDER_ACCOUNT_ROLES = ["PANELIST", "ADMIN"] as const;
+export const CONCLUDER_ACCOUNT_ROLES = ["FACULTY", "PANELIST", "ADMIN"] as const;
 
 export interface ConclusionPreconditions {
   alreadyConcluded: boolean;

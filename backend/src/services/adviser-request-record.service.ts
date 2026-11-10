@@ -46,8 +46,12 @@ const RECORD_SELECT = {
 } as const satisfies Prisma.AdviserRequestOfficialRecordSelect;
 type RecordSource = Prisma.AdviserRequestOfficialRecordGetPayload<{ select: typeof RECORD_SELECT }>;
 
+function isFacultyActor(role: string): boolean {
+  return role === "FACULTY" || role === "PANELIST";
+}
+
 function assertActor(actor: AdviserRequestRecordActor) {
-  if (!actor.userId || !["STUDENT", "PANELIST", "ADMIN"].includes(actor.role)) {
+  if (!actor.userId || !["STUDENT", "FACULTY", "PANELIST", "ADMIN"].includes(actor.role)) {
     throw new AppError("Adviser Request record not found.", 404);
   }
 }
@@ -74,7 +78,7 @@ export class AdviserRequestRecordService {
     assertActor(actor);
     const row = await prisma.adviserRequestOfficialRecord.findUnique({ where: { requestId: id }, select: RECORD_SELECT });
     if (!row || !(actor.role === "ADMIN" || (actor.role === "STUDENT" && row.studentUserId === actor.userId)
-      || (actor.role === "PANELIST" && row.requestedAdviserId === actor.userId))) {
+      || (isFacultyActor(actor.role) && row.requestedAdviserId === actor.userId))) {
       throw new AppError("Adviser Request record not found.", 404);
     }
     return row;
@@ -85,7 +89,7 @@ export class AdviserRequestRecordService {
     const rows = await prisma.adviserRequestOfficialRecord.findMany({
       where: {
         ...(actor.role === "STUDENT" ? { studentUserId: actor.userId } : {}),
-        ...(actor.role === "PANELIST" ? { requestedAdviserId: actor.userId } : {}),
+        ...(isFacultyActor(actor.role) ? { requestedAdviserId: actor.userId } : {}),
         request: { status: "APPROVED", adviserStatus: "CONFORMED", deanStatus: "APPROVED" },
       },
       select: RECORD_SELECT, orderBy: [{ finalizedAt: "desc" }, { requestId: "desc" }],

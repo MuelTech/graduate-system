@@ -209,30 +209,29 @@ Historical defense assignments and attribution must remain preserved through the
 
 ## 9. Dynamic Faculty dashboard and navigation
 
-The Faculty portal keeps a Faculty Dashboard/Home, but its content and navigation are dynamic.
+The Faculty portal keeps a Faculty Dashboard/Home, and its navigation is structured around the Faculty member's classification and configured permissions without causing layout shifts or tab flickering:
 
-The system computes the Faculty member's effective work from:
-
-- configured Faculty access, such as Essay Evaluation;
-- authoritative Adviser assignments;
-- authoritative defense assignments.
-
-Only relevant Faculty work areas should be shown.
+- **Always visible for all Faculty (Internal and External):**
+  - `Dashboard`
+  - `Profile`
+  - `My Defenses` *(visible to all Faculty because any Internal or External Faculty member may serve on a defense committee)*
+  - `E-Signatures`
+  - `Repository`
+  - `Announcements`
+- **Conditional on Faculty account profile/permissions:**
+  - `Essay Evaluations` — visible **only** when `Essay Evaluation` access is enabled for that specific Faculty account (e.g., for a Faculty member who serves as Program Chair / Essay Evaluator).
+  - `My Advisees` — visible **only** for **Internal Faculty**. Because External Faculty can never serve as Advisers, `My Advisees` is hidden from the sidebar and dashboard for External Faculty.
+- **Header-only utility navigation:**
+  - `Notifications` is omitted from the sidebar navigation list to keep the sidebar clean; users access their Notifications page via the top-header **Notification Bell** icon ("View All Notifications").
 
 Examples:
 
-| Faculty state | Expected Faculty areas |
+| Faculty state | Expected Faculty sidebar areas |
 | --- | --- |
-| Essay Evaluator only | Dashboard, Essay Evaluations |
-| Adviser with active assignment | Dashboard, My Advisees |
-| Faculty with defense assignment | Dashboard, My Defenses |
-| Essay Evaluator + Adviser | Dashboard, Essay Evaluations, My Advisees |
-| Essay Evaluator + defense assignment | Dashboard, Essay Evaluations, My Defenses |
-| Multiple applicable responsibilities | Dashboard plus all authorized/relevant areas |
-
-Do not fill the dashboard with irrelevant zero-value cards such as "0 Defenses" or "0 Advisees" for functions the Faculty member does not have.
-
-Common account/profile/notification surfaces may remain where already accepted.
+| Internal Faculty (standard) | Dashboard, Profile, My Defenses, My Advisees, E-Signatures, Repository, Announcements |
+| Internal Faculty + Essay Evaluator (e.g. Program Chair) | Dashboard, Profile, Essay Evaluations, My Defenses, My Advisees, E-Signatures, Repository, Announcements |
+| External Faculty (standard) | Dashboard, Profile, My Defenses, E-Signatures, Repository, Announcements |
+| External Faculty + Essay Evaluator | Dashboard, Profile, Essay Evaluations, My Defenses, E-Signatures, Repository, Announcements |
 
 Dynamic navigation is a usability projection of authority, not the authority itself. Backend/API checks must enforce every protected read/write action even when a link is hidden.
 
@@ -320,7 +319,7 @@ Restricted Administrators must not:
 
 ---
 
-## 12. Administrator Management
+## 12. Administrator Management & Default Password Policy
 
 A dedicated **Administrators** management surface is required.
 
@@ -335,6 +334,14 @@ The user-facing design should support:
 Because the project currently has a very small Admin population, direct per-Administrator configuration is the approved user-facing direction.
 
 The UI should not require arbitrary custom role creation for normal administration access management.
+
+### 12.1 Default Password Policy for Faculty and Administrators
+
+When an authorized Administrator creates a new Faculty account or a new Administrator account:
+
+- the default password is the user's **LAST NAME in ALL CAPS** (e.g., `"Marcial"` → `MARCIAL`);
+- the account is created with `mustChangePassword = true`, requiring the user to change their password upon first login;
+- the creation modal must display a clear informational banner explaining this default password rule.
 
 ---
 
@@ -361,14 +368,8 @@ Do not require Administrators to create arbitrary roles such as "GS Office Staff
 
 Instead:
 
-- Faculty receive the approved direct Faculty access plus assignment-driven work;
-- Admin accounts receive direct administrative capabilities.
-
-Existing `CUSTOM`, `CustomRole`, and `RoleFeatureAccess` infrastructure must not be blindly deleted.
-
-A repository audit must determine whether parts of that infrastructure can be safely reused/refactored as internal permission machinery while removing the old user-facing Custom Roles concept.
-
-Legacy users/data require an explicit compatibility/migration strategy.
+- Faculty receive the approved direct Faculty access (`canEvaluateEssays`) plus assignment-driven work;
+- Admin accounts receive direct administrative capabilities (`adminAccessLevel` + `adminCapabilities`).
 
 ---
 
@@ -376,28 +377,20 @@ Legacy users/data require an explicit compatibility/migration strategy.
 
 The technical implementation must follow these principles:
 
-- use stable capability/business-action semantics rather than literal route strings;
+- use module/task-aligned capability keys grouped cleanly by Admin sidebar sections (`User Management`, `Exam Management`, `Thesis Management`, `Institutional & System`);
 - enforce permissions at the backend/API boundary;
-- use the same effective-access result to drive frontend navigation and controls;
+- use the same effective-access result to drive frontend navigation and controls without route/tab skeleton flickering;
 - preserve assignment-scoped authorization for Adviser and Defense work;
 - fail closed when authority cannot be established;
 - do not infer access merely from a visible page, dashboard card, or account profile;
 - do not broaden Admin authority into academic authority.
 
-Illustrative capability names may include concepts such as:
+Approved Admin capability catalog:
 
-- applicants.view / applicants.manage;
-- students.view / students.manage;
-- cor.verify;
-- exam.schedules.manage;
-- exam.records.view;
-- faculty.manage;
-- curriculum.manage;
-- analytics.view;
-- settings.manage;
-- administrator_access.manage.
-
-These examples are not a locked schema. The implementation plan must define the final catalog after auditing the live repository.
+- **User Management:** `applicants.manage`, `students.manage`, `faculty.manage` *(Administrators Management is locked exclusively to Full Administrators)*
+- **Exam Management:** `exam.schedules.manage`, `exam.records.manage`, `exam.questions.manage`, `cor.verify`, `waivers.manage`
+- **Thesis Management:** `defense.applications.manage`, `defense.schedules.manage`, `defense.records.view`, `adviser.requests.manage`
+- **Institutional & System:** `analytics.view`, `memos.manage`, `repository.manage`, `settings.manage`
 
 ---
 
@@ -426,21 +419,13 @@ The word **Panelist** remains correct inside actual defense-role context.
 
 ---
 
-## 17. Migration invariants
+## 17. Surgical Zero-Breakage Migration Strategy
 
-The future implementation must preserve these invariants:
+Because the repository currently operates on synthetic/seed data while having 45+ existing Defense and Adviser workflow files coupled to `model Panelist` (`user.panelist`), `PanelRole.PANELIST`, and existing `/api/thesis/defense/panelist/...` endpoints, the implementation uses a **Surgical Separation** strategy:
 
-- no duplicate Faculty accounts solely because `PANELIST` becomes `FACULTY`;
-- existing user identity/credentials remain attached to the same authoritative person/account where the role migration applies;
-- historical Adviser assignments remain preserved;
-- historical defense assignments remain preserved;
-- historical evaluation/signature/audit attribution remains preserved;
-- defense-specific Panelist terminology is not globally renamed away;
-- External Faculty cannot become Adviser through migration;
-- legacy Custom Role data is not destroyed without an explicit migration decision;
-- current accepted workflows continue to enforce their own authority.
-
-Compatibility routes/internal names may remain temporarily when required for safe migration. User-facing migration and technical cleanup do not need to happen in one destructive step.
+- **Account Role & User-Facing UI:** Migrate the account identity to `FACULTY` (`UserRole.FACULTY`) across login, session, navigation, headers, and Admin management surfaces.
+- **Internal Relational & Endpoint Stability:** Preserve the Prisma `model Panelist` (`user.panelist`) and `PanelRole.PANELIST` enum as well as existing backend endpoint paths (`/api/panelists`, `/api/admin/panelists`, `/api/thesis/defense/panelist/...`) alongside clean `/api/faculty` and `/api/admin/faculty` aliases, and accept `FACULTY` (and `PANELIST` for unit test compatibility) in backend role checks so 100% of existing Defense, Collaborative Workspace, RAP Signature, and Adviser workflows remain unbroken.
+- **Synthetic Seed Data:** Update `seed.ts` to provision clean synthetic accounts for Full Administrator, Restricted Administrator, Internal Faculty, External Faculty, and Essay Evaluator / Program Chair Faculty.
 
 ---
 
@@ -457,26 +442,16 @@ This feature specification does not by itself:
 - change automated multiple-choice scoring;
 - change academic PASS/FAIL policy;
 - change official-document/signature policy;
-- authorize Admin academic overrides;
-- require immediate deletion of legacy `PANELIST` routes/models or Custom Role tables.
+- authorize Admin academic overrides.
 
 ---
 
-## 19. Implementation workflow
+## 19. Implementation and verification workflow
 
-Implementation must follow the project workflow:
-
-1. accept this source of truth;
-2. accept the companion design specification;
-3. coding agent performs a repository/architecture audit;
-4. coding agent writes a repository-grounded implementation plan;
-5. that plan decomposes the work into small, dependency-ordered, independently reviewable packages;
-6. one package is explicitly authorized per task prompt;
-7. coding agent implements only that package and stops;
-8. remote HEAD/diff is independently reviewed;
-9. project owner performs manual/browser/UI QA where needed.
-
-The implementation plan must not redefine this product behavior. If repository findings expose a genuine conflict or missing policy, record it as a decision/blocker instead of silently inventing new behavior.
+1. Update canonical specification documents and create a clean, 4-phase implementation plan.
+2. Execute the 4 logical phases continuously (end-to-end) without introducing temporary compatibility bloat.
+3. Verify code integrity using TypeScript (`tsc --noEmit`), backend unit tests, and frontend production build.
+4. **No automated Playwright browser test suite is required** for this feature; UI/UX testing and visual verification in the browser are performed directly by the project owner.
 
 ---
 

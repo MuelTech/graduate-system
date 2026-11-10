@@ -1,17 +1,17 @@
 import { Router } from "express";
 import { AdminPanelistController } from "../controllers/admin-panelist.controller";
-import { authenticateJWT, requireRole } from '../middlewares/auth.middleware';
+import { authenticateJWT, requireRole, requireAdminCapability } from '../middlewares/auth.middleware';
 
 const router = Router();
 const controller = new AdminPanelistController();
 
-// Apply JWT authentication to all routes
-router.use(authenticateJWT);
+// Apply JWT authentication and Faculty Management capability guard to all routes
+router.use(authenticateJWT, requireRole(["ADMIN"]), requireAdminCapability("faculty.manage"));
 
 // Admin-only CRUD routes
-router.get("/", requireRole(["ADMIN"]), controller.getAllPanelists.bind(controller));
-router.get("/:id", requireRole(["ADMIN"]), controller.getPanelistById.bind(controller));
-router.post("/", requireRole(["ADMIN"]), controller.createPanelist.bind(controller));
-router.put("/:id", requireRole(["ADMIN"]), controller.updatePanelist.bind(controller));
+router.get("/", controller.getAllPanelists.bind(controller));
+router.get("/:id", controller.getPanelistById.bind(controller));
+router.post("/", controller.createPanelist.bind(controller));
+router.put("/:id", controller.updatePanelist.bind(controller));
 
 export default router;
