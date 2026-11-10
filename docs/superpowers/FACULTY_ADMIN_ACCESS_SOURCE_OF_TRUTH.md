@@ -246,22 +246,35 @@ Common account/profile/notification surfaces may remain where already accepted.
 
 Dynamic navigation is a usability projection of authority, not the authority itself. Backend/API checks must enforce every protected read/write action even when a link is hidden.
 
-### Deferred post-FACULTY-18 dashboard presentation refinement
+### UIUX-3E — Faculty Portal UI/UX refinement before FACULTY-18
 
-The current dynamic Faculty access model does not require the Faculty Dashboard to be reduced to only a minimal list of relevant work links. After FACULTY-18 integrated acceptance, the project owner intends to refine the dashboard using the richer operational overview shown in the earlier Faculty Dashboard reference, while retaining FACULTY-13/14 account-scoped dynamic relevance and authorization boundaries.
+The project owner requested one bounded Faculty Portal refinement before FACULTY-18, combining (A) sidebar navigation stability and (B) a richer operational Faculty Dashboard. This is a separate prerequisite package; it is **not part of FACULTY-18 implementation** and does not change the Faculty access/authorization model.
 
-The deferred presentation target may include:
-- a compact Your Work summary for only the Faculty responsibilities relevant to the authenticated account;
-- Upcoming Defenses and Pending Tasks summary metrics when the corresponding work area is relevant;
+**A. Sidebar navigation stability**
+
+Keep the Faculty sidebar visually stable during ordinary same-account route navigation and access revalidation. The current source sets the Faculty work projection to null while `/auth/me` is fetching and filters conditional navigation links directly from that projection; this is a plausible source of the observed flicker/vertical shift and must be confirmed in a real browser before implementation.
+
+The correction must:
+- avoid removing/reinserting already-confirmed same-account navigation items merely because a routine route-change refresh is in flight;
+- continue refreshing the current Faculty access projection and never use a stale projection to authorize protected page content or API requests;
+- remove links when a successful fresh response confirms that the corresponding work is no longer relevant;
+- fail closed on access-resolution failure/revocation, with a clear unavailable state and no stale protected content or actionable access;
+- preserve account-switch/logout cache isolation, desktop collapse, mobile drawer/overlay, keyboard/focus behavior, and direct-route/API enforcement.
+
+**B. Richer Faculty Dashboard**
+
+Refine—not blindly restore—the earlier richer operational overview while retaining FACULTY-13/14 account-scoped dynamic relevance. The design may include:
+- concise Your Work summaries for only responsibilities relevant to the authenticated account;
+- Upcoming Defenses and Pending Tasks metrics when their corresponding work area is relevant;
 - Needs Your Attention with actionable tasks and exact deep links;
-- a conditional Active Defense section;
-- Upcoming Defense Sessions, prioritizing the next scheduled assigned defense and a small number of subsequent sessions;
+- conditional Active Defense for an exact currently active assignment;
+- Upcoming Defense Sessions, prioritizing the next scheduled assigned defense and a small bounded list of subsequent sessions;
 - Waiting on Others as a compact, collapsible informational subsection with its own count, visually distinct from actionable work;
 - Recent Notifications sourced from the authenticated account's notification records.
 
-Render sections from authoritative, current, account-scoped data only. Do not show irrelevant zero-value cards or infer Adviser, Defense, or Essay Evaluation authority from a count, navigation link, or dashboard projection. Waiting-only dependencies must never contribute to Pending Tasks. External Faculty must not receive Adviser/advisee sections. Preserve the separate Faculty/Admin account identity and cache isolation.
+Render only authoritative, current, account-scoped information. Do not show irrelevant zero-value cards or infer Adviser, Defense, or Essay Evaluation authority from counts, links, or dashboard projections. Waiting-only dependencies never contribute to Pending Tasks. External Faculty must not receive Adviser/advisee sections. Preserve separate Faculty/Admin account identity and cache isolation.
 
-This is a deferred UI/UX refinement after FACULTY-18, not a change to the Faculty access model, not a new permission, and not part of FACULTY-18 acceptance or activation. Track its design and acceptance requirements in the UI/UX Audit and System UI/UX Playbook; implement only through a separately scoped post-FACULTY-18 UI/UX task.
+**Acceptance boundary:** UIUX-3E must receive focused verification, independent source/diff review, and project-owner browser/visual acceptance before FACULTY-18 begins. It is a separate pre-FACULTY-18 prerequisite, not a new permission, workflow, or part of FACULTY-18 activation.
 
 ---
 
