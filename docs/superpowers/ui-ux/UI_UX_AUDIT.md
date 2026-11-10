@@ -1709,7 +1709,7 @@ The standalone **Waiting on Others** card repeats the visual weight and card rhy
 - **Acceptance:** requires a project-owner manual browser check. Do **not** register UIUX-3D as an additional Approved Reference; UIUX-3B My Defenses remains the eighth, UIUX-4A Student Dashboard is the ninth, UIUX-2H Admin Entrance Exam Schedules is the tenth, UIUX-2I Admin COR Verification is the eleventh, and independently accepted UIUX-2K Admin Defense Applications is the twelfth. UIUX-3A Dashboard FIX-1 / UIUX-3C Defense Workspace are not covered by UIUX-3D.
 
 
-# 10C. Faculty Dashboard richer operational overview — deferred until after FACULTY-18
+# 10C. UIUX-3E — Faculty Dashboard richer operational overview (DEFERRED UNTIL AFTER FACULTY-18)
 
 **Status: DOCUMENTED / DEFERRED / NOT IMPLEMENTED.** This is a project-owner-requested post-FACULTY-18 UI/UX refinement. It is not part of FACULTY-18 integrated acceptance, release evidence, environment cutover, or controlled activation.
 
