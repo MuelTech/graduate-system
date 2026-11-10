@@ -1,6 +1,6 @@
 # FACULTY-17B — DR-5 / DR-6 / DR-7 Implementation Alignment
 
-**Status: FACULTY-17B implemented / pending independent review.**
+**Status: FACULTY-17B accepted for continuation at `cbc5b2e267fe25da5c4cf656a32dd6e261370a7c` after independent remote commit-diff/source review.**
 
 Date: 2026-11-10 (Asia/Manila). Branch: `feat/faculty-admin-access`. Initial starting HEAD: `2f8a3ec4b25174f9e1a79ffd63d0b7868de9f7ec`; initial FACULTY-17B implementation commit: `5c993122aa3c385e83df05ebbb1e15e6331118fd` (verified as the starting HEAD for the bounded DR-5 follow-up correction); worktree clean. The existing canonical plan (`docs/superpowers/plans/2026-11-08-faculty-admin-access-implementation.md`) remains the implementation authority.
 
@@ -115,7 +115,7 @@ All verification commands were executed locally by the implementation agent usin
 
 **Verification boundaries:**
 - **Agent-reported automated checks:** Passed as listed above.
-- **Independent remote commit-diff/source review:** DR-6 and DR-7 passed on `5c993122aa3c385e83df05ebbb1e15e6331118fd`; bounded DR-5 follow-up correction pending independent review.
+- **Independent remote commit-diff/source review:** **PASS.** DR-6 and DR-7 were accepted from the initial FACULTY-17B commit `5c993122aa3c385e83df05ebbb1e15e6331118fd`; the bounded DR-5 follow-up correction at `cbc5b2e267fe25da5c4cf656a32dd6e261370a7c` was independently reviewed against the exact pushed delta and accepted with no remaining blocking issue.
 - **Project-owner manual/browser QA:** Pending (not claimed as passed).
 - **Hosted CI:** Not observed/claimed.
 
@@ -152,3 +152,20 @@ All verification commands were executed locally by the implementation agent usin
 26. `docs/superpowers/plans/2026-11-08-faculty-admin-access-implementation.md` — Recorded `FACULTY-17B implemented / pending independent review` including the bounded DR-5 correction.
 27. `docs/superpowers/GSIS_IMPLEMENTATION_CHECKLIST.md` — Recorded `FACULTY-17B implemented / pending independent review` across DR-5, DR-6, and DR-7 status rows.
 28. `docs/superpowers/reports/2026-11-10-faculty-17b-dr5-dr6-dr7-alignment.md` — This implementation report.
+
+
+## Independent-review acceptance — 2026-11-10 (Asia/Manila)
+
+Independent remote commit-diff/source review is complete for the bounded FACULTY-17B correction commit `cbc5b2e267fe25da5c4cf656a32dd6e261370a7c`, using `5c993122aa3c385e83df05ebbb1e15e6331118fd` as the exact correction base. The live `feat/faculty-admin-access` branch was verified identical to the reviewed correction HEAD before this documentation acceptance update.
+
+The review verified the production paths added or changed for DR-5, including current-profile revalidation of the auto-derived Proposal/Final Defense Adviser, Proposal/Final schedule correction, My Advisees/workspace authority, effective-access projection, Proposal/Final Adviser review authorization, and Adviser-derived academic document access. External Faculty remain eligible for the contextual Defense roles Chairman, Panelist, Rapporteur, and Facilitator, but an External Faculty profile cannot obtain current Adviser/student-advisee authority from an anomalous active `AdviserAssignment`. Existing Internal Advisers remain authoritative even when `isAvailableAsAdviser = false`, because that flag controls new Adviser eligibility rather than an already-authoritative assignment.
+
+DR-6 and DR-7 were not reopened by the correction commit and remain accepted from the initial FACULTY-17B implementation review: rejection after CONFORME requires a recorded reason while preserving the original signed evidence and allowing a later Student retry, and any historical authoritative `AdviserAssignment` permanently blocks Internal-to-External reclassification with no Admin override.
+
+No acceptance-blocking authorization, historical-evidence, or scope issue remained in the reviewed correction. No schema or migration change was introduced, no actual development/XAMPP, staging, or production database operation was performed, and no historical Adviser/Defense/signed evidence was rewritten by the correction.
+
+Evidence classes remain separate. Gemini reported **20 focused backend test files / 626 tests passed / 0 failed**, backend TypeScript build PASS, and `git diff --check` PASS. The independent review inspected the exact pushed source/diff and regression coverage; it did **not** rerun those local commands. Hosted CI and project-owner manual/browser QA were not observed or claimed.
+
+All code-owned activation gates remain `false`. FACULTY-4 and FACULTY-12 exact real-MariaDB readiness gates remain open. FACULTY-18 was not implemented.
+
+**Acceptance checkpoint:** FACULTY-17B is accepted for continuation at `cbc5b2e267fe25da5c4cf656a32dd6e261370a7c`.
