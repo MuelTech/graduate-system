@@ -48,10 +48,12 @@ function manual(type = "TITLE_DEFENSE") {
 }
 const input = (type = "TITLE_DEFENSE") => ({ defenseDate: "2026-11-15", defenseTime: "09:00", venueOrLink: "Room 201", defenseType: type, assignments: manual(type) });
 function thesis(type = "TITLE_DEFENSE") {
-  return { id: "thesis", stage: type === "TITLE_DEFENSE" ? "TITLE" : "PROPOSAL", status: "APPROVED",
+  const stage = type === "TITLE_DEFENSE" ? "TITLE" : type === "PROPOSAL_DEFENSE" ? "PROPOSAL" : "FINAL";
+  const docType = type === "TITLE_DEFENSE" ? "TITLE_PROPOSAL" : type === "PROPOSAL_DEFENSE" ? "PROPOSAL_CHAPTERS" : "FINAL_MANUSCRIPT";
+  return { id: "thesis", stage, status: "APPROVED",
     student: { id: "student-1", program: { programType: "MASTERS" } },
-    thesisDocuments: [{ id: "doc", thesisId: "thesis", docType: type === "TITLE_DEFENSE" ? "TITLE_PROPOSAL" : "PROPOSAL_CHAPTERS",
-      defenseStage: type === "TITLE_DEFENSE" ? "TITLE" : "PROPOSAL", isCurrent: true, uploadedAt: new Date() }],
+    thesisDocuments: [{ id: "doc", thesisId: "thesis", docType,
+      defenseStage: stage, isCurrent: true, uploadedAt: new Date() }],
     adviserCertifications: type === "TITLE_DEFENSE" ? [] : [{ status: "ISSUED", defenseStage: type, reviewedDocumentId: "doc" }] };
 }
 beforeEach(() => {
@@ -246,13 +248,125 @@ describe("FACULTY-7 write-boundary participant identity", () => {
     expect(searchWhere.panelist.isExternal).toBeUndefined();
     expect(searchWhere.panelist.isAvailableAsAdviser).toBeUndefined();
   });
-  it("derives Proposal Adviser at commit without availability filtering and rejects substitution", async () => {
-    db.thesisRecord.findUnique.mockResolvedValue(thesis("PROPOSAL_DEFENSE"));
-    await repo.scheduleDefense("thesis", "actor", input("PROPOSAL_DEFENSE"));
-    expect(db.panelAssignment.createMany).toHaveBeenCalledWith({ data: expect.arrayContaining([expect.objectContaining({ userId: "adv-user", role: "ADVISER" })]) });
-    expect(db.panelist.findUnique).not.toHaveBeenCalled();
-    await expect(repo.scheduleDefense("thesis", "actor", { ...input("PROPOSAL_DEFENSE"), assignments: [...manual("PROPOSAL_DEFENSE"), { userId: "attacker", role: "ADVISER" }] })).rejects.toMatchObject({ statusCode: 400 });
-  });
+  it.each(["PROPOSAL_DEFENSE", "FINAL_DEFENSE"] as const)(
+    "derives %s Adviser at scheduling and correction for Internal Faculty (including isAvailableAsAdviser = false) and rejects substitution",
+    async defenseType => {
+      db.thesisRecord.findUnique.mockResolvedValue(thesis(defenseType));
+      db.defenseSchedule.findUnique.mockResolvedValue({
+        id: "schedule",
+        thesisId: "thesis",
+        defenseType,
+        sessionStatus: "SCHEDULED",
+        conclusion: null,
+        defenseDate: new Date("2026-11-15"),
+        defenseTime: new Date("1970-01-01T09:00Z"),
+        venueOrLink: "Room 201",
+        thesis: thesis(defenseType),
+        panelAssignments: [],
+      });
+      db.adviserAssignment.findMany.mockResolvedValue([
+        {
+          id: "active",
+          adviserId: "adv-user",
+          adviser: {
+            isActive: true,
+            role: "FACULTY",
+            panelist: { isActive: true, isExternal: false, isAvailableAsAdviser: false },
+          },
+        },
+      ]);
+      db.user.findMany.mockImplementation(async ({ where }) =>
+        where.id.in.map((id: string) => ({
+          id,
+          role: "FACULTY",
+          isActive: true,
+          panelist: {
+            isActive: true,
+            isExternal: false,
+            isAvailableAsAdviser: id === "adv-user" ? false : true,
+          },
+        })),
+      );
+
+      await repo.scheduleDefense("thesis", "actor", input(defenseType));
+      expect(db.panelAssignment.createMany).toHaveBeenCalledWith({
+        data: expect.arrayContaining([
+          expect.objectContaining({ userId: "adv-user", role: "ADVISER" }),
+        ]),
+      });
+      expect(db.panelist.findUnique).not.toHaveBeenCalled();
+
+      await correction.correctSchedule("schedule", "actor", input(defenseType));
+      expect(db.panelAssignment.createMany).toHaveBeenLastCalledWith({
+        data: expect.arrayContaining([
+          expect.objectContaining({ userId: "adv-user", role: "ADVISER" }),
+        ]),
+      });
+
+      await expect(
+        repo.scheduleDefense("thesis", "actor", {
+          ...input(defenseType),
+          assignments: [...manual(defenseType), { userId: "attacker", role: "ADVISER" }],
+        }),
+      ).rejects.toMatchObject({ statusCode: 400 });
+    },
+  );
+  it.each(["PROPOSAL_DEFENSE", "FINAL_DEFENSE"] as const)(
+    "rejects %s scheduling and schedule correction when authoritative active AdviserAssignment points to External Faculty",
+    async defenseType => {
+      db.thesisRecord.findUnique.mockResolvedValue(thesis(defenseType));
+      db.defenseSchedule.findUnique.mockResolvedValue({
+        id: "schedule",
+        thesisId: "thesis",
+        defenseType,
+        sessionStatus: "SCHEDULED",
+        conclusion: null,
+        defenseDate: new Date("2026-11-15"),
+        defenseTime: new Date("1970-01-01T09:00Z"),
+        venueOrLink: "Room 201",
+        thesis: thesis(defenseType),
+        panelAssignments: [],
+      });
+      db.adviserAssignment.findMany.mockResolvedValue([
+        {
+          id: "active-ext",
+          adviserId: "ext-adv",
+          adviser: {
+            isActive: true,
+            role: "FACULTY",
+            panelist: { isActive: true, isExternal: true, isAvailableAsAdviser: false },
+          },
+        },
+      ]);
+      db.user.findMany.mockImplementation(async ({ where }) =>
+        where.id.in.map((id: string) => ({
+          id,
+          role: "FACULTY",
+          isActive: true,
+          panelist: {
+            isActive: true,
+            isExternal: id === "ext-adv",
+          },
+        })),
+      );
+
+      await expect(
+        repo.scheduleDefense("thesis", "actor", input(defenseType)),
+      ).rejects.toMatchObject({
+        statusCode: 409,
+        message: "External Faculty cannot serve as Thesis Adviser.",
+      });
+      expect(db.defenseSchedule.create).not.toHaveBeenCalled();
+
+      await expect(
+        correction.correctSchedule("schedule", "actor", input(defenseType)),
+      ).rejects.toMatchObject({
+        statusCode: 409,
+        message: "External Faculty cannot serve as Thesis Adviser.",
+      });
+      expect(db.defenseSchedule.update).not.toHaveBeenCalled();
+    },
+  );
   it("fails closed for duplicate active Adviser state", async () => {
     db.thesisRecord.findUnique.mockResolvedValue(thesis("PROPOSAL_DEFENSE"));
     db.adviserAssignment.findMany.mockResolvedValue([{ id: "a", adviserId: "adv-user" }, { id: "b", adviserId: "other" }]);

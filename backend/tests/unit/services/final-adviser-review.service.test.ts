@@ -598,4 +598,43 @@ describe("FinalAdviserReviewService (CP4)", () => {
     expect(prismaMock.__tx.thesisDocument.create).not.toHaveBeenCalled();
     expect(prismaMock.__tx.adviserCertification.create).not.toHaveBeenCalled();
   });
+
+  it("DR-5: External Faculty with anomalous active AdviserAssignment cannot access Final review tasks, actions, or Student submission", async () => {
+    const extAssignment = {
+      ...activeAssignment("ext-adviser"),
+      adviser: {
+        isActive: true,
+        role: "FACULTY",
+        panelist: { isActive: true, isExternal: true },
+      },
+    };
+    prismaMock.thesisRecord.findUnique.mockResolvedValue(awaitingThesis());
+    prismaMock.adviserAssignment.findMany.mockResolvedValue([extAssignment]);
+
+    await expect(svc.listReviewTasks("ext-adviser")).resolves.toEqual([]);
+    await expect(
+      svc.getReviewTask("ext-adviser", "thesis-1"),
+    ).rejects.toMatchObject({ statusCode: 403 });
+    await expect(
+      svc.requestChanges("ext-adviser", "thesis-1", {
+        remarks: "must not write",
+        expectedReviewedDocumentId: "doc-a",
+      }),
+    ).rejects.toMatchObject({ statusCode: 403 });
+    await expect(
+      svc.certify("ext-adviser", "thesis-1", {
+        signatureData: "must-not-write",
+        expectedReviewedDocumentId: "doc-a",
+      }),
+    ).rejects.toMatchObject({ statusCode: 403 });
+    await expect(
+      svc.submitManuscriptForReview("student-user", managed(), "Explicit manuscript title"),
+    ).rejects.toMatchObject({
+      statusCode: 409,
+      message: "External Faculty cannot serve as Thesis Adviser.",
+    });
+
+    expect(prismaMock.adviserCertification.updateMany).not.toHaveBeenCalled();
+    expect(prismaMock.$transaction).not.toHaveBeenCalled();
+  });
 });

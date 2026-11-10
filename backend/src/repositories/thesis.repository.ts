@@ -351,6 +351,15 @@ export class ThesisRepository {
     // must fail closed rather than resolving to an arbitrary/latest Adviser.
     const active = await prisma.adviserAssignment.findMany({
       where: { studentId, isActive: true },
+      include: {
+        adviser: {
+          select: {
+            isActive: true,
+            role: true,
+            panelist: { select: { isActive: true, isExternal: true } },
+          },
+        },
+      },
       orderBy: { assignedDate: "desc" },
     });
     return requireSingleActiveAdviser(active);
@@ -991,7 +1000,18 @@ export class ThesisRepository {
         const studentId = thesisForBinding?.student?.id;
         if (!studentId) throw new AppError("Active Adviser relationship could not be resolved.", 409);
         const active = requireSingleActiveAdviser(await tx.adviserAssignment.findMany({
-          where: { studentId, isActive: true }, select: { id: true, adviserId: true },
+          where: { studentId, isActive: true },
+          select: {
+            id: true,
+            adviserId: true,
+            adviser: {
+              select: {
+                isActive: true,
+                role: true,
+                panelist: { select: { isActive: true, isExternal: true } },
+              },
+            },
+          },
         }));
         if (!active) throw new AppError("Proposal/Final requires an active Adviser relationship.", 400);
         adviserUserId = active.adviserId;

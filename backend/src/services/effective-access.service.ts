@@ -5,6 +5,7 @@ import { AdviserRequestService } from "./adviser-request.service";
 import { AdviserCertificationRecordService } from "./adviser-certification-record.service";
 import { PanelistDashboardRepository } from "../repositories/panelist-dashboard.repository";
 import { AppError } from "../utils/AppError";
+import { EXTERNAL_ACTIVE_ADVISER_MESSAGE } from "./active-adviser.rules";
 
 export interface FacultyWorkSummary {
   essayEvaluations: { relevant: boolean };
@@ -47,6 +48,18 @@ export class EffectiveAccessService {
         if ([activeAdviseeCount, addressedRequestCount, issuedCertificationCount, assignmentCount]
           .some(count => !Number.isSafeInteger(count) || count < 0)) {
           throw new AppError("Faculty work could not be established.", 503);
+        }
+        if (activeAdviseeCount > 0) {
+          const panelistExternal = (
+            account.panelist as { isExternal?: boolean } | null
+          )?.isExternal;
+          const isExternal =
+            typeof panelistExternal === "boolean"
+              ? panelistExternal
+              : await this.advisees.isExternalFaculty(account.id);
+          if (isExternal) {
+            throw new AppError(EXTERNAL_ACTIVE_ADVISER_MESSAGE, 409);
+          }
         }
         facultyWork = {
           essayEvaluations: { relevant: response.configuredAccess.capabilities.includes("essay.evaluate") },

@@ -26,6 +26,7 @@ import { isTitleStageComplete } from "./stage-completion";
 import { normalizeManuscriptTitle } from "./manuscript-title.rules";
 import { validateAdviserCertificationSignature } from "./adviser-certification-signature";
 import {
+  isExternalActiveAdviser,
   MULTIPLE_ACTIVE_ADVISERS_MESSAGE,
   requireSingleActiveAdviser,
   resolveSingleActiveAdviser,
@@ -49,7 +50,8 @@ function callerIsSoleActiveAdviser(
   }
   return (
     resolution.status === "ACTIVE" &&
-    resolution.assignment.adviserId === adviserUserId
+    resolution.assignment.adviserId === adviserUserId &&
+    !isExternalActiveAdviser(resolution.assignment)
   );
 }
 
@@ -113,9 +115,26 @@ export class ProposalAdviserReviewService {
   ): Promise<boolean> {
     const assignments = await prisma.adviserAssignment.findMany({
       where: { studentId, isActive: true },
-      select: { id: true, adviserId: true },
+      select: {
+        id: true,
+        adviserId: true,
+        adviser: {
+          select: {
+            isActive: true,
+            role: true,
+            panelist: { select: { isActive: true, isExternal: true } },
+          },
+        },
+      },
     });
-    return callerIsSoleActiveAdviser(assignments, adviserUserId);
+    if (!callerIsSoleActiveAdviser(assignments, adviserUserId)) {
+      return false;
+    }
+    const user = await prisma.user?.findUnique?.({
+      where: { id: adviserUserId },
+      select: { panelist: { select: { isExternal: true } } },
+    });
+    return user?.panelist?.isExternal !== true;
   }
 
   private async loadReviewContext(thesisId: string) {
@@ -131,7 +150,12 @@ export class ProposalAdviserReviewService {
               where: { isActive: true },
               include: {
                 adviser: {
-                  select: { id: true, firstName: true, lastName: true },
+                  select: {
+                    id: true,
+                    firstName: true,
+                    lastName: true,
+                    panelist: { select: { isExternal: true } },
+                  },
                 },
               },
             },
@@ -167,7 +191,8 @@ export class ProposalAdviserReviewService {
       thesis.student.adviserAssignments,
     );
     const assignment =
-      activeAdviserResolution.status === "ACTIVE"
+      activeAdviserResolution.status === "ACTIVE" &&
+      !isExternalActiveAdviser(activeAdviserResolution.assignment)
         ? activeAdviserResolution.assignment
         : null;
     const cert =
@@ -285,6 +310,15 @@ export class ProposalAdviserReviewService {
 
     const activeAssignments = await prisma.adviserAssignment.findMany({
       where: { studentId: student.id, isActive: true },
+      include: {
+        adviser: {
+          select: {
+            isActive: true,
+            role: true,
+            panelist: { select: { isActive: true, isExternal: true } },
+          },
+        },
+      },
     });
     const assignment = requireSingleActiveAdviser(activeAssignments);
 
@@ -364,11 +398,19 @@ export class ProposalAdviserReviewService {
             user: { select: { id: true, firstName: true, lastName: true } },
           },
         },
+        adviser: {
+          select: {
+            isActive: true,
+            role: true,
+            panelist: { select: { isActive: true, isExternal: true } },
+          },
+        },
       },
     });
 
     const items: AdviserReviewQueueItem[] = [];
     for (const assignment of assignments) {
+      if (isExternalActiveAdviser(assignment)) continue;
       const isSoleActiveAdviser = await this.isActiveAdviserForStudent(
         adviserUserId,
         assignment.studentId,

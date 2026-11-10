@@ -1,5 +1,7 @@
 import { AppError } from "../utils/AppError";
 import {
+  EXTERNAL_ACTIVE_ADVISER_MESSAGE,
+  isExternalActiveAdviser,
   resolveSingleActiveAdviser,
   type ActiveAdviserAssignmentLike,
 } from "./active-adviser.rules";
@@ -370,6 +372,9 @@ export class AdviserWorkspaceService {
       adviserUserId,
       student.adviserAssignments,
     );
+    if (await this.repository.isExternalFaculty?.(adviserUserId)) {
+      throw new AppError(EXTERNAL_ACTIVE_ADVISER_MESSAGE, 409);
+    }
 
     const thesisId = student.thesisRecords[0]?.id ?? null;
     let researchDocuments: AdviserResearchDocumentDto[] = [];
@@ -456,6 +461,16 @@ export class AdviserWorkspaceService {
       ) {
         throw new AppError(ADVISER_RELATIONSHIP_INCONSISTENT_MESSAGE, 409);
       }
+      if (isExternalActiveAdviser(resolution.assignment)) {
+        throw new AppError(EXTERNAL_ACTIVE_ADVISER_MESSAGE, 409);
+      }
+    }
+
+    if (
+      assignments.some((assignment) => isExternalActiveAdviser(assignment)) ||
+      (await this.repository.isExternalFaculty?.(adviserUserId))
+    ) {
+      throw new AppError(EXTERNAL_ACTIVE_ADVISER_MESSAGE, 409);
     }
   }
 
@@ -463,7 +478,8 @@ export class AdviserWorkspaceService {
    * Exact detail authorization:
    * - no active row -> 404;
    * - duplicate active rows that include the caller -> 409;
-   * - a single active row must belong to the caller, otherwise -> 404.
+   * - a single active row must belong to the caller, otherwise -> 404;
+   * - an External Faculty active assignment fails closed -> 409.
    */
   private authorizeActiveAdviser<
     T extends ActiveAdviserAssignmentLike & { assignedDate: Date },
@@ -480,6 +496,9 @@ export class AdviserWorkspaceService {
     }
     if (active[0].adviserId !== adviserUserId) {
       throw new AppError(ADVISEE_NOT_FOUND_MESSAGE, 404);
+    }
+    if (isExternalActiveAdviser(active[0])) {
+      throw new AppError(EXTERNAL_ACTIVE_ADVISER_MESSAGE, 409);
     }
     return active[0];
   }

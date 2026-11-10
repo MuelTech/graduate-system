@@ -264,6 +264,14 @@ describe("FACULTY-13 My Advisees authority reduction", () => {
     database.adviserAssignment.findMany.mockResolvedValueOnce([{ student: { adviserAssignments: [{ id: "a", adviserId: otherId }] } }]);
     expect((await me()).response.status).toBe(409);
   });
+  it("DR-5: External Faculty with an anomalous active AdviserAssignment fails closed", async () => {
+    account.panelist.isExternal = true;
+    assignments.push(adviser());
+    const { response, body } = await me();
+    expect(response.status).toBe(409);
+    expect(body).toEqual({ error: "External Faculty cannot serve as Thesis Adviser." });
+    expect(body.facultyWork).toBeUndefined();
+  });
 });
 
 describe("FACULTY-13 My Defenses", () => {

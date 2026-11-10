@@ -639,4 +639,57 @@ describe("AdviserWorkspaceService", () => {
       /filePath|storageKey|checksum|storageProvider|signatureData|signedContentHash|oralExamScore|criteria|adviserAssignments/i,
     );
   });
+
+  it("DR-5: fails workspace and advisee detail closed when active AdviserAssignment points to External Faculty", async () => {
+    const extAssignment = activeAssignment({
+      adviserId: "ext-adv",
+      adviser: {
+        isActive: true,
+        role: "FACULTY",
+        panelist: { isActive: true, isExternal: true },
+      },
+    });
+    repo.listActiveAssignmentsForAdviser.mockResolvedValue([extAssignment]);
+    repo.listActiveAdviserAssignmentsForStudents.mockResolvedValue([
+      {
+        ...activeRow(extAssignment),
+        adviser: {
+          isActive: true,
+          role: "FACULTY",
+          panelist: { isActive: true, isExternal: true },
+        },
+      },
+    ]);
+
+    await expect(service.getWorkspace("ext-adv")).rejects.toMatchObject({
+      statusCode: 409,
+      message: "External Faculty cannot serve as Thesis Adviser.",
+    });
+    expect(requests.listMyAdviserRequests).not.toHaveBeenCalled();
+
+    repo.findStudentForAdviseeDetail.mockResolvedValue({
+      ...student(),
+      adviserAssignments: [
+        {
+          id: "asg-ext",
+          adviserId: "ext-adv",
+          assignedDate: new Date(),
+          adviser: {
+            isActive: true,
+            role: "FACULTY",
+            panelist: { isActive: true, isExternal: true },
+          },
+        },
+      ],
+    });
+
+    await expect(
+      service.getAdviseeDetail("ext-adv", "student-1"),
+    ).rejects.toMatchObject({
+      statusCode: 409,
+      message: "External Faculty cannot serve as Thesis Adviser.",
+    });
+    expect(repo.listAdviserResearchDocuments).not.toHaveBeenCalled();
+    expect(repo.listAdviserDefenseHistory).not.toHaveBeenCalled();
+  });
 });

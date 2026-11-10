@@ -13,7 +13,28 @@ import { AppError } from "../utils/AppError";
 export type ActiveAdviserAssignmentLike = {
   id: string;
   adviserId: string;
+  adviser?: {
+    id?: string;
+    firstName?: string;
+    lastName?: string;
+    email?: string;
+    isActive?: boolean;
+    role?: string;
+    panelist?: {
+      isActive?: boolean;
+      isExternal?: boolean;
+    } | null;
+  } | null;
 };
+
+export const EXTERNAL_ACTIVE_ADVISER_MESSAGE =
+  "External Faculty cannot serve as Thesis Adviser.";
+
+export function isExternalActiveAdviser(
+  row: ActiveAdviserAssignmentLike | null | undefined,
+): boolean {
+  return row?.adviser?.panelist?.isExternal === true;
+}
 
 export type ActiveAdviserResolution<T extends ActiveAdviserAssignmentLike> =
   | { status: "NONE"; assignment: null }
@@ -52,6 +73,12 @@ export function requireSingleActiveAdviser<
   const resolution = resolveSingleActiveAdviser(rows);
   if (resolution.status === "CONFLICT") {
     throw new AppError(MULTIPLE_ACTIVE_ADVISERS_MESSAGE, 409);
+  }
+  if (
+    resolution.status === "ACTIVE" &&
+    isExternalActiveAdviser(resolution.assignment)
+  ) {
+    throw new AppError(EXTERNAL_ACTIVE_ADVISER_MESSAGE, 409);
   }
   return resolution.assignment;
 }

@@ -80,7 +80,10 @@ export function canPanelistAccessThesisDocument(
     thesis?: {
       id?: string;
       student?: {
-        adviserAssignments?: Array<{ adviserId: string }>;
+        adviserAssignments?: Array<{
+          adviserId: string;
+          adviser?: { panelist?: { isExternal?: boolean } | null } | null;
+        }>;
       } | null;
       adviserCertifications?: Array<{
         defenseStage: string;
@@ -103,7 +106,9 @@ export function canPanelistAccessThesisDocument(
   userId: string,
 ): boolean {
   const activeAdviserIds: string[] =
-    record.thesis?.student?.adviserAssignments?.map((a) => a.adviserId) ?? [];
+    record.thesis?.student?.adviserAssignments
+      ?.filter((a) => a.adviser?.panelist?.isExternal !== true)
+      .map((a) => a.adviserId) ?? [];
   // ADV-5: narrow active-Adviser access to valid academic research documents
   // only. COR/RECEIPT/INSTRUMENTS/RESPONDENT_DATA/PLAGIARISM_REPORT and malformed
   // type/stage identities never pass through this path.
@@ -251,7 +256,14 @@ const MODEL_REGISTRY: Record<keyof typeof PRIVATE_DOCUMENT_CLASSIFICATION, Model
                             user: true,
                             adviserAssignments: {
                                 where: { isActive: true },
-                                select: { adviserId: true },
+                                select: {
+                                    adviserId: true,
+                                    adviser: {
+                                        select: {
+                                            panelist: { select: { isExternal: true } },
+                                        },
+                                    },
+                                },
                             },
                         },
                     },

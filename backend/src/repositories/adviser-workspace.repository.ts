@@ -1,6 +1,11 @@
 import prisma from "../config/database";
 import { AppError } from "../utils/AppError";
-import { resolveSingleActiveAdviser } from "../services/active-adviser.rules";
+import {
+  EXTERNAL_ACTIVE_ADVISER_MESSAGE,
+  isExternalActiveAdviser,
+  resolveSingleActiveAdviser,
+  type ActiveAdviserAssignmentLike,
+} from "../services/active-adviser.rules";
 
 /**
  * ADV-2 — read-only Adviser workspace repository.
@@ -36,6 +41,7 @@ export type AdviserActiveAssignmentRow = {
   adviserId: string;
   assignedDate: Date;
   student: AdviserWorkspaceStudentRow;
+  adviser?: ActiveAdviserAssignmentLike["adviser"];
 };
 
 /** Minimal row used to validate every candidate Student's full active set. */
@@ -44,6 +50,7 @@ export type AdviserStudentActiveAssignmentRow = {
   studentId: string;
   adviserId: string;
   assignedDate: Date;
+  adviser?: ActiveAdviserAssignmentLike["adviser"];
 };
 
 export type AdviserDetailStudentRow = {
@@ -55,6 +62,7 @@ export type AdviserDetailStudentRow = {
     id: string;
     adviserId: string;
     assignedDate: Date;
+    adviser?: ActiveAdviserAssignmentLike["adviser"];
   }>;
   thesisRecords: Array<{ id: string; stage: string; status: string }>;
 };
@@ -92,6 +100,15 @@ export type AdviserDefenseHistoryRow = {
 };
 
 export class AdviserWorkspaceRepository {
+  /** DR-5: verify whether the authenticated account's current academic profile is External. */
+  async isExternalFaculty(adviserUserId: string): Promise<boolean> {
+    const user = await prisma.user?.findUnique?.({
+      where: { id: adviserUserId },
+      select: { panelist: { select: { isExternal: true } } },
+    });
+    return user?.panelist?.isExternal === true;
+  }
+
   /** FACULTY-13: same sole-active authority as the workspace, without profiles,
    * theses or review documents. One relation query, never one query per Student.
    * Review queues require this relationship and add no independent relevance.
@@ -111,6 +128,9 @@ export class AdviserWorkspaceRepository {
       if (resolution.status !== "ACTIVE" || resolution.assignment.adviserId !== adviserId) {
         throw new AppError("The active adviser relationship could not be verified. Correct the adviser record before continuing.", 409);
       }
+      if (isExternalActiveAdviser(resolution.assignment)) {
+        throw new AppError(EXTERNAL_ACTIVE_ADVISER_MESSAGE, 409);
+      }
     }
     return rows.length;
   }
@@ -121,7 +141,16 @@ export class AdviserWorkspaceRepository {
   ): Promise<AdviserActiveAssignmentRow[]> {
     return prisma.adviserAssignment.findMany({
       where: { adviserId, isActive: true },
-      include: { student: { select: ACTIVE_ADVISEE_STUDENT_SELECT } },
+      include: {
+        student: { select: ACTIVE_ADVISEE_STUDENT_SELECT },
+        adviser: {
+          select: {
+            isActive: true,
+            role: true,
+            panelist: { select: { isActive: true, isExternal: true } },
+          },
+        },
+      },
       orderBy: { assignedDate: "desc" },
     }) as unknown as Promise<AdviserActiveAssignmentRow[]>;
   }

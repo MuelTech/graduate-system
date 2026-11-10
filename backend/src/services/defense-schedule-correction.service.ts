@@ -162,7 +162,17 @@ export class DefenseScheduleCorrectionService {
         }
         const adviserRows = await tx.adviserAssignment.findMany({
           where: { studentId, isActive: true },
-          select: { id: true, adviserId: true },
+          select: {
+            id: true,
+            adviserId: true,
+            adviser: {
+              select: {
+                isActive: true,
+                role: true,
+                panelist: { select: { isActive: true, isExternal: true } },
+              },
+            },
+          },
           orderBy: { assignedDate: "desc" },
         });
         const activeAdviser = requireSingleActiveAdviser(adviserRows);
@@ -189,7 +199,7 @@ export class DefenseScheduleCorrectionService {
         throw new AppError(validation.errors.join(" "), 400);
       }
 
-      await assertManualDefenseParticipants(tx, submitted);
+      await assertManualDefenseParticipants(tx, fullCommittee);
 
       const activeBefore = schedule.panelAssignments.filter(
         (assignment) => assignment.isActive,

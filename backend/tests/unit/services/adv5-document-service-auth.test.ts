@@ -189,4 +189,34 @@ describe.each(["PANELIST", "FACULTY"])("ADV-5 DocumentService authority regressi
       ),
     ).resolves.toMatchObject({ mimeType: "application/pdf" });
   });
+
+  it("DR-5: denies active-Adviser manuscript access when the active AdviserAssignment points to External Faculty", async () => {
+    prismaMock.thesisDocument.findUnique.mockResolvedValue(
+      thesisDocument({
+        thesis: {
+          id: "thesis-1",
+          student: {
+            user: { id: "owner-1" },
+            adviserAssignments: [
+              {
+                adviserId: "ext-adviser",
+                adviser: { panelist: { isExternal: true } },
+              },
+            ],
+          },
+          adviserCertifications: [],
+          defenseSchedules: [],
+        },
+      }),
+    );
+
+    await expect(
+      service.resolveDocument(
+        "thesis-document",
+        "doc-1",
+        "ext-adviser",
+        accountRole,
+      ),
+    ).rejects.toMatchObject({ statusCode: 403 });
+  });
 });
