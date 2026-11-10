@@ -19,6 +19,7 @@
     "prisma:migrate": "prisma migrate dev",
     "prisma:studio": "prisma studio",
     "faculty:cutover:rehearse": "node scripts/faculty-cutover-rehearsal.cjs",
+    "admin:bootstrap-full:local-dev": "node dist/cli/bootstrap-full-administrator.js",
     "storage:backfill": "node dist/cli/storage-backfill.js",
     "storage:backfill:apply": "node dist/cli/storage-backfill.js --apply",
     "storage:readiness": "node dist/cli/storage-readiness.js",
