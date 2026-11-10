@@ -153,9 +153,15 @@ describe("GS020-1B exact Student signing and atomic finalization", () => {
     expect(db.tx.adviserRequestOfficialRecord.create).not.toHaveBeenCalled();
   });
 
-  it("rejects without creating an assignment or snapshot, including a legacy request", async () => {
+  it("rejects without creating an assignment or snapshot, including a legacy request, and requires a rejection reason", async () => {
     db.tx.adviserRequestSignedState.findUnique.mockResolvedValue(null);
-    await service.deanDecideAdviserRequest("admin-user", "req-1", { decision: "REJECTED" });
+    await expect(
+      service.deanDecideAdviserRequest("admin-user", "req-1", { decision: "REJECTED" }),
+    ).rejects.toMatchObject({ statusCode: 400, message: "Rejection reason is required." });
+    await service.deanDecideAdviserRequest("admin-user", "req-1", {
+      decision: "REJECTED",
+      remarks: "Requested Adviser is no longer available.",
+    });
     expect(db.tx.adviserAssignment.create).not.toHaveBeenCalled();
     expect(db.tx.adviserRequestOfficialRecord.create).not.toHaveBeenCalled();
   });

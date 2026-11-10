@@ -124,8 +124,8 @@ export class AdminPanelistService {
                 if (before.userId !== link.userId) throw new AppError("Faculty account changed. Reload before saving.", 409);
                 const isExternal = patch.isExternal ?? before.isExternal;
                 if (isExternal && patch.isAvailableAsAdviser === true) throw new AppError("External Faculty cannot be available as Adviser.", 400);
-                // DR-7: neither repair an existing anomaly nor make an active Adviser External.
-                if ((before.isExternal || isExternal) && await tx.adviserAssignment.findFirst({ where: { adviserId: before.userId, isActive: true }, select: { id: true } })) {
+                // DR-7: neither repair an existing anomaly nor reclassify a Faculty member with any current or historical AdviserAssignment as External.
+                if ((before.isExternal || isExternal) && await tx.adviserAssignment.findFirst({ where: { adviserId: before.userId }, select: { id: true } })) {
                     throw new AppError("This Adviser classification requires institutional review.", 409);
                 }
                 const userData: Prisma.UserUncheckedUpdateManyInput = { updatedById: actorId };

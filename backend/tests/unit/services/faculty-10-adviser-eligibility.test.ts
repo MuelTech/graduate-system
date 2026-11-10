@@ -210,6 +210,127 @@ describe("FACULTY-10 common new-Adviser eligibility", () => {
   it("hardened assign alias still delegates to Dean decision and ignores arbitrary adviserId", async () => {
     await thesis.assignAdviser("dean", { requestId: "request", adviserId: "unrelated" }); expect(assignment.adviserId).toBe("adv-user");
   });
+  it.each(["CHAIRMAN", "PANELIST"])("DR-5 External Faculty on passed Title Defense %s seat cannot become Adviser candidate, be requested, or be approved", async role => {
+    defenseRole = role;
+    adviserProfile.isExternal = true;
+    adviserProfile.isAvailableAsAdviser = true;
+    const original = clone(request), originalEvidence = clone(evidence);
+    expect((await service.listOdpCandidates("student-user")).candidates).toEqual([]);
+    await expect(service.createRequest("student-user", submission())).rejects.toMatchObject({ statusCode: 400 });
+    await expect(service.deanDecideAdviserRequest("dean", "request", { decision: "APPROVED" })).rejects.toMatchObject({ statusCode: 409 });
+    expect(request).toEqual(original);
+    expect(evidence).toEqual(originalEvidence);
+    expect(db.adviserAssignment.create).not.toHaveBeenCalled();
+  });
+  it.each([
+    ["unavailable Adviser", () => { adviserProfile.isAvailableAsAdviser = false; }],
+    ["inactive Adviser profile", () => { adviserProfile.isActive = false; }],
+    ["inactive Adviser account", () => { accounts["adv-user"].isActive = false; }],
+    ["External-reclassified Adviser", () => { adviserProfile.isExternal = true; adviserProfile.isAvailableAsAdviser = false; }],
+  ])("DR-6 %s after CONFORME can be rejected by authorized reviewer with required reason, preserving signed evidence and allowing Student retry", async (_label, makeIneligible) => {
+    await service.createRequest("student-user", submission());
+    const conformedAt = new Date("2026-09-26T08:00:00Z");
+    request.adviserStatus = "CONFORMED";
+    request.adviserRespondedAt = conformedAt;
+    request.adviserRemarks = "I accept the advisory role.";
+    const originalSignedEvidence = clone(evidence);
+    const originalRequestSnapshot = clone(request);
+
+    makeIneligible();
+
+    // 1. Approval is blocked (409)
+    await expect(service.deanDecideAdviserRequest("dean", request.id, { decision: "APPROVED" })).rejects.toMatchObject({ statusCode: 409 });
+
+    // 2. Unauthorized reviewer cannot reject (403)
+    accounts.dean.capabilityGrants = [{ capabilityKey: "faculty.manage" }];
+    await expect(
+      service.deanDecideAdviserRequest("dean", request.id, { decision: "REJECTED", remarks: "Adviser is no longer available." }),
+    ).rejects.toMatchObject({ statusCode: 403 });
+    accounts.dean.capabilityGrants = [{ capabilityKey: "adviser.requests.review" }];
+
+    // 3. Rejection without reason is denied (400)
+    for (const emptyRemarks of [undefined, "", "   "]) {
+      await expect(
+        service.deanDecideAdviserRequest("dean", request.id, { decision: "REJECTED", remarks: emptyRemarks }),
+      ).rejects.toMatchObject({ statusCode: 400, message: "Rejection reason is required." });
+    }
+
+    // 4. Authorized reviewer rejects with recorded reason
+    const rejected = await service.deanDecideAdviserRequest("dean", request.id, {
+      decision: "REJECTED",
+      remarks: "  Requested Adviser became unavailable before Dean approval.  ",
+    });
+
+    expect(rejected).toMatchObject({
+      id: originalRequestSnapshot.id,
+      studentId: originalRequestSnapshot.studentId,
+      requestedAdviserId: originalRequestSnapshot.requestedAdviserId,
+      reason: originalRequestSnapshot.reason,
+      sourceDefenseScheduleId: originalRequestSnapshot.sourceDefenseScheduleId,
+      adviserStatus: "CONFORMED",
+      adviserRespondedAt: conformedAt,
+      adviserRemarks: "I accept the advisory role.",
+      deanStatus: "REJECTED",
+      deanReviewedById: "dean",
+      deanRemarks: "Requested Adviser became unavailable before Dean approval.",
+      status: "REJECTED",
+    });
+
+    // 5. Original signed CONFORME evidence and payload/hash are untouched; no automatic transfer occurs
+    expect(evidence).toEqual(originalSignedEvidence);
+    expect(db.adviserRequestSignedState.update).not.toHaveBeenCalled();
+    expect(db.adviserRequest.deleteMany).not.toHaveBeenCalled();
+    expect(db.adviserAssignment.create).not.toHaveBeenCalled();
+    expect(db.adviserRequestOfficialRecord.create).not.toHaveBeenCalled();
+
+    // 6. Student can submit a new request to another eligible Internal Faculty member from the same passed Title ODP
+    accounts["adv-user-2"] = {
+      ...candidateAccount("FACULTY"),
+      id: "adv-user-2",
+      firstName: "Ben",
+      lastName: "Panelist",
+    };
+    const secondProfile = {
+      id: "profile-2",
+      userId: "adv-user-2",
+      isActive: true,
+      isExternal: false,
+      isAvailableAsAdviser: true,
+      specialization: "Systems",
+      officeAffiliation: "Graduate School",
+    };
+    db.defenseConclusion.findFirst.mockImplementation(async () => ({
+      id: "conclusion-1",
+      scheduleId: "schedule-1",
+      selectedTitleId: null,
+      selectedTitle: null,
+      schedule: {
+        panelAssignments: [
+          { role: "CHAIRMAN", user: { ...accounts["adv-user"], panelist: adviserProfile } },
+          { role: "PANELIST", user: { ...accounts["adv-user-2"], panelist: secondProfile } },
+        ],
+      },
+    }));
+    const candidatesAfterReject = await service.listOdpCandidates("student-user");
+    expect(candidatesAfterReject.candidates.map(row => row.userId)).toEqual(["adv-user-2"]);
+
+    const retryCreated = await service.createRequest("student-user", {
+      requestedAdviserId: "adv-user-2",
+      reason: "Requesting eligible panelist after prior adviser became unavailable.",
+      signatureData: STUDENT_SIGNATURE,
+      reviewedContext: {
+        ...REVIEW_CONTEXT,
+        requestedAdviserName: "Ben Panelist",
+      },
+    });
+    expect(retryCreated).toMatchObject({
+      studentId: "student-1",
+      requestedAdviserId: "adv-user-2",
+      status: "PENDING",
+      adviserStatus: "PENDING",
+      deanStatus: "PENDING",
+    });
+  });
   it.each([undefined, null, false])("missing/false explicit availability %j fails the shared predicate", value => {
     expect(evaluateCandidateEligibility({ defenseRole: "CHAIRMAN", userRole: "FACULTY", userIsActive: true,
       hasPanelistProfile: true, panelistIsActive: true, isExternal: false, isAvailableAsAdviser: value }).eligible).toBe(false);

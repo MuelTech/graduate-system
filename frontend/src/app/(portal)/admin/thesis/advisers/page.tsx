@@ -302,14 +302,21 @@ export default function AdminAdviserRequestReviewPage() {
               className="text-xs font-medium text-(--earist-body-text)"
               htmlFor="dean-remarks"
             >
-              Dean Remarks (Optional)
+              {pendingDecision?.decision === "REJECTED"
+                ? "Rejection Reason (Required)"
+                : "Dean Remarks (Optional)"}
             </label>
             <Textarea
               id="dean-remarks"
               value={remarks}
               onChange={(e) => setRemarks(e.target.value)}
               rows={3}
-              placeholder="Optional remarks for this decision"
+              required={pendingDecision?.decision === "REJECTED"}
+              placeholder={
+                pendingDecision?.decision === "REJECTED"
+                  ? "Enter the reason for rejecting this request"
+                  : "Optional remarks for this decision"
+              }
             />
           </div>
           <DialogFooter>
@@ -326,7 +333,10 @@ export default function AdminAdviserRequestReviewPage() {
             </Button>
             <Button
               type="button"
-              disabled={decide.isPending}
+              disabled={
+                decide.isPending ||
+                (pendingDecision?.decision === "REJECTED" && !remarks.trim())
+              }
               onClick={() => decide.mutate()}
               className={
                 pendingDecision?.decision === "REJECTED"

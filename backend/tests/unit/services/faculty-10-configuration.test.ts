@@ -196,14 +196,50 @@ describe("FACULTY-10 bounded DTOs, contracts, provisioning and history", () => {
     expect(profile).toMatchObject({ id: "profile", userId: "faculty", isExternal: true, isAvailableAsAdviser: false });
     await service.updatePanelist("profile", { isExternal: false, isAvailableAsAdviser: true }, "actor"); expect(profile.isAvailableAsAdviser).toBe(true);
   });
-  it.each([false, true])("DR-7 active relationship with current External=%j blocks classification repair/reclassification", async isExternal => {
+  it.each([false, true])("DR-7 active or historical AdviserAssignment with current External=%j permanently blocks classification repair/reclassification", async isExternal => {
     account(["faculty.manage"]); profile.isExternal = isExternal; const before = clone(profile);
-    db.adviserAssignment.findFirst.mockResolvedValue({ id: "active-assignment" });
-    await expect(service.updatePanelist("profile", { isExternal: !isExternal }, "actor")).rejects.toMatchObject({ statusCode: 409 });
+    db.adviserAssignment.findFirst.mockResolvedValue({ id: "historical-or-active-assignment" });
+    await expect(service.updatePanelist("profile", { isExternal: !isExternal }, "actor")).rejects.toMatchObject({
+      statusCode: 409,
+      message: "This Adviser classification requires institutional review.",
+    });
+    expect(db.adviserAssignment.findFirst).toHaveBeenCalledWith({
+      where: { adviserId: "faculty" },
+      select: { id: true },
+    });
     expect(profile).toEqual(before); expect(db.user.updateMany).not.toHaveBeenCalled(); expect(db.auditLog.create).not.toHaveBeenCalled();
   });
-  it("availability change with an existing Internal Adviser preserves their current relationship", async () => {
-    account(["faculty.manage"]); db.adviserAssignment.findFirst.mockResolvedValue({ id: "active-assignment" });
+  it("DR-7 completed/inactive historical AdviserAssignment blocks Internal-to-External reclassification even for Full Administrator with no override", async () => {
+    account([], { administratorAccess: { level: "FULL" } });
+    const historicalAssignments = [{ id: "completed-assignment-1", adviserId: "faculty", studentId: "student-1", isActive: false }];
+    db.adviserAssignment.findFirst.mockImplementation(async ({ where }: any) => {
+      const match = historicalAssignments.find(row =>
+        row.adviserId === where.adviserId && (where.isActive === undefined || row.isActive === where.isActive),
+      );
+      return match ? { id: match.id } : null;
+    });
+    const before = clone(profile);
+    await expect(service.updatePanelist("profile", { isExternal: true }, "actor")).rejects.toMatchObject({
+      statusCode: 409,
+      message: "This Adviser classification requires institutional review.",
+    });
+    expect(profile).toEqual(before);
+    expect(db.panelist.update).not.toHaveBeenCalled();
+    expect(db.adviserAssignment.update).not.toHaveBeenCalled();
+    expect(db.adviserAssignment.deleteMany).not.toHaveBeenCalled();
+  });
+  it("DR-7 Internal Faculty without any authoritative AdviserAssignment (even if pending request or CONFORME exists) may be reclassified as External", async () => {
+    account(["faculty.manage"]);
+    db.adviserAssignment.findFirst.mockResolvedValue(null);
+    await service.updatePanelist("profile", { isExternal: true }, "actor");
+    expect(profile).toMatchObject({ id: "profile", userId: "faculty", isExternal: true, isAvailableAsAdviser: false });
+    expect(db.adviserAssignment.findFirst).toHaveBeenCalledWith({
+      where: { adviserId: "faculty" },
+      select: { id: true },
+    });
+  });
+  it("availability change with an existing or historical Internal Adviser preserves their academic relationship", async () => {
+    account(["faculty.manage"]); db.adviserAssignment.findFirst.mockResolvedValue({ id: "historical-assignment" });
     await service.updatePanelist("profile", { isAvailableAsAdviser: false }, "actor"); expect(profile.isAvailableAsAdviser).toBe(false);
     expect(db.adviserAssignment.update).not.toHaveBeenCalled(); expect(db.adviserAssignment.deleteMany).not.toHaveBeenCalled();
   });

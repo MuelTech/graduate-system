@@ -628,6 +628,7 @@ export class AdviserRequestService {
       adviserStatus: String(existing.adviserStatus),
       deanStatus: String(existing.deanStatus),
       overallStatus: String(existing.status),
+      remarks: input.remarks,
     });
     if (!gate.allowed) {
       throw new AppError(gate.reason, gate.statusCode);

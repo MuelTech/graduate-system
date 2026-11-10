@@ -432,15 +432,33 @@ describe("evaluateDeanResponseTransition", () => {
     overallStatus: "PENDING",
   };
 
-  it("allows APPROVED and REJECTED only after CONFORME", () => {
+  it("allows APPROVED and REJECTED (with a recorded reason) only after CONFORME", () => {
     expect(
       evaluateDeanResponseTransition({ ...conformed, decision: "APPROVED" })
         .allowed,
     ).toBe(true);
     expect(
-      evaluateDeanResponseTransition({ ...conformed, decision: "REJECTED" })
-        .allowed,
+      evaluateDeanResponseTransition({
+        ...conformed,
+        decision: "REJECTED",
+        remarks: "Requested Adviser is unavailable.",
+      }).allowed,
     ).toBe(true);
+  });
+
+  it("requires a non-empty rejection reason when decision is REJECTED", () => {
+    for (const remarks of [undefined, null, "", "   "]) {
+      const r = evaluateDeanResponseTransition({
+        ...conformed,
+        decision: "REJECTED",
+        remarks,
+      });
+      expect(r.allowed).toBe(false);
+      if (!r.allowed) {
+        expect(r.statusCode).toBe(400);
+        expect(r.reason).toBe("Rejection reason is required.");
+      }
+    }
   });
 
   it("rejects before Adviser CONFORME", () => {

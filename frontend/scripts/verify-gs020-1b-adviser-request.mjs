@@ -126,5 +126,8 @@ test("Adviser and Dean actions preserve existing authoritative mutations without
   const action = read("src/components/panelist/adviser-request-action-dialog.tsx");
   assert.match(action, /adviser-response/);
   assert.doesNotMatch(action, /ESignaturePad/);
-  assert.match(read("src/app/(portal)/admin/thesis/advisers/page.tsx"), /dean-response/);
+  const adminAdvisers = read("src/app/(portal)/admin/thesis/advisers/page.tsx");
+  assert.match(adminAdvisers, /dean-response/);
+  assert.match(adminAdvisers, /Rejection Reason \(Required\)/);
+  assert.match(adminAdvisers, /pendingDecision\?\.decision === "REJECTED" && !remarks\.trim\(\)/);
 });

@@ -160,6 +160,7 @@ export type DeanTransitionInput = {
   adviserStatus: string;
   deanStatus: string;
   overallStatus?: string;
+  remarks?: string | null;
 };
 
 export type DeanTransitionResult =
@@ -167,8 +168,9 @@ export type DeanTransitionResult =
   | { allowed: false; reason: string; statusCode: number };
 
 /**
- * WP4: Dean may decide only after Adviser CONFORMED while Dean review is pending.
+ * WP4 / DR-6: Dean may decide only after Adviser CONFORMED while Dean review is pending.
  * Does not allow bypassing CONFORME or repeating a Dean decision.
+ * Rejecting a pending request requires a recorded rejection reason.
  */
 export function evaluateDeanResponseTransition(
   input: DeanTransitionInput,
@@ -218,6 +220,14 @@ export function evaluateDeanResponseTransition(
       allowed: false,
       reason: "Invalid Dean decision transition.",
       statusCode: 409,
+    };
+  }
+
+  if (input.decision === "REJECTED" && (!input.remarks || !input.remarks.trim())) {
+    return {
+      allowed: false,
+      reason: "Rejection reason is required.",
+      statusCode: 400,
     };
   }
 

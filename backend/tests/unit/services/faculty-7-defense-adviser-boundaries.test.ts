@@ -174,9 +174,77 @@ describe("FACULTY-7 write-boundary participant identity", () => {
     await expect(correction.correctSchedule("schedule", "actor", input())).rejects.toMatchObject({ statusCode: 400 });
     expect(db.defenseSchedule.create).not.toHaveBeenCalled(); expect(db.defenseSchedule.update).not.toHaveBeenCalled();
   });
-  it.each(["PANELIST", "FACULTY"])("accepts current %s identity without inventing External-role policy", async role => {
-    db.user.findMany.mockResolvedValue([{ id: "external", role, isActive: true, panelist: { isActive: true, isExternal: true } }]);
-    await assertManualDefenseParticipants(db as never, [{ userId: "external", role: "PANELIST" }]);
+  it.each(["PANELIST", "FACULTY"])("accepts current %s identity across all four DR-5 External manual roles (CHAIRMAN, PANELIST, RAPPORTEUR, FACILITATOR)", async role => {
+    const externalCommittee = manual("TITLE_DEFENSE").map(row => ({
+      userId: `ext-${row.userId}`,
+      role: row.role,
+    }));
+    db.user.findMany.mockResolvedValue(
+      externalCommittee.map(row => ({
+        id: row.userId,
+        role,
+        isActive: true,
+        panelist: { isActive: true, isExternal: true, isAvailableAsAdviser: false },
+      })),
+    );
+    await assertManualDefenseParticipants(db as never, externalCommittee);
+    await repo.scheduleDefense("thesis", "actor", { ...input("TITLE_DEFENSE"), assignments: externalCommittee });
+    expect(db.panelAssignment.createMany).toHaveBeenCalledWith({
+      data: expect.arrayContaining(
+        externalCommittee.map(row => expect.objectContaining({ userId: row.userId, role: row.role })),
+      ),
+    });
+    await correction.correctSchedule("schedule", "actor", { ...input("TITLE_DEFENSE"), assignments: externalCommittee });
+    expect(db.panelAssignment.createMany).toHaveBeenLastCalledWith({
+      data: expect.arrayContaining(
+        externalCommittee.map(row => expect.objectContaining({ userId: row.userId, role: row.role })),
+      ),
+    });
+  });
+  it("rejects External Adviser assignment on Title, Proposal, and Final Defense scheduling and correction", async () => {
+    await expect(
+      repo.scheduleDefense("thesis", "actor", {
+        ...input("TITLE_DEFENSE"),
+        assignments: [...manual("TITLE_DEFENSE"), { userId: "ext-adv", role: "ADVISER" }],
+      }),
+    ).rejects.toMatchObject({ statusCode: 400 });
+    await expect(
+      correction.correctSchedule("schedule", "actor", {
+        ...input("TITLE_DEFENSE"),
+        assignments: [...manual("TITLE_DEFENSE"), { userId: "ext-adv", role: "ADVISER" }],
+      }),
+    ).rejects.toMatchObject({ statusCode: 400 });
+
+    db.thesisRecord.findUnique.mockResolvedValue(thesis("PROPOSAL_DEFENSE"));
+    await expect(
+      repo.scheduleDefense("thesis", "actor", {
+        ...input("PROPOSAL_DEFENSE"),
+        assignments: [...manual("PROPOSAL_DEFENSE"), { userId: "ext-adv", role: "ADVISER" }],
+      }),
+    ).rejects.toMatchObject({ statusCode: 400 });
+    await expect(
+      correction.correctSchedule("schedule", "actor", {
+        ...input("PROPOSAL_DEFENSE"),
+        assignments: [...manual("PROPOSAL_DEFENSE"), { userId: "ext-adv", role: "ADVISER" }],
+      }),
+    ).rejects.toMatchObject({ statusCode: 400 });
+  });
+  it("committee candidate queries include active External Faculty without filtering by isExternal or isAvailableAsAdviser", async () => {
+    db.user.findMany.mockResolvedValue([]);
+    await repo.getActivePanelistCandidates();
+    const candidatesWhere = db.user.findMany.mock.calls[0][0].where;
+    expect(candidatesWhere.panelist).toEqual({ isActive: true });
+    expect(candidatesWhere.panelist.isExternal).toBeUndefined();
+    expect(candidatesWhere.panelist.isAvailableAsAdviser).toBeUndefined();
+
+    db.user.findMany.mockClear();
+    (db.user as any).count = vi.fn().mockResolvedValue(0);
+    db.$transaction.mockImplementationOnce(async (items: any) => Promise.all(items));
+    await repo.searchActivePanelists({ page: 1, pageSize: 20, search: "Ext" });
+    const searchWhere = db.user.findMany.mock.calls[0][0].where;
+    expect(searchWhere.panelist.isActive).toBe(true);
+    expect(searchWhere.panelist.isExternal).toBeUndefined();
+    expect(searchWhere.panelist.isAvailableAsAdviser).toBeUndefined();
   });
   it("derives Proposal Adviser at commit without availability filtering and rejects substitution", async () => {
     db.thesisRecord.findUnique.mockResolvedValue(thesis("PROPOSAL_DEFENSE"));

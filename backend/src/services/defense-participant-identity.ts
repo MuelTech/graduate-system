@@ -2,7 +2,7 @@ import type { Prisma } from "@prisma/client";
 import { isAcademicAccountRole } from "../utils/academic-account";
 import { AppError } from "../utils/AppError";
 
-/** Write-boundary identity check for manual seats only. Does not create External-role policy. */
+/** DR-5 write-boundary identity check for manual Defense seats (CHAIRMAN, PANELIST, RAPPORTEUR, FACILITATOR); active Internal and External Faculty are eligible. */
 export async function assertManualDefenseParticipants(
   tx: Pick<Prisma.TransactionClient, "user">,
   assignments: ReadonlyArray<{ userId: string; role: string }>,
