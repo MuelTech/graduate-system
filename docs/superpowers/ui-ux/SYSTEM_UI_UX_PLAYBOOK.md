@@ -1705,6 +1705,19 @@ Implementation checkpoint (as of `9902100`):
 - **Pending acceptance gate:** live browser verification of old-index redirects, selected-workspace navigation, active sidebar state, mobile/collapsed sidebar, keyboard/focus, and authorized manuscript access is **NOT EXECUTED** in the coding-agent report. Do not label UIUX-3D as manually accepted until the project owner confirms this review; documentation of implementation does not certify end-to-end behavior.
 - **Deferred cleanup:** `stageManuscriptDocType` remains unused in `frontend/src/lib/panelist-defenses.ts` after retiring Materials; remove only under a separately authorized cleanup. UIUX-3A Dashboard FIX-1 and UIUX-3C Defense Workspace refinement remain separate, pending packages.
 
+
+## UIUX-3E — Faculty Dashboard richer operational overview (DEFERRED UNTIL AFTER FACULTY-18)
+
+- **Status:** Project-owner requested and documented on 2026-11-10; **not implemented, not visually accepted, and not part of FACULTY-18**.
+- **Historical reference:** richer dashboard implementation 990210051756cf2713fcedc61ad9cdfd0555ea08; FACULTY-14 later replaced its page composition at cbf15478e38d3c483c417e45888aefd6577ed303.
+- **Current baseline:** frontend/src/app/(portal)/panelist/dashboard/page.tsx currently presents dynamic **Your Work** summaries and **Needs Your Attention**. It no longer presents the earlier Upcoming Defenses/Pending Tasks KPIs, conditional Active Defense, Upcoming Defense Sessions, Waiting on Others, or Recent Notifications sections.
+- **Future design direction:** refine—not blindly restore—the richer overview: relevant **Your Work** summaries; conditional **Upcoming Defenses** and **Pending Tasks** metrics; actionable **Needs Your Attention**; conditional **Active Defense**; a prominent next **Upcoming Defense Session** plus a bounded short list; compact/collapsible **Waiting on Others** with an independent count; and recent account-scoped **Notifications**.
+- **Dynamic relevance:** preserve FACULTY-13/14 behavior. Render only work areas relevant to the authenticated Faculty account. No irrelevant zero-value cards; no Adviser/advisee content for External Faculty or accounts without authoritative Adviser relationships. Metrics and cards are read-only projections, never authorization.
+- **Task semantics:** Pending Tasks includes only actions currently requiring the authenticated account. Waiting on Others remains informational, separately counted, collapsible, hidden when empty, and never included in Pending Tasks.
+- **Security/data boundaries:** exact current assignments and grants remain authoritative; use minimized account-scoped read models; preserve Faculty/Admin same-Gmail identity separation and query-cache isolation; never use dashboard visibility/counts to authorize resources or mutations; notifications come from notification records, not audit logs.
+- **UI acceptance:** verify evaluator-only, Adviser-only, Defense-only, mixed, External, and no-work accounts; responsive desktop/mobile layout; keyboard/focus; loading/empty/error/retry/refresh; accurate counts and deep links; and microcopy against USER_FACING_COPY_SOURCE_OF_TRUTH.md. Require independent review and explicit project-owner visual acceptance before promoting it as an Approved Reference.
+- **Scheduling:** only start after FACULTY-18 has stopped with its release/acceptance state recorded. It requires a separate project-owner-authorized UI/UX task. Do not add it to FACULTY-18 or use it to delay FACULTY-18 acceptance/activation evidence.
+
 # 31. Iteration protocol
 
 For every UI/UX package:
