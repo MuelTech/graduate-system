@@ -140,3 +140,41 @@ Only FACULTY-4 is committed/pushed to `feat/faculty-admin-access`. No real Full 
 - Manual/browser QA is not required for this acceptance checkpoint because no UI/live management rollout exists in FACULTY-4.
 - Direct-access enforcement and Administrator Management remain dormant; no live Full/Restricted mapping or bootstrap is authorized.
 - **FACULTY-4 is accepted for continuation. FACULTY-5 is next / not started.**
+
+## Isolated real-MariaDB gate-closure addendum (2026-11-10)
+
+This chronological addendum records isolated real-MariaDB verification executed on **2026-11-10 (Asia/Manila)** against branch `feat/faculty-admin-access` at verified source/test commit `9170adfc9d6fa1215c51c4278cc1dde3fa12c1ab`. It does **not** alter the historical 2026-11-08 acceptance checkpoint above, when the real-MariaDB suite was safely skipped because no isolated endpoint was configured.
+
+### Gate and isolated environment identity
+
+- **Package / gate:** `FACULTY-4` (Full Administrator management InnoDB serialization, actor revocation during lock wait, and transactional audit-failure rollback).
+- **Database engine:** `10.4.32-MariaDB` (`D:\xampp\mysql\bin\mysqld.exe`, initialized with `mysql_install_db.exe` into a fresh workspace-only data directory `backend/.tmp/faculty4-12-gate-server/data`).
+- **Network / port isolation:** `@@bind_address = 127.0.0.1`, `@@port = 33319`. Verified separate from configured application `DATABASE_URL` (`localhost:3306`, schema `/graduate_system`). The ordinary XAMPP/development database on port `3306` was never contacted or modified.
+- **Harness environment configuration:** `FACULTY_4_DB_TEST=1` and explicit server-only `FACULTY_4_DB_SERVER_URL` (`mysql://<ephemeral-user>:<redacted>@127.0.0.1:33319/`, without schema name; secrets omitted).
+- **Disposable schema & migration deployment:** `faculty4_test_9059844811114b0791544a9386393b85`, deployed with all 58 committed migrations via `prisma migrate deploy` using generated config under `backend/.tmp/faculty4-*`. Verified dropped in `afterAll` (`information_schema.SCHEMATA` count = `0`, `REMAINING_FACULTY4_SCHEMAS=0`), followed by clean `mysqladmin shutdown` and temporary server directory removal.
+
+### Commands executed
+
+From `backend/`:
+
+- Typecheck before execution (exit `0`):
+  `npx tsc --ignoreConfig --noEmit --strict --esModuleInterop --skipLibCheck --target ES2022 --module commonjs --moduleResolution node --ignoreDeprecations 6.0 --types node tests/integration/administrator-access-contention.test.ts tests/integration/faculty-12-essay-contention.test.ts`
+- Real-MariaDB contention suite (exit `0`):
+  `npx vitest run tests/integration/administrator-access-contention.test.ts --reporter=verbose` — **1 file / 5 tests PASS, 0 skipped, 0 failed** (duration `40.43s`, started `21:59:11`).
+- Supporting migration & URL/port isolation guard suite (exit `0`):
+  `npx vitest run tests/unit/migrations/administrator-access-lock.test.ts --reporter=verbose` — **1 file / 8 tests PASS, 0 skipped, 0 failed**.
+
+### Per-case real-MariaDB evidence
+
+| Package / Gate | Exact test / scenario (`backend/tests/integration/administrator-access-contention.test.ts`) | Expected behavior | Actual behavior & transaction / locking / rollback outcome | Result |
+| --- | --- | --- | --- | --- |
+| `FACULTY-4` | `serializes competing Full demote operations on real InnoDB locks` (`139ms`) | Two concurrent `service.update` demotions (`ids.a` and `ids.b` to `RESTRICTED`) serialize on `SELECT id FROM administrator_access_lock WHERE id = 1 FOR UPDATE` and ordered `ADMIN` row locks under `READ COMMITTED`; 1 succeeds, 1 rejects, and 1 active Full remains. | `Promise.allSettled` produced exactly 1 fulfilled and 1 rejected outcome; post-transaction count of active `ADMIN` users with `administratorAccess.level = 'FULL'` was `1`. Second transaction waited on real InnoDB locks, observed the committed demotion, and rolled back without violating the last-active-Full invariant. | **PASS** |
+| `FACULTY-4` | `serializes competing Full disable operations on real InnoDB locks` (`77ms`) | Two concurrent `service.update(..., { isActive: false })` calls for `ids.a` and `ids.b` serialize on the InnoDB singleton fence and ordered `ADMIN` locks; 1 succeeds, 1 rejects, and 1 active Full remains. | `Promise.allSettled` produced exactly 1 fulfilled and 1 rejected outcome; post-transaction active Full count was `1`. Competing disablement serialized cleanly under real InnoDB locking. | **PASS** |
+| `FACULTY-4` | `serializes competing Full remove operations on real InnoDB locks` (`91ms`) | Two concurrent `service.removeAccess` calls for `ids.a` and `ids.b` serialize on the InnoDB singleton fence and ordered `ADMIN` locks; 1 removes access + disables user, 1 rejects, and 1 active Full remains. | `Promise.allSettled` produced exactly 1 fulfilled and 1 rejected outcome; post-transaction active Full count was `1`. Concurrent authority removal preserved one active Full Administrator. | **PASS** |
+| `FACULTY-4` | `rechecks a waiting actor after a committed Full revocation` (`140ms`) | Connection 1 begins a transaction, acquires `administrator_access_lock` (`id = 1 FOR UPDATE`), demotes `ids.a` to `RESTRICTED`, and holds the lock while `service.update(ids.a, ids.target, { level: "FULL" })` blocks on a pooled connection; after Connection 1 commits (~100ms), the service re-reads `ids.a` under `READ COMMITTED`, rejects with `403`, and leaves `ids.target` unchanged. | Pooled service call rejected with `{ statusCode: 403 }` after lock release; `administrator_access.level` for `ids.target` remained `'RESTRICTED'`. Proved post-fence actor revalidation against real committed InnoDB state. | **PASS** |
+| `FACULTY-4` | `rolls back privileged changes when the database rejects required audit insertion` (`88ms`) | Real MariaDB trigger `faculty4_fail_audit` (`BEFORE INSERT ON audit_logs`, `SIGNAL SQLSTATE '45000'`) aborts audit insertion during `service.update(ids.a, ids.target, { isActive: false, capabilityKeys: ["students.view"] })`; transaction rolls back `users.is_active`, `account_capability_grants`, and `audit_logs` together. | `service.update` rejected as expected; `users.isActive` for `ids.target` stayed `true`, `accountCapabilityGrant.count` stayed `0`, and `auditLog.count` stayed `0`. Trigger removed in `finally`. | **PASS** |
+
+### Readiness gate closure summary
+
+- The **FACULTY-4 real-MariaDB contention readiness gate is now satisfied / closed** (5/5 passed on real isolated MariaDB 10.4.32, 0 skipped, 0 failed).
+- All code-owned rollout/activation gates remain **`false`** (`ADMINISTRATOR_MANAGEMENT_ENABLED`, `DIRECT_ACCESS_ENFORCEMENT_ENABLED`, `OPERATIONAL_ENFORCEMENT_ENABLED`, `FACULTY_ESSAY_EVALUATION_ENABLED`). No live Full bootstrap, Restricted provisioning, or FACULTY-18 execution occurred.
