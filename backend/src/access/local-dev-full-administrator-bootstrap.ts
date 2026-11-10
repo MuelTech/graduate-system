@@ -12,7 +12,7 @@ import { AppError } from "../utils/AppError";
 export const AUTHORIZED_LOCAL_DEV_HOSTS = Object.freeze(["localhost", "127.0.0.1"] as const);
 export const AUTHORIZED_LOCAL_DEV_PORT = "3306";
 export const AUTHORIZED_LOCAL_DEV_DATABASE = "graduate_system";
-export const DEFAULT_DR1_LOCAL_AUTHORIZATION_REF = "OWNER-DR1-LOCAL-DEV-ADMIN";
+export const DEFAULT_LOCAL_DEV_AUTHORIZATION_REF = "OWNER-DR1-LOCAL-DEV-ADMIN";
 const MAX_AUTHORIZATION_REF_LENGTH = 128;
 
 export interface LocalDevDatabaseTarget {
@@ -21,25 +21,25 @@ export interface LocalDevDatabaseTarget {
   readonly database: string;
 }
 
-export interface Dr1BootstrapCliArgs {
+export interface LocalDevFullAdministratorBootstrapCliArgs {
   readonly help: boolean;
   readonly email: string;
   readonly confirmLocalDev: boolean;
   readonly authorizationReference: string;
 }
 
-export interface Dr1BootstrapInput {
+export interface LocalDevFullAdministratorBootstrapInput {
   readonly email: string;
   readonly authorizationReference?: string;
 }
 
-export interface Dr1BootstrapDependencies {
+export interface LocalDevFullAdministratorBootstrapDependencies {
   readonly database?: Pick<PrismaClient, "$transaction">;
   readonly databaseUrl?: string;
   readonly now?: () => Date;
 }
 
-export interface Dr1BootstrapResult {
+export interface LocalDevFullAdministratorBootstrapResult {
   readonly outcome: "BOOTSTRAPPED" | "ALREADY_FULL_NOOP";
   readonly targetDatabase: LocalDevDatabaseTarget;
   readonly account: {
@@ -64,19 +64,23 @@ const BOOTSTRAP_TARGET_SELECT = {
   mustChangePassword: true,
 } as const satisfies Prisma.UserSelect;
 
-export type Dr1BootstrapCandidate = Prisma.UserGetPayload<{ select: typeof BOOTSTRAP_TARGET_SELECT }>;
+export type LocalDevFullAdministratorBootstrapCandidate = Prisma.UserGetPayload<{
+  select: typeof BOOTSTRAP_TARGET_SELECT;
+}>;
 
 /**
- * Parses explicit CLI arguments for bounded DR-1 local-dev Full Administrator bootstrap.
+ * Parses explicit CLI arguments for bounded local-dev Full Administrator bootstrap.
  * Never defaults email or local-dev confirmation.
  */
-export function parseDr1BootstrapArgs(argv: readonly string[]): Dr1BootstrapCliArgs {
+export function parseLocalDevFullAdministratorBootstrapArgs(
+  argv: readonly string[],
+): LocalDevFullAdministratorBootstrapCliArgs {
   if (argv.includes("--help")) {
     return {
       help: true,
       email: "",
       confirmLocalDev: false,
-      authorizationReference: DEFAULT_DR1_LOCAL_AUTHORIZATION_REF,
+      authorizationReference: DEFAULT_LOCAL_DEV_AUTHORIZATION_REF,
     };
   }
 
@@ -127,7 +131,7 @@ export function parseDr1BootstrapArgs(argv: readonly string[]): Dr1BootstrapCliA
 }
 
 function sanitizeAuthorizationReference(value?: string): string {
-  const trimmed = (value ?? DEFAULT_DR1_LOCAL_AUTHORIZATION_REF).trim();
+  const trimmed = (value ?? DEFAULT_LOCAL_DEV_AUTHORIZATION_REF).trim();
   if (!trimmed || trimmed.length > MAX_AUTHORIZATION_REF_LENGTH || /[\r\n\0]/.test(trimmed)) {
     throw new AppError("Invalid DR-1 authorization reference.", 400);
   }
@@ -178,7 +182,7 @@ function normalizeTargetEmail(rawEmail: string): string {
 }
 
 function assertCleanAdminIdentity(
-  target: Dr1BootstrapCandidate,
+  target: LocalDevFullAdministratorBootstrapCandidate,
   normalizedEmail: string,
 ): void {
   if (target.role !== "ADMIN") {
@@ -205,12 +209,12 @@ function assertCleanAdminIdentity(
 }
 
 function formatResult(
-  outcome: Dr1BootstrapResult["outcome"],
+  outcome: LocalDevFullAdministratorBootstrapResult["outcome"],
   targetDatabase: LocalDevDatabaseTarget,
-  target: Dr1BootstrapCandidate,
+  target: LocalDevFullAdministratorBootstrapCandidate,
   resolved: ConfiguredAccountAccess,
   auditLogged: boolean,
-): Dr1BootstrapResult {
+): LocalDevFullAdministratorBootstrapResult {
   if (
     resolved.status !== "RESOLVED" ||
     resolved.category !== "ADMIN" ||
@@ -244,9 +248,9 @@ function formatResult(
  * Leaves User identity fields, credentials, and unrelated accounts untouched.
  */
 export async function bootstrapInitialFullAdministrator(
-  input: Dr1BootstrapInput,
-  dependencies: Dr1BootstrapDependencies = {},
-): Promise<Dr1BootstrapResult> {
+  input: LocalDevFullAdministratorBootstrapInput,
+  dependencies: LocalDevFullAdministratorBootstrapDependencies = {},
+): Promise<LocalDevFullAdministratorBootstrapResult> {
   const databaseUrl = dependencies.databaseUrl ?? process.env.DATABASE_URL;
   const now = dependencies.now ?? (() => new Date());
 

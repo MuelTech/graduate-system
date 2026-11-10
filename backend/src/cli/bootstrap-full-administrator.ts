@@ -1,8 +1,8 @@
 import "dotenv/config";
 import {
   bootstrapInitialFullAdministrator,
-  parseDr1BootstrapArgs,
-} from "../access/dr1-administrator-bootstrap";
+  parseLocalDevFullAdministratorBootstrapArgs,
+} from "../access/local-dev-full-administrator-bootstrap";
 
 const USAGE = [
   "Bounded DR-1 local-development initial Full Administrator bootstrap.",
@@ -13,8 +13,10 @@ const USAGE = [
   "All rollout gates remain false.",
 ].join("\n");
 
-export async function runDr1BootstrapCli(argv: readonly string[]): Promise<number> {
-  const args = parseDr1BootstrapArgs(argv);
+export async function runLocalDevFullAdministratorBootstrapCli(
+  argv: readonly string[],
+): Promise<number> {
+  const args = parseLocalDevFullAdministratorBootstrapArgs(argv);
   if (args.help) {
     process.stdout.write(`${USAGE}\n`);
     return 0;
@@ -36,7 +38,7 @@ export async function runDr1BootstrapCli(argv: readonly string[]): Promise<numbe
 }
 
 if (require.main === module) {
-  runDr1BootstrapCli(process.argv.slice(2))
+  runLocalDevFullAdministratorBootstrapCli(process.argv.slice(2))
     .then((code) => {
       process.exitCode = code;
     })

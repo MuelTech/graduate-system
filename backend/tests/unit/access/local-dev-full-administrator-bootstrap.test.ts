@@ -10,8 +10,8 @@ import { FULL_ADMINISTRATOR_CAPABILITIES } from "../../../src/access/capability-
 import {
   assertAuthorizedLocalDevDatabaseTarget,
   bootstrapInitialFullAdministrator,
-  parseDr1BootstrapArgs,
-} from "../../../src/access/dr1-administrator-bootstrap";
+  parseLocalDevFullAdministratorBootstrapArgs,
+} from "../../../src/access/local-dev-full-administrator-bootstrap";
 
 interface MockUserRow {
   id: string;
@@ -188,9 +188,13 @@ const LOCAL_DEV_URL = "mysql://root:local_secret@localhost:3306/graduate_system"
 
 describe("DR-1 local-dev initial Full Administrator bootstrap", () => {
   it("parses strict operator CLI arguments and refuses implicit execution", () => {
-    expect(parseDr1BootstrapArgs(["--help"]).help).toBe(true);
+    expect(parseLocalDevFullAdministratorBootstrapArgs(["--help"]).help).toBe(true);
     expect(
-      parseDr1BootstrapArgs(["--email", "admin@earist.edu.ph", "--confirm-local-dev"]),
+      parseLocalDevFullAdministratorBootstrapArgs([
+        "--email",
+        "admin@earist.edu.ph",
+        "--confirm-local-dev",
+      ]),
     ).toEqual({
       help: false,
       email: "admin@earist.edu.ph",
@@ -198,9 +202,20 @@ describe("DR-1 local-dev initial Full Administrator bootstrap", () => {
       authorizationReference: "OWNER-DR1-LOCAL-DEV-ADMIN",
     });
 
-    expect(() => parseDr1BootstrapArgs(["--email", "admin@earist.edu.ph"])).toThrow(/confirm-local-dev/);
-    expect(() => parseDr1BootstrapArgs(["--confirm-local-dev"])).toThrow(/--email/);
-    expect(() => parseDr1BootstrapArgs(["--email", "admin@earist.edu.ph", "--confirm-local-dev", "--force"])).toThrow(/Unknown/);
+    expect(() =>
+      parseLocalDevFullAdministratorBootstrapArgs(["--email", "admin@earist.edu.ph"]),
+    ).toThrow(/confirm-local-dev/);
+    expect(() =>
+      parseLocalDevFullAdministratorBootstrapArgs(["--confirm-local-dev"]),
+    ).toThrow(/--email/);
+    expect(() =>
+      parseLocalDevFullAdministratorBootstrapArgs([
+        "--email",
+        "admin@earist.edu.ph",
+        "--confirm-local-dev",
+        "--force",
+      ]),
+    ).toThrow(/Unknown/);
   });
 
   it("enforces local-development graduate_system target guard without leaking credentials", () => {

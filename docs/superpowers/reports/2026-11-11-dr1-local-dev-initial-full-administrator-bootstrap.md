@@ -31,8 +31,8 @@ The frontend correctly displayed `"Administrator access is unavailable."` while 
 
 Added bounded operator-invoked DR-1 tooling:
 
-- [`backend/src/access/dr1-administrator-bootstrap.ts`](../../../backend/src/access/dr1-administrator-bootstrap.ts)
-  - `parseDr1BootstrapArgs`: requires explicit `--email <address>` and `--confirm-local-dev`, optional bounded `--authorization-ref`, and rejects unknown/duplicate flags.
+- [`backend/src/access/local-dev-full-administrator-bootstrap.ts`](../../../backend/src/access/local-dev-full-administrator-bootstrap.ts)
+  - `parseLocalDevFullAdministratorBootstrapArgs`: requires explicit `--email <address>` and `--confirm-local-dev`, optional bounded `--authorization-ref`, and rejects unknown/duplicate flags.
   - `assertAuthorizedLocalDevDatabaseTarget`: parses `DATABASE_URL` without logging credentials and permits **only** `mysql:`/`mariadb:` targeting `localhost` or `127.0.0.1` on port `3306` for database `graduate_system`. Refuses non-local/staging/production URLs before any DB client initialization or query.
   - `bootstrapInitialFullAdministrator`:
     1. Acquires singleton fence `SELECT id FROM administrator_access_lock WHERE id = 1 FOR UPDATE` and locks `ADMIN` rows (`ORDER BY user_id FOR UPDATE`).
@@ -42,7 +42,7 @@ Added bounded operator-invoked DR-1 tooling:
     5. Atomically inserts `administratorAccess` (`level: "FULL"`, `createdById: target.id`, `updatedById: target.id`) and a protected [`AuditLog`](../../../backend/prisma/schema.prisma#L1388-L1403) entry (`actionType: "ADMINISTRATOR_ACCESS_BOOTSTRAPPED"`, `targetTable: "administrator_access"`) without modifying `User` columns or creating any `AccountCapabilityGrant` row.
     6. Re-reads the target inside the transaction and asserts `resolveConfiguredAccountAccess` returns `status = "RESOLVED"`, `administratorLevel = "FULL"`, and complete `FULL_ADMINISTRATOR_CAPABILITIES` (`36` capabilities).
 - [`backend/src/cli/bootstrap-full-administrator.ts`](../../../backend/src/cli/bootstrap-full-administrator.ts) & [`backend/package.json`](../../../backend/package.json#L22) (`admin:bootstrap-full:local-dev`).
-- [`backend/tests/unit/access/dr1-administrator-bootstrap.test.ts`](../../../backend/tests/unit/access/dr1-administrator-bootstrap.test.ts): synthetic unit suite covering CLI parsing, local-dev target guard, credential non-leakage, pre-bootstrap `MISSING_ADMIN_LEVEL`, atomic `FULL` bootstrap + protected audit, idempotent NO-OP, audit rollback, missing fence, inactive/password-reset/non-ADMIN/pre-restricted/direct-grant/multi-admin fail-closed paths, and preserved unrelated accounts.
+- [`backend/tests/unit/access/local-dev-full-administrator-bootstrap.test.ts`](../../../backend/tests/unit/access/local-dev-full-administrator-bootstrap.test.ts): synthetic unit suite covering CLI parsing, local-dev target guard, credential non-leakage, pre-bootstrap `MISSING_ADMIN_LEVEL`, atomic `FULL` bootstrap + protected audit, idempotent NO-OP, audit rollback, missing fence, inactive/password-reset/non-ADMIN/pre-restricted/direct-grant/multi-admin fail-closed paths, and preserved unrelated accounts.
 
 ---
 
