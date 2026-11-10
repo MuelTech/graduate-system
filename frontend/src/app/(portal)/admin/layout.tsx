@@ -1,13 +1,16 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { ChatbotWidget } from "@/components/chatbot/chatbot-widget";
 import { signOut, useSession } from "next-auth/react";
 import { apiClientRequest } from "@/lib/api.client";
-import { canAdminAccessPath } from "@/lib/admin-capabilities";
+import {
+  canAdminAccessPath,
+  normalizeAdminCapabilities,
+} from "@/lib/admin-capabilities";
 import {
   LayoutDashboard,
   Users,
@@ -28,7 +31,11 @@ import {
 import { NotificationBell } from "@/components/layout/notification-bell";
 
 interface AuthMeResponse {
-  user: {
+  id?: string;
+  role?: string;
+  adminAccessLevel?: "FULL" | "RESTRICTED" | null;
+  adminCapabilities?: string[] | null;
+  user?: {
     id: string;
     role: string;
     adminAccessLevel?: "FULL" | "RESTRICTED" | null;
@@ -98,32 +105,44 @@ export default function AdminLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
+  const router = useRouter();
   const { data: session } = useSession();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
   const [openMenus, setOpenMenus] = useState<Record<string, boolean>>({
-    "User Management": pathname.startsWith("/admin/users"),
-    "Exam Management": pathname.startsWith("/admin/exam"),
-    "Thesis Management": pathname.startsWith("/admin/thesis"),
+    "User Management": true,
+    "Exam Management": true,
+    "Thesis Management": true,
   });
 
   // Zero-flicker capability check: uses session values immediately while
-  // caching /auth/me for 60s so sidebar items never jump on navigation.
-  const { data: authMe } = useQuery<AuthMeResponse>({
+  // polling /auth/me so admin permission changes reflect without re-login.
+  const { data: authMe, isSuccess: authMeLoaded } = useQuery<AuthMeResponse>({
     queryKey: ["authMe"],
     queryFn: async () => (await apiClientRequest("/auth/me")) as AuthMeResponse,
-    staleTime: 60_000,
-    refetchOnWindowFocus: false,
+    staleTime: 10_000,
+    refetchOnWindowFocus: true,
   });
 
   const accessLevel =
+    authMe?.adminAccessLevel ??
     authMe?.user?.adminAccessLevel ??
     session?.user?.adminAccessLevel ??
     "FULL";
-  const capabilities =
-    authMe?.user?.adminCapabilities ??
-    session?.user?.adminCapabilities ??
-    null;
+  const capabilities = normalizeAdminCapabilities(
+    authMe?.adminCapabilities ??
+      authMe?.user?.adminCapabilities ??
+      session?.user?.adminCapabilities ??
+      [],
+  );
+
+  const isPathAllowed = canAdminAccessPath(pathname, accessLevel, capabilities);
+
+  useEffect(() => {
+    if (authMeLoaded && !isPathAllowed) {
+      router.replace("/admin/dashboard");
+    }
+  }, [authMeLoaded, isPathAllowed, router]);
 
   const navItems = allNavItems
     .map((item) => {
@@ -363,7 +382,9 @@ export default function AdminLayout({
         </header>
 
         {/* Page Content */}
-        <main className="flex-1 p-4 sm:p-6 xl:p-8">{children}</main>
+        <main className="flex-1 p-4 sm:p-6 xl:p-8">
+          {!authMeLoaded || isPathAllowed ? children : null}
+        </main>
       </div>
 
       {/* AI Chatbot Widget */}

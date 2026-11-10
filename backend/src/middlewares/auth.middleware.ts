@@ -1,6 +1,9 @@
 import { Request, Response, NextFunction } from "express";
 import prisma from "../config/database";
-import { AdminCapabilityKey } from "../config/admin-capabilities";
+import {
+  AdminCapabilityKey,
+  sanitizeAdminCapabilities,
+} from "../config/admin-capabilities";
 
 import {
   JwtConfigurationError,
@@ -176,9 +179,7 @@ export const requireAdminCapability = (capability: AdminCapabilityKey) => {
         return;
       }
       if (admin.adminAccessLevel === "RESTRICTED") {
-        const capabilities = Array.isArray(admin.adminCapabilities)
-          ? (admin.adminCapabilities as string[])
-          : [];
+        const capabilities = sanitizeAdminCapabilities(admin.adminCapabilities);
         if (!capabilities.includes(capability)) {
           res.status(403).json({
             error: "Forbidden. You do not have permission for this administrative module.",
@@ -221,9 +222,7 @@ export const requireEssayEvaluationAccess = async (
     }
     if (user.role === "ADMIN") {
       if (user.adminAccessLevel === "RESTRICTED") {
-        const caps = Array.isArray(user.adminCapabilities)
-          ? (user.adminCapabilities as string[])
-          : [];
+        const caps = sanitizeAdminCapabilities(user.adminCapabilities);
         if (!caps.includes("exam.records.manage")) {
           res.status(403).json({ error: "Forbidden. Exam Records permission is required." });
           return;

@@ -2,7 +2,7 @@ import { auth } from "@/auth";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import type { Session } from "next-auth";
-import { canAdminAccessPath } from "@/lib/admin-capabilities";
+import { getRequiredCapabilityForAdminPath } from "@/lib/admin-capabilities";
 
 function isFacultyRole(role?: string | null): boolean {
   return role === "faculty" || role === "panelist";
@@ -78,24 +78,12 @@ export default auth((req: NextRequest & { auth: Session | null }) => {
         "/admin/users/faculty",
         "/admin/users/panelists",
       );
-      if (
-        !canAdminAccessPath(
-          targetPath,
-          token.user?.adminAccessLevel,
-          token.user?.adminCapabilities,
-        )
-      ) {
-        return NextResponse.redirect(new URL("/admin/dashboard", req.url));
-      }
       return NextResponse.rewrite(new URL(targetPath, req.url));
     }
 
     if (
-      !canAdminAccessPath(
-        path,
-        token.user?.adminAccessLevel,
-        token.user?.adminCapabilities,
-      )
+      token.user?.adminAccessLevel === "RESTRICTED" &&
+      getRequiredCapabilityForAdminPath(path) === "FULL_ONLY"
     ) {
       return NextResponse.redirect(new URL("/admin/dashboard", req.url));
     }

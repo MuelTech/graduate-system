@@ -2,7 +2,12 @@
 
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
+import { useSession } from "next-auth/react";
 import { apiClientRequest } from "@/lib/api.client";
+import {
+  canAdminAccessPath,
+  normalizeAdminCapabilities,
+} from "@/lib/admin-capabilities";
 import { cn } from "@/lib/utils";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -191,7 +196,39 @@ function DashboardSkeleton() {
 
 /* ------------------------------------------------------------------- page */
 
+interface AuthMeSummary {
+  adminAccessLevel?: "FULL" | "RESTRICTED" | null;
+  adminCapabilities?: string[] | null;
+  user?: {
+    adminAccessLevel?: "FULL" | "RESTRICTED" | null;
+    adminCapabilities?: string[] | null;
+  };
+}
+
 export default function AdminDashboard() {
+  const { data: session } = useSession();
+  const { data: authMe } = useQuery<AuthMeSummary>({
+    queryKey: ["authMe"],
+    queryFn: async () =>
+      (await apiClientRequest("/auth/me")) as AuthMeSummary,
+    staleTime: 10_000,
+  });
+
+  const accessLevel =
+    authMe?.adminAccessLevel ??
+    authMe?.user?.adminAccessLevel ??
+    session?.user?.adminAccessLevel ??
+    "FULL";
+  const capabilities = normalizeAdminCapabilities(
+    authMe?.adminCapabilities ??
+      authMe?.user?.adminCapabilities ??
+      session?.user?.adminCapabilities ??
+      [],
+  );
+
+  const canAccess = (href: string) =>
+    canAdminAccessPath(href, accessLevel, capabilities);
+
   const {
     data,
     isLoading,
@@ -311,7 +348,7 @@ export default function AdminDashboard() {
       count: data.needsAttention.adviserRequestsForDeanReview,
       icon: UserCheck,
     },
-  ];
+  ].filter((q) => canAccess(q.href));
 
   const totalAttention = attentionQueues.reduce((sum, q) => sum + q.count, 0);
   const pipelineTotal = data.thesisPipeline.reduce((s, r) => s + r.count, 0);
@@ -322,16 +359,18 @@ export default function AdminDashboard() {
         title="Administrator Dashboard"
         description="Overview of Graduate School operations and items requiring attention."
         actions={
-          <Link
-            href="/admin/analytics"
-            className={cn(
-              buttonVariants({ variant: "outline", size: "sm" }),
-              "gap-1.5 border-(--earist-border-gray) bg-white text-xs font-semibold text-(--earist-primary) hover:bg-gray-50 shadow-2xs"
-            )}
-          >
-            <BarChart3 className="h-4 w-4 text-(--earist-primary)" />
-            Academic Analytics & Reports
-          </Link>
+          canAccess("/admin/analytics") ? (
+            <Link
+              href="/admin/analytics"
+              className={cn(
+                buttonVariants({ variant: "outline", size: "sm" }),
+                "gap-1.5 border-(--earist-border-gray) bg-white text-xs font-semibold text-(--earist-primary) hover:bg-gray-50 shadow-2xs"
+              )}
+            >
+              <BarChart3 className="h-4 w-4 text-(--earist-primary)" />
+              Academic Analytics & Reports
+            </Link>
+          ) : undefined
         }
       />
 
@@ -585,12 +624,14 @@ export default function AdminDashboard() {
                 The formal result is recorded by the authorized session
                 Chairman.
               </p>
-              <Link
-                href="/admin/thesis/defense-records"
-                className="mt-1 inline-block text-xs font-medium text-(--earist-secondary) hover:underline"
-              >
-                View defense records
-              </Link>
+              {canAccess("/admin/thesis/defense-records") && (
+                <Link
+                  href="/admin/thesis/defense-records"
+                  className="mt-1 inline-block text-xs font-medium text-(--earist-secondary) hover:underline"
+                >
+                  View defense records
+                </Link>
+              )}
             </div>
 
             <div className="rounded-lg bg-(--earist-surface-gray) p-3">
@@ -605,12 +646,14 @@ export default function AdminDashboard() {
               <p className="mt-1 text-xs text-(--earist-body-text)">
                 Awaiting the required signatories; not yet finalized.
               </p>
-              <Link
-                href="/admin/thesis/defense-records"
-                className="mt-1 inline-block text-xs font-medium text-(--earist-secondary) hover:underline"
-              >
-                View defense records
-              </Link>
+              {canAccess("/admin/thesis/defense-records") && (
+                <Link
+                  href="/admin/thesis/defense-records"
+                  className="mt-1 inline-block text-xs font-medium text-(--earist-secondary) hover:underline"
+                >
+                  View defense records
+                </Link>
+              )}
             </div>
           </div>
         </SectionCard>

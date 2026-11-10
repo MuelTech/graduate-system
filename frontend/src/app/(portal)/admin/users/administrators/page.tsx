@@ -8,6 +8,7 @@ import {
   ADMIN_CAPABILITY_GROUPS,
   ALL_ADMIN_CAPABILITY_KEYS,
   CAPABILITY_LABELS,
+  normalizeAdminCapabilities,
   type AdminAccessLevel,
   type AdminCapabilityKey,
 } from "@/lib/admin-capabilities";
@@ -120,9 +121,7 @@ function mapAdmin(a: AdministratorResponse): AdminRow {
     email: a.email,
     isActive: a.isActive,
     adminAccessLevel: a.adminAccessLevel ?? "FULL",
-    adminCapabilities: Array.isArray(a.adminCapabilities)
-      ? a.adminCapabilities
-      : [],
+    adminCapabilities: normalizeAdminCapabilities(a.adminCapabilities),
     createdAt: a.createdAt,
     updatedAt: a.updatedAt || a.createdAt,
     createdByName: a.createdBy

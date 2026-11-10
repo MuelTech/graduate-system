@@ -11,34 +11,80 @@
 
 export const ADMIN_CAPABILITIES = {
   // 1. User Management (Administrators Management is exclusively Full Admin)
-  USERS_APPLICANTS: "USERS_APPLICANTS",
-  USERS_STUDENTS: "USERS_STUDENTS",
-  USERS_FACULTY: "USERS_FACULTY",
+  USERS_APPLICANTS: "applicants.manage",
+  USERS_STUDENTS: "students.manage",
+  USERS_FACULTY: "faculty.manage",
 
   // 2. Exam Management
-  EXAMS_SCHEDULES: "EXAMS_SCHEDULES",
-  EXAMS_RECORDS: "EXAMS_RECORDS",
-  EXAMS_QUESTIONS: "EXAMS_QUESTIONS",
-  EXAMS_COR: "EXAMS_COR",
-  EXAMS_WAIVER: "EXAMS_WAIVER",
+  EXAMS_SCHEDULES: "exam.schedules.manage",
+  EXAMS_RECORDS: "exam.records.manage",
+  EXAMS_QUESTIONS: "exam.questions.manage",
+  EXAMS_COR: "cor.verify",
+  EXAMS_WAIVER: "waivers.manage",
 
   // 3. Thesis Management
-  THESIS_APPLICATIONS: "THESIS_APPLICATIONS",
-  THESIS_SCHEDULING: "THESIS_SCHEDULING",
-  THESIS_RECORDS: "THESIS_RECORDS",
-  THESIS_ADVISERS: "THESIS_ADVISERS",
+  THESIS_APPLICATIONS: "defense.applications.manage",
+  THESIS_SCHEDULING: "defense.schedules.manage",
+  THESIS_RECORDS: "defense.records.view",
+  THESIS_ADVISERS: "adviser.requests.manage",
 
   // 4. Institutional & System
-  SYSTEM_ANALYTICS: "SYSTEM_ANALYTICS",
-  SYSTEM_SETTINGS: "SYSTEM_SETTINGS",
-  SYSTEM_MEMOS: "SYSTEM_MEMOS",
-  SYSTEM_REPOSITORY: "SYSTEM_REPOSITORY",
+  SYSTEM_ANALYTICS: "analytics.view",
+  SYSTEM_SETTINGS: "settings.manage",
+  SYSTEM_MEMOS: "memos.manage",
+  SYSTEM_REPOSITORY: "repository.manage",
 } as const;
 
 export type AdminCapabilityKey =
   (typeof ADMIN_CAPABILITIES)[keyof typeof ADMIN_CAPABILITIES];
 
 export type AdminAccessLevel = "FULL" | "RESTRICTED";
+
+const CAPABILITY_ALIASES: Record<string, AdminCapabilityKey> = {
+  USERS_APPLICANTS: ADMIN_CAPABILITIES.USERS_APPLICANTS,
+  USERS_STUDENTS: ADMIN_CAPABILITIES.USERS_STUDENTS,
+  USERS_FACULTY: ADMIN_CAPABILITIES.USERS_FACULTY,
+  EXAMS_SCHEDULES: ADMIN_CAPABILITIES.EXAMS_SCHEDULES,
+  EXAMS_RECORDS: ADMIN_CAPABILITIES.EXAMS_RECORDS,
+  EXAMS_QUESTIONS: ADMIN_CAPABILITIES.EXAMS_QUESTIONS,
+  EXAMS_COR: ADMIN_CAPABILITIES.EXAMS_COR,
+  EXAMS_WAIVER: ADMIN_CAPABILITIES.EXAMS_WAIVER,
+  THESIS_APPLICATIONS: ADMIN_CAPABILITIES.THESIS_APPLICATIONS,
+  THESIS_SCHEDULING: ADMIN_CAPABILITIES.THESIS_SCHEDULING,
+  THESIS_RECORDS: ADMIN_CAPABILITIES.THESIS_RECORDS,
+  THESIS_ADVISERS: ADMIN_CAPABILITIES.THESIS_ADVISERS,
+  SYSTEM_ANALYTICS: ADMIN_CAPABILITIES.SYSTEM_ANALYTICS,
+  SYSTEM_SETTINGS: ADMIN_CAPABILITIES.SYSTEM_SETTINGS,
+  SYSTEM_MEMOS: ADMIN_CAPABILITIES.SYSTEM_MEMOS,
+  SYSTEM_REPOSITORY: ADMIN_CAPABILITIES.SYSTEM_REPOSITORY,
+};
+
+export function normalizeAdminCapabilities(
+  input: unknown,
+): AdminCapabilityKey[] {
+  let rawList: unknown = input;
+  if (typeof rawList === "string") {
+    try {
+      rawList = JSON.parse(rawList);
+    } catch {
+      return [];
+    }
+  }
+  if (!Array.isArray(rawList)) return [];
+
+  const canonicalValues = new Set<string>(Object.values(ADMIN_CAPABILITIES));
+  const normalized = new Set<AdminCapabilityKey>();
+  for (const item of rawList) {
+    if (typeof item === "string") {
+      if (canonicalValues.has(item)) {
+        normalized.add(item as AdminCapabilityKey);
+      } else if (item in CAPABILITY_ALIASES) {
+        normalized.add(CAPABILITY_ALIASES[item]);
+      }
+    }
+  }
+  return Array.from(normalized);
+}
 
 export interface AdminCapabilityOption {
   key: AdminCapabilityKey;
@@ -282,7 +328,7 @@ export function getRequiredCapabilityForAdminPath(
 export function canAdminAccessPath(
   pathname: string,
   accessLevel?: AdminAccessLevel | string | null,
-  capabilities?: string[] | null,
+  capabilities?: unknown,
 ): boolean {
   const normalizedLevel = accessLevel ?? "FULL";
   if (normalizedLevel === "FULL") {
@@ -297,6 +343,6 @@ export function canAdminAccessPath(
     return false;
   }
 
-  const capList = Array.isArray(capabilities) ? capabilities : [];
+  const capList = normalizeAdminCapabilities(capabilities);
   return capList.includes(requirement);
 }
