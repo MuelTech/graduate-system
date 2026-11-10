@@ -21,6 +21,12 @@ import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+} from "@/components/ui/select";
+import {
   Pagination,
   PaginationContent,
   PaginationItem,
@@ -29,13 +35,9 @@ import { formatExamDate, formatExamTime } from "@/lib/exam-record-state";
 import type { ApiApplication, Program } from "@/types";
 import {
   AlertCircle,
-  CheckCircle2,
   ChevronLeft,
   ChevronRight,
   ClipboardCheck,
-  Clock,
-  FileText,
-  Filter,
   RefreshCw,
   Search,
   X,
@@ -112,10 +114,6 @@ export default function FacultyEssayEvaluationsPage() {
     .map(toSubmissionRow)
     .filter((row): row is EssaySubmissionRow => row !== null);
 
-  const totalSubmissions = allSubmissions.length;
-  const pendingCount = allSubmissions.filter((r) => !r.isEvaluated).length;
-  const evaluatedCount = allSubmissions.filter((r) => r.isEvaluated).length;
-
   const query = search.trim().toLowerCase();
   const filtered = allSubmissions.filter((row) => {
     const matchesSearch =
@@ -152,6 +150,36 @@ export default function FacultyEssayEvaluationsPage() {
     setPage(1);
   };
 
+  const programLabel =
+    programId === "ALL"
+      ? "All Programs"
+      : (programs.find((p) => p.id === programId)?.programName ??
+        "All Programs");
+
+  const EVAL_FILTER_OPTIONS: { value: EvaluationFilter; label: string }[] = [
+    { value: "ALL", label: "All Statuses" },
+    { value: "PENDING", label: "Pending Evaluation" },
+    { value: "EVALUATED", label: "Evaluated" },
+  ];
+  const evalFilterLabel =
+    EVAL_FILTER_OPTIONS.find((o) => o.value === evalFilter)?.label ??
+    "All Statuses";
+
+  const pageNumbers = (() => {
+    if (totalPages <= 5)
+      return Array.from({ length: totalPages }, (_, index) => index + 1);
+    if (currentPage <= 3) return [1, 2, 3, 4, 5];
+    if (currentPage >= totalPages - 2)
+      return Array.from({ length: 5 }, (_, index) => totalPages - 4 + index);
+    return [
+      currentPage - 2,
+      currentPage - 1,
+      currentPage,
+      currentPage + 1,
+      currentPage + 2,
+    ];
+  })();
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -173,122 +201,118 @@ export default function FacultyEssayEvaluationsPage() {
         }
       />
 
-      {/* KPI Summary Cards */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <Card>
-          <CardContent className="flex items-start justify-between p-4">
-            <div className="space-y-1">
-              <p className="text-xs font-semibold text-(--earist-body-text)">
-                Total Submissions
-              </p>
-              <p className="text-2xl font-bold text-(--earist-primary)">
-                {totalSubmissions}
-              </p>
-              <p className="text-xs text-(--earist-body-text)">
-                Completed entrance exam sessions
-              </p>
-            </div>
-            <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-(--earist-surface-gray) text-(--earist-secondary)">
-              <FileText className="h-5 w-5" />
-            </span>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="flex items-start justify-between p-4">
-            <div className="space-y-1">
-              <p className="text-xs font-semibold text-(--earist-body-text)">
-                Pending Evaluation
-              </p>
-              <p className="text-2xl font-bold text-amber-600">
-                {pendingCount}
-              </p>
-              <p className="text-xs text-(--earist-body-text)">
-                Awaiting essay grading
-              </p>
-            </div>
-            <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-amber-50 text-amber-600">
-              <Clock className="h-5 w-5" />
-            </span>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="flex items-start justify-between p-4">
-            <div className="space-y-1">
-              <p className="text-xs font-semibold text-(--earist-body-text)">
-                Evaluated
-              </p>
-              <p className="text-2xl font-bold text-emerald-600">
-                {evaluatedCount}
-              </p>
-              <p className="text-xs text-(--earist-body-text)">
-                Essay graded and result computed
-              </p>
-            </div>
-            <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600">
-              <CheckCircle2 className="h-5 w-5" />
-            </span>
-          </CardContent>
-        </Card>
-      </div>
-
       {/* Search & Filters */}
       <Card>
         <CardContent className="p-4">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-            <div className="relative flex-1">
-              <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-(--earist-body-text)" />
-              <Input
-                type="text"
-                value={search}
-                onChange={(e) => {
-                  setSearch(e.target.value);
-                  setPage(1);
-                }}
-                placeholder="Search by applicant name, email, Pinnacle ID, or program..."
-                className="pl-10"
-              />
+          <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
+            <div className="w-full sm:min-w-[220px] sm:flex-1">
+              <label
+                htmlFor="essay-search"
+                className="mb-1 block text-sm font-medium text-(--earist-body-text)"
+              >
+                Search
+              </label>
+              <div className="relative">
+                <Search
+                  className="absolute top-1/2 left-2.5 h-4 w-4 -translate-y-1/2 text-(--earist-body-text)/60"
+                  aria-hidden="true"
+                />
+                <Input
+                  id="essay-search"
+                  type="text"
+                  value={search}
+                  onChange={(e) => {
+                    setSearch(e.target.value);
+                    setPage(1);
+                  }}
+                  placeholder="Search by applicant name, email, or Pinnacle ID..."
+                  className="pl-9"
+                />
+              </div>
             </div>
 
-            <div className="flex flex-wrap items-center gap-2">
-              <Filter className="h-4 w-4 text-(--earist-body-text)" />
-              <select
+            <div className="w-full sm:w-72">
+              <label
+                htmlFor="essay-program"
+                className="mb-1 block text-sm font-medium text-(--earist-body-text)"
+              >
+                Program
+              </label>
+              <Select
                 value={programId}
-                onChange={(e) => {
-                  setProgramId(e.target.value);
+                onValueChange={(value) => {
+                  setProgramId(value ?? "ALL");
                   setPage(1);
                 }}
-                className="rounded-lg border border-(--earist-border-gray) bg-white px-3 py-2 text-sm text-(--earist-body-text) focus:border-(--earist-primary) focus:outline-none"
               >
-                <option value="ALL">All Programs</option>
-                {programs.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.programName}
-                  </option>
-                ))}
-              </select>
-
-              <select
-                value={evalFilter}
-                onChange={(e) => {
-                  setEvalFilter(e.target.value as EvaluationFilter);
-                  setPage(1);
-                }}
-                className="rounded-lg border border-(--earist-border-gray) bg-white px-3 py-2 text-sm text-(--earist-body-text) focus:border-(--earist-primary) focus:outline-none"
-              >
-                <option value="ALL">All Statuses</option>
-                <option value="PENDING">Pending Evaluation</option>
-                <option value="EVALUATED">Evaluated</option>
-              </select>
-
-              {isFiltered && (
-                <Button variant="ghost" size="sm" onClick={clearFilters}>
-                  <X className="mr-1 h-4 w-4" />
-                  Clear
-                </Button>
-              )}
+                <SelectTrigger id="essay-program" className="w-full">
+                  <span
+                    className="flex-1 truncate text-left"
+                    title={programLabel}
+                  >
+                    {programLabel}
+                  </span>
+                </SelectTrigger>
+                <SelectContent className="min-w-[min(92vw,24rem)]">
+                  <SelectItem
+                    value="ALL"
+                    className="items-start [&>div]:shrink [&>div]:whitespace-normal"
+                  >
+                    All Programs
+                  </SelectItem>
+                  {programs.map((program) => (
+                    <SelectItem
+                      key={program.id}
+                      value={program.id}
+                      className="items-start [&>div]:shrink [&>div]:whitespace-normal"
+                    >
+                      {program.programName}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
+
+            <div className="w-full sm:w-48">
+              <label
+                htmlFor="essay-status"
+                className="mb-1 block text-sm font-medium text-(--earist-body-text)"
+              >
+                Evaluation Status
+              </label>
+              <Select
+                value={evalFilter}
+                onValueChange={(value) => {
+                  setEvalFilter((value as EvaluationFilter) ?? "ALL");
+                  setPage(1);
+                }}
+              >
+                <SelectTrigger id="essay-status" className="w-full">
+                  <span
+                    className="flex-1 truncate text-left"
+                    title={evalFilterLabel}
+                  >
+                    {evalFilterLabel}
+                  </span>
+                </SelectTrigger>
+                <SelectContent>
+                  {EVAL_FILTER_OPTIONS.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {isFiltered && (
+              <div className="flex items-center gap-2 sm:ml-auto sm:pb-0.5">
+                <Button variant="ghost" size="sm" onClick={clearFilters}>
+                  <X className="mr-1.5 h-4 w-4" aria-hidden="true" />
+                  Clear filters
+                </Button>
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -338,7 +362,7 @@ export default function FacultyEssayEvaluationsPage() {
         ) : (
           <Table>
             <TableHeader>
-              <TableRow className="hover:bg-transparent">
+              <TableRow className="hover:bg-(--earist-surface-gray)">
                 <TableHead>Applicant</TableHead>
                 <TableHead>Program</TableHead>
                 <TableHead>Exam Schedule</TableHead>
@@ -350,21 +374,24 @@ export default function FacultyEssayEvaluationsPage() {
               {pageRows.map((row) => (
                 <TableRow key={row.id}>
                   <TableCell>
-                    <p className="font-semibold text-(--earist-primary)">
+                    <p className="text-sm font-semibold text-foreground">
                       {row.name}
                     </p>
-                    <p className="text-xs text-(--earist-body-text)">
-                      {row.pinnacleId} · {row.email}
+                    <p className="mt-0.5 text-xs text-(--earist-body-text)">
+                      {row.pinnacleId}
+                    </p>
+                    <p className="mt-0.5 text-xs text-(--earist-body-text)">
+                      {row.email}
                     </p>
                   </TableCell>
-                  <TableCell className="text-xs text-(--earist-body-text)">
+                  <TableCell className="text-sm text-(--earist-body-text)">
                     {row.programName}
                   </TableCell>
-                  <TableCell className="text-xs text-(--earist-body-text)">
+                  <TableCell className="text-sm text-(--earist-body-text)">
                     {row.examDate ? (
                       <div>
                         <p>{formatExamDate(row.examDate)}</p>
-                        <p className="text-[11px] text-gray-500">
+                        <p className="mt-0.5 text-xs text-(--earist-body-text)">
                           {formatExamTime(row.examTime)}
                         </p>
                       </div>
@@ -404,43 +431,65 @@ export default function FacultyEssayEvaluationsPage() {
             </TableBody>
           </Table>
         )}
+      </TableCard>
 
-        {/* Pagination */}
-        {totalPages > 1 && (
-          <div className="flex items-center justify-between border-t border-(--earist-border-gray) px-4 py-3">
-            <p className="text-xs text-(--earist-body-text)">
-              Showing {(currentPage - 1) * PAGE_SIZE + 1}–
-              {Math.min(currentPage * PAGE_SIZE, total)} of {total} submissions
-            </p>
-            <Pagination className="mx-0 w-auto">
+      {/* Pagination */}
+      {!isLoading && !isError && total > 0 && (
+        <div className="flex flex-col items-center justify-between gap-3 sm:flex-row">
+          <p className="text-sm text-(--earist-body-text)">
+            Showing {(currentPage - 1) * PAGE_SIZE + 1} to{" "}
+            {Math.min(currentPage * PAGE_SIZE, total)} of {total} submission
+            {total === 1 ? "" : "s"}
+          </p>
+          {totalPages > 1 && (
+            <Pagination className="mx-0 w-auto justify-end">
               <PaginationContent>
                 <PaginationItem>
                   <Button
                     variant="ghost"
                     size="icon"
+                    aria-label="Go to previous page"
                     onClick={() => setPage((p) => Math.max(1, p - 1))}
                     disabled={currentPage === 1}
                   >
-                    <ChevronLeft className="h-4 w-4" />
+                    <ChevronLeft className="h-4 w-4" aria-hidden="true" />
                   </Button>
                 </PaginationItem>
+                {pageNumbers.map((pageNumber) => (
+                  <PaginationItem key={pageNumber}>
+                    <Button
+                      variant={
+                        currentPage === pageNumber ? "outline" : "ghost"
+                      }
+                      size="icon"
+                      aria-label={`Go to page ${pageNumber}`}
+                      aria-current={
+                        currentPage === pageNumber ? "page" : undefined
+                      }
+                      onClick={() => setPage(pageNumber)}
+                    >
+                      {pageNumber}
+                    </Button>
+                  </PaginationItem>
+                ))}
                 <PaginationItem>
                   <Button
                     variant="ghost"
                     size="icon"
+                    aria-label="Go to next page"
                     onClick={() =>
                       setPage((p) => Math.min(totalPages, p + 1))
                     }
                     disabled={currentPage === totalPages}
                   >
-                    <ChevronRight className="h-4 w-4" />
+                    <ChevronRight className="h-4 w-4" aria-hidden="true" />
                   </Button>
                 </PaginationItem>
               </PaginationContent>
             </Pagination>
-          </div>
-        )}
-      </TableCard>
+          )}
+        </div>
+      )}
     </div>
   );
 }

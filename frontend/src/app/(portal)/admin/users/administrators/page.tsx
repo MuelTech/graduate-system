@@ -28,17 +28,19 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+} from "@/components/ui/select";
+import {
   Pagination,
   PaginationContent,
   PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
 } from "@/components/ui/pagination";
 import { toast } from "sonner";
 import {
   Search,
-  Filter,
   Plus,
   Eye,
   Edit,
@@ -50,6 +52,8 @@ import {
   ShieldCheck,
   Shield,
   CheckSquare,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 
 const TITLE_OPTIONS = ["Dr.", "Prof.", "Mr.", "Ms.", "Mrs.", "Engr.", "Atty.", ""];
@@ -383,20 +387,46 @@ export default function AdminAdministratorsPage() {
     return true;
   });
 
-  const totalPages = Math.ceil(filteredAdmins.length / pageSize);
+  const total = filteredAdmins.length;
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const currentPage = Math.min(page, totalPages);
   const paginatedAdmins = filteredAdmins.slice(
-    (page - 1) * pageSize,
-    page * pageSize,
+    (currentPage - 1) * pageSize,
+    currentPage * pageSize,
   );
+  const isFiltered = searchQuery.trim() !== "" || typeFilter !== "all";
 
-  const totalCount = administrators.length;
-  const activeCount = administrators.filter((a) => a.isActive).length;
-  const fullCount = administrators.filter(
-    (a) => a.adminAccessLevel === "FULL",
-  ).length;
-  const restrictedCount = administrators.filter(
-    (a) => a.adminAccessLevel === "RESTRICTED",
-  ).length;
+  const clearFilters = () => {
+    setSearchQuery("");
+    setTypeFilter("all");
+    setPage(1);
+  };
+
+  const ADMIN_FILTER_OPTIONS = [
+    { value: "all", label: "All Administrators" },
+    { value: "full", label: "Full Administrators" },
+    { value: "restricted", label: "Restricted Administrators" },
+    { value: "active", label: "Active" },
+    { value: "inactive", label: "Inactive" },
+  ];
+  const filterLabel =
+    ADMIN_FILTER_OPTIONS.find((o) => o.value === typeFilter)?.label ??
+    "All Administrators";
+
+  const pageNumbers = (() => {
+    if (totalPages <= 5)
+      return Array.from({ length: totalPages }, (_, index) => index + 1);
+    if (currentPage <= 3) return [1, 2, 3, 4, 5];
+    if (currentPage >= totalPages - 2)
+      return Array.from({ length: 5 }, (_, index) => totalPages - 4 + index);
+    return [
+      currentPage - 2,
+      currentPage - 1,
+      currentPage,
+      currentPage + 1,
+      currentPage + 2,
+    ];
+  })();
 
   function openViewModal(admin: AdminRow) {
     setSelectedAdmin(admin);
@@ -449,82 +479,76 @@ export default function AdminAdministratorsPage() {
         }
       />
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <Card>
-          <CardContent className="p-3">
-            <p className="text-xs text-(--earist-body-text)">
-              Total Administrators
-            </p>
-            <p className="text-lg font-bold text-(--earist-primary)">
-              {totalCount}
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-3">
-            <p className="text-xs text-(--earist-body-text)">Active</p>
-            <p className="text-lg font-bold text-(--earist-primary)">
-              {activeCount}
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-3">
-            <p className="text-xs text-(--earist-body-text)">
-              Full Administrators
-            </p>
-            <p className="text-lg font-bold text-(--earist-primary)">
-              {fullCount}
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-3">
-            <p className="text-xs text-(--earist-body-text)">
-              Restricted Administrators
-            </p>
-            <p className="text-lg font-bold text-(--earist-primary)">
-              {restrictedCount}
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Search & Filters */}
+      {/* Filters */}
       <Card>
-        <CardContent className="py-4">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-            <div className="relative flex-1">
-              <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-(--earist-body-text)" />
-              <Input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => {
-                  setSearchQuery(e.target.value);
-                  setPage(1);
-                }}
-                placeholder="Search by administrator name or email..."
-                className="pl-10"
-              />
-            </div>
-            <div className="flex items-center gap-2">
-              <Filter className="h-4 w-4 text-(--earist-body-text)" />
-              <select
-                value={typeFilter}
-                onChange={(e) => {
-                  setTypeFilter(e.target.value);
-                  setPage(1);
-                }}
-                className="rounded-lg border border-(--earist-border-gray) px-3 py-2 text-sm text-(--earist-body-text) focus:border-(--earist-primary) focus:outline-none"
+        <CardContent className="p-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
+            <div className="w-full sm:min-w-[220px] sm:flex-1">
+              <label
+                htmlFor="admin-search"
+                className="mb-1 block text-sm font-medium text-(--earist-body-text)"
               >
-                <option value="all">All Administrators</option>
-                <option value="full">Full Administrators</option>
-                <option value="restricted">Restricted Administrators</option>
-                <option value="active">Active</option>
-                <option value="inactive">Inactive</option>
-              </select>
+                Search
+              </label>
+              <div className="relative">
+                <Search
+                  className="absolute top-1/2 left-2.5 h-4 w-4 -translate-y-1/2 text-(--earist-body-text)/60"
+                  aria-hidden="true"
+                />
+                <Input
+                  id="admin-search"
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => {
+                    setSearchQuery(e.target.value);
+                    setPage(1);
+                  }}
+                  placeholder="Search by administrator name or email..."
+                  className="pl-9"
+                />
+              </div>
             </div>
+
+            <div className="w-full sm:w-56">
+              <label
+                htmlFor="admin-filter"
+                className="mb-1 block text-sm font-medium text-(--earist-body-text)"
+              >
+                Access Filter
+              </label>
+              <Select
+                value={typeFilter}
+                onValueChange={(value) => {
+                  setTypeFilter(value ?? "all");
+                  setPage(1);
+                }}
+              >
+                <SelectTrigger id="admin-filter" className="w-full">
+                  <span
+                    className="flex-1 truncate text-left"
+                    title={filterLabel}
+                  >
+                    {filterLabel}
+                  </span>
+                </SelectTrigger>
+                <SelectContent>
+                  {ADMIN_FILTER_OPTIONS.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {isFiltered && (
+              <div className="flex items-center gap-2 sm:ml-auto sm:pb-0.5">
+                <Button variant="ghost" size="sm" onClick={clearFilters}>
+                  <X className="mr-1.5 h-4 w-4" aria-hidden="true" />
+                  Clear filters
+                </Button>
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -539,33 +563,40 @@ export default function AdminAdministratorsPage() {
             </span>
           </div>
         ) : paginatedAdmins.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-12 text-center">
-            <UserX className="mb-4 h-12 w-12 text-gray-300" />
-            <p className="text-sm text-(--earist-body-text)">
-              No administrators found
+          <div className="flex flex-col items-center justify-center gap-2 px-6 py-14 text-center">
+            <UserX className="h-8 w-8 text-(--earist-body-text)/40" />
+            <p className="text-sm font-medium text-(--earist-primary)">
+              {isFiltered
+                ? "No administrators match the current filters."
+                : "No administrators found."}
             </p>
+            {isFiltered && (
+              <Button variant="outline" size="sm" onClick={clearFilters}>
+                Clear filters
+              </Button>
+            )}
           </div>
         ) : (
           <Table>
             <TableHeader>
-              <TableRow className="hover:bg-transparent">
+              <TableRow className="hover:bg-(--earist-surface-gray)">
                 <TableHead>Name</TableHead>
                 <TableHead>Email</TableHead>
                 <TableHead className="text-center">Access Level</TableHead>
                 <TableHead>Granted Access</TableHead>
                 <TableHead className="text-center">Status</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+                <TableHead className="text-right">Action</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {paginatedAdmins.map((admin) => (
                 <TableRow key={admin.id}>
                   <TableCell>
-                    <p className="font-medium text-(--earist-primary)">
+                    <p className="text-sm font-semibold text-foreground">
                       {formatDisplayName(admin)}
                     </p>
                   </TableCell>
-                  <TableCell className="text-xs text-(--earist-body-text)">
+                  <TableCell className="text-sm text-(--earist-body-text)">
                     {admin.email}
                   </TableCell>
                   <TableCell className="text-center">
@@ -581,7 +612,7 @@ export default function AdminAdministratorsPage() {
                         : "Restricted Administrator"}
                     </Badge>
                   </TableCell>
-                  <TableCell className="text-xs text-(--earist-body-text)">
+                  <TableCell className="text-sm text-(--earist-body-text)">
                     {formatCapabilitySummary(admin)}
                   </TableCell>
                   <TableCell className="text-center">
@@ -635,57 +666,65 @@ export default function AdminAdministratorsPage() {
             </TableBody>
           </Table>
         )}
+      </TableCard>
 
-        {/* Pagination */}
-        {totalPages > 1 && (
-          <div className="flex items-center justify-between border-t border-(--earist-border-gray) px-4 py-3">
-            <p className="text-xs text-(--earist-body-text)">
-              Showing {(page - 1) * pageSize + 1}–
-              {Math.min(page * pageSize, filteredAdmins.length)} of{" "}
-              {filteredAdmins.length} administrators
-            </p>
-            <Pagination>
+      {/* Pagination */}
+      {!isLoading && total > 0 && (
+        <div className="flex flex-col items-center justify-between gap-3 sm:flex-row">
+          <p className="text-sm text-(--earist-body-text)">
+            Showing {(currentPage - 1) * pageSize + 1} to{" "}
+            {Math.min(currentPage * pageSize, total)} of {total} administrator
+            {total === 1 ? "" : "s"}
+          </p>
+          {totalPages > 1 && (
+            <Pagination className="mx-0 w-auto justify-end">
               <PaginationContent>
                 <PaginationItem>
-                  <PaginationPrevious
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    aria-label="Go to previous page"
                     onClick={() => setPage((p) => Math.max(1, p - 1))}
-                    className={
-                      page === 1
-                        ? "pointer-events-none opacity-50"
-                        : "cursor-pointer"
-                    }
-                  />
+                    disabled={currentPage === 1}
+                  >
+                    <ChevronLeft className="h-4 w-4" aria-hidden="true" />
+                  </Button>
                 </PaginationItem>
-                {Array.from({ length: totalPages }, (_, i) => i + 1).map(
-                  (pageNum) => (
-                    <PaginationItem key={pageNum}>
-                      <PaginationLink
-                        onClick={() => setPage(pageNum)}
-                        isActive={pageNum === page}
-                        className="cursor-pointer"
-                      >
-                        {pageNum}
-                      </PaginationLink>
-                    </PaginationItem>
-                  ),
-                )}
+                {pageNumbers.map((pageNumber) => (
+                  <PaginationItem key={pageNumber}>
+                    <Button
+                      variant={
+                        currentPage === pageNumber ? "outline" : "ghost"
+                      }
+                      size="icon"
+                      aria-label={`Go to page ${pageNumber}`}
+                      aria-current={
+                        currentPage === pageNumber ? "page" : undefined
+                      }
+                      onClick={() => setPage(pageNumber)}
+                    >
+                      {pageNumber}
+                    </Button>
+                  </PaginationItem>
+                ))}
                 <PaginationItem>
-                  <PaginationNext
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    aria-label="Go to next page"
                     onClick={() =>
                       setPage((p) => Math.min(totalPages, p + 1))
                     }
-                    className={
-                      page === totalPages
-                        ? "pointer-events-none opacity-50"
-                        : "cursor-pointer"
-                    }
-                  />
+                    disabled={currentPage === totalPages}
+                  >
+                    <ChevronRight className="h-4 w-4" aria-hidden="true" />
+                  </Button>
                 </PaginationItem>
               </PaginationContent>
             </Pagination>
-          </div>
-        )}
-      </TableCard>
+          )}
+        </div>
+      )}
 
       {/* ============================ */}
       {/* CREATE ADMINISTRATOR MODAL   */}
