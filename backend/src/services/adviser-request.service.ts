@@ -14,7 +14,9 @@ import { defenseAdviserAuthorization, DefenseAdviserAuthorization } from "../acc
  * → AdviserAssignment. Assignment is never created outside that path.
  */
 import prisma from "../config/database";
+import { PanelistRepository } from "../repositories/panelist.repository";
 import { AppError } from "../utils/AppError";
+import { EXTERNAL_ACTIVE_ADVISER_MESSAGE } from "./active-adviser.rules";
 import type {
   DeanResponseInput,
   RequestAdviserInput,
@@ -82,7 +84,8 @@ export interface PassedTitleDefenseContext {
 
 export class AdviserRequestService {
   constructor(private readonly administration: DefenseAdviserAuthorization = defenseAdviserAuthorization,
-    private readonly faculty: OperationalAuthorization = facultyAuthorization) {}
+    private readonly faculty: OperationalAuthorization = facultyAuthorization,
+    private readonly panelists: PanelistRepository = new PanelistRepository()) {}
 
   private async currentStudent(userId: string) {
     const actor = await this.faculty.current({ userId, role: "STUDENT" });
@@ -377,7 +380,15 @@ export class AdviserRequestService {
     return prisma.adviserRequest.count({ where: { requestedAdviserId: adviserUserId } });
   }
 
+  /**
+   * WP3: requested Adviser inbox — server-scoped to authenticated userId only.
+   * Never uses the Admin-wide request list. External Faculty are denied access
+   * per DR-5 because they can never serve as Thesis Adviser.
+   */
   async listMyAdviserRequests(adviserUserId: string) {
+    if (await this.panelists.isExternalFaculty(adviserUserId)) {
+      throw new AppError(EXTERNAL_ACTIVE_ADVISER_MESSAGE, 403);
+    }
     const rows = await prisma.adviserRequest.findMany({
       where: { requestedAdviserId: adviserUserId },
       include: {

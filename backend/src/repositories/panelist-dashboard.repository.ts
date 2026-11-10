@@ -5,6 +5,7 @@
  * RAP signature slots. No mutation, no workflow transition, no cross-user data.
  */
 import prisma from "../config/database";
+import { PanelistRepository } from "./panelist.repository";
 import { isEvaluatorRole } from "../services/oral-evaluation.rules";
 import type {
   DashboardAssignmentInput,
@@ -29,6 +30,17 @@ function toWallTime(value: Date | string | null | undefined): string | null {
 }
 
 export class PanelistDashboardRepository {
+  constructor(
+    private readonly panelists: PanelistRepository = new PanelistRepository(),
+  ) {}
+
+  /** Authoritative Internal vs External check so External Defense members keep
+   * Defense sections while omitting Adviser reads cleanly.
+   */
+  async isExternalFaculty(userId: string): Promise<boolean> {
+    return this.panelists.isExternalFaculty(userId);
+  }
+
   /** Same exact own active-assignment read authority as getAssignments and the
    * Defense workspace/history entry point. No date/session-status cutoff:
    * concluded assignments stay readable; corrected inactive rows confer none.

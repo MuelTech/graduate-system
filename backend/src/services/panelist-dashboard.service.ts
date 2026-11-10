@@ -40,21 +40,21 @@ export class PanelistDashboardService {
     userId: string,
     now: Date = new Date(),
   ): Promise<PanelistDashboardView> {
-    const [
-      assignments,
-      pendingRapSlots,
-      signedRapSlots,
-      adviserRequestRows,
-      proposalTasks,
-      finalTasks,
-    ] = await Promise.all([
-      this.repo.getAssignments(userId),
-      this.repo.getPendingRapSlots(userId),
-      this.repo.getSignedRapSlots(userId),
-      this.adviserRequests.listMyAdviserRequests(userId),
-      this.proposalReviews.listReviewTasks(userId),
-      this.finalReviews.listReviewTasks(userId),
-    ]);
+    const [assignments, pendingRapSlots, signedRapSlots, isExternal] =
+      await Promise.all([
+        this.repo.getAssignments(userId),
+        this.repo.getPendingRapSlots(userId),
+        this.repo.getSignedRapSlots(userId),
+        this.repo.isExternalFaculty(userId),
+      ]);
+
+    const [adviserRequestRows, proposalTasks, finalTasks] = isExternal
+      ? [[], [], []]
+      : await Promise.all([
+          this.adviserRequests.listMyAdviserRequests(userId),
+          this.proposalReviews.listReviewTasks(userId),
+          this.finalReviews.listReviewTasks(userId),
+        ]);
 
     const adviserRequests: DashboardAdviserRequestInput[] =
       adviserRequestRows.map((row) => ({

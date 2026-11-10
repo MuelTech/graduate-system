@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const prismaMock = vi.hoisted(() => ({
+  panelist: { findUnique: vi.fn() },
   panelAssignment: { findMany: vi.fn() },
   rapReportSignature: { findMany: vi.fn() },
 }));
@@ -172,5 +173,20 @@ describe("CDW-7 read-model cleanup — historical RAP slots are not actionable w
     const rows = await repo.getSignedRapSlots("u1");
     expect(rows).toHaveLength(1);
     expect(rows[0].defenseType).toBe("FINAL_DEFENSE");
+  });
+
+  it("UIUX-3E Part B: isExternalFaculty reads authoritative Panelist.isExternal without swallowing errors", async () => {
+    prismaMock.panelist.findUnique.mockResolvedValueOnce({ isExternal: true });
+    await expect(repo.isExternalFaculty("ext-user")).resolves.toBe(true);
+    expect(prismaMock.panelist.findUnique).toHaveBeenCalledWith({
+      where: { userId: "ext-user" },
+      select: { isExternal: true },
+    });
+
+    prismaMock.panelist.findUnique.mockResolvedValueOnce({ isExternal: false });
+    await expect(repo.isExternalFaculty("int-user")).resolves.toBe(false);
+
+    prismaMock.panelist.findUnique.mockRejectedValueOnce(new Error("DB error"));
+    await expect(repo.isExternalFaculty("int-user")).rejects.toThrow("DB error");
   });
 });

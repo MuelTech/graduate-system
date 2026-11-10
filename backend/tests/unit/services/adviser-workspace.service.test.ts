@@ -133,6 +133,7 @@ function historyRow(overrides: Record<string, unknown> = {}) {
 
 describe("AdviserWorkspaceService", () => {
   const repo = {
+    isExternalFaculty: vi.fn(),
     listActiveAssignmentsForAdviser: vi.fn(),
     listActiveAdviserAssignmentsForStudents: vi.fn(),
     findStudentForAdviseeDetail: vi.fn(),
@@ -152,6 +153,7 @@ describe("AdviserWorkspaceService", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    repo.isExternalFaculty.mockResolvedValue(false);
     repo.listActiveAssignmentsForAdviser.mockResolvedValue([]);
     repo.listActiveAdviserAssignmentsForStudents.mockResolvedValue([]);
     repo.findStudentForAdviseeDetail.mockResolvedValue(null);
@@ -691,5 +693,18 @@ describe("AdviserWorkspaceService", () => {
     });
     expect(repo.listAdviserResearchDocuments).not.toHaveBeenCalled();
     expect(repo.listAdviserDefenseHistory).not.toHaveBeenCalled();
+  });
+
+  it("UIUX-3E Part B: denies External Faculty with zero active assignments from Adviser workspace", async () => {
+    repo.listActiveAssignmentsForAdviser.mockResolvedValue([]);
+    repo.isExternalFaculty.mockResolvedValue(true);
+
+    await expect(service.getWorkspace("ext-user")).rejects.toMatchObject({
+      statusCode: 403,
+      message: "External Faculty cannot serve as Thesis Adviser.",
+    });
+    expect(requests.listMyAdviserRequests).not.toHaveBeenCalled();
+    expect(proposalReviews.listReviewTasks).not.toHaveBeenCalled();
+    expect(finalReviews.listReviewTasks).not.toHaveBeenCalled();
   });
 });

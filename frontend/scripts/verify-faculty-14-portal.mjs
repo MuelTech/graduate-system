@@ -430,26 +430,48 @@ test("UIUX-3E Part B: Faculty dashboard projection respects dynamic responsibili
     ],
     waitingOnOthers: [
       {
-        id: "wait:eval:sched-1",
+        id: "rap-awaiting-signatures:sig-1",
+        studentName: "Jane Student",
+        studentNumber: "2026-0004",
+        recordLabel: "Proposal Defense RAP",
+        requirement: "Remaining required RAP signatures",
+        responsibleRole: "Other required signatories",
+        statusText: "Waiting for other signatures",
+        date: "2026-11-12",
+        href: "/panelist/signatures",
+      },
+      {
+        id: "chairman-prereq:sched-1",
         studentName: "Jane Student",
         studentNumber: "2026-0004",
         recordLabel: "Proposal Defense",
-        requirement: "2 panelist evaluations remaining",
-        responsibleRole: "Other Panelists",
-        statusText: "Waiting on committee",
+        requirement: "Waiting for evaluator evaluations to complete",
+        responsibleRole: "Evaluators / Rapporteur",
+        statusText: "Awaiting conclusion prerequisites",
         date: "2026-11-12",
         href: "/panelist/defense-workspace/sched-1",
       },
       {
-        id: "wait:adviser-revision:sub-2",
+        id: "adviser-dean:req-2",
         studentName: "Alex Student",
         studentNumber: "2026-0005",
-        recordLabel: "Manuscript Revision",
-        requirement: "Student revision after adviser feedback",
+        recordLabel: "Adviser Request",
+        requirement: "Dean approval of the adviser request",
+        responsibleRole: "Dean, Graduate School",
+        statusText: "Awaiting Dean decision",
+        date: "2026-11-08",
+        href: "/panelist/advisees?tab=requests&requestId=req-2",
+      },
+      {
+        id: "manuscript-revision:FINAL:thesis-2",
+        studentName: "Alex Student",
+        studentNumber: "2026-0005",
+        recordLabel: "Final manuscript",
+        requirement: "Student manuscript revision",
         responsibleRole: "Student",
-        statusText: "Awaiting revised manuscript",
+        statusText: "Changes requested",
         date: "2026-11-09",
-        href: "/panelist/advisees/stu-2",
+        href: "/panelist/advisees?tab=reviews&stage=FINAL&thesisId=thesis-2",
       },
     ],
   };
@@ -483,7 +505,7 @@ test("UIUX-3E Part B: Faculty dashboard projection respects dynamic responsibili
     const expectedTaskCount =
       (hasAdvisees ? 2 : 0) + (hasDefenses ? 1 : 0);
     const expectedWaitingCount =
-      (hasAdvisees ? 1 : 0) + (hasDefenses ? 1 : 0);
+      (hasAdvisees ? 2 : 0) + (hasDefenses ? 2 : 0);
     assert.equal(projected.attention.length, expectedTaskCount);
     assert.equal(projected.waiting.length, expectedWaitingCount);
     assert.equal(
@@ -499,4 +521,187 @@ test("UIUX-3E Part B: Faculty dashboard projection respects dynamic responsibili
   }
   assert.equal(dashboard.formatWallDate("2026-11-15"), "November 15, 2026");
   assert.equal(dashboard.formatWallTime("14:30:00"), "2:30 PM");
+});
+
+test("UIUX-3E correction Part A: isAdviserWaitingItem uses exact production DTO identifiers, handles query strings, and separates Internal Adviser vs External Faculty waiting items", () => {
+  // 1 & 2. Actual production Adviser waiting identifiers (even with null href or defense-like href)
+  assert.equal(
+    dashboard.isAdviserWaitingItem({
+      id: "adviser-dean:req-99",
+      href: "/panelist/advisees?tab=requests&requestId=req-99",
+    }),
+    true,
+  );
+  assert.equal(
+    dashboard.isAdviserWaitingItem({
+      id: "adviser-dean:req-99",
+      href: null,
+    }),
+    true,
+  );
+  assert.equal(
+    dashboard.isAdviserWaitingItem({
+      id: "manuscript-revision:PROPOSAL:thesis-42",
+      href: "/panelist/advisees?tab=reviews&stage=PROPOSAL&thesisId=thesis-42",
+    }),
+    true,
+  );
+  assert.equal(
+    dashboard.isAdviserWaitingItem({
+      id: "manuscript-revision:FINAL:thesis-77",
+      href: null,
+    }),
+    true,
+  );
+
+  // 3. Query-string Adviser URL fallback and prefix/fragment collision defense
+  assert.equal(
+    dashboard.isAdviserWaitingItem({
+      id: "legacy-id",
+      href: "/panelist/advisees?tab=requests&requestId=req-1",
+    }),
+    true,
+  );
+  assert.equal(
+    dashboard.isAdviserWaitingItem({
+      id: "legacy-id",
+      href: "/panelist/adviser-requests?filter=pending",
+    }),
+    true,
+  );
+  assert.equal(
+    dashboard.isAdviserWaitingItem({
+      id: "legacy-id",
+      href: "/panelist/adviser-reviews?stage=FINAL",
+    }),
+    true,
+  );
+  assert.equal(
+    dashboard.isAdviserWaitingItem({
+      id: "legacy-id",
+      href: "/panelist/advisees-archive?tab=requests",
+    }),
+    false,
+  );
+  assert.equal(
+    dashboard.isAdviserWaitingItem({
+      id: "legacy-id",
+      href: "/panelist/signatures?next=/panelist/advisees",
+    }),
+    false,
+  );
+
+  // 4. Production Defense waiting identifiers stay classified as Defense (never suppressed for Defense-only / External Faculty)
+  assert.equal(
+    dashboard.isAdviserWaitingItem({
+      id: "rap-awaiting-signatures:sig-7",
+      href: "/panelist/signatures",
+    }),
+    false,
+  );
+  assert.equal(
+    dashboard.isAdviserWaitingItem({
+      id: "chairman-prereq:sched-9",
+      href: "/panelist/defense-workspace/sched-9",
+    }),
+    false,
+  );
+
+  const mixedWaitingDashboard = {
+    kpis: { upcomingDefenses: 1, pendingTasks: 0 },
+    needsAttention: [],
+    activeDefenses: [],
+    upcomingDefenses: [],
+    waitingOnOthers: [
+      {
+        id: "adviser-dean:req-99",
+        studentName: "Alex Student",
+        studentNumber: "2026-0001",
+        recordLabel: "Adviser Request",
+        requirement: "Dean approval of the adviser request",
+        responsibleRole: "Dean, Graduate School",
+        statusText: "Awaiting Dean decision",
+        date: "2026-11-10",
+        href: "/panelist/advisees?tab=requests&requestId=req-99",
+      },
+      {
+        id: "manuscript-revision:PROPOSAL:thesis-42",
+        studentName: "Alex Student",
+        studentNumber: "2026-0001",
+        recordLabel: "Proposal manuscript",
+        requirement: "Student manuscript revision",
+        responsibleRole: "Student",
+        statusText: "Changes requested",
+        date: "2026-11-10",
+        href: "/panelist/advisees?tab=reviews&stage=PROPOSAL&thesisId=thesis-42",
+      },
+      {
+        id: "rap-awaiting-signatures:sig-7",
+        studentName: "Defense Student",
+        studentNumber: "2026-0002",
+        recordLabel: "Final Defense RAP",
+        requirement: "Remaining required RAP signatures",
+        responsibleRole: "Other required signatories",
+        statusText: "Waiting for other signatures",
+        date: "2026-11-10",
+        href: "/panelist/signatures",
+      },
+      {
+        id: "chairman-prereq:sched-9",
+        studentName: "Defense Student",
+        studentNumber: "2026-0002",
+        recordLabel: "Proposal Defense",
+        requirement: "Waiting for evaluator evaluations to complete",
+        responsibleRole: "Evaluators / Rapporteur",
+        statusText: "Awaiting conclusion prerequisites",
+        date: "2026-11-10",
+        href: "/panelist/defense-workspace/sched-9",
+      },
+    ],
+  };
+
+  // 5. Internal Adviser retains both exact Adviser waiting records and never inflates Pending Tasks
+  const internalAdviser = access.readFacultyWork(
+    dto({
+      myAdvisees: {
+        relevant: true,
+        activeAdviseeCount: 1,
+        addressedRequestCount: 1,
+        issuedCertificationCount: 0,
+      },
+      myDefenses: { relevant: false, assignmentCount: 0 },
+    }),
+    "self",
+  );
+  const adviserProjected = dashboard.projectFacultyDashboard(
+    internalAdviser,
+    mixedWaitingDashboard,
+  );
+  assert.deepEqual(
+    adviserProjected.waiting.map((w) => w.id),
+    ["adviser-dean:req-99", "manuscript-revision:PROPOSAL:thesis-42"],
+  );
+  assert.equal(adviserProjected.pendingTasksCount, 0);
+
+  // 6. External Faculty (Defense-only, myAdvisees.relevant === false) receives zero Adviser waiting items while keeping Defense waiting items
+  const externalDefenseOnly = access.readFacultyWork(
+    dto({
+      myAdvisees: {
+        relevant: false,
+        activeAdviseeCount: 0,
+        addressedRequestCount: 0,
+        issuedCertificationCount: 0,
+      },
+      myDefenses: { relevant: true, assignmentCount: 2 },
+    }),
+    "self",
+  );
+  const externalProjected = dashboard.projectFacultyDashboard(
+    externalDefenseOnly,
+    mixedWaitingDashboard,
+  );
+  assert.deepEqual(
+    externalProjected.waiting.map((w) => w.id),
+    ["rap-awaiting-signatures:sig-7", "chairman-prereq:sched-9"],
+  );
 });

@@ -142,14 +142,22 @@ export function isAdviserTask(
 export function isAdviserWaitingItem(
   item: Pick<WaitingItem, "id" | "href">,
 ): boolean {
-  return (
-    item.id.startsWith("wait:adviser") ||
-    Boolean(
-      item.href &&
-        /^\/panelist\/(?:advisees|adviser-requests|adviser-reviews)(?:\/|$)/.test(
-          item.href,
-        ),
-    )
+  if (
+    item.id.startsWith("adviser-dean:") ||
+    item.id.startsWith("manuscript-revision:")
+  ) {
+    return true;
+  }
+  if (
+    item.id.startsWith("rap-awaiting-signatures:") ||
+    item.id.startsWith("chairman-prereq:")
+  ) {
+    return false;
+  }
+  if (!item.href) return false;
+  const pathname = item.href.split(/[?#]/, 1)[0];
+  return /^\/panelist\/(?:advisees|adviser-requests|adviser-reviews)(?:\/|$)/.test(
+    pathname,
   );
 }
 

@@ -327,6 +327,10 @@ export class AdviserWorkspaceService {
       await this.repository.listActiveAssignmentsForAdviser(adviserUserId);
     await this.assertSingleActiveAdviserForCandidates(adviserUserId, assignments);
 
+    if (await this.repository.isExternalFaculty?.(adviserUserId)) {
+      throw new AppError(EXTERNAL_ACTIVE_ADVISER_MESSAGE, 403);
+    }
+
     const [incomingRequests, proposalTasks, finalTasks] = await Promise.all([
       this.adviserRequests.listMyAdviserRequests(adviserUserId),
       this.proposalReviews.listReviewTasks(adviserUserId),

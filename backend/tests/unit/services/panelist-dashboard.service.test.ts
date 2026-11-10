@@ -13,6 +13,7 @@ function makeRepo() {
     getAssignments: vi.fn().mockResolvedValue([]),
     getPendingRapSlots: vi.fn().mockResolvedValue([]),
     getSignedRapSlots: vi.fn().mockResolvedValue([]),
+    isExternalFaculty: vi.fn().mockResolvedValue(false),
   };
 }
 
@@ -119,6 +120,119 @@ describe("PanelistDashboardService (UIUX-3A)", () => {
     );
     expect(view.waitingOnOthers.map((w) => w.id)).toContain(
       "manuscript-revision:FINAL:thesis-f",
+    );
+  });
+
+  it("UIUX-3E Part B: External Faculty dashboard retains Defense data and excludes all Adviser requests, reviews, and waiting records", async () => {
+    repo.isExternalFaculty.mockResolvedValue(true);
+    repo.getAssignments.mockResolvedValue([
+      {
+        assignmentId: "pa-active",
+        role: "PANELIST",
+        evaluationStatus: "NOT_STARTED",
+        scheduleId: "sched-active",
+        defenseType: "PROPOSAL_DEFENSE",
+        sessionStatus: "IN_PROGRESS",
+        defenseDate: "2026-10-08",
+        defenseTime: "03:00:00",
+        venueOrLink: "Room 301",
+        conclusionPresent: false,
+        rapporteurNotesFinalized: false,
+        rapStatus: null,
+        oralSummaryReady: false,
+        studentName: "Active Defense Student",
+        studentNumber: "2026-101",
+        programName: "MIT",
+      },
+      {
+        assignmentId: "pa-upcoming",
+        role: "CHAIRMAN",
+        evaluationStatus: "NONE",
+        scheduleId: "sched-upcoming",
+        defenseType: "FINAL_DEFENSE",
+        sessionStatus: "SCHEDULED",
+        defenseDate: "2026-10-12",
+        defenseTime: "10:00:00",
+        venueOrLink: "https://meet.example.test/defense",
+        conclusionPresent: false,
+        rapporteurNotesFinalized: false,
+        rapStatus: null,
+        oralSummaryReady: false,
+        studentName: "Upcoming Defense Student",
+        studentNumber: "2026-102",
+        programName: "MIT",
+      },
+    ]);
+    repo.getSignedRapSlots.mockResolvedValue([
+      {
+        id: "sig-done-1",
+        defenseType: "PROPOSAL_DEFENSE",
+        studentName: "Waiting Defense Student",
+        studentNumber: "2026-103",
+        signedDate: "2026-10-07",
+      },
+    ]);
+
+    // Populate Adviser sources to prove the aggregator never queries or returns them for External Faculty.
+    adviserRequests.listMyAdviserRequests.mockResolvedValue([
+      {
+        id: "req-should-not-leak",
+        student: { name: "Hidden Advisee", studentNumber: "2026-999" },
+        officialTitle: "Hidden",
+        requestDate: new Date("2026-10-01T00:00:00.000Z"),
+        status: "PENDING",
+        adviserStatus: "PENDING",
+        deanStatus: "PENDING",
+      },
+    ]);
+    proposalReviews.listReviewTasks.mockResolvedValue([
+      {
+        thesisId: "thesis-hidden",
+        student: { name: "Hidden Proposal", studentNumber: "2026-998" },
+        officialTitle: "Hidden",
+        reviewStatus: "AWAITING_REVIEW",
+        manuscriptUploadedAt: new Date("2026-10-02T00:00:00.000Z"),
+      },
+    ]);
+
+    const view = await service.getDashboard("ext-user", NOW);
+
+    expect(adviserRequests.listMyAdviserRequests).not.toHaveBeenCalled();
+    expect(proposalReviews.listReviewTasks).not.toHaveBeenCalled();
+    expect(finalReviews.listReviewTasks).not.toHaveBeenCalled();
+
+    expect(view.kpis).toEqual({ upcomingDefenses: 1, pendingTasks: 1 });
+    expect(view.activeDefenses.map((d) => d.scheduleId)).toEqual(["sched-active"]);
+    expect(view.upcomingDefenses.map((d) => d.scheduleId)).toEqual(["sched-upcoming"]);
+    expect(view.needsAttention.map((t) => t.id)).toEqual(["evaluation:sched-active"]);
+    expect(view.waitingOnOthers.map((w) => w.id)).toEqual([
+      "rap-awaiting-signatures:sig-done-1",
+    ]);
+  });
+
+  it("UIUX-3E Part B: Internal Faculty dashboard retains Defense and Adviser tasks/waiting records and propagates errors", async () => {
+    repo.isExternalFaculty.mockResolvedValue(false);
+    adviserRequests.listMyAdviserRequests.mockResolvedValue([
+      {
+        id: "req-dean-wait",
+        student: { name: "Bea Student", studentNumber: "2026-2" },
+        officialTitle: "B Title",
+        requestDate: new Date("2026-09-20T00:00:00.000Z"),
+        status: "PENDING",
+        adviserStatus: "CONFORMED",
+        deanStatus: "PENDING",
+      },
+    ]);
+
+    const view = await service.getDashboard("int-user", NOW);
+    expect(adviserRequests.listMyAdviserRequests).toHaveBeenCalledWith("int-user");
+    expect(view.waitingOnOthers.map((w) => w.id)).toEqual([
+      "adviser-dean:req-dean-wait",
+    ]);
+
+    repo.isExternalFaculty.mockRejectedValueOnce(new Error("DB outage"));
+    await expect(service.getDashboard("int-user", NOW)).rejects.toThrow(
+      "DB outage",
     );
   });
 });

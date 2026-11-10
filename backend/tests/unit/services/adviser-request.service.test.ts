@@ -20,6 +20,7 @@ const prismaMock = vi.hoisted(() => {
   };
   return {
     student: { findUnique: vi.fn() },
+    panelist: { findUnique: vi.fn() },
     defenseConclusion: { findFirst: vi.fn() },
     rapReport: { findMany: vi.fn() },
     panelAssignment: { findUnique: vi.fn() },
@@ -379,6 +380,7 @@ describe("AdviserRequestService (WP3 adviser response)", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    prismaMock.panelist.findUnique.mockResolvedValue({ isExternal: false });
     prismaMock.adviserAssignment.create.mockClear();
     prismaMock.adviserRequest.updateMany.mockImplementation(async (args: any) => ({
       count: 1,
@@ -424,11 +426,33 @@ describe("AdviserRequestService (WP3 adviser response)", () => {
   it("scopes inbox by requestedAdviserId only", async () => {
     prismaMock.adviserRequest.findMany.mockResolvedValue([]);
     await svc.listMyAdviserRequests("other-adv");
+    expect(prismaMock.panelist.findUnique).toHaveBeenCalledWith({
+      where: { userId: "other-adv" },
+      select: { isExternal: true },
+    });
     expect(prismaMock.adviserRequest.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { requestedAdviserId: "other-adv" },
       }),
     );
+  });
+
+  it("UIUX-3E Part B: denies External Faculty direct Adviser inbox without querying requests and propagates DB failures", async () => {
+    prismaMock.panelist.findUnique.mockResolvedValue({ isExternal: true });
+
+    await expect(svc.listMyAdviserRequests("ext-adv")).rejects.toMatchObject({
+      statusCode: 403,
+      message: "External Faculty cannot serve as Thesis Adviser.",
+    });
+    expect(prismaMock.adviserRequest.findMany).not.toHaveBeenCalled();
+
+    prismaMock.panelist.findUnique.mockRejectedValueOnce(
+      new Error("DB connection lost"),
+    );
+    await expect(svc.listMyAdviserRequests("ext-adv")).rejects.toThrow(
+      "DB connection lost",
+    );
+    expect(prismaMock.adviserRequest.findMany).not.toHaveBeenCalled();
   });
 
   it("CONFORMED keeps deanStatus/status PENDING and creates no AdviserAssignment", async () => {
@@ -569,6 +593,7 @@ describe("AdviserRequestService (WP4 Dean decision)", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    prismaMock.panelist.findUnique.mockResolvedValue({ isExternal: false });
     prismaMock.adviserAssignment.create.mockClear();
     prismaMock.$transaction.mockImplementation(async (fn: any) => fn(tx));
     prismaMock.adviserRequest.findUnique.mockResolvedValue(conformedRequest());

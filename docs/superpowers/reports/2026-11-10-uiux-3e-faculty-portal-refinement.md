@@ -99,6 +99,8 @@ Two read-only `research` subagents investigated Part A and Part B in parallel be
 
 ## 5. Changed Files
 
+### 5.1 Initial UIUX-3E Package (`030ffb4`, doc fix `d7b8e85`)
+
 1. `frontend/src/lib/faculty-access.ts`
 2. `frontend/src/app/(portal)/panelist/layout.tsx`
 3. `frontend/src/lib/panelist-dashboard.ts`
@@ -111,9 +113,25 @@ Two read-only `research` subagents investigated Part A and Part B in parallel be
 10. `docs/superpowers/ui-ux/SYSTEM_UI_UX_PLAYBOOK.md`
 11. `docs/superpowers/plans/2026-11-08-faculty-admin-access-implementation.md`
 
+### 5.2 Bounded Correction — Adviser Waiting Classification & External Faculty Adviser Data Isolation (starting HEAD `d7b8e858370e81674bdc779b415ddc8993d49c0f`)
+
+1. `frontend/src/lib/panelist-dashboard.ts`
+2. `frontend/scripts/verify-faculty-14-portal.mjs`
+3. `backend/src/repositories/panelist.repository.ts`
+4. `backend/src/services/adviser-request.service.ts`
+5. `backend/src/services/adviser-workspace.service.ts`
+6. `backend/src/repositories/panelist-dashboard.repository.ts`
+7. `backend/src/services/panelist-dashboard.service.ts`
+8. `backend/tests/unit/services/adviser-request.service.test.ts`
+9. `backend/tests/unit/services/adviser-workspace.service.test.ts`
+10. `backend/tests/unit/services/panelist-dashboard.service.test.ts`
+11. `backend/tests/unit/repositories/panelist-dashboard.repository.test.ts`
+12. `backend/tests/unit/routes/faculty-external-adviser-isolation.routes.test.ts`
+13. `docs/superpowers/reports/2026-11-10-uiux-3e-faculty-portal-refinement.md`
+
 ---
 
-## 6. Verification & Evidence Record
+## 6. Initial UIUX-3E Verification & Evidence Record
 
 ### 6.1 Automated Verifier & Unit Suites (Executed — PASS)
 
@@ -146,3 +164,57 @@ Two read-only `research` subagents investigated Part A and Part B in parallel be
 - **Database / schema / migration changes:** None. Zero development/XAMPP, staging, or production databases were accessed, inspected, migrated, or modified.
 - **Activation gates:** `ADMINISTRATOR_MANAGEMENT_ENABLED`, `DIRECT_ACCESS_ENFORCEMENT_ENABLED`, and `OPERATIONAL_ENFORCEMENT_ENABLED` remain `false`.
 - **FACULTY-18:** Not started.
+
+---
+
+## 7. Bounded Correction Record — Waiting Classification & External Faculty Adviser Isolation
+
+- **Starting HEAD for correction:** `d7b8e858370e81674bdc779b415ddc8993d49c0f`
+- **Status:** **IMPLEMENTED / PENDING INDEPENDENT REVIEW** (not visually accepted; Playwright **NOT RUN**; project-owner browser QA **PENDING**)
+
+### 7.1 Part A — Adviser Waiting-Data Classification Correction (`frontend/src/lib/panelist-dashboard.ts`)
+
+- **Incorrect prior behavior:** `isAdviserWaitingItem()` previously checked `item.id.startsWith("wait:adviser")` (a synthetic identifier not emitted by the backend) and applied `/^\/panelist\/(?:advisees|adviser-requests|adviser-reviews)(?:\/|$)/` directly to `item.href`, which failed on backend Adviser links carrying query strings (e.g., `/panelist/advisees?tab=requests&requestId=...` and `/panelist/advisees?tab=reviews&stage=...&thesisId=...`).
+- **Corrected production DTO classification & URL handling:**
+  - Recognizes actual production backend Adviser waiting identifiers emitted by `backend/src/services/panelist-dashboard.rules.ts`:
+    - `adviser-dean:<requestId>` -> Adviser waiting (`true`)
+    - `manuscript-revision:<stage>:<thesisId>` -> Adviser waiting (`true`)
+  - Explicitly recognizes Defense waiting identifiers first so stable backend identifiers take precedence over URL fragment heuristics:
+    - `rap-awaiting-signatures:<id>` -> Defense waiting (`false`)
+    - `chairman-prereq:<scheduleId>` -> Defense waiting (`false`)
+  - When falling back to `item.href`, extracts the pathname before `?` or `#` (`item.href.split(/[?#]/, 1)[0]`) before matching `/^\/panelist\/(?:advisees|adviser-requests|adviser-reviews)(?:\/|$)/`, handling query-string Adviser URLs accurately while preventing prefix collisions (`/panelist/advisees-archive`) and query-fragment false positives.
+  - Preserves legitimate Adviser waiting items for Internal Adviser accounts and prevents Adviser waiting items from surfacing to External Faculty (`myAdvisees.relevant === false`), without altering backend workflow states or historical records.
+
+### 7.2 Part B — External Faculty Adviser Data Isolation
+
+- **Shared `Panelist.isExternal` lookup:** Added `PanelistRepository.isExternalFaculty(userId)` (`backend/src/repositories/panelist.repository.ts`), querying `prisma.panelist.findUnique({ where: { userId }, select: { isExternal: true } })` with zero silent error swallowing.
+- **Direct Adviser inbox (`GET /thesis/adviser/requests/mine`):** `AdviserRequestService.listMyAdviserRequests(adviserUserId)` now checks `await this.panelists.isExternalFaculty(adviserUserId)` before querying `adviserRequest.findMany`, throwing `AppError("External Faculty cannot serve as Thesis Adviser.", 403)` for External Faculty. Scope remains strictly bound to authenticated `req.user.userId` (`countMyAdviserRequests` for `/auth/me` remains unchanged to preserve FACULTY-13).
+- **Adviser workspace (`GET /thesis/adviser/workspace`):** Closed the zero-assignment bypass in `AdviserWorkspaceService.getWorkspace(adviserUserId)`: after `assertSingleActiveAdviserForCandidates` (which continues failing closed with 409 on any anomalous active `AdviserAssignment`), `getWorkspace` checks `await this.repository.isExternalFaculty?.(adviserUserId)` and throws `AppError("External Faculty cannot serve as Thesis Adviser.", 403)` before calling `listMyAdviserRequests`, `proposalReviews.listReviewTasks`, or `finalReviews.listReviewTasks`. Internal Faculty workspace access is preserved.
+- **Aggregate Faculty Dashboard (`GET /thesis/defense/panelist/dashboard`):** Added `PanelistDashboardRepository.isExternalFaculty(userId)` (backed by `PanelistRepository.isExternalFaculty`) and updated `PanelistDashboardService.getDashboard(userId, now)`:
+  - Evaluates `isExternal` alongside Defense repository reads (`getAssignments`, `getPendingRapSlots`, `getSignedRapSlots`).
+  - When `isExternal === true`, preserves all Defense assignments, Defense tasks, active/upcoming sessions, Defense KPIs, and Defense waiting records while skipping `adviserRequests.listMyAdviserRequests`, `proposalReviews.listReviewTasks`, and `finalReviews.listReviewTasks` and passing empty arrays for the Adviser portion (no 403 on Defense dashboard).
+  - When `isExternal === false`, loads and returns Internal Faculty Adviser tasks and waiting items alongside Defense data.
+  - Database/service errors propagate rather than silently degrading into empty data.
+- **Existing review queue guards verified:** Inspected `ProposalAdviserReviewService.listReviewTasks()` and `FinalAdviserReviewService.listReviewTasks()`; both already enforce `isExternalActiveAdviser(assignment)` and `isActiveAdviserForStudent()` (`user?.panelist?.isExternal !== true`), returning `[]` for External Faculty, and are additionally skipped by `PanelistDashboardService` for External accounts.
+
+### 7.3 Bounded Correction Verification Results
+
+- **Focused frontend regression check (`node scripts/verify-faculty-14-portal.mjs` in `frontend`):** **45 / 45 PASS** (covers exact `adviser-dean:` and `manuscript-revision:` DTO IDs, query-string URL fallback + fragment collision defense, Defense waiting classification for `rap-awaiting-signatures:` and `chairman-prereq:`, Internal Adviser retention without inflating `Pending Tasks`, and External Faculty exclusion of Adviser waiting items).
+- **Focused backend unit, repository, service, and route/controller suites (`npx vitest run ...` in `backend`):** **9 files / 141 tests PASS**:
+  - `tests/unit/services/adviser-request.service.test.ts` (29/29 PASS)
+  - `tests/unit/services/adviser-workspace.service.test.ts` (25/25 PASS)
+  - `tests/unit/services/panelist-dashboard.service.test.ts` (6/6 PASS)
+  - `tests/unit/services/panelist-dashboard.rules.test.ts` (21/21 PASS)
+  - `tests/unit/repositories/panelist-dashboard.repository.test.ts` (7/7 PASS)
+  - `tests/unit/repositories/adviser-workspace.repository.test.ts` (5/5 PASS)
+  - `tests/unit/services/proposal-adviser-review.service.test.ts` (26/26 PASS)
+  - `tests/unit/services/final-adviser-review.service.test.ts` (17/17 PASS)
+  - `tests/unit/routes/faculty-external-adviser-isolation.routes.test.ts` (5/5 PASS)
+- **Backend TypeScript (`npx tsc --noEmit` in `backend`):** **PASS** (0 errors)
+- **Frontend TypeScript (`node node_modules/typescript/bin/tsc --noEmit` in `frontend`):** **PASS** (0 errors)
+- **Scoped ESLint (`npx eslint "src/lib/panelist-dashboard.ts" "src/lib/faculty-access.ts" "src/app/(portal)/panelist/layout.tsx" "src/app/(portal)/panelist/dashboard/page.tsx" "scripts/verify-faculty-14-portal.mjs"` in `frontend`):** **PASS** (0 errors, 0 warnings; backend has no ESLint configuration)
+- **Frontend Production Build (`npm run build` in `frontend`):** **PASS** (compiled in 6.7s, TypeScript 2.9s, 69/69 routes generated)
+- **`git diff --check`:** **PASS**
+- **Playwright synthetic browser verification:** **NOT RUN** (not executed for this bounded correction; left to project-owner local browser QA).
+- **Project-owner browser/visual QA and independent review:** **PENDING**.
+- **Safety boundaries confirmed:** Zero database access, zero migrations, all activation gates (`ADMINISTRATOR_MANAGEMENT_ENABLED`, `DIRECT_ACCESS_ENFORCEMENT_ENABLED`, `OPERATIONAL_ENFORCEMENT_ENABLED`) remain `false`, and FACULTY-18 was not started.
