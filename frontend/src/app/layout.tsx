@@ -13,10 +13,7 @@ const instrumentSans = Instrument_Sans({
 });
 
 export const metadata: Metadata = {
-  title: {
-    default: "EARIST - Graduate School",
-    template: "%s | EARIST - Graduate School",
-  },
+  title: "EARIST - Graduate School",
   description:
     'Official Graduate School portal and research repository of Eulogio "Amang" Rodriguez Institute of Science and Technology (EARIST).',
   icons: {
