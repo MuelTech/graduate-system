@@ -11,7 +11,7 @@ import { NotificationItem } from "@/types/index";
 export function NotificationBell({
   role = "STUDENT",
 }: {
-  role?: "STUDENT" | "ADMIN" | "PANELIST" | "FACULTY";
+  role?: "STUDENT" | "ADMIN" | "PANELIST" | "FACULTY" | "APPLICANT";
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const queryClient = useQueryClient();
@@ -44,6 +44,8 @@ export function NotificationBell({
       ? "/admin/notifications"
       : isFaculty
       ? "/faculty/notifications"
+      : role === "APPLICANT"
+      ? "/applicant/notifications"
       : "/student/notifications";
 
   const announcementsPath =
@@ -57,11 +59,12 @@ export function NotificationBell({
     <div className="relative">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="relative rounded-full p-2 text-(--earist-body-text) transition-colors hover:bg-(--earist-surface-light-red) hover:text-(--earist-primary)"
+        aria-label="Notifications"
+        className="relative rounded-lg p-2 text-gray-600 transition-colors hover:bg-gray-100 hover:text-[#333333]"
       >
         <Bell className="h-5 w-5" />
         {unreadCount > 0 && (
-          <span className="absolute top-1 right-1 flex h-4 w-4 items-center justify-center rounded-full bg-(--earist-accent) text-[10px] font-bold text-(--earist-primary)">
+          <span className="absolute top-1 right-1 flex h-4 w-4 items-center justify-center rounded-full bg-[#e02b20] text-[10px] font-bold text-white">
             {unreadCount > 9 ? "9+" : unreadCount}
           </span>
         )}
@@ -70,11 +73,11 @@ export function NotificationBell({
       {isOpen && (
         <>
           <div className="fixed inset-0 z-40" onClick={() => setIsOpen(false)} />
-          <div className="absolute right-0 top-full mt-2 w-80 z-50 rounded-lg border border-(--earist-border-gray) bg-white shadow-lg overflow-hidden">
-            <div className="bg-(--earist-surface-gray) px-4 py-3 flex justify-between items-center border-b border-(--earist-border-gray)">
-              <span className="font-bold text-sm text-(--earist-primary)">Notifications</span>
+          <div className="absolute right-0 top-full z-50 mt-2 w-80 overflow-hidden rounded-xl border border-gray-100 bg-white shadow-lg">
+            <div className="flex items-center justify-between border-b border-gray-100 bg-gray-50/80 px-4 py-3">
+              <span className="text-sm font-bold text-[#333333]">Notifications</span>
               {unreadCount > 0 && (
-                <Badge className="bg-(--earist-accent) text-(--earist-primary)">
+                <Badge variant="default">
                   {unreadCount} New
                 </Badge>
               )}
@@ -82,15 +85,15 @@ export function NotificationBell({
 
             <div className="max-h-80 overflow-y-auto">
               {recentNotifications.length === 0 ? (
-                <div className="p-4 text-center text-xs text-(--earist-body-text)">
+                <div className="p-6 text-center text-xs text-gray-500">
                   You&apos;re all caught up!
                 </div>
               ) : (
                 recentNotifications.map((n: NotificationItem) => (
                   <div
                     key={n.id}
-                    className={`p-4 border-b border-(--earist-border-gray) text-sm transition-colors ${
-                      n.isRead ? "opacity-70 bg-white" : "bg-red-50/30"
+                    className={`border-b border-gray-100 p-4 text-sm transition-colors ${
+                      n.isRead ? "bg-white opacity-75" : "bg-red-50/30"
                     }`}
                   >
                     {/* Deep-link MEMO notifications to announcements feed */}
@@ -101,32 +104,32 @@ export function NotificationBell({
                           setIsOpen(false);
                           if (!n.isRead) markAsRead.mutate(n.id);
                         }}
-                        className="block group"
+                        className="group block"
                       >
-                        <p className="font-semibold text-(--earist-primary) group-hover:underline mb-1">
+                        <p className="mb-1 font-semibold text-[#333333] group-hover:text-[#e02b20] group-hover:underline">
                           {n.title}
                         </p>
-                        <p className="text-xs text-(--earist-body-text) line-clamp-2 mb-2">
+                        <p className="mb-2 line-clamp-2 text-xs text-gray-500">
                           {n.message}
                         </p>
                       </Link>
                     ) : (
                       <>
-                        <p className="font-semibold text-(--earist-primary) mb-1">{n.title}</p>
-                        <p className="text-xs text-(--earist-body-text) line-clamp-2 mb-2">
+                        <p className="mb-1 font-semibold text-[#333333]">{n.title}</p>
+                        <p className="mb-2 line-clamp-2 text-xs text-gray-500">
                           {n.message}
                         </p>
                       </>
                     )}
 
-                    <div className="flex justify-between items-center">
-                      <span className="text-[10px] text-(--earist-secondary)">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] text-gray-400">
                         {new Date(n.createdAt).toLocaleDateString()}
                       </span>
                       {!n.isRead && (
                         <button
                           onClick={() => markAsRead.mutate(n.id)}
-                          className="text-[10px] flex items-center gap-1 text-(--earist-primary) hover:underline"
+                          className="flex items-center gap-1 text-[11px] font-medium text-[#e02b20] hover:underline"
                         >
                           <CheckCircle2 className="h-3 w-3" /> Mark read
                         </button>
@@ -140,7 +143,7 @@ export function NotificationBell({
             <Link
               href={basePath}
               onClick={() => setIsOpen(false)}
-              className="block bg-(--earist-surface-gray) text-center py-3 text-xs font-semibold text-(--earist-primary) hover:bg-(--earist-surface-light-red) transition-colors"
+              className="block border-t border-gray-100 bg-gray-50/80 py-3 text-center text-xs font-semibold text-[#e02b20] transition-colors hover:bg-red-50/60"
             >
               View All Notifications
             </Link>
