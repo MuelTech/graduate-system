@@ -145,10 +145,20 @@
   z-index: 65;
   background: rgba(24, 12, 12, 0.48);
   backdrop-filter: blur(2px);
-  animation: public-drawer-backdrop-in 200ms ease-out both;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition:
+    opacity 220ms ease,
+    visibility 0s linear 220ms;
 }
-.earist-public .public-masthead__backdrop[hidden] {
-  display: none;
+.earist-public .public-masthead__backdrop[data-open="true"] {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  transition:
+    opacity 220ms ease,
+    visibility 0s linear 0s;
 }
 .earist-public .public-masthead__panel {
   position: fixed;
@@ -165,10 +175,21 @@
   border-left: 1px solid #e5dfd5;
   background: #fff;
   box-shadow: -16px 0 40px rgba(24, 12, 12, 0.22);
-  animation: public-drawer-slide-in 240ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  transform: translate3d(100%, 0, 0);
+  visibility: hidden;
+  pointer-events: none;
+  will-change: transform;
+  transition:
+    transform 260ms cubic-bezier(0.22, 1, 0.36, 1),
+    visibility 0s linear 260ms;
 }
-.earist-public .public-masthead__panel[hidden] {
-  display: none;
+.earist-public .public-masthead__panel[data-open="true"] {
+  transform: translate3d(0, 0, 0);
+  visibility: visible;
+  pointer-events: auto;
+  transition:
+    transform 260ms cubic-bezier(0.22, 1, 0.36, 1),
+    visibility 0s linear 0s;
 }
 .earist-public .public-masthead__drawer-header {
   display: flex;
@@ -270,26 +291,12 @@
   color: #65594b;
   margin-bottom: 2px;
 }
-@keyframes public-drawer-slide-in {
-  from {
-    transform: translate3d(100%, 0, 0);
-  }
-  to {
-    transform: translate3d(0, 0, 0);
-  }
-}
-@keyframes public-drawer-backdrop-in {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
 @media (prefers-reduced-motion: reduce) {
   .earist-public .public-masthead__panel,
-  .earist-public .public-masthead__backdrop {
-    animation: none;
+  .earist-public .public-masthead__panel[data-open="true"],
+  .earist-public .public-masthead__backdrop,
+  .earist-public .public-masthead__backdrop[data-open="true"] {
+    transition: none;
   }
 }
 .earist-public .public-review-notice {

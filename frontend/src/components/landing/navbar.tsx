@@ -105,14 +105,16 @@ export function Navbar() {
       </div>
       <div
         className="public-masthead__backdrop"
-        hidden={!isOpen}
+        data-open={isOpen ? "true" : "false"}
         aria-hidden="true"
         onClick={closeMenu}
       />
       <nav
         id={menuId}
         aria-label="Mobile navigation"
-        hidden={!isOpen}
+        data-open={isOpen ? "true" : "false"}
+        aria-hidden={!isOpen}
+        inert={!isOpen}
         onKeyDown={handleMenuKeyDown}
         className="public-masthead__panel"
       >
