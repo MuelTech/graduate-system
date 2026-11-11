@@ -2,7 +2,16 @@
 
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { PageHeader } from "@/components/ui/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -100,37 +109,29 @@ export default function AdminStorageHealthPage() {
   const lastScan = scanResult ?? data.lastIntegrityScan;
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h2
-            className="text-2xl font-bold text-(--earist-primary)"
-            style={{ fontFamily: '"Calibri", sans-serif' }}
-          >
-            Storage Health
-          </h2>
-          <p className="text-sm text-(--earist-body-text)">
-            Read-only operational visibility into private document storage.
-            Diagnostics never delete, repair, or move files.
-          </p>
-        </div>
-        <div className="flex flex-col items-end gap-2">
-          <Button
-            className="bg-(--earist-primary) text-white hover:bg-(--earist-primary)/90"
-            onClick={() => scanMutation.mutate()}
-            disabled={scanMutation.isPending}
-          >
-            <RefreshCw
-              className={`mr-2 h-4 w-4 ${scanMutation.isPending ? "animate-spin" : ""}`}
-            />
-            {scanMutation.isPending ? "Scanning…" : "Run Integrity Scan"}
-          </Button>
-          <p className="max-w-xs text-right text-[11px] text-(--earist-body-text)">
-            This operation reads storage and metadata only. It does not delete or
-            repair files.
-          </p>
-        </div>
-      </div>
+    <div className="space-y-6">
+      <PageHeader
+        title="Storage Health"
+        description="Read-only operational visibility into private document storage. Diagnostics never delete, repair, or move files."
+        actions={
+          <div className="flex flex-col items-end gap-2">
+            <Button
+              className="bg-(--earist-primary) text-white hover:bg-(--earist-primary)/90"
+              onClick={() => scanMutation.mutate()}
+              disabled={scanMutation.isPending}
+            >
+              <RefreshCw
+                className={`mr-2 h-4 w-4 ${scanMutation.isPending ? "animate-spin" : ""}`}
+              />
+              {scanMutation.isPending ? "Scanning…" : "Run Integrity Scan"}
+            </Button>
+            <p className="max-w-xs text-right text-[11px] text-(--earist-body-text)">
+              This operation reads storage and metadata only. It does not delete or
+              repair files.
+            </p>
+          </div>
+        }
+      />
 
       {scanError && (
         <Card>
@@ -398,48 +399,47 @@ export default function AdminStorageHealthPage() {
 
               {scanResult && scanResult.issues.length > 0 && (
                 <div className="space-y-2">
-                  <div className="overflow-x-auto rounded-lg border border-(--earist-border-gray)">
-                    <table className="w-full text-left text-xs">
-                      <thead className="bg-(--earist-surface-gray) text-(--earist-secondary)">
-                        <tr>
-                          <th className="px-3 py-2">Issue</th>
-                          <th className="px-3 py-2">Source</th>
-                          <th className="px-3 py-2">Record</th>
-                          <th className="px-3 py-2">Context</th>
-                          <th className="px-3 py-2">Sizes</th>
-                          <th className="px-3 py-2">Fingerprint</th>
-                        </tr>
-                      </thead>
-                      <tbody>
+                  <div className="overflow-hidden rounded-lg border border-(--earist-border-gray)">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="hover:bg-(--earist-surface-gray)">
+                          <TableHead>Issue</TableHead>
+                          <TableHead>Source</TableHead>
+                          <TableHead>Record</TableHead>
+                          <TableHead>Context</TableHead>
+                          <TableHead>Sizes</TableHead>
+                          <TableHead>Fingerprint</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
                         {scanResult.issues.map((issue, index) => (
-                          <tr
+                          <TableRow
                             key={`${issue.issueType}-${issue.recordId ?? index}`}
-                            className="border-t border-(--earist-border-gray)"
                           >
-                            <td className="px-3 py-2 font-medium">
+                            <TableCell className="font-medium">
                               {issue.issueType}
-                            </td>
-                            <td className="px-3 py-2">{issue.source}</td>
-                            <td className="px-3 py-2">
+                            </TableCell>
+                            <TableCell>{issue.source}</TableCell>
+                            <TableCell>
                               {issue.recordId ?? "—"}
-                            </td>
-                            <td className="px-3 py-2">
+                            </TableCell>
+                            <TableCell>
                               {[issue.docType, issue.defenseStage, issue.namespace]
                                 .filter(Boolean)
                                 .join(" · ") || "—"}
-                            </td>
-                            <td className="px-3 py-2">
+                            </TableCell>
+                            <TableCell>
                               {issue.expectedSize ?? issue.actualSize
                                 ? `${formatBytes(issue.expectedSize)} / ${formatBytes(issue.actualSize)}`
                                 : "—"}
-                            </td>
-                            <td className="px-3 py-2 font-mono">
+                            </TableCell>
+                            <TableCell className="font-mono text-xs">
                               {issue.objectFingerprint ?? "—"}
-                            </td>
-                          </tr>
+                            </TableCell>
+                          </TableRow>
                         ))}
-                      </tbody>
-                    </table>
+                      </TableBody>
+                    </Table>
                   </div>
                   {scanResult.issuesTruncated && (
                     <p className="text-xs text-amber-700">

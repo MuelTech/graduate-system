@@ -2,7 +2,16 @@
 
 import { useState, useEffect } from "react";
 import { AuditLogItem } from "@/types";
+import { PageHeader } from "@/components/ui/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -229,18 +238,11 @@ export default function AdminSettingsPage() {
   };
 
   return (
-    <div className="space-y-4">
-      <div>
-        <h2
-          className="text-2xl font-bold text-(--earist-primary)"
-          style={{ fontFamily: '"Calibri", sans-serif' }}
-        >
-          System Settings
-        </h2>
-        <p className="text-sm text-(--earist-body-text)">
-          Configure system-wide parameters and settings
-        </p>
-      </div>
+    <div className="space-y-6">
+      <PageHeader
+        title="System Settings"
+        description="Configure system-wide parameters and settings"
+      />
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-4">
         <div className="lg:col-span-1">
@@ -623,11 +625,11 @@ export default function AdminSettingsPage() {
                 </div>
 
                 {/* Table */}
-                <div className="overflow-x-auto rounded-lg border border-(--earist-border-gray)">
-                  <table className="w-full text-left text-sm">
-                    <thead className="bg-(--earist-surface-gray) text-xs uppercase text-(--earist-secondary)">
-                      <tr>
-                        <th className="px-4 py-3 font-semibold w-10">
+                <div className="overflow-hidden rounded-lg border border-(--earist-border-gray)">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="hover:bg-(--earist-surface-gray)">
+                        <TableHead className="w-10">
                           <input
                             type="checkbox"
                             onChange={(e) => {
@@ -639,31 +641,31 @@ export default function AdminSettingsPage() {
                             }}
                             checked={selectedLogs.length === auditLogs.length && auditLogs.length > 0}
                           />
-                        </th>
-                        <th className="px-4 py-3 font-semibold">Timestamp</th>
-                        <th className="px-4 py-3 font-semibold">User</th>
-                        <th className="px-4 py-3 font-semibold">Action</th>
-                        <th className="px-4 py-3 font-semibold">Details</th>
-                        <th className="px-4 py-3 font-semibold text-right">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-(--earist-border-gray) bg-white">
+                        </TableHead>
+                        <TableHead>Timestamp</TableHead>
+                        <TableHead>User</TableHead>
+                        <TableHead>Action</TableHead>
+                        <TableHead>Details</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
                       {auditLoading ? (
-                        <tr>
-                          <td colSpan={6} className="px-4 py-8 text-center text-gray-500 animate-pulse">
+                        <TableRow>
+                          <TableCell colSpan={6} className="py-8 text-center text-gray-500 animate-pulse">
                             Loading audit logs...
-                          </td>
-                        </tr>
+                          </TableCell>
+                        </TableRow>
                       ) : auditLogs.length === 0 ? (
-                        <tr>
-                          <td colSpan={6} className="px-4 py-8 text-center text-(--earist-body-text)">
+                        <TableRow>
+                          <TableCell colSpan={6} className="py-8 text-center text-(--earist-body-text)">
                             No audit logs found.
-                          </td>
-                        </tr>
+                          </TableCell>
+                        </TableRow>
                       ) : (
                         auditLogs.map((log: AuditLogItem) => (
-                          <tr key={log.id} className="hover:bg-gray-50">
-                            <td className="px-4 py-3">
+                          <TableRow key={log.id}>
+                            <TableCell>
                               <input
                                 type="checkbox"
                                 checked={selectedLogs.includes(log.id)}
@@ -675,25 +677,25 @@ export default function AdminSettingsPage() {
                                   }
                                 }}
                               />
-                            </td>
-                            <td className="whitespace-nowrap px-4 py-3 text-gray-600">
+                            </TableCell>
+                            <TableCell className="whitespace-nowrap text-(--earist-body-text)">
                               {new Date(log.createdAt).toLocaleString()}
-                            </td>
-                            <td className="px-4 py-3 font-medium text-gray-900">
+                            </TableCell>
+                            <TableCell className="font-medium text-foreground">
                               {log.actor ? `${log.actor.firstName} ${log.actor.lastName}` : "System"}
                               <span className="ml-2 rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-bold text-blue-800">
                                 {log.actor?.role || "SYSTEM"}
                               </span>
-                            </td>
-                            <td className="px-4 py-3">
+                            </TableCell>
+                            <TableCell>
                               <span className="rounded bg-gray-100 px-2 py-1 text-xs font-mono text-gray-800">
                                 {log.actionType}
                               </span>
-                            </td>
-                            <td className="px-4 py-3 text-gray-600">
+                            </TableCell>
+                            <TableCell className="text-(--earist-body-text)">
                               {log.description || `Modified ${log.targetTable || 'record'}`}
-                            </td>
-                            <td className="px-4 py-3 text-right">
+                            </TableCell>
+                            <TableCell className="text-right">
                               <Button
                                 variant="ghost"
                                 size="icon"
@@ -706,12 +708,12 @@ export default function AdminSettingsPage() {
                               >
                                 <Trash2 className="h-4 w-4" />
                               </Button>
-                            </td>
-                          </tr>
+                            </TableCell>
+                          </TableRow>
                         ))
                       )}
-                    </tbody>
-                  </table>
+                    </TableBody>
+                  </Table>
                 </div>
 
                 {/* Pagination */}

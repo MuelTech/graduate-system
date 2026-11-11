@@ -1,10 +1,16 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { useQuery } from "@tanstack/react-query";
 import { ChatbotWidget } from "@/components/chatbot/chatbot-widget";
 import { signOut, useSession } from "next-auth/react";
+import { apiClientRequest } from "@/lib/api.client";
+import {
+  canAdminAccessPath,
+  normalizeAdminCapabilities,
+} from "@/lib/admin-capabilities";
 import {
   LayoutDashboard,
   Users,
@@ -15,7 +21,6 @@ import {
   Settings,
   HardDrive,
   Library,
-  Bell,
   Menu,
   X,
   LogOut,
@@ -25,12 +30,32 @@ import {
 } from "lucide-react";
 import { NotificationBell } from "@/components/layout/notification-bell";
 
+interface AuthMeResponse {
+  id?: string;
+  role?: string;
+  adminAccessLevel?: "FULL" | "RESTRICTED" | null;
+  adminCapabilities?: string[] | null;
+  user?: {
+    id: string;
+    role: string;
+    adminAccessLevel?: "FULL" | "RESTRICTED" | null;
+    adminCapabilities?: string[] | null;
+  };
+}
+
 /** Nested admin routes stay visually active on their parent nav entry. */
 function isNavActive(pathname: string, href: string): boolean {
+  if (
+    href === "/admin/users/faculty" &&
+    (pathname.startsWith("/admin/users/faculty") ||
+      pathname.startsWith("/admin/users/panelists"))
+  ) {
+    return true;
+  }
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
-const navItems = [
+const allNavItems = [
   { href: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard },
   {
     label: "User Management",
@@ -38,8 +63,8 @@ const navItems = [
     children: [
       { href: "/admin/users/applicants", label: "Applicants" },
       { href: "/admin/users/students", label: "Students" },
-      { href: "/admin/users/panelists", label: "Panelists" },
-      { href: "/admin/users/roles", label: "Custom Roles" },
+      { href: "/admin/users/faculty", label: "Faculty" },
+      { href: "/admin/users/administrators", label: "Administrators" },
     ],
   },
   {
@@ -68,7 +93,6 @@ const navItems = [
   { href: "/admin/settings/storage", label: "Storage Health", icon: HardDrive },
   { href: "/admin/memos", label: "Announcements & Memos", icon: Megaphone },
   { href: "/admin/repository", label: "Repository", icon: Library },
-  { href: "/admin/notifications", label: "Notifications", icon: Bell },
 ];
 
 /** Shared focus treatment for sidebar controls (Playbook §25). */
@@ -81,16 +105,63 @@ export default function AdminLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
+  const router = useRouter();
   const { data: session } = useSession();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
   const [openMenus, setOpenMenus] = useState<Record<string, boolean>>({
-    "User Management":
-      pathname.startsWith("/admin/users") ||
-      pathname.startsWith("/admin/users"),
-    "Exam Management": pathname.startsWith("/admin/exam"),
-    "Thesis Management": pathname.startsWith("/admin/thesis"),
+    "User Management": true,
+    "Exam Management": true,
+    "Thesis Management": true,
   });
+
+  // Zero-flicker capability check: uses session values immediately while
+  // polling /auth/me so admin permission changes reflect without re-login.
+  const { data: authMe, isSuccess: authMeLoaded } = useQuery<AuthMeResponse>({
+    queryKey: ["authMe"],
+    queryFn: async () => (await apiClientRequest("/auth/me")) as AuthMeResponse,
+    staleTime: 10_000,
+    refetchOnWindowFocus: true,
+  });
+
+  const accessLevel =
+    authMe?.adminAccessLevel ??
+    authMe?.user?.adminAccessLevel ??
+    session?.user?.adminAccessLevel ??
+    "FULL";
+  const capabilities = normalizeAdminCapabilities(
+    authMe?.adminCapabilities ??
+      authMe?.user?.adminCapabilities ??
+      session?.user?.adminCapabilities ??
+      [],
+  );
+
+  const isPathAllowed = canAdminAccessPath(pathname, accessLevel, capabilities);
+
+  useEffect(() => {
+    if (authMeLoaded && !isPathAllowed) {
+      router.replace("/admin/dashboard");
+    }
+  }, [authMeLoaded, isPathAllowed, router]);
+
+  const navItems = allNavItems
+    .map((item) => {
+      if ("children" in item && item.children) {
+        const visibleChildren = item.children.filter((child) =>
+          canAdminAccessPath(child.href, accessLevel, capabilities),
+        );
+        if (visibleChildren.length === 0) return null;
+        return { ...item, children: visibleChildren };
+      }
+      if (
+        item.href &&
+        !canAdminAccessPath(item.href, accessLevel, capabilities)
+      ) {
+        return null;
+      }
+      return item;
+    })
+    .filter((item): item is NonNullable<typeof item> => item !== null);
 
   const toggleMenu = (label: string) => {
     setOpenMenus((prev) => ({ ...prev, [label]: !prev[label] }));
@@ -311,7 +382,9 @@ export default function AdminLayout({
         </header>
 
         {/* Page Content */}
-        <main className="flex-1 p-4 sm:p-6 xl:p-8">{children}</main>
+        <main className="flex-1 p-4 sm:p-6 xl:p-8">
+          {!authMeLoaded || isPathAllowed ? children : null}
+        </main>
       </div>
 
       {/* AI Chatbot Widget */}

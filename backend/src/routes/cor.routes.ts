@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { CorController } from '../controllers/cor.controller';
-import { authenticateJWT, requireRole } from '../middlewares/auth.middleware';
+import { authenticateJWT, requireRole, requireAdminCapability } from '../middlewares/auth.middleware';
 import { secureUpload } from '../middlewares/upload.middleware';
 
 const router = Router();
@@ -11,8 +11,8 @@ router.post('/upload', authenticateJWT, requireRole(['APPLICANT']), secureUpload
 router.get('/my-upload', authenticateJWT, requireRole(['APPLICANT']), corController.getMyUpload);
 
 // Admin Routes
-router.get('/pending', authenticateJWT, requireRole(['ADMIN']), corController.getPendingUploads);
-router.post('/verify/:id', authenticateJWT, requireRole(['ADMIN']), corController.verifyCor);
-router.post('/reject/:id', authenticateJWT, requireRole(['ADMIN']), corController.rejectCor);
+router.get('/pending', authenticateJWT, requireRole(['ADMIN']), requireAdminCapability('cor.verify'), corController.getPendingUploads);
+router.post('/verify/:id', authenticateJWT, requireRole(['ADMIN']), requireAdminCapability('cor.verify'), corController.verifyCor);
+router.post('/reject/:id', authenticateJWT, requireRole(['ADMIN']), requireAdminCapability('cor.verify'), corController.rejectCor);
 
 export default router;

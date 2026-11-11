@@ -28,8 +28,23 @@ export interface LoginInput {
 export interface UserResponse {
   id: string;
   email: string;
+  firstName?: string;
+  lastName?: string;
+  title?: string | null;
+  suffix?: string | null;
   role: UserRole;
   mustChangePassword: boolean;
+  adminAccessLevel?: "FULL" | "RESTRICTED" | null;
+  adminCapabilities?: string[];
+  facultyProfile?: {
+    id: string;
+    isExternal: boolean;
+    isAvailableAsAdviser: boolean;
+    canEvaluateEssays: boolean;
+    highestEducationalAttainment?: string | null;
+    officeAffiliation?: string | null;
+    specialization?: string | null;
+  } | null;
 }
 
 export interface LoginResponse {

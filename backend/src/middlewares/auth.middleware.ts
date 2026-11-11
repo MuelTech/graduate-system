@@ -1,9 +1,18 @@
 import { Request, Response, NextFunction } from "express";
+import prisma from "../config/database";
+import {
+  AdminCapabilityKey,
+  sanitizeAdminCapabilities,
+} from "../config/admin-capabilities";
 
 import {
   JwtConfigurationError,
   verifyAccessToken,
 } from "../utils/jwt";
+
+export function isFacultyRole(role?: string | null): boolean {
+  return role === "FACULTY" || role === "PANELIST";
+}
 
 export interface AuthenticatedRequest extends Request {
   user?: {
@@ -101,13 +110,142 @@ export const optionalAuthenticateJWT = (req: AuthenticatedRequest, res: Response
   next();
 };
 
-// Optional helper to restrict routes based on role
+// Helper to restrict routes based on role (treats FACULTY and PANELIST as equivalent account identities)
 export const requireRole = (allowedRoles: string[]) => {
+  const expanded = new Set<string>(allowedRoles);
+  if (expanded.has("PANELIST") || expanded.has("FACULTY")) {
+    expanded.add("PANELIST");
+    expanded.add("FACULTY");
+  }
   return (req: AuthenticatedRequest, res: Response, next: NextFunction): void => {
-    if (!req.user || !allowedRoles.includes(req.user.role)) {
+    if (!req.user || !expanded.has(req.user.role)) {
       res.status(403).json({ error: 'Forbidden. You do not have permissions for this action.' });
       return;
     }
     next();
   };
+};
+
+export const requireFullAdmin = async (
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction,
+): Promise<void> => {
+  try {
+    if (!req.user || req.user.role !== "ADMIN") {
+      res.status(403).json({ error: "Forbidden. Administrator access required." });
+      return;
+    }
+    const admin = await prisma.user.findUnique({
+      where: { id: req.user.userId },
+      select: { isActive: true, role: true, adminAccessLevel: true },
+    });
+    if (!admin || !admin.isActive || admin.role !== "ADMIN") {
+      res.status(403).json({ error: "Forbidden. Account is inactive or unauthorized." });
+      return;
+    }
+    if (admin.adminAccessLevel === "RESTRICTED") {
+      res.status(403).json({ error: "Forbidden. Full Administrator authority is required." });
+      return;
+    }
+    next();
+  } catch {
+    res.status(500).json({ error: "Failed to verify administrator permissions." });
+  }
+};
+
+export const requireAdminCapability = (capability: AdminCapabilityKey) => {
+  return async (
+    req: AuthenticatedRequest,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> => {
+    try {
+      if (!req.user || req.user.role !== "ADMIN") {
+        res.status(403).json({ error: "Forbidden. Administrator access required." });
+        return;
+      }
+      const admin = await prisma.user.findUnique({
+        where: { id: req.user.userId },
+        select: {
+          isActive: true,
+          role: true,
+          adminAccessLevel: true,
+          adminCapabilities: true,
+        },
+      });
+      if (!admin || !admin.isActive || admin.role !== "ADMIN") {
+        res.status(403).json({ error: "Forbidden. Account is inactive or unauthorized." });
+        return;
+      }
+      if (admin.adminAccessLevel === "RESTRICTED") {
+        const capabilities = sanitizeAdminCapabilities(admin.adminCapabilities);
+        if (!capabilities.includes(capability)) {
+          res.status(403).json({
+            error: "Forbidden. You do not have permission for this administrative module.",
+          });
+          return;
+        }
+      }
+      next();
+    } catch {
+      res.status(500).json({ error: "Failed to verify administrator permissions." });
+    }
+  };
+};
+
+export const requireEssayEvaluationAccess = async (
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction,
+): Promise<void> => {
+  try {
+    if (!req.user) {
+      res.status(401).json({ error: "Unauthorized." });
+      return;
+    }
+    if (req.user.role !== "ADMIN" && !isFacultyRole(req.user.role)) {
+      res.status(403).json({ error: "Forbidden. You do not have permissions for this action." });
+      return;
+    }
+    const user = await prisma.user.findUnique({
+      where: { id: req.user.userId },
+      select: {
+        isActive: true,
+        role: true,
+        adminAccessLevel: true,
+        adminCapabilities: true,
+        panelist: {
+          select: { isActive: true, canEvaluateEssays: true },
+        },
+      },
+    });
+    if (!user || user.isActive === false) {
+      res.status(403).json({ error: "Forbidden. Account is inactive." });
+      return;
+    }
+    if (req.user.role === "ADMIN" && user.role === "ADMIN") {
+      if (user.adminAccessLevel === "RESTRICTED") {
+        const caps = sanitizeAdminCapabilities(user.adminCapabilities);
+        if (!caps.includes("exam.records.manage")) {
+          res.status(403).json({ error: "Forbidden. Exam Records permission is required." });
+          return;
+        }
+      }
+      next();
+      return;
+    }
+    if (
+      isFacultyRole(req.user.role) &&
+      isFacultyRole(user.role) &&
+      user.panelist?.isActive &&
+      user.panelist?.canEvaluateEssays
+    ) {
+      next();
+      return;
+    }
+    res.status(403).json({ error: "Forbidden. Essay Evaluation access is not enabled for your account." });
+  } catch {
+    res.status(500).json({ error: "Failed to verify essay evaluation access." });
+  }
 };

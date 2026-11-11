@@ -15,14 +15,13 @@ import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { GraduationCap, Eye, EyeOff, AlertCircle, CheckCircle } from "lucide-react";
 
-type UserRole = "applicant" | "student" | "admin" | "panelist" | "other";
+type UserRole = "applicant" | "student" | "faculty" | "admin";
 
 const roles: { value: UserRole; label: string }[] = [
   { value: "applicant", label: "Applicant" },
   { value: "student", label: "Student" },
+  { value: "faculty", label: "Faculty" },
   { value: "admin", label: "Administrator" },
-  { value: "panelist", label: "Panelist" },
-  { value: "other", label: "Other Roles" },
 ];
 
 export default function LoginPage() {
@@ -128,7 +127,9 @@ function LoginForm() {
           setError("An error occurred during sign in.");
         }
       } else {
-        router.push(`/${role}/dashboard`); // Successfully logged in! Redirect to dashboard/home.
+        const targetDashboard =
+          role === "faculty" ? "/faculty/dashboard" : `/${role}/dashboard`;
+        router.push(targetDashboard); // Successfully logged in! Redirect to dashboard/home.
       }
     } catch (err) {
       setError("An unexpected error occurred. Please try again.");
@@ -261,10 +262,8 @@ function LoginForm() {
                 </>
               )}
 
-              {/* Admin / Panelist / Other Fields */}
-              {(role === "admin" ||
-                role === "panelist" ||
-                role === "other") && (
+              {/* Admin / Faculty Fields */}
+              {(role === "admin" || role === "faculty") && (
                 <>
                   <div>
                     <label className="mb-1.5 block text-sm font-semibold text-(--earist-secondary)">

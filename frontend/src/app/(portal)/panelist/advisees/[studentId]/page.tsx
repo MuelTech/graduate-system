@@ -55,7 +55,7 @@ import {
 function BackToMyAdvisees() {
   return (
     <Link
-      href="/panelist/advisees"
+      href="/faculty/advisees"
       className="inline-flex items-center gap-1.5 text-sm font-medium text-(--earist-secondary) hover:text-(--earist-primary)"
     >
       <ArrowLeft className="h-4 w-4" aria-hidden="true" />
@@ -232,7 +232,7 @@ export default function AdviseeDetailPage() {
               </p>
             </div>
             <Link
-              href="/panelist/advisees"
+              href="/faculty/advisees"
               className={buttonVariants({ variant: "outline", size: "sm" })}
             >
               Back to My Advisees
@@ -267,7 +267,7 @@ export default function AdviseeDetailPage() {
               Try again
             </Button>
             <Link
-              href="/panelist/advisees"
+              href="/faculty/advisees"
               className={buttonVariants({ variant: "ghost", size: "sm" })}
             >
               Back to My Advisees
@@ -402,7 +402,7 @@ export default function AdviseeDetailPage() {
                 ))}
               </div>
               <Link
-                href="/panelist/adviser-reviews"
+                href="/faculty/adviser-reviews"
                 className={buttonVariants({ variant: "outline", size: "sm" })}
               >
                 Open Adviser Reviews

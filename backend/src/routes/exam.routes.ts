@@ -1,7 +1,11 @@
 import { Router } from "express";
 import { ExamController } from "../controllers/exam.controller";
 import { ExamAmendmentController } from "../controllers/exam-amendment.controller";
-import { authenticateJWT, requireRole } from "../middlewares/auth.middleware";
+import {
+  authenticateJWT,
+  requireRole,
+  requireEssayEvaluationAccess,
+} from "../middlewares/auth.middleware";
 
 const router = Router();
 const examController = new ExamController();
@@ -25,11 +29,13 @@ router.post('/schedule', authenticateJWT, requireRole(['APPLICANT']), examContro
 router.get('/slots', authenticateJWT, requireRole(['ADMIN']), examController.getAllSlots);
 router.get('/slots/:id/bookings', authenticateJWT, requireRole(['ADMIN']), examController.getSlotBookings);
 
-// Routes for Admin Exam Applications
+// Routes for Admin Exam Applications & Faculty Essay Evaluations
 router.get('/assignment-options/:studentId', authenticateJWT, requireRole(['ADMIN']), examController.getAssignmentOptions);
 router.post('/assignments', authenticateJWT, requireRole(['ADMIN']), examController.assignApplicant);
-router.get('/applications', authenticateJWT, requireRole(['ADMIN']), examController.getAllApplications);
-router.get('/applications/:id', authenticateJWT, requireRole(['ADMIN']), examController.getApplicationDetail);
+router.get('/applications', authenticateJWT, requireEssayEvaluationAccess, examController.getAllApplications);
+router.get('/applications/:id', authenticateJWT, requireEssayEvaluationAccess, examController.getApplicationDetail);
+router.get('/essay-evaluations', authenticateJWT, requireEssayEvaluationAccess, examController.getAllApplications);
+router.get('/essay-evaluations/:id', authenticateJWT, requireEssayEvaluationAccess, examController.getApplicationDetail);
 
 // APPLICANT ONLY: Get applicant status
 router.get('/status', authenticateJWT, requireRole(['APPLICANT']), examController.getApplicantStatus);
@@ -55,7 +61,7 @@ router.get('/result', authenticateJWT, requireRole(['APPLICANT']), examControlle
 // UIUX-2E: the legacy grading-queue and score-review READ routes were retired
 // together with the Score Management workspace. The mutations below are
 // intentionally retained (and keep the /exam/scores namespace).
-router.post('/scores/:id/grade', authenticateJWT, requireRole(['ADMIN']), examController.gradeEssay);
+router.post('/scores/:id/grade', authenticateJWT, requireEssayEvaluationAccess, examController.gradeEssay);
 router.post('/scores/:id/finalize', authenticateJWT, requireRole(['ADMIN']), examController.finalizeResult);
 router.post('/scores/:id/send-email', authenticateJWT, requireRole(['ADMIN']), examController.confirmResultAndEmail);
 

@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { SettingsController } from "../controllers/settings.controller";
-import { authenticateJWT, requireRole } from '../middlewares/auth.middleware';
+import { authenticateJWT, requireRole, requireAdminCapability } from '../middlewares/auth.middleware';
 
 const router = Router();
 const controller = new SettingsController();
@@ -8,6 +8,7 @@ const controller = new SettingsController();
 // Protect ALL routes below this line
 router.use(authenticateJWT);
 router.use(requireRole(["ADMIN"]));
+router.use(requireAdminCapability("settings.manage"));
 
 // System Settings Routes
 router.get("/", controller.getAllSettings.bind(controller));

@@ -4,14 +4,8 @@ import { AppError } from '../utils/AppError';
 const panelistRepository = new PanelistRepository();
 
 export class PanelistService {
-    async toggleAvailability(userId: string, isAvailableAsAdviser: boolean) {
-        const panelistRecord = await panelistRepository.findUserById(userId);
-
-        if (!panelistRecord) {
-            throw new AppError("Panelist profile not found for this user.", 404);
-        }
-
-        return panelistRepository.updateAvailability(panelistRecord.id, isAvailableAsAdviser);
+    async toggleAvailability(_userId: string, _isAvailableAsAdviser: boolean) {
+        throw new AppError("Adviser availability is managed by the Graduate School Administrator.", 403);
     }
 
     async getPanelistByUserId(userId: string) {

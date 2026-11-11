@@ -8,6 +8,15 @@ import { cn } from "@/lib/utils";
 import { PageHeader } from "@/components/ui/page-header";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent } from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCard,
+  TableCell,
+  TableHead as SharedTableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -79,42 +88,30 @@ function toRow(app: ApiApplication): ExamRecordRow {
 
 function TableShell({ children }: { children: React.ReactNode }) {
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full min-w-[820px] table-fixed border-collapse">
-        <colgroup>
-          <col className="w-[28%]" />
-          <col className="w-[26%]" />
-          <col className="w-[22%]" />
-          <col className="w-[16%]" />
-          <col className="w-[8%]" />
-        </colgroup>
-        {children}
-      </table>
-    </div>
+    <Table className="min-w-[820px] table-fixed">
+      <colgroup>
+        <col className="w-[28%]" />
+        <col className="w-[26%]" />
+        <col className="w-[22%]" />
+        <col className="w-[16%]" />
+        <col className="w-[8%]" />
+      </colgroup>
+      {children}
+    </Table>
   );
 }
 
 function TableHead() {
   return (
-    <thead>
-      <tr className="border-b border-(--earist-border-gray) bg-(--earist-surface-gray)">
-        <th className="px-4 py-3 text-left text-xs font-semibold text-(--earist-body-text)">
-          Applicant
-        </th>
-        <th className="px-4 py-3 text-left text-xs font-semibold text-(--earist-body-text)">
-          Program
-        </th>
-        <th className="px-4 py-3 text-left text-xs font-semibold text-(--earist-body-text)">
-          Exam Schedule
-        </th>
-        <th className="px-4 py-3 text-left text-xs font-semibold text-(--earist-body-text)">
-          Exam State
-        </th>
-        <th className="px-4 py-3 text-right text-xs font-semibold text-(--earist-body-text)">
-          Action
-        </th>
-      </tr>
-    </thead>
+    <TableHeader>
+      <TableRow className="hover:bg-(--earist-surface-gray)">
+        <SharedTableHead>Applicant</SharedTableHead>
+        <SharedTableHead>Program</SharedTableHead>
+        <SharedTableHead>Exam Schedule</SharedTableHead>
+        <SharedTableHead>Exam State</SharedTableHead>
+        <SharedTableHead className="text-right">Action</SharedTableHead>
+      </TableRow>
+    </TableHeader>
   );
 }
 
@@ -122,32 +119,29 @@ function TableSkeleton() {
   return (
     <TableShell>
       <TableHead />
-      <tbody aria-hidden="true">
+      <TableBody aria-hidden="true">
         {Array.from({ length: 6 }).map((_, index) => (
-          <tr
-            key={index}
-            className="border-b border-(--earist-border-gray) last:border-0"
-          >
-            <td className="px-4 py-3 align-top">
+          <TableRow key={index}>
+            <TableCell>
               <Skeleton className="h-4 w-32" />
               <Skeleton className="mt-2 h-3 w-24" />
-            </td>
-            <td className="px-4 py-3 align-top">
+            </TableCell>
+            <TableCell>
               <Skeleton className="h-4 w-32" />
-            </td>
-            <td className="px-4 py-3 align-top">
+            </TableCell>
+            <TableCell>
               <Skeleton className="h-4 w-28" />
               <Skeleton className="mt-2 h-3 w-16" />
-            </td>
-            <td className="px-4 py-3 align-top">
+            </TableCell>
+            <TableCell>
               <Skeleton className="h-5 w-28 rounded-full" />
-            </td>
-            <td className="px-4 py-3 align-top">
+            </TableCell>
+            <TableCell>
               <Skeleton className="ml-auto h-8 w-8 rounded-md" />
-            </td>
-          </tr>
+            </TableCell>
+          </TableRow>
         ))}
-      </tbody>
+      </TableBody>
     </TableShell>
   );
 }
@@ -434,79 +428,74 @@ export default function ExamRecordsPage() {
       </Card>
 
       {/* Table */}
-      <Card className="overflow-hidden py-0">
-        <CardContent className="min-w-0 p-0">
-          {isLoading ? (
-            <TableSkeleton />
-          ) : isError ? (
-            <ErrorState
-              onRetry={() => recordsQuery.refetch()}
-              retrying={isFetching}
-            />
-          ) : records.length === 0 ? (
-            <EmptyState filtered={false} onClear={clearFilters} />
-          ) : filtered.length === 0 ? (
-            <EmptyState filtered onClear={clearFilters} />
-          ) : (
-            <TableShell>
-              <TableHead />
-              <tbody>
-                {pageRows.map((record) => (
-                  <tr
-                    key={record.id}
-                    className="border-b border-(--earist-border-gray) last:border-0 hover:bg-(--earist-surface-gray)/60"
-                  >
-                    <td className="px-4 py-3 align-top">
-                      <p className="text-sm font-semibold break-words text-foreground">
-                        {record.name || MISSING}
-                      </p>
-                      <p className="mt-0.5 text-xs break-words text-(--earist-body-text)">
-                        {record.pinnacleId || "No Pinnacle ID"}
-                      </p>
-                    </td>
-                    <td className="px-4 py-3 align-top">
-                      <p className="text-sm break-words text-(--earist-body-text)">
-                        {record.programName}
-                      </p>
-                    </td>
-                    <td className="px-4 py-3 align-top">
-                      {record.examDate ? (
-                        <>
-                          <p className="text-sm text-(--earist-body-text)">
-                            {formatExamDate(record.examDate)}
-                          </p>
-                          <p className="mt-0.5 text-xs whitespace-nowrap text-(--earist-body-text)">
-                            {formatExamTime(record.examTime)}
-                          </p>
-                        </>
-                      ) : (
-                        <span className="text-sm text-(--earist-body-text)">
-                          {MISSING}
-                        </span>
+      <TableCard>
+        {isLoading ? (
+          <TableSkeleton />
+        ) : isError ? (
+          <ErrorState
+            onRetry={() => recordsQuery.refetch()}
+            retrying={isFetching}
+          />
+        ) : records.length === 0 ? (
+          <EmptyState filtered={false} onClear={clearFilters} />
+        ) : filtered.length === 0 ? (
+          <EmptyState filtered onClear={clearFilters} />
+        ) : (
+          <TableShell>
+            <TableHead />
+            <TableBody>
+              {pageRows.map((record) => (
+                <TableRow key={record.id}>
+                  <TableCell>
+                    <p className="text-sm font-semibold break-words text-foreground">
+                      {record.name || MISSING}
+                    </p>
+                    <p className="mt-0.5 text-xs break-words text-(--earist-body-text)">
+                      {record.pinnacleId || "No Pinnacle ID"}
+                    </p>
+                  </TableCell>
+                  <TableCell>
+                    <p className="text-sm break-words text-(--earist-body-text)">
+                      {record.programName}
+                    </p>
+                  </TableCell>
+                  <TableCell>
+                    {record.examDate ? (
+                      <>
+                        <p className="text-sm text-(--earist-body-text)">
+                          {formatExamDate(record.examDate)}
+                        </p>
+                        <p className="mt-0.5 text-xs whitespace-nowrap text-(--earist-body-text)">
+                          {formatExamTime(record.examTime)}
+                        </p>
+                      </>
+                    ) : (
+                      <span className="text-sm text-(--earist-body-text)">
+                        {MISSING}
+                      </span>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    <ExamStateBadge state={record.state} />
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <Link
+                      href={`/admin/exam/applications/${record.id}`}
+                      aria-label={`View exam record for ${record.name || "applicant"}`}
+                      className={cn(
+                        buttonVariants({ variant: "ghost", size: "icon" }),
+                        "ml-auto",
                       )}
-                    </td>
-                    <td className="px-4 py-3 align-top">
-                      <ExamStateBadge state={record.state} />
-                    </td>
-                    <td className="px-4 py-3 text-right align-top">
-                      <Link
-                        href={`/admin/exam/applications/${record.id}`}
-                        aria-label={`View exam record for ${record.name || "applicant"}`}
-                        className={cn(
-                          buttonVariants({ variant: "ghost", size: "icon" }),
-                          "ml-auto",
-                        )}
-                      >
-                        <Eye className="h-4 w-4" aria-hidden="true" />
-                      </Link>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </TableShell>
-          )}
-        </CardContent>
-      </Card>
+                    >
+                      <Eye className="h-4 w-4" aria-hidden="true" />
+                    </Link>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </TableShell>
+        )}
+      </TableCard>
 
       {/* Pagination */}
       {!isLoading && !isError && total > 0 && (

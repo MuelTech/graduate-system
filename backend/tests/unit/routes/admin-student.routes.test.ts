@@ -32,7 +32,7 @@ describe("Admin students routes are ADMIN-only", () => {
   it("GET / requires authenticateJWT + ADMIN", () => {
     const route = findRoute(layers, "/", "get");
     expect(route).toBeDefined();
-    expect(route?.stack.length).toBe(3);
+    expect(route?.stack.length).toBe(4);
     expect(route?.stack[0]?.handle).toBe(authenticateJWT);
   });
 
@@ -51,7 +51,7 @@ describe("Admin students routes are ADMIN-only", () => {
   it("GET /:id/journey requires authenticateJWT + ADMIN", () => {
     const route = findRoute(layers, "/:id/journey", "get");
     expect(route).toBeDefined();
-    expect(route?.stack.length).toBe(3);
+    expect(route?.stack.length).toBe(4);
     expect(route?.stack[0]?.handle).toBe(authenticateJWT);
   });
 });

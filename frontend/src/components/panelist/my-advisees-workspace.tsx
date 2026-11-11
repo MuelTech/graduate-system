@@ -175,7 +175,7 @@ function ActiveAdviseeCard({ advisee }: { advisee: AdviserActiveAdviseeDto }) {
           ) : null}
         </dl>
         <Link
-          href={`/panelist/advisees/${advisee.student.id}`}
+          href={`/faculty/advisees/${advisee.student.id}`}
           className={cn(
             buttonVariants(),
             "mt-auto min-h-11 w-full bg-(--earist-primary) px-5 font-semibold text-white hover:bg-(--earist-primary)/90",

@@ -16,6 +16,14 @@ import {
   Users,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -290,119 +298,117 @@ export function InstitutionalReportsTab({ data }: InstitutionalReportsTabProps) 
         </CardHeader>
 
         <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs text-(--earist-body-text)">
-              <thead className="bg-(--earist-surface-gray) text-[11px] font-semibold text-(--earist-body-text) border-b border-(--earist-border-gray)">
-                <tr>
-                  <th scope="col" className="px-4 py-3">Student Name & ID</th>
-                  <th scope="col" className="px-3 py-3">Program</th>
-                  <th scope="col" className="px-3 py-3 text-center">Enrolled</th>
-                  <th scope="col" className="px-4 py-3 text-center">Residency Elapsed</th>
-                  <th scope="col" className="px-3 py-3 text-center">Remaining</th>
-                  <th scope="col" className="px-3 py-3 text-center">Status</th>
-                  <th scope="col" className="px-4 py-3 text-right">Dean Action</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-(--earist-border-gray)">
-                {filteredResidency.length === 0 ? (
-                  <tr>
-                    <td colSpan={7} className="px-4 py-8 text-center text-xs text-gray-400">
-                      No student records match your filter.
-                    </td>
-                  </tr>
-                ) : (
-                  filteredResidency.map((s) => {
-                    const percentage = Math.min((s.elapsedYears / s.maxResidencyYears) * 100, 100);
-                    const isOverstaying = s.status === "OVERSTAYING";
-                    const isApproaching = s.status === "APPROACHING_LIMIT";
+          <Table>
+            <TableHeader>
+              <TableRow className="hover:bg-(--earist-surface-gray)">
+                <TableHead>Student Name & ID</TableHead>
+                <TableHead>Program</TableHead>
+                <TableHead className="text-center">Enrolled</TableHead>
+                <TableHead className="text-center">Residency Elapsed</TableHead>
+                <TableHead className="text-center">Remaining</TableHead>
+                <TableHead className="text-center">Status</TableHead>
+                <TableHead className="text-right">Dean Action</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filteredResidency.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={7} className="py-8 text-center text-xs text-gray-400">
+                    No student records match your filter.
+                  </TableCell>
+                </TableRow>
+              ) : (
+                filteredResidency.map((s) => {
+                  const percentage = Math.min((s.elapsedYears / s.maxResidencyYears) * 100, 100);
+                  const isOverstaying = s.status === "OVERSTAYING";
+                  const isApproaching = s.status === "APPROACHING_LIMIT";
 
-                    return (
-                      <tr key={s.id} className="hover:bg-(--earist-surface-gray)/60 transition-colors">
-                        <td className="px-4 py-3">
-                          <p className="font-semibold text-foreground">{s.name}</p>
-                          <p className="text-[11px] text-gray-500 font-mono">{s.studentNumber}</p>
-                        </td>
+                  return (
+                    <TableRow key={s.id}>
+                      <TableCell>
+                        <p className="font-semibold text-foreground">{s.name}</p>
+                        <p className="text-[11px] text-gray-500 font-mono">{s.studentNumber}</p>
+                      </TableCell>
 
-                        <td className="px-3 py-3">
-                          <p className="text-foreground">{s.program}</p>
-                          <span className="text-[10px] text-gray-500">
-                            {s.degreeLevel} (Max {s.maxResidencyYears} yrs)
-                          </span>
-                        </td>
+                      <TableCell>
+                        <p className="text-foreground">{s.program}</p>
+                        <span className="text-[10px] text-gray-500">
+                          {s.degreeLevel} (Max {s.maxResidencyYears} yrs)
+                        </span>
+                      </TableCell>
 
-                        <td className="px-3 py-3 text-center font-mono text-[11px] text-(--earist-body-text)">
-                          {s.enrollmentDate}
-                        </td>
+                      <TableCell className="text-center font-mono text-[11px] text-(--earist-body-text)">
+                        {s.enrollmentDate}
+                      </TableCell>
 
-                        <td className="px-4 py-3">
-                          <div className="flex flex-col items-center gap-1">
-                            <div className="h-1.5 w-28 rounded-full bg-gray-200 overflow-hidden">
-                              <div
-                                className={`h-full ${
-                                  isOverstaying
-                                    ? "bg-(--earist-primary)"
-                                    : isApproaching
-                                    ? "bg-(--earist-warning)"
-                                    : "bg-(--earist-success)"
-                                }`}
-                                style={{ width: `${percentage}%` }}
-                              />
-                            </div>
-                            <span className="text-[10px] text-(--earist-body-text)">
-                              {s.elapsedYears} / {s.maxResidencyYears} Years ({percentage.toFixed(0)}%)
-                            </span>
+                      <TableCell>
+                        <div className="flex flex-col items-center gap-1">
+                          <div className="h-1.5 w-28 rounded-full bg-gray-200 overflow-hidden">
+                            <div
+                              className={`h-full ${
+                                isOverstaying
+                                  ? "bg-(--earist-primary)"
+                                  : isApproaching
+                                  ? "bg-(--earist-warning)"
+                                  : "bg-(--earist-success)"
+                              }`}
+                              style={{ width: `${percentage}%` }}
+                            />
                           </div>
-                        </td>
+                          <span className="text-[10px] text-(--earist-body-text)">
+                            {s.elapsedYears} / {s.maxResidencyYears} Years ({percentage.toFixed(0)}%)
+                          </span>
+                        </div>
+                      </TableCell>
 
-                        <td className="px-3 py-3 text-center">
-                          {isOverstaying ? (
-                            <span className="font-bold text-(--earist-primary) text-[11px]">Overdue</span>
-                          ) : (
-                            <span className={`text-[11px] font-medium ${isApproaching ? "text-(--earist-warning)" : ""}`}>
-                              {s.remainingMonths} Months
-                            </span>
-                          )}
-                        </td>
+                      <TableCell className="text-center">
+                        {isOverstaying ? (
+                          <span className="font-bold text-(--earist-primary) text-[11px]">Overdue</span>
+                        ) : (
+                          <span className={`text-[11px] font-medium ${isApproaching ? "text-(--earist-warning)" : ""}`}>
+                            {s.remainingMonths} Months
+                          </span>
+                        )}
+                      </TableCell>
 
-                        <td className="px-3 py-3 text-center">
-                          {isOverstaying ? (
-                            <Badge variant="outline" className="border-(--earist-primary) text-(--earist-primary) text-[10px]">
-                              Overstaying
-                            </Badge>
-                          ) : isApproaching ? (
-                            <Badge variant="outline" className="border-(--earist-warning) text-(--earist-warning) text-[10px]">
-                              Approaching Limit
-                            </Badge>
-                          ) : (
-                            <Badge variant="outline" className="border-(--earist-success) text-(--earist-success) text-[10px]">
-                              Compliant
-                            </Badge>
-                          )}
-                        </td>
+                      <TableCell className="text-center">
+                        {isOverstaying ? (
+                          <Badge variant="outline" className="border-(--earist-primary) text-(--earist-primary) text-[10px]">
+                            Overstaying
+                          </Badge>
+                        ) : isApproaching ? (
+                          <Badge variant="outline" className="border-(--earist-warning) text-(--earist-warning) text-[10px]">
+                            Approaching Limit
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline" className="border-(--earist-success) text-(--earist-success) text-[10px]">
+                            Compliant
+                          </Badge>
+                        )}
+                      </TableCell>
 
-                        <td className="px-4 py-3 text-right">
-                          {warningSentIds[s.id] ? (
-                            <span className="text-[10px] text-(--earist-body-text)">
-                              Notice Sent {warningSentIds[s.id]}
-                            </span>
-                          ) : (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleSendWarning(s.id)}
-                              className="h-7 border-(--earist-border-gray) bg-white text-xs text-(--earist-body-text) hover:bg-(--earist-surface-gray)"
-                            >
-                              Issue Warning
-                            </Button>
-                          )}
-                        </td>
-                      </tr>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
-          </div>
+                      <TableCell className="text-right">
+                        {warningSentIds[s.id] ? (
+                          <span className="text-[10px] text-(--earist-body-text)">
+                            Notice Sent {warningSentIds[s.id]}
+                          </span>
+                        ) : (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleSendWarning(s.id)}
+                            className="h-7 border-(--earist-border-gray) bg-white text-xs text-(--earist-body-text) hover:bg-(--earist-surface-gray)"
+                          >
+                            Issue Warning
+                          </Button>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
+              )}
+            </TableBody>
+          </Table>
         </CardContent>
       </Card>
 

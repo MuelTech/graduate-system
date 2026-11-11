@@ -147,7 +147,7 @@ export class MemoService {
             if (!student) return [];
             
             return await this.memoRepo.getMemosForStudent(student.programId);
-        } else if (role === "PANELIST") {
+        } else if (role === "FACULTY" || role === "PANELIST") {
             return await this.memoRepo.getMemosForPanelist();
         }
 

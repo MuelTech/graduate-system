@@ -3,18 +3,20 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useQuery } from "@tanstack/react-query";
+import { signOut, useSession } from "next-auth/react";
+import { apiClientRequest } from "@/lib/api.client";
 import { ChatbotWidget } from "@/components/chatbot/chatbot-widget";
-import { signOut } from "next-auth/react";
 import { NotificationBell } from "@/components/layout/notification-bell";
 import {
   LayoutDashboard,
   User,
   FileCheck2,
+  ClipboardCheck,
   PenTool,
   Users,
   Library,
   Megaphone,
-  Bell,
   GraduationCap,
   Menu,
   X,
@@ -22,12 +24,24 @@ import {
   ChevronLeft,
 } from "lucide-react";
 
+interface FacultyProfileAccess {
+  id: string;
+  isExternal: boolean;
+  isAvailableAsAdviser: boolean;
+  canEvaluateEssays: boolean;
+}
+
 /**
  * UIUX-3D: My Defenses is the single assignment entry point. Its navigation
  * item stays active for the canonical Defense Workspace and for the retired
  * compatibility route families that resolve into that same context.
  */
 const MY_DEFENSES_CONTEXT_ROUTES = [
+  "/faculty/defenses",
+  "/faculty/defense-workspace",
+  "/faculty/scoring",
+  "/faculty/defense-lobby",
+  "/faculty/materials",
   "/panelist/defenses",
   "/panelist/defense-workspace",
   "/panelist/scoring",
@@ -36,24 +50,17 @@ const MY_DEFENSES_CONTEXT_ROUTES = [
 ];
 
 function isNavItemActive(pathname: string, href: string): boolean {
-  if (href === "/panelist/defenses") {
+  const normalizedPathname = pathname.replace(/^\/panelist/, "/faculty");
+  if (href === "/faculty/defenses") {
     return MY_DEFENSES_CONTEXT_ROUTES.some(
-      (base) => pathname === base || pathname.startsWith(`${base}/`),
+      (base) =>
+        normalizedPathname === base || normalizedPathname.startsWith(`${base}/`),
     );
   }
-  return pathname === href || pathname.startsWith(`${href}/`);
+  return (
+    normalizedPathname === href || normalizedPathname.startsWith(`${href}/`)
+  );
 }
-
-const navItems = [
-  { href: "/panelist/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/panelist/profile", label: "Profile", icon: User },
-  { href: "/panelist/defenses", label: "My Defenses", icon: FileCheck2 },
-  { href: "/panelist/advisees", label: "My Advisees", icon: Users },
-  { href: "/panelist/signatures", label: "E-Signatures", icon: PenTool },
-  { href: "/panelist/repository", label: "Repository", icon: Library },
-  { href: "/panelist/announcements", label: "Announcements", icon: Megaphone },
-  { href: "/panelist/notifications", label: "Notifications", icon: Bell },
-];
 
 export default function PanelistLayout({
   children,
@@ -61,17 +68,67 @@ export default function PanelistLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
+  const { data: session } = useSession();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
 
+  // Zero-flicker faculty profile lookup: uses session values immediately as
+  // initial fallback while keeping a 60s cached query to reflect live Admin updates.
+  const { data: profileData } = useQuery<FacultyProfileAccess>({
+    queryKey: ["panelistProfile"],
+    queryFn: async () =>
+      (await apiClientRequest("/panelists/me")) as FacultyProfileAccess,
+    staleTime: 60_000,
+    refetchOnWindowFocus: false,
+  });
+
+  const sessionProfile = session?.user?.facultyProfile;
+  const isExternal =
+    profileData?.isExternal ?? sessionProfile?.isExternal ?? false;
+  const canEvaluateEssays =
+    profileData?.canEvaluateEssays ??
+    sessionProfile?.canEvaluateEssays ??
+    false;
+
+  const navItems = [
+    { href: "/faculty/dashboard", label: "Dashboard", icon: LayoutDashboard },
+    { href: "/faculty/profile", label: "Profile", icon: User },
+    ...(canEvaluateEssays
+      ? [
+          {
+            href: "/faculty/essay-evaluations",
+            label: "Essay Evaluations",
+            icon: ClipboardCheck,
+          },
+        ]
+      : []),
+    { href: "/faculty/defenses", label: "My Defenses", icon: FileCheck2 },
+    ...(!isExternal
+      ? [{ href: "/faculty/advisees", label: "My Advisees", icon: Users }]
+      : []),
+    { href: "/faculty/signatures", label: "E-Signatures", icon: PenTool },
+    { href: "/faculty/repository", label: "Repository", icon: Library },
+    {
+      href: "/faculty/announcements",
+      label: "Announcements",
+      icon: Megaphone,
+    },
+  ];
+
   // CDW-4: the Defense Workspace route is an immersive, sidebar-free focus mode.
-  // Only this route opts out of the normal Panelist portal chrome; every other
-  // Panelist page keeps the standard sidebar/header/navigation unchanged.
-  if (pathname.startsWith("/panelist/defense-workspace")) {
+  // Only this route opts out of the normal Faculty portal chrome; every other
+  // Faculty page keeps the standard sidebar/header/navigation unchanged.
+  if (
+    pathname.startsWith("/panelist/defense-workspace") ||
+    pathname.startsWith("/faculty/defense-workspace")
+  ) {
     return (
       <div className="min-h-screen bg-(--earist-surface-gray)">{children}</div>
     );
   }
+
+  const avatarInitial =
+    session?.user?.email?.charAt(0).toUpperCase() || "F";
 
   return (
     <div className="flex min-h-screen bg-(--earist-surface-gray)">
@@ -93,7 +150,7 @@ export default function PanelistLayout({
       >
         {/* Logo */}
         <div className="flex h-16 items-center justify-between border-b border-white/10 px-4">
-          <Link href="/panelist/dashboard" className="flex items-center gap-2">
+          <Link href="/faculty/dashboard" className="flex items-center gap-2">
             <GraduationCap className="h-7 w-7 text-(--earist-accent)" />
             {!collapsed && (
               <div className="flex flex-col">
@@ -101,7 +158,7 @@ export default function PanelistLayout({
                   EARIST
                 </span>
                 <span className="text-[10px] leading-tight text-white/80">
-                  Panelist Portal
+                  Faculty Portal
                 </span>
               </div>
             )}
@@ -185,13 +242,16 @@ export default function PanelistLayout({
               className="text-lg font-bold text-(--earist-primary)"
               style={{ fontFamily: '"Calibri", sans-serif' }}
             >
-              Panelist Portal
+              Faculty Portal
             </h1>
           </div>
           <div className="flex items-center gap-3">
-                        <NotificationBell role="PANELIST" />
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-(--earist-primary) text-sm font-bold text-white">
-              R
+            <NotificationBell role="FACULTY" />
+            <div
+              className="flex h-8 w-8 items-center justify-center rounded-full bg-(--earist-primary) text-sm font-bold text-white"
+              title={session?.user?.email || "Faculty"}
+            >
+              {avatarInitial}
             </div>
           </div>
         </header>

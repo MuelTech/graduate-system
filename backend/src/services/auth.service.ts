@@ -4,6 +4,7 @@ import { AuthRepository } from '../repositories/auth.repository';
 import { RegisterInput, LoginInput, UserResponse, LoginResponse } from '../interfaces/auth.interfaces';
 import { Prisma, UserRole, AdmissionStatus, AlignmentStatus } from '@prisma/client';
 import { AppError } from '../utils/AppError';
+import { sanitizeAdminCapabilities } from '../config/admin-capabilities';
 
 export class AuthService {
     private authRepository = new AuthRepository();
@@ -187,10 +188,27 @@ export class AuthService {
         else {
             if (!data.email) throw new AppError("Email is required!", 400);
             user = await this.authRepository.findUserByEmail(data.email);
+
+            if (user) {
+                const requestedRole = String(data.role || "").toLowerCase();
+                if (requestedRole === "faculty" || requestedRole === "panelist") {
+                    if (user.role !== "FACULTY" && user.role !== "PANELIST") {
+                        throw new AppError("This account is not registered as a Faculty member.", 403);
+                    }
+                } else if (requestedRole === "admin") {
+                    if (user.role !== "ADMIN") {
+                        throw new AppError("This account is not registered as an Administrator.", 403);
+                    }
+                }
+            }
         }
 
         if (!user) {
             throw new AppError("Invalid credentials!", 401);
+        }
+
+        if (user.isActive === false) {
+            throw new AppError("This account has been deactivated. Please contact the Administrator.", 403);
         }
 
         const isPasswordValid = await bcrypt.compare(data.password, user.passwordHash);
@@ -198,8 +216,14 @@ export class AuthService {
             throw new AppError("Invalid login credentials!", 401);
         }
 
+        const effectiveRole: UserRole = user.role === UserRole.PANELIST ? UserRole.FACULTY : user.role;
+        const panelist = (user as any).panelist;
+        if (effectiveRole === UserRole.FACULTY && panelist && !panelist.isActive) {
+            throw new AppError("This Faculty profile is currently inactive.", 403);
+        }
+
         const token = jwt.sign(
-            { userId: user.id, role: user.role, mustChangePassword: user.mustChangePassword },
+            { userId: user.id, role: effectiveRole, mustChangePassword: user.mustChangePassword },
             this.getJwtSecret(),
             { expiresIn: '24h' }
         );
@@ -209,9 +233,66 @@ export class AuthService {
             user: {
                 id: user.id,
                 email: user.email,
-                role: user.role,
+                firstName: user.firstName,
+                lastName: user.lastName,
+                title: user.title,
+                suffix: user.suffix,
+                role: effectiveRole,
                 mustChangePassword: user.mustChangePassword,
+                adminAccessLevel: effectiveRole === UserRole.ADMIN ? (user.adminAccessLevel ?? "FULL") : null,
+                adminCapabilities:
+                    effectiveRole === UserRole.ADMIN
+                        ? sanitizeAdminCapabilities(user.adminCapabilities)
+                        : [],
+                facultyProfile:
+                    effectiveRole === UserRole.FACULTY && panelist
+                        ? {
+                              id: panelist.id,
+                              isExternal: Boolean(panelist.isExternal),
+                              isAvailableAsAdviser: panelist.isExternal ? false : Boolean(panelist.isAvailableAsAdviser),
+                              canEvaluateEssays: Boolean(panelist.canEvaluateEssays),
+                              highestEducationalAttainment: panelist.highestEducationalAttainment,
+                              officeAffiliation: panelist.officeAffiliation,
+                              specialization: panelist.specialization,
+                          }
+                        : null,
             },
+        };
+    }
+
+    async getMe(userId: string): Promise<UserResponse> {
+        const user = await this.authRepository.findUserById(userId);
+        if (!user || user.isActive === false) {
+            throw new AppError("Account not found or inactive.", 403);
+        }
+        const effectiveRole: UserRole = user.role === UserRole.PANELIST ? UserRole.FACULTY : user.role;
+        const panelist = user.panelist;
+        return {
+            id: user.id,
+            email: user.email,
+            firstName: user.firstName,
+            lastName: user.lastName,
+            title: user.title,
+            suffix: user.suffix,
+            role: effectiveRole,
+            mustChangePassword: user.mustChangePassword,
+            adminAccessLevel: effectiveRole === UserRole.ADMIN ? (user.adminAccessLevel ?? "FULL") : null,
+            adminCapabilities:
+                effectiveRole === UserRole.ADMIN
+                    ? sanitizeAdminCapabilities(user.adminCapabilities)
+                    : [],
+            facultyProfile:
+                effectiveRole === UserRole.FACULTY && panelist
+                    ? {
+                          id: panelist.id,
+                          isExternal: Boolean(panelist.isExternal),
+                          isAvailableAsAdviser: panelist.isExternal ? false : Boolean(panelist.isAvailableAsAdviser),
+                          canEvaluateEssays: Boolean(panelist.canEvaluateEssays),
+                          highestEducationalAttainment: panelist.highestEducationalAttainment,
+                          officeAffiliation: panelist.officeAffiliation,
+                          specialization: panelist.specialization,
+                      }
+                    : null,
         };
     }
 
@@ -227,9 +308,10 @@ export class AuthService {
             throw new AppError("User not found!", 404);
         }
 
+        const effectiveRole: UserRole = user.role === UserRole.PANELIST ? UserRole.FACULTY : user.role;
         // Issue new JWT with mustChangePassword: false
         const token = jwt.sign(
-            { userId: user.id, role: user.role, mustChangePassword: false },
+            { userId: user.id, role: effectiveRole, mustChangePassword: false },
             this.getJwtSecret(),
             { expiresIn: '24h' }
         );

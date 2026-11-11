@@ -207,7 +207,9 @@ describe("AuthService.login Applicant + staff roles (regression)", () => {
 
       expect(repo.findUserByEmail).toHaveBeenCalledWith(`${role}@example.com`);
       expect(repo.findStudentByStudentNumber).not.toHaveBeenCalled();
-      expect(result.user.role).toBe(role.toUpperCase());
+      expect(result.user.role).toBe(
+        role === "panelist" ? "FACULTY" : role.toUpperCase(),
+      );
     }
   });
 });

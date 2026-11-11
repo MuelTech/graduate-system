@@ -34,14 +34,14 @@ describe("DL-11 admin storage routes", () => {
   it("GET /health requires authenticateJWT + ADMIN", () => {
     const route = findRoute(layers, "/health", "get");
     expect(route).toBeDefined();
-    expect(route?.stack.length).toBe(3);
+    expect(route?.stack.length).toBe(4);
     expect(route?.stack[0]?.handle).toBe(authenticateJWT);
   });
 
   it("POST /integrity-scan requires authenticateJWT + ADMIN", () => {
     const route = findRoute(layers, "/integrity-scan", "post");
     expect(route).toBeDefined();
-    expect(route?.stack.length).toBe(3);
+    expect(route?.stack.length).toBe(4);
     expect(route?.stack[0]?.handle).toBe(authenticateJWT);
   });
 

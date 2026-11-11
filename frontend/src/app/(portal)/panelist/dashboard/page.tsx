@@ -3,7 +3,9 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
+import { useSession } from "next-auth/react";
 import { apiClientRequest } from "@/lib/api.client";
+import type { ApiApplication } from "@/types";
 import { cn } from "@/lib/utils";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -15,6 +17,7 @@ import {
   ChevronRight,
   CircleAlert,
   CirclePlay,
+  ClipboardCheck,
   ClipboardList,
   Clock,
   FileSignature,
@@ -168,6 +171,10 @@ function LoadError({
 
 /* ------------------------------------------------------------------- rows */
 
+function toFacultyHref(href: string): string {
+  return href.replace(/^\/panelist(?=\/|$)/, "/faculty");
+}
+
 function TaskRow({ task }: { task: PanelistAttentionTask }) {
   const Icon = CATEGORY_ICON[task.category] ?? ClipboardList;
   return (
@@ -190,7 +197,7 @@ function TaskRow({ task }: { task: PanelistAttentionTask }) {
         </p>
       </div>
       <Link
-        href={task.href}
+        href={toFacultyHref(task.href)}
         className={cn(
           buttonVariants({ variant: "outline", size: "sm" }),
           "shrink-0 justify-between",
@@ -207,7 +214,7 @@ function ActiveDefenseRow({ item }: { item: ActiveDefenseItem }) {
   return (
     <li>
       <Link
-        href={item.href}
+        href={toFacultyHref(item.href)}
         className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-(--earist-surface-gray) p-3 transition-colors hover:bg-(--earist-surface-light-red) focus-visible:ring-2 focus-visible:ring-(--earist-primary) focus-visible:outline-none"
       >
         <span className="min-w-0">
@@ -237,7 +244,7 @@ function UpcomingDefenseSummary({ item }: { item: UpcomingDefenseItem }) {
   return (
     <li>
       <Link
-        href={item.href}
+        href={toFacultyHref(item.href)}
         className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-(--earist-surface-gray) p-3 transition-colors hover:bg-(--earist-surface-light-red) focus-visible:ring-2 focus-visible:ring-(--earist-primary) focus-visible:outline-none"
       >
         <span className="min-w-0">
@@ -281,7 +288,7 @@ function WaitingRow({ item }: { item: WaitingItem }) {
   return (
     <li>
       <Link
-        href={item.href}
+        href={toFacultyHref(item.href)}
         className="flex items-center justify-between gap-2 rounded-lg bg-(--earist-surface-gray) p-3 transition-colors hover:bg-(--earist-surface-light-red) focus-visible:ring-2 focus-visible:ring-(--earist-primary) focus-visible:outline-none"
       >
         {body}
@@ -298,6 +305,38 @@ function WaitingRow({ item }: { item: WaitingItem }) {
 
 export default function PanelistDashboard() {
   const [showAllTasks, setShowAllTasks] = useState(false);
+  const { data: session } = useSession();
+
+  const { data: profileData } = useQuery<{ canEvaluateEssays?: boolean }>({
+    queryKey: ["panelistProfile"],
+    queryFn: async () =>
+      (await apiClientRequest("/panelists/me")) as {
+        canEvaluateEssays?: boolean;
+      },
+    staleTime: 60_000,
+    refetchOnWindowFocus: false,
+  });
+
+  const canEvaluateEssays =
+    profileData?.canEvaluateEssays ??
+    session?.user?.facultyProfile?.canEvaluateEssays ??
+    false;
+
+  const { data: examApps = [] } = useQuery<ApiApplication[]>({
+    queryKey: ["examRecords"],
+    queryFn: async () => {
+      const res = await apiClientRequest("/exam/applications");
+      return Array.isArray(res) ? (res as ApiApplication[]) : [];
+    },
+    enabled: canEvaluateEssays,
+    staleTime: 30_000,
+  });
+
+  const pendingEssayCount = canEvaluateEssays
+    ? examApps.filter(
+        (app) => app.status === "TAKEN" && !app.essayEvaluationCompleted,
+      ).length
+    : 0;
 
   const {
     data,
@@ -377,13 +416,26 @@ export default function PanelistDashboard() {
       value: kpis.upcomingDefenses,
       supporting: "Future scheduled sessions assigned to you",
       icon: CalendarClock,
+      href: undefined as string | undefined,
     },
     {
       label: "Pending Tasks",
       value: kpis.pendingTasks,
       supporting: "Actions currently requiring you",
       icon: ClipboardList,
+      href: undefined as string | undefined,
     },
+    ...(canEvaluateEssays
+      ? [
+          {
+            label: "Pending Essay Evaluations",
+            value: pendingEssayCount,
+            supporting: "Applicant entrance exam essays awaiting grading",
+            icon: ClipboardCheck,
+            href: "/faculty/essay-evaluations",
+          },
+        ]
+      : []),
   ];
 
   return (
@@ -410,7 +462,12 @@ export default function PanelistDashboard() {
 
       {/* 1. Summary KPIs */}
       <section aria-label="Summary metrics">
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div
+          className={cn(
+            "grid grid-cols-1 gap-4",
+            kpiCards.length === 3 ? "sm:grid-cols-3" : "sm:grid-cols-2",
+          )}
+        >
           {kpiCards.map((kpi) => (
             <Card key={kpi.label}>
               <CardContent className="flex items-start justify-between gap-3">
@@ -424,6 +481,15 @@ export default function PanelistDashboard() {
                   <p className="text-xs text-(--earist-body-text)">
                     {kpi.supporting}
                   </p>
+                  {kpi.href ? (
+                    <Link
+                      href={kpi.href}
+                      className="inline-flex items-center pt-1 text-xs font-medium text-(--earist-secondary) hover:underline"
+                    >
+                      Open Essay Evaluations
+                      <ChevronRight className="ml-0.5 h-3.5 w-3.5" />
+                    </Link>
+                  ) : null}
                 </div>
                 <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-(--earist-surface-gray) text-(--earist-secondary)">
                   <kpi.icon className="h-5 w-5" aria-hidden="true" />
@@ -495,7 +561,7 @@ export default function PanelistDashboard() {
         description="Your next scheduled assigned defenses."
         action={
           <Link
-            href="/panelist/defenses"
+            href="/faculty/defenses"
             className="text-xs font-medium text-(--earist-secondary) hover:underline"
           >
             View All Defenses
@@ -545,7 +611,7 @@ export default function PanelistDashboard() {
                 </p>
               </div>
               <Link
-                href={nextDefense.href}
+                href={toFacultyHref(nextDefense.href)}
                 className={cn(
                   buttonVariants({ size: "sm" }),
                   "mt-3 w-full bg-(--earist-primary) hover:bg-(--earist-primary)/90 sm:w-auto",
@@ -589,7 +655,7 @@ export default function PanelistDashboard() {
         description="Your latest notification records."
         action={
           <Link
-            href="/panelist/notifications"
+            href="/faculty/notifications"
             className="text-xs font-medium text-(--earist-secondary) hover:underline"
           >
             View all notifications

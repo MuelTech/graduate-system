@@ -341,13 +341,35 @@ export interface PanelistResponse {
     updatedAt: string;
     createdBy?: { firstName: string; lastName: string } | null;
     updatedBy?: { firstName: string; lastName: string } | null;
+    _count?: {
+      adviserAssignments?: number;
+      panelAssignments?: number;
+    };
   };
   isExternal: boolean;
   highestEducationalAttainment: string;
   officeAffiliation: string;
   specialization: string;
   isAvailableAsAdviser: boolean;
+  canEvaluateEssays: boolean;
   createdAt: string;
+}
+
+export interface AdministratorResponse {
+  id: string;
+  title?: string | null;
+  firstName: string;
+  lastName: string;
+  suffix?: string | null;
+  email: string;
+  isActive: boolean;
+  mustChangePassword?: boolean;
+  adminAccessLevel: "FULL" | "RESTRICTED" | null;
+  adminCapabilities: string[] | null;
+  createdAt: string;
+  updatedAt: string;
+  createdBy?: { firstName: string; lastName: string } | null;
+  updatedBy?: { firstName: string; lastName: string } | null;
 }
 
 // ADMIN THESIS INTERFACES

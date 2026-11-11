@@ -17,6 +17,14 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { AlertCircle, ExternalLink, Loader2, Printer, RefreshCw } from "lucide-react";
 import {
   formatDefenseDate,
@@ -636,30 +644,27 @@ export default function AdminDefenseRecordDetailPage() {
                   No authorized evaluator records found for this session.
                 </p>
               ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full min-w-[720px] text-left text-sm">
-                    <thead>
-                      <tr className="border-b border-(--earist-border-gray) text-xs font-semibold text-(--earist-body-text)">
-                        <th className="px-3 py-2">Evaluator</th>
-                        <th className="px-3 py-2">Role</th>
-                        <th className="px-3 py-2">Evaluation Status</th>
-                        <th className="px-3 py-2">Signature Status</th>
-                        <th className="px-3 py-2">Signed At</th>
-                      </tr>
-                    </thead>
-                    <tbody>
+                <div className="overflow-hidden rounded-lg border border-(--earist-border-gray)">
+                  <Table className="min-w-[720px]">
+                    <TableHeader>
+                      <TableRow className="hover:bg-(--earist-surface-gray)">
+                        <TableHead>Evaluator</TableHead>
+                        <TableHead>Role</TableHead>
+                        <TableHead>Evaluation Status</TableHead>
+                        <TableHead>Signature Status</TableHead>
+                        <TableHead>Signed At</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
                       {data.individualEvaluations.map((e) => (
-                        <tr
-                          key={e.panelAssignmentId}
-                          className="border-b border-(--earist-border-gray) last:border-0"
-                        >
-                          <td className="px-3 py-2 break-words">
+                        <TableRow key={e.panelAssignmentId}>
+                          <TableCell className="break-words">
                             {e.evaluatorName}
-                          </td>
-                          <td className="px-3 py-2">
+                          </TableCell>
+                          <TableCell>
                             {ROLE_LABELS[e.role] ?? e.role}
-                          </td>
-                          <td className="px-3 py-2">
+                          </TableCell>
+                          <TableCell>
                             <Badge
                               variant="outline"
                               className={cn(
@@ -669,8 +674,8 @@ export default function AdminDefenseRecordDetailPage() {
                             >
                               {evaluatorStatusLabel(e.status)}
                             </Badge>
-                          </td>
-                          <td className="px-3 py-2">
+                          </TableCell>
+                          <TableCell>
                             <Badge
                               variant="outline"
                               className={cn(
@@ -682,16 +687,16 @@ export default function AdminDefenseRecordDetailPage() {
                             >
                               {e.hasOfficialCriteria ? "Signed" : "Not signed"}
                             </Badge>
-                          </td>
-                          <td className="px-3 py-2 tabular-nums">
+                          </TableCell>
+                          <TableCell className="tabular-nums">
                             {e.hasOfficialCriteria
                               ? formatSignedAt(e.signedAt)
                               : "—"}
-                          </td>
-                        </tr>
+                          </TableCell>
+                        </TableRow>
                       ))}
-                    </tbody>
-                  </table>
+                    </TableBody>
+                  </Table>
                 </div>
               )}
             </CardContent>
@@ -744,55 +749,52 @@ export default function AdminDefenseRecordDetailPage() {
                     </div>
                   )}
                   {data.oralExamSummary.rows.length > 0 ? (
-                    <div className="overflow-x-auto">
-                      <table className="w-full min-w-[640px] text-left text-xs">
-                        <thead>
-                          <tr className="border-b border-(--earist-border-gray) font-semibold text-(--earist-body-text)">
-                            <th className="px-3 py-2">Examiner</th>
-                            <th className="px-3 py-2">Role</th>
-                            <th className="px-3 py-2">
+                    <div className="overflow-hidden rounded-lg border border-(--earist-border-gray)">
+                      <Table className="min-w-[640px]">
+                        <TableHeader>
+                          <TableRow className="hover:bg-(--earist-surface-gray)">
+                            <TableHead>Examiner</TableHead>
+                            <TableHead>Role</TableHead>
+                            <TableHead>
                               {isInstitutionalSummary ? "Group A" : "Group I"}
-                            </th>
-                            <th className="px-3 py-2">
+                            </TableHead>
+                            <TableHead>
                               {isInstitutionalSummary ? "Group B" : "Group II"}
-                            </th>
-                            <th className="px-3 py-2">
+                            </TableHead>
+                            <TableHead>
                               {isInstitutionalSummary ? "Average" : "Overall"}
-                            </th>
-                          </tr>
-                        </thead>
-                        <tbody>
+                            </TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
                           {data.oralExamSummary.rows.map((r, i) => (
-                            <tr
-                              key={i}
-                              className="border-b border-(--earist-border-gray) last:border-0"
-                            >
-                              <td className="px-3 py-2 break-words">
+                            <TableRow key={i}>
+                              <TableCell className="break-words">
                                 {r.evaluatorName}
-                              </td>
-                              <td className="px-3 py-2">
+                              </TableCell>
+                              <TableCell>
                                 {ROLE_LABELS[r.functionalRole] ??
                                   r.functionalRole}
-                              </td>
-                              <td className="px-3 py-2 tabular-nums">
+                              </TableCell>
+                              <TableCell className="tabular-nums">
                                 {isInstitutionalSummary
                                   ? formatInstitutionalValue(r.groupIValue)
                                   : (r.groupIValue ?? "—")}
-                              </td>
-                              <td className="px-3 py-2 tabular-nums">
+                              </TableCell>
+                              <TableCell className="tabular-nums">
                                 {isInstitutionalSummary
                                   ? formatInstitutionalValue(r.groupIIValue)
                                   : (r.groupIIValue ?? "—")}
-                              </td>
-                              <td className="px-3 py-2 tabular-nums">
+                              </TableCell>
+                              <TableCell className="tabular-nums">
                                 {isInstitutionalSummary
                                   ? formatInstitutionalValue(r.averageValue)
                                   : (r.overallValue ?? "—")}
-                              </td>
-                            </tr>
+                              </TableCell>
+                            </TableRow>
                           ))}
-                        </tbody>
-                      </table>
+                        </TableBody>
+                      </Table>
                     </div>
                   ) : (
                     <p className="text-xs text-(--earist-body-text)">
@@ -839,26 +841,23 @@ export default function AdminDefenseRecordDetailPage() {
               </div>
 
               {data.rapReport.signatories.length > 0 ? (
-                <div className="overflow-x-auto">
-                  <table className="w-full min-w-[640px] text-left text-xs">
-                    <thead>
-                      <tr className="border-b border-(--earist-border-gray) font-semibold text-(--earist-body-text)">
-                        <th className="px-3 py-2">Signer</th>
-                        <th className="px-3 py-2">Role</th>
-                        <th className="px-3 py-2">Signature Status</th>
-                        <th className="px-3 py-2">Signed At</th>
-                      </tr>
-                    </thead>
-                    <tbody>
+                <div className="overflow-hidden rounded-lg border border-(--earist-border-gray)">
+                  <Table className="min-w-[640px]">
+                    <TableHeader>
+                      <TableRow className="hover:bg-(--earist-surface-gray)">
+                        <TableHead>Signer</TableHead>
+                        <TableHead>Role</TableHead>
+                        <TableHead>Signature Status</TableHead>
+                        <TableHead>Signed At</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
                       {data.rapReport.signatories.map((s, i) => (
-                        <tr
-                          key={i}
-                          className="border-b border-(--earist-border-gray) last:border-0"
-                        >
-                          <td className="px-3 py-2 break-words">
+                        <TableRow key={i}>
+                          <TableCell className="break-words">
                             {s.name ?? "—"}
-                          </td>
-                          <td className="px-3 py-2">
+                          </TableCell>
+                          <TableCell>
                             {s.roleAtDefense
                               ? (ROLE_LABELS[s.roleAtDefense] ?? s.roleAtDefense)
                               : "—"}
@@ -867,8 +866,8 @@ export default function AdminDefenseRecordDetailPage() {
                                 · Optional
                               </span>
                             )}
-                          </td>
-                          <td className="px-3 py-2">
+                          </TableCell>
+                          <TableCell>
                             <Badge
                               variant="outline"
                               className={cn(
@@ -880,14 +879,14 @@ export default function AdminDefenseRecordDetailPage() {
                             >
                               {s.isSigned ? "Signed" : "Awaiting Signature"}
                             </Badge>
-                          </td>
-                          <td className="px-3 py-2 tabular-nums">
+                          </TableCell>
+                          <TableCell className="tabular-nums">
                             {formatSignedAt(s.signedAt)}
-                          </td>
-                        </tr>
+                          </TableCell>
+                        </TableRow>
                       ))}
-                    </tbody>
-                  </table>
+                    </TableBody>
+                  </Table>
                 </div>
               ) : (
                 <p className="text-xs text-(--earist-body-text)">

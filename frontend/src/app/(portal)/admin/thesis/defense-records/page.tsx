@@ -7,7 +7,15 @@ import { apiClientRequest } from "@/lib/api.client";
 import { cn } from "@/lib/utils";
 import { PageHeader } from "@/components/ui/page-header";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Card, CardContent } from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCard,
+  TableCell,
+  TableHead as SharedTableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -102,20 +110,18 @@ function studentSecondary(row: DefenseRecordRow): string {
 
 function TableShell({ children }: { children: React.ReactNode }) {
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full min-w-[1080px] table-fixed border-collapse">
-        <colgroup>
-          <col className="w-[25%]" />
-          <col className="w-[13%]" />
-          <col className="w-[12%]" />
-          <col className="w-[13%]" />
-          <col className="w-[10%]" />
-          <col className="w-[18%]" />
-          <col className="w-[9%]" />
-        </colgroup>
-        {children}
-      </table>
-    </div>
+    <Table className="min-w-[1080px] table-fixed">
+      <colgroup>
+        <col className="w-[25%]" />
+        <col className="w-[13%]" />
+        <col className="w-[12%]" />
+        <col className="w-[13%]" />
+        <col className="w-[10%]" />
+        <col className="w-[18%]" />
+        <col className="w-[9%]" />
+      </colgroup>
+      {children}
+    </Table>
   );
 }
 
@@ -130,21 +136,14 @@ const HEADERS = [
 
 function TableHead() {
   return (
-    <thead>
-      <tr className="border-b border-(--earist-border-gray) bg-(--earist-surface-gray)">
+    <TableHeader>
+      <TableRow className="hover:bg-(--earist-surface-gray)">
         {HEADERS.map((label) => (
-          <th
-            key={label}
-            className="px-4 py-3 text-left text-xs font-semibold text-(--earist-body-text)"
-          >
-            {label}
-          </th>
+          <SharedTableHead key={label}>{label}</SharedTableHead>
         ))}
-        <th className="px-4 py-3 text-right text-xs font-semibold text-(--earist-body-text)">
-          Action
-        </th>
-      </tr>
-    </thead>
+        <SharedTableHead className="text-right">Action</SharedTableHead>
+      </TableRow>
+    </TableHeader>
   );
 }
 
@@ -152,39 +151,36 @@ function TableSkeleton() {
   return (
     <TableShell>
       <TableHead />
-      <tbody aria-hidden="true">
+      <TableBody aria-hidden="true">
         {Array.from({ length: 6 }).map((_, index) => (
-          <tr
-            key={index}
-            className="border-b border-(--earist-border-gray) last:border-0"
-          >
-            <td className="px-4 py-3 align-top">
+          <TableRow key={index}>
+            <TableCell>
               <Skeleton className="h-4 w-40" />
               <Skeleton className="mt-2 h-3 w-32" />
-            </td>
-            <td className="px-4 py-3 align-top">
+            </TableCell>
+            <TableCell>
               <Skeleton className="h-4 w-24" />
-            </td>
-            <td className="px-4 py-3 align-top">
+            </TableCell>
+            <TableCell>
               <Skeleton className="h-4 w-24" />
               <Skeleton className="mt-2 h-3 w-16" />
-            </td>
-            <td className="px-4 py-3 align-top">
+            </TableCell>
+            <TableCell>
               <Skeleton className="h-5 w-24 rounded-full" />
-            </td>
-            <td className="px-4 py-3 align-top">
+            </TableCell>
+            <TableCell>
               <Skeleton className="h-5 w-20 rounded-full" />
-            </td>
-            <td className="px-4 py-3 align-top">
+            </TableCell>
+            <TableCell>
               <Skeleton className="h-4 w-28" />
               <Skeleton className="mt-2 h-3 w-24" />
-            </td>
-            <td className="px-4 py-3 align-top">
+            </TableCell>
+            <TableCell>
               <Skeleton className="ml-auto h-8 w-28 rounded-md" />
-            </td>
-          </tr>
+            </TableCell>
+          </TableRow>
         ))}
-      </tbody>
+      </TableBody>
     </TableShell>
   );
 }
@@ -361,154 +357,149 @@ export default function AdminDefenseRecordsPage() {
         {isFetching && !isLoading ? "Updating defense records." : ""}
       </p>
 
-      <Card className="overflow-hidden py-0">
-        <CardContent className="min-w-0 p-0">
-          {isLoading ? (
-            <TableSkeleton />
-          ) : filterRequestFailed || loadFailedWithoutData ? (
-            <div className="flex flex-col items-center justify-center gap-3 px-6 py-14 text-center">
-              <AlertCircle
-                className="h-8 w-8 text-(--earist-secondary)"
+      <TableCard>
+        {isLoading ? (
+          <TableSkeleton />
+        ) : filterRequestFailed || loadFailedWithoutData ? (
+          <div className="flex flex-col items-center justify-center gap-3 px-6 py-14 text-center">
+            <AlertCircle
+              className="h-8 w-8 text-(--earist-secondary)"
+              aria-hidden="true"
+            />
+            <div className="space-y-1">
+              <p className="text-sm font-semibold text-(--earist-primary)">
+                Unable to load defense records
+              </p>
+              <p className="text-sm text-(--earist-body-text)">
+                The records could not be loaded. Please try again.
+              </p>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => recordsQuery.refetch()}
+              disabled={isFetching}
+            >
+              <RefreshCw
+                className={cn("mr-2 h-4 w-4", isFetching && "animate-spin")}
                 aria-hidden="true"
               />
-              <div className="space-y-1">
-                <p className="text-sm font-semibold text-(--earist-primary)">
-                  Unable to load defense records
-                </p>
-                <p className="text-sm text-(--earist-body-text)">
-                  The records could not be loaded. Please try again.
-                </p>
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => recordsQuery.refetch()}
-                disabled={isFetching}
-              >
-                <RefreshCw
-                  className={cn("mr-2 h-4 w-4", isFetching && "animate-spin")}
-                  aria-hidden="true"
-                />
-                Retry
+              Retry
+            </Button>
+          </div>
+        ) : rows.length === 0 ? (
+          <div className="flex flex-col items-center justify-center gap-2 px-6 py-14 text-center">
+            <p className="text-sm font-medium text-(--earist-primary)">
+              {isFiltered
+                ? "No defense records match the selected filters."
+                : "No defense records found."}
+            </p>
+            {isFiltered && (
+              <Button variant="outline" size="sm" onClick={clearFilters}>
+                Clear filters
               </Button>
-            </div>
-          ) : rows.length === 0 ? (
-            <div className="flex flex-col items-center justify-center gap-2 px-6 py-14 text-center">
-              <p className="text-sm font-medium text-(--earist-primary)">
-                {isFiltered
-                  ? "No defense records match the selected filters."
-                  : "No defense records found."}
-              </p>
-              {isFiltered && (
-                <Button variant="outline" size="sm" onClick={clearFilters}>
-                  Clear filters
-                </Button>
-              )}
-            </div>
-          ) : (
-            <TableShell>
-              <TableHead />
-              <tbody>
-                {rows.map((row) => {
-                  const studentName = row.studentName ?? "—";
-                  const secondary = studentSecondary(row);
-                  const resultLabel = row.formalResult
-                    ? RESULT_LABELS[row.formalResult] ??
-                      row.formalResult.replace(/_/g, " ")
-                    : null;
-                  return (
-                    <tr
-                      key={row.scheduleId}
-                      className="border-b border-(--earist-border-gray) last:border-0 hover:bg-(--earist-surface-gray)/60"
-                    >
-                      <td className="px-4 py-3 align-top">
-                        <p className="text-sm font-semibold break-words text-foreground">
-                          {studentName}
+            )}
+          </div>
+        ) : (
+          <TableShell>
+            <TableHead />
+            <TableBody>
+              {rows.map((row) => {
+                const studentName = row.studentName ?? "—";
+                const secondary = studentSecondary(row);
+                const resultLabel = row.formalResult
+                  ? RESULT_LABELS[row.formalResult] ??
+                    row.formalResult.replace(/_/g, " ")
+                  : null;
+                return (
+                  <TableRow key={row.scheduleId}>
+                    <TableCell>
+                      <p className="text-sm font-semibold break-words text-foreground">
+                        {studentName}
+                      </p>
+                      {secondary && (
+                        <p className="mt-0.5 text-xs break-words text-(--earist-body-text)">
+                          {secondary}
                         </p>
-                        {secondary && (
-                          <p className="mt-0.5 text-xs break-words text-(--earist-body-text)">
-                            {secondary}
-                          </p>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <p className="text-sm break-words text-(--earist-body-text)">
+                        {defenseTypeLabel(stageFromDefenseType(row.defenseType))}
+                      </p>
+                    </TableCell>
+                    <TableCell>
+                      <p className="text-sm break-words text-foreground">
+                        {formatDefenseDate(row.defenseDate)}
+                      </p>
+                      {row.defenseTime && (
+                        <p className="mt-0.5 text-xs tabular-nums text-(--earist-body-text)">
+                          {formatDefenseTime(row.defenseTime)}
+                        </p>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <Badge
+                        variant="outline"
+                        className={cn(
+                          "font-medium",
+                          SESSION_BADGE_CLASS[row.sessionStatus.toUpperCase()],
                         )}
-                      </td>
-                      <td className="px-4 py-3 align-top">
-                        <p className="text-sm break-words text-(--earist-body-text)">
-                          {defenseTypeLabel(stageFromDefenseType(row.defenseType))}
-                        </p>
-                      </td>
-                      <td className="px-4 py-3 align-top">
-                        <p className="text-sm break-words text-foreground">
-                          {formatDefenseDate(row.defenseDate)}
-                        </p>
-                        {row.defenseTime && (
-                          <p className="mt-0.5 text-xs tabular-nums text-(--earist-body-text)">
-                            {formatDefenseTime(row.defenseTime)}
-                          </p>
-                        )}
-                      </td>
-                      <td className="px-4 py-3 align-top">
+                      >
+                        {sessionStatusLabel(row.sessionStatus)}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      {resultLabel ? (
                         <Badge
                           variant="outline"
                           className={cn(
                             "font-medium",
-                            SESSION_BADGE_CLASS[row.sessionStatus.toUpperCase()],
+                            RESULT_BADGE_CLASS[row.formalResult ?? ""],
                           )}
                         >
-                          {sessionStatusLabel(row.sessionStatus)}
+                          {resultLabel}
                         </Badge>
-                      </td>
-                      <td className="px-4 py-3 align-top">
-                        {resultLabel ? (
-                          <Badge
-                            variant="outline"
-                            className={cn(
-                              "font-medium",
-                              RESULT_BADGE_CLASS[row.formalResult ?? ""],
-                            )}
-                          >
-                            {resultLabel}
-                          </Badge>
-                        ) : (
-                          <span className="text-sm text-(--earist-body-text)">—</span>
+                      ) : (
+                        <span className="text-sm text-(--earist-body-text)">—</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <p
+                        className={cn(
+                          "text-sm font-medium",
+                          RECORD_STATUS_CLASS[row.recordStatus],
                         )}
-                      </td>
-                      <td className="px-4 py-3 align-top">
-                        <p
-                          className={cn(
-                            "text-sm font-medium",
-                            RECORD_STATUS_CLASS[row.recordStatus],
-                          )}
-                        >
-                          {RECORD_STATUS_LABELS[row.recordStatus] ??
-                            row.recordStatus.replace(/_/g, " ")}
+                      >
+                        {RECORD_STATUS_LABELS[row.recordStatus] ??
+                          row.recordStatus.replace(/_/g, " ")}
+                      </p>
+                      {row.recordStatusDetail && (
+                        <p className="mt-0.5 text-xs break-words text-(--earist-body-text)">
+                          {row.recordStatusDetail}
                         </p>
-                        {row.recordStatusDetail && (
-                          <p className="mt-0.5 text-xs break-words text-(--earist-body-text)">
-                            {row.recordStatusDetail}
-                          </p>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Link
+                        href={`/admin/thesis/defense-records/${row.scheduleId}`}
+                        aria-label={`View Record — ${studentName}`}
+                        className={cn(
+                          buttonVariants({ variant: "outline", size: "sm" }),
+                          "ml-auto",
                         )}
-                      </td>
-                      <td className="px-4 py-3 text-right align-top">
-                        <Link
-                          href={`/admin/thesis/defense-records/${row.scheduleId}`}
-                          aria-label={`View Record — ${studentName}`}
-                          className={cn(
-                            buttonVariants({ variant: "outline", size: "sm" }),
-                            "ml-auto",
-                          )}
-                        >
-                          <Eye className="mr-1.5 h-4 w-4" aria-hidden="true" />
-                          View Record
-                        </Link>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </TableShell>
-          )}
-        </CardContent>
-      </Card>
+                      >
+                        <Eye className="mr-1.5 h-4 w-4" aria-hidden="true" />
+                        View Record
+                      </Link>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </TableShell>
+        )}
+      </TableCard>
 
       {!isLoading && total > 0 && (
         <div className="flex flex-col items-center justify-between gap-3 sm:flex-row">

@@ -2,9 +2,10 @@ import prisma from '../config/database';
 import { Prisma, User, Student, Program, UndergraduateProgram } from '@prisma/client';
 
 export class AuthRepository {
-    async findUserByEmail(email: string): Promise <User | null> {
+    async findUserByEmail(email: string) {
         return prisma.user.findUnique({
             where: { email },
+            include: { panelist: true },
         });
     }
 
@@ -95,6 +96,7 @@ export class AuthRepository {
     async findUserById(userId: string) {
         return prisma.user.findUnique({
             where: { id: userId },
+            include: { panelist: true },
         });
     }
 }

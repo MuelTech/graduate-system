@@ -1,4 +1,5 @@
 import prisma from "../config/database";
+import { UserRole } from "@prisma/client";
 import { canCreateDefenseSchedule } from "../services/defense-application-workflow";
 import { DefenseCommitteePolicy } from "../services/defense-committee.policy";
 import { AppError } from "../utils/AppError";
@@ -250,7 +251,7 @@ export class ThesisRepository {
     const { page, pageSize, search } = params;
     const q = search?.trim();
     const where = {
-      role: "PANELIST" as const,
+      role: { in: ["FACULTY", "PANELIST"] as UserRole[] },
       isActive: true,
       panelist: { isActive: true },
       ...(q
@@ -370,7 +371,7 @@ export class ThesisRepository {
   async getActivePanelistCandidates() {
     return prisma.user.findMany({
       where: {
-        role: "PANELIST",
+        role: { in: ["FACULTY", "PANELIST"] as UserRole[] },
         isActive: true,
         panelist: { isActive: true },
       },
@@ -381,7 +382,10 @@ export class ThesisRepository {
 
   async getAvailableAdvisers() {
     return prisma.user.findMany({
-      where: { role: "PANELIST", panelist: { isAvailableAsAdviser: true, isActive: true } },
+      where: {
+        role: { in: ["FACULTY", "PANELIST"] as UserRole[] },
+        panelist: { isAvailableAsAdviser: true, isActive: true, isExternal: false },
+      },
       include: { panelist: true },
     });
   }

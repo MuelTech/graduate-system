@@ -1,6 +1,10 @@
 import { Router } from "express";
 import { AdminApplicantController } from "../controllers/admin-applicant.controller";
-import { authenticateJWT, requireRole } from "../middlewares/auth.middleware";
+import {
+  authenticateJWT,
+  requireRole,
+  requireAdminCapability,
+} from "../middlewares/auth.middleware";
 
 const router = Router();
 const controller = new AdminApplicantController();
@@ -10,6 +14,7 @@ router.get(
   "/",
   authenticateJWT,
   requireRole(["ADMIN"]),
+  requireAdminCapability("applicants.manage"),
   controller.listApplicants
 );
 
@@ -18,6 +23,7 @@ router.get(
   "/:id",
   authenticateJWT,
   requireRole(["ADMIN"]),
+  requireAdminCapability("applicants.manage"),
   controller.getApplicantDetail
 );
 
@@ -26,6 +32,7 @@ router.put(
   "/:id/waiver/validate",
   authenticateJWT,
   requireRole(["ADMIN"]),
+  requireAdminCapability("waivers.manage"),
   controller.validateWaiver
 );
 
@@ -34,6 +41,7 @@ router.put(
   "/:id/waiver/reject",
   authenticateJWT,
   requireRole(["ADMIN"]),
+  requireAdminCapability("waivers.manage"),
   controller.rejectWaiver
 );
 
@@ -42,6 +50,7 @@ router.put(
   "/:id/cor/verify",
   authenticateJWT,
   requireRole(["ADMIN"]),
+  requireAdminCapability("cor.verify"),
   controller.verifyCor
 );
 
@@ -50,6 +59,7 @@ router.put(
   "/:id/cor/reject",
   authenticateJWT,
   requireRole(["ADMIN"]),
+  requireAdminCapability("cor.verify"),
   controller.rejectCor
 );
 
@@ -58,6 +68,7 @@ router.put(
   "/:id/promote",
   authenticateJWT,
   requireRole(["ADMIN"]),
+  requireAdminCapability("applicants.manage"),
   controller.promoteToStudent
 );
 

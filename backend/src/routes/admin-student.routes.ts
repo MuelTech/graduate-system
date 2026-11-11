@@ -2,7 +2,11 @@
 
 import { Router } from "express";
 import { AdminStudentController } from "../controllers/admin-student.controller";
-import { authenticateJWT, requireRole } from "../middlewares/auth.middleware";
+import {
+  authenticateJWT,
+  requireRole,
+  requireAdminCapability,
+} from "../middlewares/auth.middleware";
 
 const router = Router();
 const controller = new AdminStudentController();
@@ -12,7 +16,8 @@ router.get(
   "/",
   authenticateJWT,
   requireRole(["ADMIN"]),
-  controller.listStudents
+  requireAdminCapability("students.manage"),
+  controller.listStudents,
 );
 
 // Get student detail
@@ -20,7 +25,8 @@ router.get(
   "/:id",
   authenticateJWT,
   requireRole(["ADMIN"]),
-  controller.getStudentDetail
+  requireAdminCapability("students.manage"),
+  controller.getStudentDetail,
 );
 
 // Get the student's authoritative Thesis Journey (ADMIN read-only)
@@ -28,7 +34,8 @@ router.get(
   "/:id/journey",
   authenticateJWT,
   requireRole(["ADMIN"]),
-  controller.getStudentJourney
+  requireAdminCapability("students.manage"),
+  controller.getStudentJourney,
 );
 
 // Update comprehensive exam status
@@ -36,7 +43,8 @@ router.put(
   "/:id/comprehensive-exam",
   authenticateJWT,
   requireRole(["ADMIN"]),
-  controller.updateCompExamStatus
+  requireAdminCapability("students.manage"),
+  controller.updateCompExamStatus,
 );
 
 export default router;

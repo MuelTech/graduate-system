@@ -162,74 +162,42 @@ Faculty detail may show assignment summaries, but those summaries must not becom
 
 ## 6. Faculty portal
 
-The Faculty portal keeps a Dashboard/Home as a consistent landing point.
+The Faculty portal keeps a Dashboard/Home as a consistent landing point, with a stable, zero-flicker sidebar and header experience.
 
-Its sections and navigation are dynamic from effective Faculty work.
+### 6.1 Effective Faculty sidebar & navigation structure
 
-### 6.1 Effective Faculty work sources
-
-Configured:
-
-- Essay Evaluation.
-
-Assignment-driven:
-
-- Adviser assignments;
-- defense assignments.
+- **Always visible for all Faculty (Internal & External):**
+  - `Dashboard`
+  - `Profile`
+  - `My Defenses` *(always visible because any Faculty member may serve as a defense committee member)*
+  - `E-Signatures`
+  - `Repository`
+  - `Announcements`
+- **Conditional on Faculty account profile/permissions:**
+  - `Essay Evaluations` — visible **only** when `Essay Evaluation` (`canEvaluateEssays`) is enabled for that specific Faculty user (e.g., Program Chair).
+  - `My Advisees` — visible **only** for **Internal Faculty**. For External Faculty, `My Advisees` is hidden from the sidebar and dashboard because External Faculty cannot serve as Advisers.
+- **Header-only utility navigation:**
+  - `Notifications` is removed from the sidebar navigation list (in both Faculty and Admin portals) and is accessed via the top-header **Notification Bell** dropdown ("View All Notifications").
 
 ### 6.2 Dynamic navigation scenarios
 
-**Essay Evaluator only**
+**Internal Faculty (standard)**
+- Dashboard, Profile, My Defenses, My Advisees, E-Signatures, Repository, Announcements
 
-- Dashboard
-- Essay Evaluations
+**Internal Faculty + Essay Evaluator (e.g. Program Chair)**
+- Dashboard, Profile, Essay Evaluations, My Defenses, My Advisees, E-Signatures, Repository, Announcements
 
-**Assigned Adviser only**
+**External Faculty (standard)**
+- Dashboard, Profile, My Defenses, E-Signatures, Repository, Announcements
 
-- Dashboard
-- My Advisees
+**External Faculty + Essay Evaluator**
+- Dashboard, Profile, Essay Evaluations, My Defenses, E-Signatures, Repository, Announcements
 
-**Defense participant only**
+### 6.3 Dynamic dashboard & UI/UX stability
 
-- Dashboard
-- My Defenses
+Dashboard content preserves the clean EARIST visual design (KPI summary cards, Needs Your Attention, Active/Upcoming Defenses, Waiting on Others, Recent Notifications) and conditionally includes **Pending Essay Evaluations** when `Essay Evaluation` access is enabled for that Faculty account.
 
-**Essay Evaluator + assigned Adviser**
-
-- Dashboard
-- Essay Evaluations
-- My Advisees
-
-**Essay Evaluator + defense participant**
-
-- Dashboard
-- Essay Evaluations
-- My Defenses
-
-**Multiple applicable responsibilities**
-
-- Dashboard
-- all relevant authorized destinations
-
-Do not show unavailable work areas merely to display zero counts.
-
-### 6.3 Dynamic dashboard
-
-Dashboard content should summarize actionable/relevant work only.
-
-Examples:
-
-**Essay Evaluator only**
-- pending Essay Evaluations;
-- completed Essay Evaluations if useful.
-
-**Adviser**
-- relevant advisee work/status requiring attention.
-
-**Defense participant**
-- upcoming/current defense work allowed by the accepted Defense workflow.
-
-The dashboard is not authorization. APIs must independently enforce authority.
+Access state must be cached cleanly without resetting to `null` or flashing full-page skeletons when switching tabs or routes. The dashboard is not authorization; APIs independently enforce authority.
 
 ---
 
@@ -338,28 +306,23 @@ Direct route/API attempts must still be denied server-side.
 
 ---
 
-## 11. Administrator access editor
+## 11. Administrator access editor & UI/UX standards
 
-The access editor should be task/module oriented.
+The access editor is organized into **4 clean Module Cards** matching the Admin sidebar groups:
 
-Example conceptual grouping:
+1. **User Management:** `applicants.manage` (Applicants), `students.manage` (Students), `faculty.manage` (Faculty) *(Administrators Management is reserved exclusively for Full Administrators)*
+2. **Exam Management:** `exam.schedules.manage` (Exam Schedules), `exam.records.manage` (Exam Records), `exam.questions.manage` (Exam Questions), `cor.verify` (COR Verification), `waivers.manage` (Waiver Validation)
+3. **Thesis Management:** `defense.applications.manage` (Defense Applications), `defense.schedules.manage` (Scheduling & Panels), `defense.records.view` (Defense Records), `adviser.requests.manage` (Adviser Request Review)
+4. **Institutional & System:** `analytics.view` (Analytics & Reports), `memos.manage` (Announcements & Memos), `repository.manage` (Repository & Databank), `settings.manage` (System Settings & Storage Health)
 
-- Applicants
-- Students
-- COR Verification
-- Examination
-- Defense Administration
-- Faculty
-- Curriculum
-- Analytics / Reports
-- Settings
-- Administrator Management
+### 11.1 UI/UX Visual Standard (Faculty Management & Administrators Management)
 
-Exact grouping and capability granularity must be defined from the repository audit and accepted domain behavior.
-
-Do not bind authorization directly to literal frontend URLs.
-
-Do not let a Restricted Administrator change their own high-privilege access.
+Both `Faculty Management` and `Administrators Management` must follow the established, clean EARIST visual design:
+- **Summary KPI Cards** at the top of the page (e.g., Active, Internal, External, Essay Evaluators, Available as Adviser for Faculty; Total, Active, Full Administrators, Restricted Administrators for Administrators).
+- **Search and Filter Bar** inside a clean card.
+- **Semantic Colored Badges** (`bg-blue-100 text-blue-700` for Internal/Restricted, `bg-purple-100 text-purple-700` for External/Full Admin, `bg-green-100 text-green-700` for Active/Enabled, `bg-gray-100 text-gray-500` for Inactive/Disabled).
+- **Clean Action Icon Buttons** (`Eye` for View, `Edit` for Edit, `Power` for Activate/Deactivate) in the table row.
+- **Default Password Info Banner:** Inside the Create Faculty and Create Administrator modals, display the amber informational banner stating that the default password is the user's **LAST NAME in ALL CAPS** and that they will be required to change it upon first login.
 
 ---
 
@@ -567,26 +530,16 @@ Then:
 
 ---
 
-## 18. Implementation-plan handoff requirements
+## 18. Implementation and verification requirements
 
-The coding agent's first technical package should be repository audit + implementation planning only, with no production implementation unless separately authorized.
+Implementation is structured into a 4-phase plan (`docs/superpowers/plans/2026-11-11-faculty-admin-access-implementation.md`) and executed continuously end-to-end without temporary compatibility bloat:
 
-The plan must:
+- **Phase 1:** Documentation alignment, Prisma schema update (`UserRole.FACULTY`, `Panelist.canEvaluateEssays`, `User.adminAccessLevel`, `User.adminCapabilities`), and synthetic seed data (`seed.ts`).
+- **Phase 2:** Backend authentication, role & capability guards, Faculty Essay Evaluation endpoints, and Faculty/Administrators Management endpoints (preserving all 45+ existing Defense and Adviser endpoint contracts).
+- **Phase 3:** Frontend Faculty portal (`Faculty Portal` branding, zero-flicker sidebar with `My Defenses` always visible, `My Advisees` visible for Internal Faculty only, `Essay Evaluations` visible when enabled, `Notifications` in header Bell icon only, read-only `Profile` adviser availability, and `Essay Evaluations` workspace).
+- **Phase 4:** Frontend Admin portal (`Faculty Management` and `Administrators Management` with EARIST KPI cards, colored badges, action icons, and 4-card permission editor, plus dynamic Restricted Admin sidebar).
 
-- map current `UserRole`, `Panelist`, auth/session/middleware/routes;
-- map Faculty/Panelist dashboard/navigation;
-- map Exam essay-grading authority;
-- map Adviser eligibility/request/assignment flows;
-- map defense assignments and role checks;
-- map `CUSTOM`, `CustomRole`, `RoleFeatureAccess`;
-- identify reusable vs retiring infrastructure;
-- define migration/compatibility strategy;
-- define backend capability enforcement;
-- define frontend dynamic navigation/dashboard strategy;
-- define exact work packages in dependency order;
-- give each package scope, non-goals, verification, and stop condition.
-
-The plan must not invent new product behavior or user-facing terminology.
+**Verification Policy:** Verify via TypeScript (`tsc --noEmit`), backend unit tests, and frontend production build. **Do not use automated Playwright tests**; UI/UX testing in the browser is performed directly by the project owner.
 
 ---
 

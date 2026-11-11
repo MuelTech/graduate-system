@@ -42,6 +42,11 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             role: data.user.role,
             accessToken: data.token,
             mustChangePassword: data.user.mustChangePassword,
+            adminAccessLevel: data.user.adminAccessLevel ?? null,
+            adminCapabilities: Array.isArray(data.user.adminCapabilities)
+              ? data.user.adminCapabilities
+              : null,
+            facultyProfile: data.user.facultyProfile ?? null,
           };
         }
         class CustomError extends CredentialsSignin {
@@ -59,9 +64,13 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     jwt({ token, user }: { token: JWT; user?: User }) {
       if (user) {
         token.id = user.id!;
-        token.role = user.role?.toLowerCase() ?? "";
+        const rawRole = user.role?.toLowerCase() ?? "";
+        token.role = rawRole === "panelist" ? "faculty" : rawRole;
         token.accessToken = user.accessToken ?? "";
         token.mustChangePassword = user.mustChangePassword ?? false;
+        token.adminAccessLevel = user.adminAccessLevel ?? null;
+        token.adminCapabilities = user.adminCapabilities ?? null;
+        token.facultyProfile = user.facultyProfile ?? null;
       }
       return token;
     },
@@ -71,6 +80,9 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         session.user.role = token.role;
         session.user.accessToken = token.accessToken;
         session.user.mustChangePassword = token.mustChangePassword;
+        session.user.adminAccessLevel = token.adminAccessLevel ?? null;
+        session.user.adminCapabilities = token.adminCapabilities ?? null;
+        session.user.facultyProfile = token.facultyProfile ?? null;
       }
       return session;
     },

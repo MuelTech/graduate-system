@@ -1,3 +1,4 @@
+import { Prisma } from "@prisma/client";
 import prisma from "../src/config/database";
 import bcrypt from "bcryptjs";
 
@@ -381,77 +382,209 @@ async function main() {
   console.log("Seeding test accounts...");
   const passwordHash = await bcrypt.hash("password123", 10);
 
-  // 1. Admin Test Account
+  // 1. Admin Test Accounts (Full Administrator & Restricted Administrator)
   await prisma.user.upsert({
     where: { email: "admin@earist.edu.ph" },
-    update: {},
+    update: {
+      role: "ADMIN",
+      adminAccessLevel: "FULL",
+      adminCapabilities: Prisma.DbNull,
+      isActive: true,
+    },
     create: {
       email: "admin@earist.edu.ph",
       passwordHash,
       firstName: "System",
       lastName: "Admin",
       role: "ADMIN",
+      adminAccessLevel: "FULL",
+      adminCapabilities: Prisma.DbNull,
     },
   });
-  console.log("Created Admin test account");
+  console.log("Created Full Admin test account (admin@earist.edu.ph)");
 
-  // 2. Panelists Test Account
+  await prisma.user.upsert({
+    where: { email: "staff.admin@earist.edu.ph" },
+    update: {
+      role: "ADMIN",
+      adminAccessLevel: "RESTRICTED",
+      adminCapabilities: [
+        "applicants.manage",
+        "students.manage",
+        "exam.schedules.manage",
+        "exam.records.manage",
+        "cor.verify",
+        "waivers.manage",
+      ],
+      isActive: true,
+    },
+    create: {
+      email: "staff.admin@earist.edu.ph",
+      passwordHash,
+      title: "Ms.",
+      firstName: "Clarisse",
+      lastName: "Mendoza",
+      role: "ADMIN",
+      adminAccessLevel: "RESTRICTED",
+      adminCapabilities: [
+        "applicants.manage",
+        "students.manage",
+        "exam.schedules.manage",
+        "exam.records.manage",
+        "cor.verify",
+        "waivers.manage",
+      ],
+    },
+  });
+  console.log("Created Restricted Admin test account (staff.admin@earist.edu.ph)");
+
+  // 2. Faculty Test Accounts (migrated from PANELIST to FACULTY role)
   await prisma.user.upsert({
     where: { email: "panelist1@earist.edu.ph" },
-    update: {},
+    update: {
+      role: "FACULTY",
+      title: "Dr.",
+      firstName: "John",
+      lastName: "Doe",
+      panelist: {
+        upsert: {
+          create: {
+            isExternal: false,
+            isAvailableAsAdviser: true,
+            canEvaluateEssays: true,
+            highestEducationalAttainment: "Doctorate Degree",
+            officeAffiliation: "College of Computer and Information Sciences",
+            specialization: "Information Technology",
+          },
+          update: {
+            isExternal: false,
+            isAvailableAsAdviser: true,
+            canEvaluateEssays: true,
+            highestEducationalAttainment: "Doctorate Degree",
+            officeAffiliation: "College of Computer and Information Sciences",
+            specialization: "Information Technology",
+          },
+        },
+      },
+    },
     create: {
       email: "panelist1@earist.edu.ph",
       passwordHash,
-      firstName: "Dr. John",
+      title: "Dr.",
+      firstName: "John",
       lastName: "Doe",
-      role: "PANELIST",
+      role: "FACULTY",
       panelist: {
         create: {
           isExternal: false,
           isAvailableAsAdviser: true,
+          canEvaluateEssays: true,
+          highestEducationalAttainment: "Doctorate Degree",
+          officeAffiliation: "College of Computer and Information Sciences",
+          specialization: "Information Technology",
         },
       },
     },
   });
-  console.log("Created Panelist1 test account");
+  console.log("Created Faculty 1 (Internal + Essay Evaluator / Program Chair: panelist1@earist.edu.ph)");
 
   await prisma.user.upsert({
     where: { email: "panelist2@earist.edu.ph" },
-    update: {},
+    update: {
+      role: "FACULTY",
+      title: "Prof.",
+      firstName: "William",
+      lastName: "Marcial",
+      panelist: {
+        upsert: {
+          create: {
+            isExternal: false,
+            isAvailableAsAdviser: true,
+            canEvaluateEssays: false,
+            highestEducationalAttainment: "Doctorate Degree",
+            officeAffiliation: "College of Education",
+            specialization: "Education Management",
+          },
+          update: {
+            isExternal: false,
+            isAvailableAsAdviser: true,
+            canEvaluateEssays: false,
+            highestEducationalAttainment: "Doctorate Degree",
+            officeAffiliation: "College of Education",
+            specialization: "Education Management",
+          },
+        },
+      },
+    },
     create: {
       email: "panelist2@earist.edu.ph",
       passwordHash,
-      firstName: "Prof. William",
+      title: "Prof.",
+      firstName: "William",
       lastName: "Marcial",
-      role: "PANELIST",
+      role: "FACULTY",
       panelist: {
         create: {
           isExternal: false,
           isAvailableAsAdviser: true,
+          canEvaluateEssays: false,
+          highestEducationalAttainment: "Doctorate Degree",
+          officeAffiliation: "College of Education",
+          specialization: "Education Management",
         },
       },
     },
   });
-  console.log("Created Panelist2 test account");
+  console.log("Created Faculty 2 (Internal Faculty: panelist2@earist.edu.ph)");
 
   await prisma.user.upsert({
     where: { email: "panelist3@earist.edu.ph" },
-    update: {},
+    update: {
+      role: "FACULTY",
+      title: "Prof.",
+      firstName: "Hanna Mae",
+      lastName: "Perdido",
+      panelist: {
+        upsert: {
+          create: {
+            isExternal: true,
+            isAvailableAsAdviser: false,
+            canEvaluateEssays: false,
+            highestEducationalAttainment: "Doctorate Degree",
+            officeAffiliation: "External/Other",
+            specialization: "Public Administration",
+          },
+          update: {
+            isExternal: true,
+            isAvailableAsAdviser: false,
+            canEvaluateEssays: false,
+            highestEducationalAttainment: "Doctorate Degree",
+            officeAffiliation: "External/Other",
+            specialization: "Public Administration",
+          },
+        },
+      },
+    },
     create: {
       email: "panelist3@earist.edu.ph",
       passwordHash,
-      firstName: "Prof. Hanna Mae",
+      title: "Prof.",
+      firstName: "Hanna Mae",
       lastName: "Perdido",
-      role: "PANELIST",
+      role: "FACULTY",
       panelist: {
         create: {
-          isExternal: false,
-          isAvailableAsAdviser: true,
+          isExternal: true,
+          isAvailableAsAdviser: false,
+          canEvaluateEssays: false,
+          highestEducationalAttainment: "Doctorate Degree",
+          officeAffiliation: "External/Other",
+          specialization: "Public Administration",
         },
       },
     },
   });
-  console.log("Created Panelist3 test account");
+  console.log("Created Faculty 3 (External Faculty: panelist3@earist.edu.ph)");
 
   // 3. Enrolled Student Test Accounts
   const firstProgram = await prisma.program.findFirst();
@@ -1560,20 +1693,20 @@ async function seedDefenseWorkflowFixtures(passwordHash: string) {
   for (const p of extraPanelists) {
     const u = await prisma.user.upsert({
       where: { email: p.email },
-      update: {},
+      update: { role: "FACULTY" },
       create: {
         email: p.email,
         passwordHash,
         firstName: p.first,
         lastName: p.last,
-        role: "PANELIST",
+        role: "FACULTY",
         panelist: {
-          create: { isExternal: false, isAvailableAsAdviser: true },
+          create: { isExternal: false, isAvailableAsAdviser: true, canEvaluateEssays: false },
         },
       },
     });
     panelistUsers[p.email] = u.id;
-    console.log(`  panelist ready: ${p.email}`);
+    console.log(`  faculty ready: ${p.email}`);
   }
   // ADMIN is created above; reuse it (do not rely on a stale findUnique below).
   for (const n of [1, 2, 3] as const) {

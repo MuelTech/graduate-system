@@ -11,6 +11,14 @@ import {
   Info,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -444,74 +452,72 @@ export function AdmissionsTab({ data }: AdmissionsTabProps) {
         </CardHeader>
 
         <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs text-(--earist-body-text)">
-              <thead className="bg-(--earist-surface-gray) text-[11px] font-semibold text-(--earist-body-text) border-b border-(--earist-border-gray)">
-                <tr>
-                  <th scope="col" className="px-4 py-3">Undergraduate Degree</th>
-                  <th scope="col" className="px-3 py-3">Discipline</th>
-                  <th scope="col" className="px-3 py-3 text-center">Applicants</th>
-                  <th scope="col" className="px-4 py-3">Intended Graduate Program</th>
-                  <th scope="col" className="px-3 py-3 text-center">Alignment Rate</th>
-                  <th scope="col" className="px-3 py-3 text-center">Pending Waivers</th>
-                  <th scope="col" className="px-4 py-3 text-right">Status</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-(--earist-border-gray)">
-                {filteredFeeders.length === 0 ? (
-                  <tr>
-                    <td colSpan={7} className="px-4 py-8 text-center text-xs text-gray-400">
-                      No undergraduate feeder degrees match your filter.
-                    </td>
-                  </tr>
-                ) : (
-                  filteredFeeders.map((item, idx) => (
-                    <tr key={idx} className="hover:bg-(--earist-surface-gray)/60 transition-colors">
-                      <td className="px-4 py-3 font-semibold text-foreground">
-                        {item.undergradDegree}
-                      </td>
-                      <td className="px-3 py-3 text-xs text-(--earist-body-text)">
-                        {item.category}
-                      </td>
-                      <td className="px-3 py-3 text-center font-bold text-foreground">
-                        {item.applicantCount}
-                      </td>
-                      <td className="px-4 py-3 text-xs text-(--earist-body-text)">
-                        {item.intendedGraduateProgram}
-                      </td>
-                      <td className="px-3 py-3 text-center font-medium">
-                        {item.alignmentRate.toFixed(1)}%
-                      </td>
-                      <td className="px-3 py-3 text-center">
-                        {item.pendingWaivers > 0 ? (
-                          <span className="font-semibold text-(--earist-warning)">
-                            {item.pendingWaivers} Pending
-                          </span>
-                        ) : (
-                          <span className="text-(--earist-success)">Cleared</span>
-                        )}
-                      </td>
-                      <td className="px-4 py-3 text-right">
-                        {item.alignmentRate >= 80 ? (
-                          <Badge variant="outline" className="border-(--earist-success) text-(--earist-success) text-[10px]">
-                            Direct Pathway
-                          </Badge>
-                        ) : item.alignmentRate >= 50 ? (
-                          <Badge variant="outline" className="border-(--earist-secondary) text-(--earist-secondary) text-[10px]">
-                            Bridging Required
-                          </Badge>
-                        ) : (
-                          <Badge variant="outline" className="border-(--earist-warning) text-(--earist-warning) text-[10px]">
-                            Waiver Review
-                          </Badge>
-                        )}
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
+          <Table>
+            <TableHeader>
+              <TableRow className="hover:bg-(--earist-surface-gray)">
+                <TableHead>Undergraduate Degree</TableHead>
+                <TableHead>Discipline</TableHead>
+                <TableHead className="text-center">Applicants</TableHead>
+                <TableHead>Intended Graduate Program</TableHead>
+                <TableHead className="text-center">Alignment Rate</TableHead>
+                <TableHead className="text-center">Pending Waivers</TableHead>
+                <TableHead className="text-right">Status</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filteredFeeders.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={7} className="py-8 text-center text-xs text-gray-400">
+                    No undergraduate feeder degrees match your filter.
+                  </TableCell>
+                </TableRow>
+              ) : (
+                filteredFeeders.map((item, idx) => (
+                  <TableRow key={idx}>
+                    <TableCell className="font-semibold text-foreground">
+                      {item.undergradDegree}
+                    </TableCell>
+                    <TableCell className="text-xs text-(--earist-body-text)">
+                      {item.category}
+                    </TableCell>
+                    <TableCell className="text-center font-bold text-foreground">
+                      {item.applicantCount}
+                    </TableCell>
+                    <TableCell className="text-xs text-(--earist-body-text)">
+                      {item.intendedGraduateProgram}
+                    </TableCell>
+                    <TableCell className="text-center font-medium">
+                      {item.alignmentRate.toFixed(1)}%
+                    </TableCell>
+                    <TableCell className="text-center">
+                      {item.pendingWaivers > 0 ? (
+                        <span className="font-semibold text-(--earist-warning)">
+                          {item.pendingWaivers} Pending
+                        </span>
+                      ) : (
+                        <span className="text-(--earist-success)">Cleared</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {item.alignmentRate >= 80 ? (
+                        <Badge variant="outline" className="border-(--earist-success) text-(--earist-success) text-[10px]">
+                          Direct Pathway
+                        </Badge>
+                      ) : item.alignmentRate >= 50 ? (
+                        <Badge variant="outline" className="border-(--earist-secondary) text-(--earist-secondary) text-[10px]">
+                          Bridging Required
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline" className="border-(--earist-warning) text-(--earist-warning) text-[10px]">
+                          Waiver Review
+                        </Badge>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
         </CardContent>
       </Card>
     </div>
