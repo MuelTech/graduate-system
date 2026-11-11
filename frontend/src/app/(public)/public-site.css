@@ -544,7 +544,7 @@
   display: grid;
   overflow: clip;
   isolation: isolate;
-  min-height: clamp(640px, calc(100svh - 88px), 960px);
+  min-height: max(640px, calc(100svh - 84px));
 }
 .earist-public .public-carousel__identity {
   position: absolute;
@@ -2379,78 +2379,18 @@ html:has(.earist-public) {
   }
 }
 
-/* Large desktop & 27-inch monitor (1080p / 1440p / 4K) responsive scaling */
+/* Large desktop & 27-inch monitor: 1320px sweet-spot container & full-screen Hero */
 @media (min-width: 1440px) {
   .earist-public {
-    --public-frame-max: min(86vw, 2240px);
+    --public-frame-max: 1320px;
   }
   .earist-public .public-carousel__viewport {
-    min-height: max(640px, calc(100svh - 88px));
+    min-height: max(640px, calc(100svh - 84px));
   }
   .earist-public .public-carousel__arrow--previous {
-    left: max(20px, calc((100% - var(--public-frame-max)) / 2 - 68px));
+    left: max(24px, calc((100% - var(--public-frame-max)) / 2 - 76px));
   }
   .earist-public .public-carousel__arrow--next {
-    right: max(20px, calc((100% - var(--public-frame-max)) / 2 - 68px));
-  }
-}
-
-@media (min-width: 1800px) {
-  .earist-public .public-masthead__inner {
-    min-height: 92px;
-    gap: 28px;
-  }
-  .earist-public .public-masthead__seal {
-    width: 64px;
-    height: 64px;
-  }
-  .earist-public .public-masthead__school {
-    font-size: 20px;
-  }
-  .earist-public .public-masthead__full-name {
-    max-width: 360px;
-    font-size: 13px;
-  }
-  .earist-public .public-masthead__desktop-nav {
-    gap: 24px;
-  }
-  .earist-public .public-masthead__link,
-  .earist-public .public-masthead__signin,
-  .earist-public .public-masthead__register {
-    font-size: 16px;
-  }
-  .earist-public .public-masthead__link {
-    padding-inline: 14px;
-  }
-  .earist-public .public-carousel__viewport {
-    min-height: max(680px, calc(100svh - 96px));
-  }
-  .earist-public .public-carousel__copy h2 {
-    max-width: 980px;
-    font-size: clamp(64px, 4.2vw, 88px);
-  }
-  .earist-public .public-carousel__summary {
-    max-width: 760px;
-    font-size: 22px;
-  }
-  .earist-public .public-body-section {
-    padding-block: 84px;
-  }
-  .earist-public .public-body-title {
-    max-width: 760px;
-    font-size: 44px;
-  }
-  .earist-public .public-body-copy {
-    max-width: 720px;
-    font-size: 19px;
-  }
-  .earist-public .public-news__grid {
-    gap: 36px;
-  }
-  .earist-public .public-news__card-body {
-    padding: 28px;
-  }
-  .earist-public .public-news__card-title {
-    font-size: 24px;
+    right: max(24px, calc((100% - var(--public-frame-max)) / 2 - 76px));
   }
 }
