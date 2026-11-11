@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { apiClientRequest } from "@/lib/api.client";
 import { cn } from "@/lib/utils";
 import { PageHeader } from "@/components/ui/page-header";
@@ -176,17 +177,19 @@ export default function DefenseApplicationDetailPage() {
       setApproveError(null);
       setMissingRequirements([]);
       setFeedback({ type: "success", message: "Application approved." });
+      toast.success("Application approved.");
     },
     onError: (error: Error) => {
       const err = error as Error & ApiErrorish;
       if (err.missing?.length) {
         setMissingRequirements(err.missing);
         setApproveError("Application cannot be approved yet.");
+        toast.error("Application cannot be approved yet.");
       } else {
         setMissingRequirements([]);
-        setApproveError(
-          error.message || "The application could not be approved.",
-        );
+        const msg = error.message || "The application could not be approved.";
+        setApproveError(msg);
+        toast.error(msg);
       }
     },
   });
@@ -207,9 +210,12 @@ export default function DefenseApplicationDetailPage() {
         message:
           "Application rejected. The student can correct the identified requirements and resubmit.",
       });
+      toast.success("Application rejected.");
     },
     onError: (error: Error) => {
-      setRejectError(error.message || "The application could not be rejected.");
+      const msg = error.message || "The application could not be rejected.";
+      setRejectError(msg);
+      toast.error(msg);
     },
   });
 
@@ -380,8 +386,8 @@ export default function DefenseApplicationDetailPage() {
                     </ol>
                   )}
                   <p className="mt-2 text-xs text-(--earist-body-text)">
-                    The official research title is selected during Title Defense
-                    conclusion. Application approval does not select a title.
+                    The final research title will be selected by the committee
+                    during the Title Defense.
                   </p>
                 </div>
               )}
@@ -566,7 +572,7 @@ export default function DefenseApplicationDetailPage() {
                           className="h-3.5 w-3.5"
                           aria-hidden="true"
                         />
-                        Manuscript — Read-only (Adviser reviewed)
+                        Manuscript Review
                       </p>
                       <p className="mt-1 flex flex-wrap items-center gap-2 text-sm">
                         <Badge variant="outline">
@@ -686,16 +692,9 @@ export default function DefenseApplicationDetailPage() {
                 Admin Decision
               </h2>
               <p className="mt-2 text-xs text-(--earist-body-text)">
-                Approving accepts this application for panel assignment and
-                scheduling. It does not select an official research title or
-                mark the defense as passed.
+                Approve if all requirements are complete, or reject to return
+                the application for correction.
               </p>
-              {isTitle && (
-                <p className="mt-1 text-xs text-(--earist-body-text)">
-                  The official title is selected only during the Title Defense
-                  conclusion.
-                </p>
-              )}
               <div className="mt-3 grid grid-cols-2 gap-2">
                 <Button
                   variant="outline"
@@ -813,17 +812,10 @@ export default function DefenseApplicationDetailPage() {
           <DialogHeader>
             <DialogTitle>Approve this defense application?</DialogTitle>
             <DialogDescription>
-              The application will become ready for panel assignment and
-              scheduling. This does not select an official research title or
-              mark the defense as passed.
+              This application will be marked as approved and moved to
+              Scheduling &amp; Panels.
             </DialogDescription>
           </DialogHeader>
-          {isTitle && (
-            <p className="text-xs text-(--earist-body-text)">
-              The official title is selected only during the Title Defense
-              conclusion.
-            </p>
-          )}
           {approveError && (
             <div className="space-y-1" role="alert">
               <p className="text-sm text-destructive">{approveError}</p>

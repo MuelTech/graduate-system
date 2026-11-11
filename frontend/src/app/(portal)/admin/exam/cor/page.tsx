@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { apiClientRequest } from "@/lib/api.client";
 import { cn } from "@/lib/utils";
 import { PageHeader } from "@/components/ui/page-header";
@@ -422,11 +423,14 @@ export default function AdminCorVerificationPage() {
         type: "success",
         message: "COR verified. Student record created successfully.",
       });
+      toast.success("COR verified. Student record created successfully.");
     },
     onError: (error: Error) => {
       // Keep the Admin's typed corrections/selections intact; show the error
       // inside the confirmation dialog next to the action that failed.
-      setVerifyError(error.message || "Verification failed. Please try again.");
+      const msg = error.message || "Verification failed. Please try again.";
+      setVerifyError(msg);
+      toast.error(msg);
     },
   });
 
@@ -467,9 +471,12 @@ export default function AdminCorVerificationPage() {
         type: "success",
         message: "COR rejected. The applicant may submit a new COR.",
       });
+      toast.success("COR rejected. The applicant may submit a new COR.");
     },
     onError: (error: Error) => {
-      setRejectError(error.message || "Rejection failed. Please try again.");
+      const msg = error.message || "Rejection failed. Please try again.";
+      setRejectError(msg);
+      toast.error(msg);
     },
   });
 

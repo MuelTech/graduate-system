@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { apiClientRequest } from "@/lib/api.client";
 import { PageHeader } from "@/components/ui/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -67,6 +68,10 @@ export default function AdminWaiverValidationPage() {
       setShowValidateConfirm(false);
       setSelectedWaiverId(null);
       setAdminNotes("");
+      toast.success("Bridging waiver validated.");
+    },
+    onError: (err: Error) => {
+      toast.error(err.message || "Failed to validate waiver.");
     },
   });
 
@@ -81,6 +86,10 @@ export default function AdminWaiverValidationPage() {
       setShowRejectModal(false);
       setSelectedWaiverId(null);
       setAdminNotes("");
+      toast.success("Bridging waiver rejected.");
+    },
+    onError: (err: Error) => {
+      toast.error(err.message || "Failed to reject waiver.");
     },
   });
 
@@ -157,23 +166,23 @@ export default function AdminWaiverValidationPage() {
       />
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-3 gap-4">
         <Card>
-          <CardContent className="p-3">
-            <p className="text-xs text-(--earist-body-text)">Pending</p>
-            <p className="text-lg font-bold text-amber-600">{pendingCount}</p>
+          <CardContent className="p-4">
+            <p className="text-xs font-medium text-gray-500">Pending</p>
+            <p className="mt-1 text-2xl font-bold text-[#333333]">{pendingCount}</p>
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="p-3">
-            <p className="text-xs text-(--earist-body-text)">Validated</p>
-            <p className="text-lg font-bold text-green-600">{validatedCount}</p>
+          <CardContent className="p-4">
+            <p className="text-xs font-medium text-gray-500">Validated</p>
+            <p className="mt-1 text-2xl font-bold text-[#333333]">{validatedCount}</p>
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="p-3">
-            <p className="text-xs text-(--earist-body-text)">Rejected</p>
-            <p className="text-lg font-bold text-red-600">{rejectedCount}</p>
+          <CardContent className="p-4">
+            <p className="text-xs font-medium text-gray-500">Rejected</p>
+            <p className="mt-1 text-2xl font-bold text-[#333333]">{rejectedCount}</p>
           </CardContent>
         </Card>
       </div>
@@ -184,7 +193,7 @@ export default function AdminWaiverValidationPage() {
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             {/* Status Filter */}
             <div className="flex items-center gap-2">
-              <Filter className="h-4 w-4 text-(--earist-body-text)" />
+              <Filter className="h-4 w-4 text-gray-400" />
               <div className="flex gap-2">
                 {[
                   { value: "all", label: "All" },
@@ -197,8 +206,8 @@ export default function AdminWaiverValidationPage() {
                     onClick={() => setStatusFilter(filter.value)}
                     className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${
                       statusFilter === filter.value
-                        ? "bg-(--earist-primary) text-white"
-                        : "bg-(--earist-surface-gray) text-(--earist-body-text) hover:bg-(--earist-border-gray)"
+                        ? "bg-[#e02b20] text-white"
+                        : "bg-gray-100 text-gray-600 hover:bg-gray-200"
                     }`}
                   >
                     {filter.label}
@@ -215,7 +224,7 @@ export default function AdminWaiverValidationPage() {
                 placeholder="Search name or Applicant ID..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full rounded-lg border border-(--earist-border-gray) bg-white py-2 pl-9 pr-4 text-sm outline-none focus:border-(--earist-primary)"
+                className="w-full rounded-lg border border-gray-200 bg-white py-2 pl-9 pr-4 text-sm text-[#333333] outline-none focus:border-[#e02b20] focus:ring-2 focus:ring-[#e02b20]/20"
               />
             </div>
           </div>

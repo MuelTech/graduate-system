@@ -404,14 +404,17 @@ export class ThesisService {
    * Returns a safe DTO (no raw paths/storage keys), including history so the
    * rejected-correction UI can show current evidence and prior versions.
    */
-  async getMyCurrentApplication(userId: string) {
+  async getMyCurrentApplication(
+    userId: string,
+    requestedStage?: DefenseEvidenceStage,
+  ) {
     const student = await this.thesisRepo.getStudentByUserId(userId);
     if (!student) throw new AppError('Student profile not found.', 404);
 
     const thesis = await this.thesisRepo.getActiveThesis(student.id);
     if (!thesis) return null;
 
-    const stage = thesis.stage as DefenseEvidenceStage;
+    const stage = (requestedStage ?? thesis.stage) as DefenseEvidenceStage;
     const documents = await this.thesisRepo.getEvidenceHistory(thesis.id, stage);
 
     return {

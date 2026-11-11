@@ -18,6 +18,7 @@
 
 import { useRef, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { AlertCircle, CheckCircle2, Lock, PenLine } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
@@ -97,6 +98,7 @@ export function RapSignaturePanel({
     onSuccess: async () => {
       setConfirmingFinalize(false);
       setFinalizeError(null);
+      toast.success("Committee Report finalized for signing.");
       await invalidate();
     },
     onError: (error: Error) => {
@@ -104,13 +106,16 @@ export function RapSignaturePanel({
         // CDW-9B: the report changed/was finalized elsewhere. Refresh and force
         // a fresh review instead of leaving a stale confirmation action.
         setConfirmingFinalize(false);
-        setFinalizeError(
-          error.message || "The Committee Report changed. Review the latest saved report and try again.",
-        );
+        const conflictMsg =
+          error.message || "The Committee Report changed. Review the latest saved report and try again.";
+        setFinalizeError(conflictMsg);
+        toast.error(conflictMsg);
         void invalidate();
         return;
       }
-      setFinalizeError(error.message || FINALIZATION_ERROR);
+      const msg = error.message || FINALIZATION_ERROR;
+      setFinalizeError(msg);
+      toast.error(msg);
     },
     onSettled: () => {
       finalizingRef.current = false;
@@ -132,6 +137,7 @@ export function RapSignaturePanel({
     onSuccess: async () => {
       setSignDialogOpen(false);
       setSignError(null);
+      toast.success("Committee Report signature recorded.");
       await invalidate();
     },
     onError: (error: Error) => {
@@ -140,12 +146,14 @@ export function RapSignaturePanel({
         // report. Close the stale dialog, never resubmit, and refetch authority.
         setSignDialogOpen(false);
         setSignError(null);
+        toast.error(error.message || "Signature state changed. Refreshing report.");
         void invalidate();
         return;
       }
-      setSignError(
-        error.message || "The signature could not be recorded. Please try again.",
-      );
+      const msg =
+        error.message || "The signature could not be recorded. Please try again.";
+      setSignError(msg);
+      toast.error(msg);
     },
   });
 

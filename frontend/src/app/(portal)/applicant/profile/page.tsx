@@ -1,34 +1,28 @@
 import Link from "next/link";
 import { User, ArrowLeft } from "lucide-react";
+import { PageHeader } from "@/components/ui/page-header";
 
 export default function ApplicantProfilePage() {
   return (
     <div className="space-y-6">
-      <div>
-        <h2
-          className="text-2xl font-bold text-(--earist-primary)"
-          style={{ fontFamily: '"Calibri", sans-serif' }}
-        >
-          Profile
-        </h2>
-        <p className="text-sm text-(--earist-body-text)">
-          Manage your personal information
-        </p>
-      </div>
+      <PageHeader
+        title="Profile"
+        description="Manage your personal information"
+      />
 
-      <div className="rounded-lg border border-(--earist-border-gray) bg-white p-8 text-center">
-        <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-(--earist-surface-light-red)">
-          <User className="h-8 w-8 text-(--earist-primary)" />
+      <div className="rounded-xl border border-gray-100 bg-white p-8 text-center shadow-sm">
+        <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-[#e02b20]/10">
+          <User className="h-8 w-8 text-[#e02b20]" />
         </div>
-        <h3 className="mb-2 text-lg font-bold text-(--earist-primary)">
+        <h3 className="mb-2 text-lg font-bold text-[#333333]">
           Profile Setup & Management
         </h3>
-        <p className="mb-4 text-sm text-(--earist-body-text)">
+        <p className="mb-4 text-sm text-gray-500">
           This page is under construction. Check back soon.
         </p>
         <Link
           href="/applicant/dashboard"
-          className="inline-flex items-center gap-1 text-sm font-semibold text-(--earist-secondary) transition-colors hover:text-(--earist-primary)"
+          className="inline-flex items-center gap-1 text-sm font-semibold text-[#e02b20] transition-colors hover:underline"
         >
           <ArrowLeft className="h-4 w-4" /> Back to Dashboard
         </Link>

@@ -140,21 +140,21 @@ function EmptyState({
       <CardContent className="flex flex-col items-center justify-center gap-2 px-6 py-14 text-center">
         {filtered ? (
           <Search
-            className="h-8 w-8 text-(--earist-body-text)/40"
+            className="h-8 w-8 text-gray-300"
             aria-hidden="true"
           />
         ) : (
           <Inbox
-            className="h-8 w-8 text-(--earist-body-text)/40"
+            className="h-8 w-8 text-gray-300"
             aria-hidden="true"
           />
         )}
-        <p className="text-sm font-medium text-(--earist-primary)">
+        <p className="text-sm font-semibold text-[#333333]">
           {filtered
             ? "No assigned defenses match the current filters."
             : "You have no assigned defenses."}
         </p>
-        <p className="max-w-sm text-sm text-(--earist-body-text)">
+        <p className="max-w-sm text-sm text-gray-500">
           {filtered
             ? "Try a different quick filter, search term, defense stage, or session status."
             : "Defense sessions assigned to you will appear here."}
@@ -180,14 +180,14 @@ function ErrorState({
     <Card>
       <CardContent className="flex flex-col items-center justify-center gap-3 px-6 py-14 text-center">
         <AlertCircle
-          className="h-8 w-8 text-(--earist-secondary)"
+          className="h-8 w-8 text-[#e02b20]"
           aria-hidden="true"
         />
         <div className="space-y-1">
-          <p className="text-sm font-semibold text-(--earist-primary)">
+          <p className="text-sm font-semibold text-[#333333]">
             Unable to load your assigned defenses
           </p>
-          <p className="text-sm text-(--earist-body-text)">
+          <p className="text-sm text-gray-500">
             Your defense assignments could not be loaded. Please try again.
           </p>
         </div>
@@ -216,8 +216,8 @@ function MetaItem({
 }) {
   return (
     <div className={cn("min-w-0", className)}>
-      <dt className="text-sm font-medium text-(--earist-body-text)">{label}</dt>
-      <dd className="mt-1.5 text-base leading-6 font-medium break-words text-foreground">
+      <dt className="text-xs font-semibold uppercase tracking-wider text-gray-500">{label}</dt>
+      <dd className="mt-1.5 text-sm leading-6 font-medium break-words text-[#333333]">
         {children}
       </dd>
     </div>
@@ -366,7 +366,7 @@ export default function PanelistDefensesPage() {
             <div
               role="group"
               aria-label="Quick filters"
-              className="flex w-fit flex-wrap gap-1 rounded-lg border border-(--earist-border-gray) bg-(--earist-surface-gray) p-1"
+              className="flex w-fit flex-wrap gap-1 rounded-xl border border-gray-200 bg-gray-100/80 p-1"
             >
               {QUICK_FILTERS.map((filter) => (
                 <button
@@ -381,10 +381,10 @@ export default function PanelistDefensesPage() {
                     setPage(1);
                   }}
                   className={cn(
-                    "rounded-md px-4 py-2 text-base font-medium transition-colors focus-visible:ring-2 focus-visible:ring-(--earist-primary) focus-visible:outline-none",
+                    "rounded-lg px-4 py-2 text-sm font-medium transition-colors focus-visible:ring-2 focus-visible:ring-[#e02b20] focus-visible:outline-none",
                     quick === filter.value
-                      ? "bg-white text-(--earist-primary) shadow-sm"
-                      : "text-(--earist-body-text) hover:bg-white/60",
+                      ? "bg-white font-semibold text-[#e02b20] shadow-xs"
+                      : "text-gray-600 hover:bg-white/60 hover:text-[#333333]",
                   )}
                 >
                   {filter.label}
@@ -397,13 +397,13 @@ export default function PanelistDefensesPage() {
             <div className="w-full sm:min-w-[220px] sm:flex-1">
               <label
                 htmlFor="defense-search"
-                className="mb-1 block text-sm font-medium text-(--earist-body-text)"
+                className="mb-1 block text-xs font-semibold uppercase tracking-wider text-gray-500"
               >
                 Search
               </label>
               <div className="relative">
                 <Search
-                  className="absolute top-1/2 left-2.5 h-4 w-4 -translate-y-1/2 text-(--earist-body-text)/60"
+                  className="absolute top-1/2 left-2.5 h-4 w-4 -translate-y-1/2 text-gray-400"
                   aria-hidden="true"
                 />
                 <Input
@@ -414,7 +414,7 @@ export default function PanelistDefensesPage() {
                     setPage(1);
                   }}
                   placeholder="Search by student name, number, or program..."
-                  className="h-11 pl-9 text-base"
+                  className="h-11 pl-9 text-sm"
                 />
               </div>
             </div>
@@ -422,7 +422,7 @@ export default function PanelistDefensesPage() {
             <div className="w-full sm:w-52">
               <label
                 htmlFor="filter-stage"
-                className="mb-1 block text-sm font-medium text-(--earist-body-text)"
+                className="mb-1 block text-xs font-semibold uppercase tracking-wider text-gray-500"
               >
                 Defense Stage
               </label>
@@ -433,7 +433,7 @@ export default function PanelistDefensesPage() {
                   setPage(1);
                 }}
               >
-                <SelectTrigger id="filter-stage" className="h-11 w-full text-base">
+                <SelectTrigger id="filter-stage" className="h-11 w-full text-sm">
                   <span className="flex-1 truncate text-left">
                     {stageLabelText}
                   </span>
@@ -451,7 +451,7 @@ export default function PanelistDefensesPage() {
             <div className="w-full sm:w-60">
               <label
                 htmlFor="filter-session"
-                className="mb-1 block text-sm font-medium text-(--earist-body-text)"
+                className="mb-1 block text-xs font-semibold uppercase tracking-wider text-gray-500"
               >
                 Session Status
               </label>
@@ -464,7 +464,7 @@ export default function PanelistDefensesPage() {
                   setPage(1);
                 }}
               >
-                <SelectTrigger id="filter-session" className="h-11 w-full text-base">
+                <SelectTrigger id="filter-session" className="h-11 w-full text-sm">
                   <span className="flex-1 truncate text-left">
                     {sessionLabelText}
                   </span>
@@ -557,10 +557,10 @@ export default function PanelistDefensesPage() {
                   {/* Readable student identity and a separate session status. */}
                   <div className="flex flex-wrap items-start justify-between gap-4 px-5 py-5 lg:px-6">
                     <div className="min-w-0 flex-1">
-                      <h2 className="text-xl leading-7 font-semibold break-words text-foreground">
+                      <h2 className="text-lg leading-7 font-bold break-words text-[#333333]">
                         {studentName}
                       </h2>
-                      <p className="mt-1 text-sm leading-6 break-words text-(--earist-body-text) sm:text-base">
+                      <p className="mt-0.5 text-sm leading-6 break-words text-gray-500">
                         {identityMeta || "Student details unavailable"}
                       </p>
                     </div>
@@ -568,9 +568,9 @@ export default function PanelistDefensesPage() {
                       variant="outline"
                       aria-label={"Session status: " + sessionStatusLabel(status)}
                       className={cn(
-                        "max-w-full px-3 py-1 text-sm font-medium whitespace-normal",
+                        "max-w-full px-3 py-1 text-xs font-medium whitespace-normal",
                         SESSION_BADGE_CLASS[status] ??
-                          "text-(--earist-body-text)",
+                          "text-gray-500",
                       )}
                     >
                       {sessionStatusLabel(status)}
@@ -578,27 +578,27 @@ export default function PanelistDefensesPage() {
                   </div>
 
                   {/* One full-width, three-part information row avoids tiny scattered metadata. */}
-                  <dl className="grid gap-x-6 gap-y-5 border-y border-(--earist-border-gray) bg-(--earist-surface-gray)/40 px-5 py-4 sm:grid-cols-2 lg:grid-cols-3 lg:px-6">
+                  <dl className="grid gap-x-6 gap-y-5 border-y border-gray-100 bg-gray-50/50 px-5 py-4 sm:grid-cols-2 lg:grid-cols-3 lg:px-6">
                     <MetaItem label="Defense & Role">
-                      <span className="block font-semibold text-(--earist-primary)">
+                      <span className="block font-semibold text-[#333333]">
                         {defenseStageLabel(schedule?.defenseType)} Defense
                       </span>
-                      <span className="mt-1 block font-normal text-(--earist-body-text)">
-                        Your role: <span className="font-medium text-foreground">{roleLabel(assignment.role)}</span>
+                      <span className="mt-1 block font-normal text-gray-500">
+                        Your role: <span className="font-medium text-[#333333]">{roleLabel(assignment.role)}</span>
                       </span>
                     </MetaItem>
 
                     <MetaItem label="Schedule">
                       <span className="flex items-start gap-2">
                         <CalendarClock
-                          className="mt-1 h-4 w-4 shrink-0 text-(--earist-secondary)"
+                          className="mt-1 h-4 w-4 shrink-0 text-[#e02b20]"
                           aria-hidden="true"
                         />
                         <span>
                           {hasSchedule ? (
                             <>
-                              <span className="block">{formatWallDate(wallDate)}</span>
-                              <span className="block font-normal text-(--earist-body-text)">
+                              <span className="block text-[#333333]">{formatWallDate(wallDate)}</span>
+                              <span className="block font-normal text-gray-500">
                                 {formatWallTime(wallTime)}
                               </span>
                             </>

@@ -15,6 +15,7 @@
  */
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { Info, ChevronDown, PanelLeftClose, PlayCircle } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
@@ -74,8 +75,12 @@ export function RoleRail({
     mutationFn: () =>
       apiClientRequest(`/thesis/defense/${scheduleId}/start`, { method: "POST" }),
     onSuccess: async () => {
+      toast.success("Defense session started.");
       await queryClient.invalidateQueries({ queryKey: ["defenseWorkspace", scheduleId] });
       await queryClient.invalidateQueries({ queryKey: ["oralEvaluation", scheduleId] });
+    },
+    onError: (err: Error) => {
+      toast.error(err.message || "Failed to start defense session.");
     },
   });
 

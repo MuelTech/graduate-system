@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { apiClientRequest } from "@/lib/api.client";
 import { getClientBackendBaseUrl } from "@/lib/backend-origin.client";
+import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -72,12 +73,12 @@ export default function ApplicantCORUploadPage() {
 
   const handleFileSelect = (selectedFile: File) => {
     if (selectedFile.size > 5 * 1024 * 1024) {
-      alert("File size must not exceed 5MB.");
+      toast.error("File size must not exceed 5MB.");
       return;
     }
     const validTypes = ["application/pdf", "image/jpeg", "image/png"];
     if (!validTypes.includes(selectedFile.type)) {
-      alert("Only PDF, JPG, and PNG files are accepted.");
+      toast.error("Only PDF, JPG, and PNG files are accepted.");
       return;
     }
     setFile(selectedFile);
@@ -130,25 +131,23 @@ export default function ApplicantCORUploadPage() {
       setUploadState("pending");
       setFile(null);
       setPreview(null);
+      toast.success("Certificate of Registration uploaded for verification.");
     } catch (error: unknown) {
       const errorMessage =
         error instanceof Error ? error.message : "Upload failed";
-      alert(errorMessage);
+      toast.error(errorMessage);
       setUploadState("idle");
     }
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       {/* Page Header */}
       <div>
-        <h2
-          className="text-2xl font-bold text-(--earist-primary)"
-          style={{ fontFamily: '"Calibri", sans-serif' }}
-        >
+        <h1 className="text-2xl font-bold tracking-tight text-[#333333]">
           Certificate of Registration (COR)
-        </h2>
-        <p className="text-sm text-(--earist-body-text)">
+        </h1>
+        <p className="mt-1 text-sm text-gray-500">
           Upload your COR for Admin verification
         </p>
       </div>
@@ -192,7 +191,7 @@ export default function ApplicantCORUploadPage() {
               <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-red-50">
                 <Lock className="h-8 w-8 text-red-600" />
               </div>
-              <h3 className="mb-2 text-lg font-bold text-(--earist-primary)">
+              <h3 className="mb-2 text-lg font-bold text-[#333333]">
                 Access Denied
               </h3>
               <Alert className="max-w-md border-red-200 bg-red-50">
@@ -210,7 +209,7 @@ export default function ApplicantCORUploadPage() {
         <>
           <Card>
             <CardHeader>
-              <CardTitle className="text-sm font-semibold text-(--earist-secondary)">
+              <CardTitle className="text-base font-bold text-[#333333]">
                 {uploadState === "rejected"
                   ? "Upload a New COR"
                   : "How to Upload Your COR"}
@@ -233,10 +232,10 @@ export default function ApplicantCORUploadPage() {
                   },
                 ].map((item) => (
                   <div key={item.step} className="flex items-start gap-3">
-                    <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-(--earist-primary) text-xs font-bold text-white">
+                    <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#e02b20] text-xs font-bold text-white">
                       {item.step}
                     </div>
-                    <p className="text-sm text-(--earist-body-text)">
+                    <p className="text-sm text-gray-600">
                       {item.text}
                     </p>
                   </div>
@@ -247,7 +246,7 @@ export default function ApplicantCORUploadPage() {
 
           <Card>
             <CardHeader>
-              <CardTitle className="text-sm font-semibold text-(--earist-secondary)">
+              <CardTitle className="text-base font-bold text-[#333333]">
                 Upload COR
               </CardTitle>
             </CardHeader>
@@ -261,20 +260,20 @@ export default function ApplicantCORUploadPage() {
                   }}
                   onDragLeave={() => setIsDragging(false)}
                   onClick={() => fileInputRef.current?.click()}
-                  className={`flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed p-8 transition-colors ${
+                  className={`flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed p-8 transition-colors ${
                     isDragging
-                      ? "border-(--earist-primary) bg-(--earist-surface-light-red)"
-                      : "border-(--earist-border-gray) hover:border-(--earist-primary) hover:bg-(--earist-surface-gray)"
+                      ? "border-[#e02b20] bg-[#e02b20]/5"
+                      : "border-gray-200 bg-gray-50/40 hover:border-[#e02b20] hover:bg-[#e02b20]/[0.02]"
                   }`}
                 >
-                  <Upload className="mb-3 h-10 w-10 text-(--earist-body-text)/40" />
-                  <p className="mb-1 text-sm font-medium text-(--earist-primary)">
+                  <Upload className="mb-3 h-10 w-10 text-gray-400" />
+                  <p className="mb-1 text-sm font-medium text-[#333333]">
                     Drag and drop your COR file here
                   </p>
-                  <p className="mb-3 text-xs text-(--earist-body-text)">
+                  <p className="mb-3 text-xs text-gray-500">
                     or click to browse files
                   </p>
-                  <p className="text-[11px] text-(--earist-body-text)">
+                  <p className="text-[11px] text-gray-400">
                     Accepted formats: PDF, JPG, PNG &middot; Max 5MB
                   </p>
                   <input
@@ -290,33 +289,33 @@ export default function ApplicantCORUploadPage() {
                 </div>
               ) : (
                 <div className="space-y-4">
-                  <div className="flex items-start gap-3 rounded-lg border border-(--earist-border-gray) p-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded bg-(--earist-surface-gray)">
+                  <div className="flex items-start gap-3 rounded-lg border border-gray-200 bg-gray-50/60 p-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded bg-white shadow-xs">
                       {file.type === "application/pdf" ? (
-                        <FileText className="h-5 w-5 text-(--earist-primary)" />
+                        <FileText className="h-5 w-5 text-[#e02b20]" />
                       ) : (
-                        <ImageIcon className="h-5 w-5 text-(--earist-primary)" />
+                        <ImageIcon className="h-5 w-5 text-[#e02b20]" />
                       )}
                     </div>
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-medium text-(--earist-primary)">
+                      <p className="truncate text-sm font-medium text-[#333333]">
                         {file.name}
                       </p>
-                      <p className="text-xs text-(--earist-body-text)">
+                      <p className="text-xs text-gray-500">
                         {(file.size / 1024 / 1024).toFixed(2)} MB
                       </p>
                     </div>
                     <button
                       onClick={removeFile}
                       disabled={uploadState === "uploading"}
-                      className="rounded-full p-1 text-(--earist-body-text) hover:bg-(--earist-surface-gray)"
+                      className="rounded-full p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
                     >
                       <X className="h-4 w-4" />
                     </button>
                   </div>
 
                   {preview && (
-                    <div className="overflow-hidden rounded-lg border border-(--earist-border-gray)">
+                    <div className="overflow-hidden rounded-lg border border-gray-200">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
                         src={preview}
@@ -329,7 +328,7 @@ export default function ApplicantCORUploadPage() {
                   <Button
                     onClick={handleUpload}
                     disabled={uploadState === "uploading"}
-                    className="w-full bg-(--earist-primary) text-white hover:bg-(--earist-primary)/90"
+                    className="w-full"
                   >
                     {uploadState === "uploading" ? (
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -347,9 +346,9 @@ export default function ApplicantCORUploadPage() {
         </>
       )}
 
-      <div className="flex items-start gap-2 rounded-lg bg-(--earist-surface-gray) p-3">
-        <Mail className="mt-0.5 h-4 w-4 shrink-0 text-(--earist-body-text)" />
-        <p className="text-xs text-(--earist-body-text)">
+      <div className="flex items-start gap-2 rounded-lg border border-gray-100 bg-white p-3.5 shadow-xs">
+        <Mail className="mt-0.5 h-4 w-4 shrink-0 text-gray-400" />
+        <p className="text-xs text-gray-500">
           {uploadState === "verified"
             ? "Your portal credentials have been sent to your registered email address."
             : "You will receive an email notification once your COR has been verified by the Administrator."}

@@ -596,7 +596,7 @@ export default function AdminDefenseRecordDetailPage() {
               )}
             </MetaItem>
             {recordedTitle ? (
-              <MetaItem label="Recorded Title (historical)">{recordedTitle}</MetaItem>
+              <MetaItem label="Approved Research Title">{recordedTitle}</MetaItem>
             ) : null}
           </div>
 

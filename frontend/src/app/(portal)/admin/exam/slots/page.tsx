@@ -8,6 +8,7 @@ import {
   useQueryClient,
 } from "@tanstack/react-query";
 import { apiClientRequest } from "@/lib/api.client";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { PageHeader } from "@/components/ui/page-header";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -392,14 +393,20 @@ export default function AdminExamSchedulesPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["examSlots"] });
+      toast.success(
+        editing
+          ? "Entrance exam schedule updated."
+          : "Entrance exam schedule created.",
+      );
       closeDialog();
     },
     onError: (error: unknown) => {
-      setSubmitError(
+      const msg =
         error instanceof Error
           ? error.message
-          : "Failed to save the schedule. Please try again.",
-      );
+          : "Failed to save the schedule. Please try again.";
+      setSubmitError(msg);
+      toast.error(msg);
     },
   });
 
@@ -409,17 +416,23 @@ export default function AdminExamSchedulesPage() {
         method: "PATCH",
         body: JSON.stringify({ isActive: target.isActive }),
       }),
-    onSuccess: () => {
+    onSuccess: (_data, target) => {
       queryClient.invalidateQueries({ queryKey: ["examSlots"] });
       setConfirmTarget(null);
       closeDialog();
+      toast.success(
+        target.isActive
+          ? "Schedule reopened for booking."
+          : "Schedule closed for booking.",
+      );
     },
     onError: (error: unknown) => {
-      setStatusError(
+      const msg =
         error instanceof Error
           ? error.message
-          : "Failed to update the schedule availability. Please try again.",
-      );
+          : "Failed to update the schedule availability. Please try again.";
+      setStatusError(msg);
+      toast.error(msg);
     },
   });
 

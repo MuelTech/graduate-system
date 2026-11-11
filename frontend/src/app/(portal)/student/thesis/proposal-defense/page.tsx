@@ -3,9 +3,11 @@
 import { useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { apiClientRequest, ApiError } from "@/lib/api.client";
 import {
   studentThesisJourneyQueryKey,
+  journeyRouteFor,
   journeyStepFor,
 } from "@/lib/student-thesis-journey";
 import { useStudentThesisJourney } from "@/hooks/use-student-thesis-journey";
@@ -14,20 +16,26 @@ import {
   DefenseScheduleSummary,
   DefenseStatusPanel,
 } from "@/components/student/defense-status-panel";
-import { ProposalAdviserReviewPanel } from "@/components/student/proposal-adviser-review-panel";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  ProposalAdviserReviewPanel,
+  proposalAdviserReviewQueryKey,
+} from "@/components/student/proposal-adviser-review-panel";
+import type { ProposalAdviserReview } from "@/types/proposal-adviser-review";
+import {
+  ThesisJourneyShell,
+  JourneyStepStatusCard,
+  DocumentUploadSlot,
+} from "@/components/student/thesis-journey-shell";
+import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
   AlertCircle,
   AlertTriangle,
   CheckCircle2,
-  FileText,
   Lock,
   Send,
-  Upload,
-  UserCheck,
-  X,
 } from "lucide-react";
 
 type MissingRequirement = {
@@ -35,75 +43,6 @@ type MissingRequirement = {
   message: string;
   stage: string;
 };
-
-function FileSlot({
-  label,
-  file,
-  inputRef,
-  accept,
-  hint,
-  onPick,
-  onRemove,
-}: {
-  label: string;
-  file: File | null;
-  inputRef: React.RefObject<HTMLInputElement | null>;
-  accept: string;
-  hint: string;
-  onPick: (f: File) => void;
-  onRemove: () => void;
-}) {
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-sm font-semibold text-(--earist-secondary)">
-          {label}
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        {!file ? (
-          <label className="flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-(--earist-border-gray) p-6 transition-colors hover:border-(--earist-primary) hover:bg-(--earist-surface-gray)">
-            <Upload className="mb-2 h-8 w-8 text-(--earist-body-text)/40" />
-            <p className="text-center text-sm font-medium text-(--earist-primary)">
-              Upload
-            </p>
-            <p className="text-xs text-(--earist-body-text)">{hint}</p>
-            <input
-              ref={inputRef}
-              type="file"
-              accept={accept}
-              onChange={(e) => {
-                const f = e.target.files?.[0];
-                if (f) onPick(f);
-              }}
-              className="hidden"
-            />
-          </label>
-        ) : (
-          <div className="flex flex-col gap-3 rounded-lg border border-(--earist-border-gray) p-3">
-            <div className="flex items-center gap-3">
-              <div className="flex h-9 w-9 items-center justify-center rounded bg-(--earist-surface-gray)">
-                <FileText className="h-4 w-4 text-(--earist-primary)" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-medium text-(--earist-primary)">
-                  {file.name}
-                </p>
-              </div>
-            </div>
-            <button
-              type="button"
-              onClick={onRemove}
-              className="flex w-full items-center justify-center rounded p-2 text-xs text-red-500 hover:bg-red-50"
-            >
-              <X className="mr-1 h-4 w-4" /> Remove
-            </button>
-          </div>
-        )}
-      </CardContent>
-    </Card>
-  );
-}
 
 /**
  * WP11 — Proposal Defense integrated with centralized Journey.
@@ -142,17 +81,37 @@ export default function ProposalDefensePage() {
       (await apiClientRequest("/thesis/eligibility/PROPOSAL_DEFENSE")) as {
         eligible: boolean;
         missing: MissingRequirement[];
+        adviserCerts?: { proposal?: boolean; final?: boolean };
       },
     enabled: state === "CURRENT" || state === "AVAILABLE",
     retry: 1,
   });
 
+  const { data: reviewData } = useQuery<ProposalAdviserReview>({
+    queryKey: proposalAdviserReviewQueryKey,
+    queryFn: async () =>
+      (await apiClientRequest(
+        "/thesis/proposal-adviser-review",
+      )) as ProposalAdviserReview,
+    enabled: state === "CURRENT" || state === "AVAILABLE",
+  });
+
+  const isAdviserCertified =
+    reviewData?.reviewStatus === "ISSUED" ||
+    eligibility?.adviserCerts?.proposal === true;
+
   const systemGaps = useMemo(
     () =>
       (eligibility?.missing ?? []).filter(
-        (m) => !["PROPOSAL_CHAPTERS", "COR", "RECEIPT"].includes(m.code),
+        (m) =>
+          ![
+            "PROPOSAL_CHAPTERS",
+            "COR",
+            "RECEIPT",
+            ...(isAdviserCertified ? [] : ["ADVISER_CERT"]),
+          ].includes(m.code),
       ),
-    [eligibility],
+    [eligibility, isAdviserCertified],
   );
 
   // Fail closed: submit only when eligibility actually loaded successfully.
@@ -161,10 +120,12 @@ export default function ProposalDefensePage() {
   // CP3-FIX1: no second manuscript — certified manuscript is system-owned.
   const canSubmit =
     eligibilityReady &&
+    isAdviserCertified &&
     !!corFile &&
     !!receiptFile &&
     (state === "CURRENT" || state === "AVAILABLE") &&
-    systemGaps.length === 0;
+    systemGaps.length === 0 &&
+    !(eligibility?.missing ?? []).some((m) => m.code === "ADVISER_CERT");
 
   const submitProposal = useMutation({
     mutationFn: async () => {
@@ -179,6 +140,7 @@ export default function ProposalDefensePage() {
     onSuccess: async () => {
       setSubmitError(null);
       setSubmitSuccess(true);
+      toast.success("Proposal defense application submitted.");
       await queryClient.invalidateQueries({
         queryKey: studentThesisJourneyQueryKey,
       });
@@ -191,8 +153,10 @@ export default function ProposalDefensePage() {
         error instanceof ApiError && error.missing?.length
           ? ` ${error.missing.map((m) => m.message).join(" ")}`
           : "";
-      setSubmitError((error.message || "Failed to submit application") + extra);
+      const fullError = (error.message || "Failed to submit application") + extra;
+      setSubmitError(fullError);
       setSubmitSuccess(false);
+      toast.error(fullError);
     },
   });
 
@@ -219,65 +183,65 @@ export default function ProposalDefensePage() {
 
   if (state === "LOCKED") {
     return (
-      <div className="mx-auto max-w-3xl py-8">
-        <Card>
-          <CardContent className="space-y-3 pt-6">
-            <div className="flex items-center gap-2">
-              <Lock className="h-5 w-5 text-(--earist-secondary)" />
-              <p className="font-semibold">Proposal Defense is locked</p>
-            </div>
-            <p className="text-sm text-(--earist-body-text)">
-              {proposalStep?.lockReason || "This step is currently unavailable."}
-            </p>
-            <Link
-              href="/student/thesis"
-              className={buttonVariants({ variant: "outline" })}
-            >
-              Continue in Thesis Journey
-            </Link>
-          </CardContent>
-        </Card>
-      </div>
+      <ThesisJourneyShell
+        activeStep="PROPOSAL_DEFENSE"
+        title="Proposal Defense"
+        description="Step 3 of your Graduate Thesis Journey."
+        journey={journey}
+      >
+        <JourneyStepStatusCard
+          variant="locked"
+          title="Proposal Defense is Locked"
+          badgeText="Locked"
+          description={
+            proposalStep?.lockReason || "This step is currently unavailable."
+          }
+          nextStepHref="/student/thesis"
+          nextStepLabel="Back to Thesis Journey"
+        />
+      </ThesisJourneyShell>
     );
   }
 
   if (state === "COMPLETED") {
+    const nextHref = journey.policy?.strikeRequired
+      ? journeyRouteFor("STRIKE")
+      : journeyRouteFor("FINAL_DEFENSE");
+    const nextLabel = journey.policy?.strikeRequired
+      ? "Continue to STRIKE / Plagiarism"
+      : "Continue to Final Defense";
+
     return (
-      <div className="mx-auto max-w-3xl space-y-4">
-        <div>
-          <h2 className="text-2xl font-bold text-(--earist-primary)">
-            Proposal Defense
-          </h2>
-        </div>
-        <Card>
-          <CardContent className="space-y-3 pt-6">
-            <div className="flex items-center gap-2 text-emerald-700">
-              <CheckCircle2 className="h-5 w-5" />
-              <p className="font-semibold">Proposal Defense completed</p>
-            </div>
-            {proposalStep?.nextAction && (
-              <p className="text-sm text-(--earist-body-text)">
-                {proposalStep.nextAction}
-              </p>
-            )}
-            <Link href="/student/thesis" className={buttonVariants()}>
-              Continue in Thesis Journey
-            </Link>
-          </CardContent>
-        </Card>
+      <ThesisJourneyShell
+        activeStep="PROPOSAL_DEFENSE"
+        title="Proposal Defense"
+        description="Formal Proposal Defense is complete."
+        journey={journey}
+      >
+        <JourneyStepStatusCard
+          variant="completed"
+          title="Proposal Defense Completed"
+          badgeText="Completed"
+          description={
+            proposalStep?.nextAction ||
+            "Your Proposal Defense has been officially passed and finalized."
+          }
+          nextStepHref={nextHref}
+          nextStepLabel={nextLabel}
+        />
         <DefenseScheduleSummary session={proposalStep?.defenseSession} />
-      </div>
+      </ThesisJourneyShell>
     );
   }
 
   if (state === "WAITING") {
     return (
-      <div className="mx-auto max-w-3xl space-y-4">
-        <div>
-          <h2 className="text-2xl font-bold text-(--earist-primary)">
-            Proposal Defense
-          </h2>
-        </div>
+      <ThesisJourneyShell
+        activeStep="PROPOSAL_DEFENSE"
+        title="Proposal Defense"
+        description="Track your Proposal Defense application, schedule, and official records."
+        journey={journey}
+      >
         <DefenseStatusPanel
           kind="Proposal"
           step={proposalStep}
@@ -286,13 +250,13 @@ export default function ProposalDefensePage() {
           extra={
             <Link
               href="/student/thesis"
-              className={buttonVariants({ variant: "outline" })}
+              className={buttonVariants({ variant: "outline", size: "sm" })}
             >
-              Continue in Thesis Journey
+              Back to Thesis Journey
             </Link>
           }
         />
-      </div>
+      </ThesisJourneyShell>
     );
   }
 
@@ -301,42 +265,27 @@ export default function ProposalDefensePage() {
     .includes("reject");
   if (rejectedHint) {
     return (
-      <div className="mx-auto max-w-3xl space-y-4">
-        <div>
-          <h2 className="text-2xl font-bold text-(--earist-primary)">
-            Proposal Defense
-          </h2>
-        </div>
+      <ThesisJourneyShell
+        activeStep="PROPOSAL_DEFENSE"
+        title="Proposal Defense"
+        description="Review feedback and resubmit your Proposal Defense application."
+        journey={journey}
+      >
         <RejectedApplicationCorrection stage="PROPOSAL" reason={proposalStep?.detail} />
-      </div>
+      </ThesisJourneyShell>
     );
   }
 
+  void activeAdviser;
+
   // CURRENT / AVAILABLE
   return (
-    <div className="mx-auto max-w-3xl space-y-4">
-      <div>
-        <h2 className="text-2xl font-bold text-(--earist-primary)">
-          Proposal Defense Application
-        </h2>
-        <p className="text-sm text-(--earist-body-text)">
-          Stage-scoped uploads for Proposal Defense (Cashier payment happens
-          outside GS-IS — upload proof only).
-        </p>
-      </div>
-
-      {activeAdviser && (
-        <Card>
-          <CardContent className="pt-6 text-sm">
-            <div className="flex items-center gap-2">
-              <UserCheck className="h-4 w-4 text-emerald-600" />
-              <span className="text-(--earist-body-text)">Active Adviser:</span>
-              <span className="font-semibold">{activeAdviser.name}</span>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
+    <ThesisJourneyShell
+      activeStep="PROPOSAL_DEFENSE"
+      title="Proposal Defense Application"
+      description="Complete your Adviser manuscript certification and upload your current semester COR and defense-fee proof of payment."
+      journey={journey}
+    >
       {/* CP3: manuscript → Adviser review/certification before Admin application */}
       <ProposalAdviserReviewPanel />
 
@@ -393,44 +342,111 @@ export default function ProposalDefensePage() {
       )}
 
       {/* CP3-FIX1: certified Proposal manuscript is system-owned — COR + fee only */}
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        <FileSlot
-          label="Certificate of Registration (COR)"
-          file={corFile}
-          inputRef={corInputRef}
-          accept=".pdf,.jpg,.jpeg,.png"
-          hint="This application"
-          onPick={setCorFile}
-          onRemove={() => {
-            setCorFile(null);
-            if (corInputRef.current) corInputRef.current.value = "";
-          }}
-        />
-        <FileSlot
-          label="Defense-fee proof of payment"
-          file={receiptFile}
-          inputRef={receiptInputRef}
-          accept=".pdf,.jpg,.jpeg,.png"
-          hint="Cashier proof"
-          onPick={setReceiptFile}
-          onRemove={() => {
-            setReceiptFile(null);
-            if (receiptInputRef.current) receiptInputRef.current.value = "";
-          }}
-        />
-      </div>
+      {!isAdviserCertified ? (
+        <Card className="border-dashed border-gray-200 bg-gray-50/60 shadow-none">
+          <CardHeader className="pb-2">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <CardTitle className="flex items-center gap-2 text-base font-bold text-gray-500">
+                <Lock className="h-4 w-4 text-gray-400" aria-hidden="true" />
+                2. Defense Application Requirements — COR &amp; Proof of Payment
+              </CardTitle>
+              <Badge
+                variant="outline"
+                className="border-gray-200 bg-white text-gray-600"
+              >
+                Locked until Adviser Certification
+              </Badge>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-gray-500">
+              Once your Adviser reviews and certifies your Proposal manuscript in{" "}
+              <span className="font-semibold text-[#333333]">Step 1</span>, this
+              section will automatically unlock so you can upload your current
+              semester{" "}
+              <span className="font-medium text-[#333333]">
+                Certificate of Registration (COR)
+              </span>{" "}
+              and{" "}
+              <span className="font-medium text-[#333333]">
+                Defense-fee Proof of Payment
+              </span>
+              .
+            </p>
+          </CardContent>
+        </Card>
+      ) : (
+        <Card>
+          <CardHeader className="pb-2">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <CardTitle className="text-base font-bold text-[#333333]">
+                2. Defense Application Requirements — COR &amp; Proof of Payment
+              </CardTitle>
+              <Badge className="border border-emerald-200 bg-emerald-50 text-emerald-700">
+                Ready for Upload
+              </Badge>
+            </div>
+            <p className="text-xs text-gray-500">
+              Your Proposal manuscript is certified. Upload your current semester
+              COR and Cashier defense-fee receipt below to submit your application.
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-5">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <DocumentUploadSlot
+                label="Certificate of Registration (COR)"
+                helper={[
+                  "Upload your current semester Certificate of Registration.",
+                ]}
+                accept=".pdf,.jpg,.jpeg,.png"
+                file={corFile}
+                disabled={submitProposal.isPending}
+                onTriggerPick={() => corInputRef.current?.click()}
+                registerInput={(el) => {
+                  corInputRef.current = el;
+                }}
+                onPick={setCorFile}
+                onRemove={() => {
+                  setCorFile(null);
+                  if (corInputRef.current) corInputRef.current.value = "";
+                }}
+              />
+              <DocumentUploadSlot
+                label="Defense-fee Proof of Payment"
+                helper={[
+                  "Upload your official Cashier proof of payment for Proposal Defense.",
+                ]}
+                accept=".pdf,.jpg,.jpeg,.png"
+                file={receiptFile}
+                disabled={submitProposal.isPending}
+                onTriggerPick={() => receiptInputRef.current?.click()}
+                registerInput={(el) => {
+                  receiptInputRef.current = el;
+                }}
+                onPick={setReceiptFile}
+                onRemove={() => {
+                  setReceiptFile(null);
+                  if (receiptInputRef.current) receiptInputRef.current.value = "";
+                }}
+              />
+            </div>
 
-      <Button
-        type="button"
-        disabled={!canSubmit || submitProposal.isPending || eligibilityLoading}
-        onClick={() => submitProposal.mutate()}
-        className="w-full bg-(--earist-primary) hover:bg-(--earist-primary)/90 sm:w-auto"
-      >
-        <Send className="mr-2 h-4 w-4" />
-        {submitProposal.isPending
-          ? "Submitting…"
-          : "Submit Proposal Defense Application"}
-      </Button>
-    </div>
+            <Button
+              type="button"
+              disabled={
+                !canSubmit || submitProposal.isPending || eligibilityLoading
+              }
+              onClick={() => submitProposal.mutate()}
+              className="w-full sm:w-auto"
+            >
+              <Send className="mr-2 h-4 w-4" />
+              {submitProposal.isPending
+                ? "Submitting…"
+                : "Submit Proposal Defense Application"}
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+    </ThesisJourneyShell>
   );
 }

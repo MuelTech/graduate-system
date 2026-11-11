@@ -141,11 +141,11 @@ function SectionCard({
       <CardHeader>
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 space-y-1">
-            <h2 className="text-base font-semibold text-(--earist-secondary)">
+            <h2 className="text-base font-bold text-[#333333]">
               {title}
             </h2>
             {description ? (
-              <p className="text-xs text-(--earist-body-text)">{description}</p>
+              <p className="text-xs text-gray-500">{description}</p>
             ) : null}
           </div>
           {action ? <div className="shrink-0">{action}</div> : null}
@@ -160,10 +160,10 @@ function EmptyState({ message }: { message: string }) {
   return (
     <div className="flex flex-col items-center gap-2 py-6 text-center">
       <Inbox
-        className="h-6 w-6 text-(--earist-body-text)/40"
+        className="h-6 w-6 text-gray-300"
         aria-hidden="true"
       />
-      <p className="text-sm text-(--earist-body-text)">{message}</p>
+      <p className="text-sm text-gray-500">{message}</p>
     </div>
   );
 }
@@ -364,10 +364,10 @@ export default function AdminDashboard() {
               href="/admin/analytics"
               className={cn(
                 buttonVariants({ variant: "outline", size: "sm" }),
-                "gap-1.5 border-(--earist-border-gray) bg-white text-xs font-semibold text-(--earist-primary) hover:bg-gray-50 shadow-2xs"
+                "gap-1.5 border-gray-200 bg-white text-xs font-semibold text-[#333333] hover:bg-gray-50 shadow-2xs"
               )}
             >
-              <BarChart3 className="h-4 w-4 text-(--earist-primary)" />
+              <BarChart3 className="h-4 w-4 text-[#e02b20]" />
               Academic Analytics & Reports
             </Link>
           ) : undefined
@@ -379,19 +379,19 @@ export default function AdminDashboard() {
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {kpiCards.map((kpi) => (
             <Card key={kpi.label}>
-              <CardContent className="flex items-start justify-between gap-3">
+              <CardContent className="flex items-start justify-between gap-3 p-5">
                 <div className="min-w-0 space-y-1">
-                  <p className="text-xs font-semibold text-(--earist-body-text)">
+                  <p className="text-xs font-medium text-gray-500">
                     {kpi.label}
                   </p>
-                  <p className="text-3xl font-bold text-(--earist-primary)">
+                  <p className="text-2xl font-bold tracking-tight text-[#333333]">
                     {kpi.value}
                   </p>
-                  <p className="text-xs text-(--earist-body-text)">
+                  <p className="text-xs text-gray-500">
                     {kpi.supporting}
                   </p>
                 </div>
-                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-(--earist-surface-gray) text-(--earist-secondary)">
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[#e02b20]/10 text-[#e02b20]">
                   <kpi.icon className="h-5 w-5" aria-hidden="true" />
                 </span>
               </CardContent>
@@ -406,7 +406,7 @@ export default function AdminDashboard() {
         description="Admin work that currently requires action."
         action={
           totalAttention > 0 ? (
-            <Badge className="bg-(--earist-primary) text-white">
+            <Badge className="bg-[#e02b20] text-white">
               {totalAttention} {totalAttention === 1 ? "item" : "items"}
             </Badge>
           ) : null
@@ -420,17 +420,19 @@ export default function AdminDashboard() {
               <li key={queue.key}>
                 <Link
                   href={queue.href}
-                  className="flex items-center gap-3 rounded-lg bg-(--earist-surface-gray) p-3 transition-colors hover:bg-(--earist-surface-light-red) focus-visible:ring-2 focus-visible:ring-(--earist-primary) focus-visible:outline-none"
+                  className="flex items-center gap-3 rounded-xl border border-gray-100 bg-gray-50/50 p-3.5 transition-colors hover:bg-[#FFF8F0] focus-visible:ring-2 focus-visible:ring-[#e02b20] focus-visible:outline-none"
                 >
-                  <queue.icon
-                    className="h-5 w-5 shrink-0 text-(--earist-secondary)"
-                    aria-hidden="true"
-                  />
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#e02b20]/10 text-[#e02b20]">
+                    <queue.icon
+                      className="h-5 w-5"
+                      aria-hidden="true"
+                    />
+                  </span>
                   <span className="min-w-0 flex-1">
-                    <span className="block text-sm font-medium text-(--earist-primary)">
+                    <span className="block text-sm font-semibold text-[#333333]">
                       {queue.label}
                     </span>
-                    <span className="block text-xs text-(--earist-body-text)">
+                    <span className="block text-xs text-gray-500">
                       {queue.description}
                     </span>
                   </span>
@@ -438,14 +440,14 @@ export default function AdminDashboard() {
                     className={cn(
                       "shrink-0",
                       queue.count > 0
-                        ? "bg-(--earist-primary) text-white"
-                        : "bg-white text-(--earist-body-text)",
+                        ? "bg-[#e02b20] text-white"
+                        : "bg-gray-100 text-gray-500",
                     )}
                   >
                     {queue.count}
                   </Badge>
                   <ChevronRight
-                    className="h-4 w-4 shrink-0 text-(--earist-body-text)"
+                    className="h-4 w-4 shrink-0 text-gray-400"
                     aria-hidden="true"
                   />
                 </Link>
@@ -463,10 +465,10 @@ export default function AdminDashboard() {
         >
           <div className="space-y-4">
             <div className="flex items-baseline gap-2">
-              <span className="text-3xl font-bold text-(--earist-primary)">
+              <span className="text-3xl font-bold text-[#333333]">
                 {data.enrollment.total}
               </span>
-              <span className="text-sm text-(--earist-body-text)">
+              <span className="text-sm text-gray-500">
                 enrolled students
               </span>
             </div>
@@ -475,12 +477,12 @@ export default function AdminDashboard() {
               {data.enrollment.byDegreeLevel.map((level) => (
                 <div
                   key={level.degreeLevel}
-                  className="rounded-lg bg-(--earist-surface-gray) p-3"
+                  className="rounded-lg border border-gray-100 bg-gray-50/60 p-3"
                 >
-                  <p className="text-xs text-(--earist-body-text)">
+                  <p className="text-xs font-medium text-gray-500">
                     {DEGREE_LEVEL_LABEL[level.degreeLevel]}
                   </p>
-                  <p className="text-xl font-semibold text-foreground">
+                  <p className="text-xl font-bold text-[#333333]">
                     {level.count}
                   </p>
                 </div>
@@ -488,11 +490,11 @@ export default function AdminDashboard() {
             </div>
 
             <div>
-              <h3 className="mb-2 text-xs font-semibold text-(--earist-body-text)">
+              <h3 className="mb-2 text-xs font-semibold tracking-wider text-gray-500 uppercase">
                 Top programs by enrollment
               </h3>
               {data.enrollment.topPrograms.length === 0 ? (
-                <p className="text-sm text-(--earist-body-text)">
+                <p className="text-sm text-gray-500">
                   No program enrollment data available yet.
                 </p>
               ) : (
@@ -502,14 +504,14 @@ export default function AdminDashboard() {
                       key={`${program.degreeLevel}-${program.programName}`}
                       className="flex items-start justify-between gap-3"
                     >
-                      <span className="min-w-0 flex-1 break-words text-sm text-foreground">
+                      <span className="min-w-0 flex-1 break-words text-sm text-[#333333]">
                         {program.programName}
                       </span>
                       <span className="flex shrink-0 items-center gap-2 pt-0.5">
-                        <span className="text-xs text-(--earist-body-text)">
+                        <span className="text-xs text-gray-500">
                           {DEGREE_LEVEL_LABEL[program.degreeLevel]}
                         </span>
-                        <span className="text-sm font-semibold text-foreground">
+                        <span className="text-sm font-semibold text-[#333333]">
                           {program.count}
                         </span>
                       </span>
@@ -537,26 +539,26 @@ export default function AdminDashboard() {
                 return (
                   <div key={row.stage}>
                     <div className="mb-1 flex items-center justify-between text-sm">
-                      <span className="text-(--earist-body-text)">
+                      <span className="font-medium text-gray-600">
                         {STAGE_LABEL[row.stage]}
                       </span>
-                      <span className="font-semibold text-foreground">
+                      <span className="font-semibold text-[#333333]">
                         {row.count}
                       </span>
                     </div>
                     <div
-                      className="h-2 w-full overflow-hidden rounded-full bg-(--earist-surface-gray)"
+                      className="h-2 w-full overflow-hidden rounded-full bg-gray-100"
                       role="presentation"
                     >
                       <div
-                        className="h-full rounded-full bg-(--earist-primary)"
+                        className="h-full rounded-full bg-[#e02b20]"
                         style={{ width: `${percent}%` }}
                       />
                     </div>
                   </div>
                 );
               })}
-              <p className="pt-1 text-xs text-(--earist-body-text)">
+              <p className="pt-1 text-xs text-gray-500">
                 {pipelineTotal} students with an active thesis record.
               </p>
             </div>
@@ -578,24 +580,24 @@ export default function AdminDashboard() {
                 <li key={defense.scheduleId}>
                   <Link
                     href={`/admin/thesis/defense-records/${defense.scheduleId}`}
-                    className="block rounded-lg bg-(--earist-surface-gray) p-3 transition-colors hover:bg-(--earist-surface-light-red) focus-visible:ring-2 focus-visible:ring-(--earist-primary) focus-visible:outline-none"
+                    className="block rounded-xl border border-gray-100 bg-gray-50/50 p-3.5 transition-colors hover:bg-[#FFF8F0] focus-visible:ring-2 focus-visible:ring-[#e02b20] focus-visible:outline-none"
                   >
                     <div className="flex flex-wrap items-start justify-between gap-2">
-                      <p className="text-sm font-medium text-(--earist-primary)">
+                      <p className="text-sm font-semibold text-[#333333]">
                         {defense.studentName}
                       </p>
-                      <span className="shrink-0 text-xs text-(--earist-body-text)">
+                      <span className="shrink-0 text-xs text-gray-500">
                         {formatWallClockDate(defense.defenseDate)} ·{" "}
                         {defense.defenseTime}
                       </span>
                     </div>
-                    <p className="mt-1 text-xs text-(--earist-body-text)">
+                    <p className="mt-1 text-xs text-gray-500">
                       {defense.programName} ·{" "}
                       {DEFENSE_TYPE_LABEL[defense.defenseType] ??
                         defense.defenseType}
                     </p>
                     {defense.venueOrLink ? (
-                      <p className="mt-0.5 text-xs text-(--earist-body-text)">
+                      <p className="mt-0.5 text-xs text-gray-500">
                         {defense.venueOrLink}
                       </p>
                     ) : null}
@@ -611,45 +613,45 @@ export default function AdminDashboard() {
           description="Processes currently waiting on another responsible actor."
         >
           <div className="space-y-2">
-            <div className="rounded-lg bg-(--earist-surface-gray) p-3">
+            <div className="rounded-xl border border-gray-100 bg-gray-50/50 p-3.5">
               <div className="flex items-center justify-between gap-3">
-                <p className="text-sm font-medium text-(--earist-primary)">
+                <p className="text-sm font-semibold text-[#333333]">
                   Defenses Awaiting Conclusion
                 </p>
-                <span className="text-sm font-semibold text-foreground">
+                <span className="text-sm font-bold text-[#333333]">
                   {data.workflowMonitoring.defensesAwaitingConclusion}
                 </span>
               </div>
-              <p className="mt-1 text-xs text-(--earist-body-text)">
+              <p className="mt-1 text-xs text-gray-500">
                 The formal result is recorded by the authorized session
                 Chairman.
               </p>
               {canAccess("/admin/thesis/defense-records") && (
                 <Link
                   href="/admin/thesis/defense-records"
-                  className="mt-1 inline-block text-xs font-medium text-(--earist-secondary) hover:underline"
+                  className="mt-1.5 inline-block text-xs font-semibold text-[#e02b20] hover:underline"
                 >
                   View defense records
                 </Link>
               )}
             </div>
 
-            <div className="rounded-lg bg-(--earist-surface-gray) p-3">
+            <div className="rounded-xl border border-gray-100 bg-gray-50/50 p-3.5">
               <div className="flex items-center justify-between gap-3">
-                <p className="text-sm font-medium text-(--earist-primary)">
+                <p className="text-sm font-semibold text-[#333333]">
                   RAP Reports Awaiting Signatures
                 </p>
-                <span className="text-sm font-semibold text-foreground">
+                <span className="text-sm font-bold text-[#333333]">
                   {data.workflowMonitoring.rapReportsAwaitingSignatures}
                 </span>
               </div>
-              <p className="mt-1 text-xs text-(--earist-body-text)">
+              <p className="mt-1 text-xs text-gray-500">
                 Awaiting the required signatories; not yet finalized.
               </p>
               {canAccess("/admin/thesis/defense-records") && (
                 <Link
                   href="/admin/thesis/defense-records"
-                  className="mt-1 inline-block text-xs font-medium text-(--earist-secondary) hover:underline"
+                  className="mt-1.5 inline-block text-xs font-semibold text-[#e02b20] hover:underline"
                 >
                   View defense records
                 </Link>

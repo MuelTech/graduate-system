@@ -575,14 +575,14 @@ export default function AdminFacultyPage() {
                     <div className="flex justify-end gap-1">
                       <button
                         onClick={() => openViewModal(faculty)}
-                        className="rounded p-1.5 text-(--earist-body-text) hover:bg-(--earist-surface-gray)"
+                        className="rounded-lg p-1.5 text-gray-500 transition-colors hover:bg-gray-100 hover:text-[#333333]"
                         title="View Details"
                       >
                         <Eye className="h-4 w-4" />
                       </button>
                       <button
                         onClick={() => openEditModal(faculty)}
-                        className="rounded p-1.5 text-(--earist-body-text) hover:bg-(--earist-surface-gray)"
+                        className="rounded-lg p-1.5 text-gray-500 transition-colors hover:bg-gray-100 hover:text-[#333333]"
                         title="Edit Faculty"
                       >
                         <Edit className="h-4 w-4" />
@@ -595,7 +595,7 @@ export default function AdminFacultyPage() {
                           })
                         }
                         disabled={updateMutation.isPending}
-                        className={`rounded p-1.5 transition-colors ${
+                        className={`rounded-lg p-1.5 transition-colors ${
                           faculty.isActive
                             ? "text-red-600 hover:bg-red-50"
                             : "text-green-600 hover:bg-green-50"

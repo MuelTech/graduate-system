@@ -788,8 +788,8 @@ export class RapReportService {
       message: !schedule.conclusion
         ? "Defense records are being finalized."
         : finalized
-          ? "Official RAP is available."
-          : "RAP is awaiting required signatures.",
+          ? "The official Rapporteur Report is available."
+          : "The Rapporteur Report is awaiting required committee signatures.",
     };
   }
 }

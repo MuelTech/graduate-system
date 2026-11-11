@@ -28,11 +28,11 @@ function PageHeader({
       )}
     >
       <div className="min-w-0 space-y-1">
-        <h1 className="text-2xl font-bold tracking-tight text-(--earist-primary) sm:text-3xl">
+        <h1 className="text-2xl font-bold tracking-tight text-[#333333]">
           {title}
         </h1>
         {description ? (
-          <p className="max-w-2xl text-sm text-(--earist-body-text)">
+          <p className="max-w-3xl text-sm text-gray-500">
             {description}
           </p>
         ) : null}

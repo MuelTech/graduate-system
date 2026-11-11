@@ -49,13 +49,13 @@ export default function ChangePasswordPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4">
-      <Card className="w-full max-w-md">
+    <div className="flex min-h-screen items-center justify-center bg-[#FFF8F0] px-4">
+      <Card className="w-full max-w-md border-gray-100 shadow-lg">
         <CardHeader className="text-center">
-          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-(--earist-primary)/10">
-            <Lock className="h-6 w-6 text-(--earist-primary)" />
+          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-[#e02b20]/10">
+            <Lock className="h-6 w-6 text-[#e02b20]" />
           </div>
-          <CardTitle className="text-xl font-bold text-(--earist-primary)">
+          <CardTitle className="text-xl font-bold text-[#333333]">
             Change Your Password
           </CardTitle>
           <p className="text-sm text-gray-500">
@@ -102,7 +102,7 @@ export default function ChangePasswordPage() {
             <Button
               type="submit"
               disabled={isLoading || !newPassword || !confirmPassword}
-              className="w-full bg-(--earist-primary) hover:bg-(--earist-primary)/90"
+              className="w-full bg-[#e02b20] font-semibold text-white hover:bg-[#c62828]"
             >
               {isLoading ? (
                 <>

@@ -148,24 +148,18 @@ function LoginForm() {
       <div className="absolute inset-0 bg-(--earist-primary)/60 backdrop-blur-sm" />
 
       <div className="relative z-10 w-full max-w-105 px-4 py-12">
-        <Card className="shadow-2xl">
+        <Card className="border-gray-100 shadow-2xl">
           <CardHeader className="text-center">
-            <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-(--earist-surface-light-red)">
-              <GraduationCap className="h-9 w-9 text-(--earist-primary)" />
+            <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-[#e02b20]/10">
+              <GraduationCap className="h-9 w-9 text-[#e02b20]" />
             </div>
-            <CardTitle
-              className="text-lg text-(--earist-primary)"
-              style={{ fontFamily: '"Calibri", sans-serif' }}
-            >
+            <CardTitle className="text-lg font-bold text-[#333333]">
               EARIST Graduate School
             </CardTitle>
-            <CardDescription>Information System</CardDescription>
+            <CardDescription className="text-gray-500">Information System</CardDescription>
           </CardHeader>
           <CardContent>
-            <h2
-              className="mb-6 text-center text-xl font-bold text-(--earist-secondary)"
-              style={{ fontFamily: '"Calibri", sans-serif' }}
-            >
+            <h2 className="mb-6 text-center text-xl font-bold text-[#333333]">
               Sign In to Your Portal
             </h2>
 
@@ -177,8 +171,8 @@ function LoginForm() {
             )}
 
             {success && (
-              <Alert className="mb-5 border-green-200 bg-green-50 text-green-800">
-                <CheckCircle className="h-4 w-4 text-green-600" />
+              <Alert className="mb-5 border-emerald-200 bg-emerald-50 text-emerald-800">
+                <CheckCircle className="h-4 w-4 text-emerald-600" />
                 <AlertDescription>{success}</AlertDescription>
               </Alert>
             )}
@@ -186,13 +180,13 @@ function LoginForm() {
             <form onSubmit={handleSubmit} className="space-y-5">
               {/* Role Selector */}
               <div>
-                <label className="mb-1.5 block text-sm font-semibold text-(--earist-secondary)">
+                <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-gray-500">
                   Login As
                 </label>
                 <select
                   value={role}
                   onChange={(e) => handleRoleChange(e.target.value as UserRole)}
-                  className="w-full rounded-lg border border-(--earist-border-gray) px-4 py-3 text-sm transition-colors focus:border-(--earist-primary) focus:ring-2 focus:ring-(--earist-primary)/20 focus:outline-none"
+                  className="w-full rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-sm font-medium text-[#333333] transition-colors focus:border-[#e02b20] focus:ring-2 focus:ring-[#e02b20]/20 focus:outline-none"
                 >
                   {roles.map((r) => (
                     <option key={r.value} value={r.value}>
@@ -206,7 +200,7 @@ function LoginForm() {
               {role === "applicant" && (
                 <>
                   <div>
-                    <label className="mb-1.5 block text-sm font-semibold text-(--earist-secondary)">
+                    <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-gray-500">
                       Applicant ID
                     </label>
                     <Input
@@ -236,7 +230,7 @@ function LoginForm() {
               {role === "student" && (
                 <>
                   <div>
-                    <label className="mb-1.5 block text-sm font-semibold text-(--earist-secondary)">
+                    <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-gray-500">
                       Student Number
                     </label>
                     <Input
@@ -266,7 +260,7 @@ function LoginForm() {
               {(role === "admin" || role === "faculty") && (
                 <>
                   <div>
-                    <label className="mb-1.5 block text-sm font-semibold text-(--earist-secondary)">
+                    <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-gray-500">
                       Email Address
                     </label>
                     <Input
@@ -296,7 +290,7 @@ function LoginForm() {
               <Button
                 type="submit"
                 disabled={isLoading}
-                className="w-full bg-(--earist-accent) text-(--earist-primary) hover:bg-(--earist-accent)/90"
+                className="w-full bg-[#e02b20] font-semibold text-white hover:bg-[#c62828]"
               >
                 {isLoading ? "Signing In..." : "Sign In"}
               </Button>
@@ -305,21 +299,21 @@ function LoginForm() {
             <div className="mt-4 text-center">
               <Link
                 href="/forgot-password"
-                className="text-sm text-(--earist-secondary) transition-colors hover:text-(--earist-primary) hover:underline"
+                className="text-sm font-medium text-gray-500 transition-colors hover:text-[#e02b20] hover:underline"
               >
                 Forgot your password?
               </Link>
             </div>
 
             <div className="my-5 flex items-center gap-3">
-              <div className="h-px flex-1 bg-(--earist-border-gray)" />
-              <span className="text-xs text-(--earist-body-text)">or</span>
-              <div className="h-px flex-1 bg-(--earist-border-gray)" />
+              <div className="h-px flex-1 bg-gray-200" />
+              <span className="text-xs text-gray-400">or</span>
+              <div className="h-px flex-1 bg-gray-200" />
             </div>
 
             <Link
               href="/register"
-              className="inline-flex w-full items-center justify-center rounded-lg border border-(--earist-primary) py-2.5 text-sm font-semibold text-(--earist-primary) transition-colors hover:bg-(--earist-surface-light-red)"
+              className="inline-flex w-full items-center justify-center rounded-lg border border-gray-200 bg-white py-2.5 text-sm font-semibold text-[#333333] transition-colors hover:border-[#e02b20]/40 hover:bg-[#e02b20]/5 hover:text-[#e02b20]"
             >
               New applicant? Apply here
             </Link>
@@ -352,7 +346,7 @@ function PasswordInput({
 }) {
   return (
     <div>
-      <label className="mb-1.5 block text-sm font-semibold text-(--earist-secondary)">
+      <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-gray-500">
         Password
       </label>
       <div className="relative">
@@ -368,7 +362,7 @@ function PasswordInput({
         <button
           type="button"
           onClick={toggleShow}
-          className="absolute top-1/2 right-3 -translate-y-1/2 text-(--earist-body-text) transition-colors hover:text-(--earist-primary)"
+          className="absolute top-1/2 right-3 -translate-y-1/2 text-gray-400 transition-colors hover:text-[#333333]"
         >
           {show ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
         </button>

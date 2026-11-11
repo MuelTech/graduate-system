@@ -604,7 +604,15 @@ export class ThesisController {
   getMyCurrentApplication = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
       if (!req.user) throw new Error('Unauthorized');
-      const result = await this.thesisService.getMyCurrentApplication(req.user.userId);
+      const rawStage = typeof req.query.stage === 'string' ? req.query.stage.toUpperCase() : undefined;
+      const requestedStage =
+        rawStage === 'TITLE' || rawStage === 'PROPOSAL' || rawStage === 'FINAL'
+          ? rawStage
+          : undefined;
+      const result = await this.thesisService.getMyCurrentApplication(
+        req.user.userId,
+        requestedStage,
+      );
       res.status(200).json(result);
     } catch (error: any) {
       res.status(400).json({ error: error.message });

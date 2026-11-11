@@ -276,43 +276,43 @@ export default function StudentDashboard() {
       <section aria-label="Academic status summary">
         <div className="grid gap-4 sm:grid-cols-2">
           <Card>
-            <CardContent className="space-y-1 p-4">
-              <p className="flex items-center gap-2 text-xs font-semibold text-(--earist-body-text)">
-                <BookOpen className="h-4 w-4" aria-hidden="true" />
+            <CardContent className="space-y-1 p-5">
+              <p className="flex items-center gap-2 text-xs font-semibold text-gray-500">
+                <BookOpen className="h-4 w-4 text-[#e02b20]" aria-hidden="true" />
                 Comprehensive Examination
               </p>
               {overviewQuery.isLoading ? (
                 <Skeleton className="h-7 w-24" />
               ) : overviewQuery.isError ? (
-                <p className="text-sm text-(--earist-body-text)">Unavailable</p>
+                <p className="text-sm text-gray-500">Unavailable</p>
               ) : (
-                <p className="text-2xl font-bold text-(--earist-primary)">
+                <p className="text-2xl font-bold text-[#333333]">
                   {compExamStatusLabel(compExamStatus)}
                 </p>
               )}
-              <p className="text-xs text-(--earist-body-text)">
+              <p className="text-xs text-gray-500">
                 Required before Title Defense.
               </p>
             </CardContent>
           </Card>
 
           <Card>
-            <CardContent className="space-y-1 p-4">
-              <p className="flex items-center gap-2 text-xs font-semibold text-(--earist-body-text)">
-                <Milestone className="h-4 w-4" aria-hidden="true" />
+            <CardContent className="space-y-1 p-5">
+              <p className="flex items-center gap-2 text-xs font-semibold text-gray-500">
+                <Milestone className="h-4 w-4 text-[#e02b20]" aria-hidden="true" />
                 Current Thesis Stage
               </p>
               {journeyQuery.isLoading ? (
                 <Skeleton className="h-7 w-32" />
               ) : journeyQuery.isError ? (
-                <p className="text-sm text-(--earist-body-text)">Unavailable</p>
+                <p className="text-sm text-gray-500">Unavailable</p>
               ) : (
-                <p className="text-2xl font-bold text-(--earist-primary)">
+                <p className="text-2xl font-bold text-[#333333]">
                   {currentStageLabel}
                 </p>
               )}
-              <p className="text-xs text-(--earist-body-text)">
-                Based on your Student Thesis Journey.
+              <p className="text-xs text-gray-500">
+                Current milestone in your Thesis Journey.
               </p>
             </CardContent>
           </Card>

@@ -1,15 +1,12 @@
+import { PageHeader } from "@/components/ui/page-header";
+
 export default function AdminNotifications() {
   return (
-    <div className="space-y-4">
-      <h2
-        className="text-2xl font-bold text-(--earist-primary)"
-        style={{ fontFamily: '"Calibri", sans-serif' }}
-      >
-        Notifications
-      </h2>
-      <p className="text-sm text-(--earist-body-text)">
-        View all system notifications and alerts.
-      </p>
+    <div className="space-y-6">
+      <PageHeader
+        title="Notifications"
+        description="View all system notifications and alerts."
+      />
     </div>
   );
 }

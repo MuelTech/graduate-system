@@ -15,6 +15,7 @@ import { getClientBackendBaseUrl } from "@/lib/backend-origin.client";
 import { Button } from "@/components/ui/button";
 import { getSession } from "next-auth/react";
 import { useState } from "react";
+import { toast } from "sonner";
 
 export default function ApplicantAlignmentPage() {
   const queryClient = useQueryClient();
@@ -64,9 +65,10 @@ export default function ApplicantAlignmentPage() {
 
       // Refresh the waiver data so the UI updates to show it was downloaded
       await queryClient.invalidateQueries({ queryKey: ["my-waiver"] });
+      toast.success("Bridging waiver PDF downloaded.");
     } catch (error) {
       console.error("Error downloading waiver:", error);
-      alert("Something went wrong while generating the PDF. Please try again.");
+      toast.error("Something went wrong while generating the PDF. Please try again.");
     } finally {
       setIsDownloading(false);
     }
@@ -87,28 +89,25 @@ export default function ApplicantAlignmentPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h2
-          className="text-2xl font-bold text-(--earist-primary)"
-          style={{ fontFamily: '"Calibri", sans-serif' }}
-        >
+        <h1 className="text-2xl font-bold tracking-tight text-[#333333]">
           Program Alignment
-        </h2>
-        <p className="text-sm text-(--earist-body-text)">
+        </h1>
+        <p className="mt-1 text-sm text-gray-500">
           Check your program alignment status and bridging waiver requirements.
         </p>
       </div>
 
-      <div className="rounded-lg border border-(--earist-border-gray) bg-white p-8">
+      <div className="rounded-xl border border-gray-100 bg-white p-8 shadow-sm">
         {/* SUCCESS STATE */}
         {isAligned && (
           <div className="text-center">
             <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-green-100">
               <CheckCircle2 className="h-8 w-8 text-green-600" />
             </div>
-            <h3 className="mb-2 text-lg font-bold text-green-700">
+            <h3 className="mb-2 text-lg font-bold text-[#333333]">
               Program Alignment Cleared
             </h3>
-            <p className="mb-6 text-sm text-(--earist-body-text)">
+            <p className="mb-6 text-sm text-gray-600">
               {profile?.alignmentStatus === "aligned"
                 ? "Your undergraduate degree is aligned with your intended master's program. You may proceed to schedule your entrance exam."
                 : "Your waiver has been approved. You may proceed to schedule your entrance exam and should continue following the bridging-subject requirements in your signed waiver."}
@@ -122,20 +121,20 @@ export default function ApplicantAlignmentPage() {
             <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-amber-100">
               <AlertTriangle className="h-8 w-8 text-amber-600" />
             </div>
-            <h3 className="mb-2 text-lg font-bold text-amber-700">
+            <h3 className="mb-2 text-lg font-bold text-[#333333]">
               Bridging Subjects Required
             </h3>
-            <p className="mb-6 text-sm text-(--earist-body-text)">
+            <p className="mb-6 text-sm text-gray-600">
               Your undergraduate course does not perfectly align with your
               intended Master&apos;s program. You are required to submit a
               signed Bridging Waiver before you can schedule your entrance exam.
             </p>
 
-            <div className="bg-(--earist-surface-gray) rounded-lg p-6 text-left space-y-4 mb-6 border border-(--earist-border-gray)">
-              <h4 className="font-semibold text-(--earist-secondary) flex items-center gap-2">
-                <Printer className="h-4 w-4" /> Next Steps:
+            <div className="bg-gray-50/70 rounded-xl p-6 text-left space-y-4 mb-6 border border-gray-100">
+              <h4 className="font-semibold text-[#333333] flex items-center gap-2">
+                <Printer className="h-4 w-4 text-[#e02b20]" /> Next Steps:
               </h4>
-              <ol className="list-decimal list-inside text-sm text-(--earist-body-text) space-y-2">
+              <ol className="list-decimal list-inside text-sm text-gray-600 space-y-2">
                 <li>
                   Click the button below to download your auto-filled Bridging
                   Waiver form.
@@ -153,7 +152,7 @@ export default function ApplicantAlignmentPage() {
               <Button
                 onClick={handleDownload}
                 disabled={isDownloading}
-                className="bg-(--earist-primary) hover:bg-(--earist-primary)/90 text-white font-bold w-full sm:w-auto"
+                className="font-semibold w-full sm:w-auto"
               >
                 <Download className="mr-2 h-4 w-4" />
                 {isDownloading ? "Generating PDF..." : "Download Bridging Form"}
@@ -196,7 +195,7 @@ export default function ApplicantAlignmentPage() {
         <div className="mt-8 text-center">
           <Link
             href="/applicant/dashboard"
-            className="inline-flex items-center gap-1 text-sm font-semibold text-(--earist-secondary) transition-colors hover:text-(--earist-primary)"
+            className="inline-flex items-center gap-1 text-sm font-semibold text-[#e02b20] transition-colors hover:underline"
           >
             <ArrowLeft className="h-4 w-4" /> Back to Dashboard
           </Link>

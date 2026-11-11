@@ -192,11 +192,11 @@ export default function AdminSettingsPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["emailTemplates"] });
-      alert("Email template saved successfully!");
+      toast.success("Email template saved successfully.");
       setEditingTemplate(null);
     },
     onError: (error: Error) => {
-      alert(error.message);
+      toast.error(error.message || "Failed to save email template.");
     }
   });
 
@@ -214,10 +214,10 @@ export default function AdminSettingsPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["systemSettings"] });
       setShowSaveConfirm(false);
-      alert("Settings saved successfully!");
+      toast.success("Settings saved successfully.");
     },
     onError: (error: Error) => {
-      alert(error.message);
+      toast.error(error.message || "Failed to save settings.");
       setShowSaveConfirm(false);
     }
   });
@@ -255,8 +255,8 @@ export default function AdminSettingsPage() {
                     onClick={() => setActiveTab(tab.id)}
                     className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
                       activeTab === tab.id
-                        ? "bg-(--earist-primary) text-white"
-                        : "text-(--earist-body-text) hover:bg-(--earist-surface-gray)"
+                        ? "bg-[#e02b20] text-white"
+                        : "text-gray-600 hover:bg-gray-50 hover:text-[#333333]"
                     }`}
                   >
                     <tab.icon className="h-4 w-4 shrink-0" />

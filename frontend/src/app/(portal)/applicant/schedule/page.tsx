@@ -31,6 +31,7 @@ import {
 import { apiClientRequest } from "@/lib/api.client";
 import { ApplicantStatus, ExamSlot } from "@/types";
 import { formatScheduleDate as formatDate, formatScheduleTime as formatTime, isPastExamSchedule as isPast } from "@/lib/admin-exam-schedules";
+import { toast } from "sonner";
 
 export default function ApplicantSchedulePage() {
   const [viewMode, setViewMode] = useState<"table" | "calendar">("table");
@@ -77,12 +78,13 @@ export default function ApplicantSchedulePage() {
       queryClient.invalidateQueries({ queryKey: ["examStatus"] });
       queryClient.invalidateQueries({ queryKey: ["examSlots"] });
       setConfirmSlot(null);
+      toast.success("Entrance exam schedule confirmed.");
     },
     onError: (err: unknown) => {
       if (err instanceof Error) {
-        alert(err.message || "Failed to schedule exam.");
+        toast.error(err.message || "Failed to schedule exam.");
       } else {
-        alert("Failed to schedule exam.");
+        toast.error("Failed to schedule exam.");
       }
     },
   });

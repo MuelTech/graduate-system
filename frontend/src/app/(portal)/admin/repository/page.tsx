@@ -236,13 +236,10 @@ export default function AdminRepositoryPage() {
     <div className="space-y-6">
       {/* Page Header */}
       <div>
-        <h2
-          className="text-2xl font-bold text-(--earist-primary)"
-          style={{ fontFamily: '"Calibri", sans-serif' }}
-        >
+        <h1 className="text-2xl font-bold tracking-tight text-[#333333]">
           Research Databank & Repository Management
-        </h2>
-        <p className="mt-1 text-sm text-(--earist-body-text)">
+        </h1>
+        <p className="mt-1 text-sm text-gray-500">
           Review archived post-defense manuscripts, inspect research instruments and certifications,
           correct metadata, and manage public discovery indexing.
         </p>
@@ -251,21 +248,21 @@ export default function AdminRepositoryPage() {
       {/* Summary KPI Cards */}
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
         <Card>
-          <CardContent className="p-4">
-            <p className="text-xs font-medium text-(--earist-body-text)">Total Databank Submissions</p>
-            <p className="mt-1 text-2xl font-bold text-(--earist-primary)">{entries.length}</p>
+          <CardContent className="p-5">
+            <p className="text-xs font-medium text-gray-500">Total Databank Submissions</p>
+            <p className="mt-1 text-2xl font-bold text-[#333333]">{entries.length}</p>
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="p-4">
-            <p className="text-xs font-medium text-(--earist-body-text)">Published in Repository</p>
-            <p className="mt-1 text-2xl font-bold text-green-600">{publishedCount}</p>
+          <CardContent className="p-5">
+            <p className="text-xs font-medium text-gray-500">Published in Repository</p>
+            <p className="mt-1 text-2xl font-bold text-[#333333]">{publishedCount}</p>
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="p-4">
-            <p className="text-xs font-medium text-(--earist-body-text)">Private / Internal Archives</p>
-            <p className="mt-1 text-2xl font-bold text-amber-600">{privateCount}</p>
+          <CardContent className="p-5">
+            <p className="text-xs font-medium text-gray-500">Private / Internal Archives</p>
+            <p className="mt-1 text-2xl font-bold text-[#333333]">{privateCount}</p>
           </CardContent>
         </Card>
       </div>

@@ -308,14 +308,14 @@ export default function AdminDefenseApplicationsPage() {
     <div className="space-y-6">
       <PageHeader
         title="Defense Applications"
-        description="Review Title, Proposal, and Final Defense applications. Approved applications proceed to panel assignment and scheduling; approval is not a defense result."
+        description="Review submitted Title, Proposal, and Final Defense applications."
       />
 
       {/* Workflow navigation (counts, not KPIs) */}
       <div
         role="group"
         aria-label="Application workflow"
-        className="flex flex-wrap gap-2 border-b border-(--earist-border-gray) pb-2"
+        className="flex flex-wrap gap-2 border-b border-gray-200 pb-2"
       >
         {WORKFLOW_TABS.map((tab) => {
           const isActive = view === tab.id;
@@ -333,7 +333,7 @@ export default function AdminDefenseApplicationsPage() {
               }}
               className={cn(
                 isActive &&
-                  "bg-(--earist-primary) text-white hover:bg-(--earist-primary)/90",
+                  "bg-[#e02b20] text-white hover:bg-[#c62828]",
               )}
             >
               {tab.label}
@@ -342,7 +342,7 @@ export default function AdminDefenseApplicationsPage() {
                   "ml-1.5 rounded-full px-1.5 text-xs font-semibold",
                   isActive
                     ? "bg-white/20 text-white"
-                    : "bg-(--earist-surface-gray) text-(--earist-body-text)",
+                    : "bg-gray-100 text-gray-600",
                 )}
               >
                 {count}

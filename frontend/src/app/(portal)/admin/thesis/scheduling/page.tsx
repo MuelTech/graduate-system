@@ -3,6 +3,7 @@
 import { Suspense, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { apiClientRequest } from "@/lib/api.client";
 import { cn } from "@/lib/utils";
 import { PageHeader } from "@/components/ui/page-header";
@@ -333,18 +334,21 @@ function AdminSchedulingPageInner() {
         type: "success",
         message: when,
       });
+      toast.success(when);
     },
     onError: (error: Error & { missing?: MissingRequirement[] }) => {
       const missing = error.missing ?? [];
       setMissingItems(missing);
       setShowConfirm(false);
+      const errMsg = missing.length
+        ? "The defense could not be scheduled. No changes were saved."
+        : error.message ||
+          "The defense could not be scheduled. No changes were saved.";
       setFeedback({
         type: "error",
-        message: missing.length
-          ? "The defense could not be scheduled. No changes were saved."
-          : error.message ||
-            "The defense could not be scheduled. No changes were saved.",
+        message: errMsg,
       });
+      toast.error(errMsg);
     },
   });
 
@@ -387,7 +391,7 @@ function AdminSchedulingPageInner() {
     <div className="space-y-6">
       <PageHeader
         title="Scheduling &amp; Panels"
-        description="Assign a defense committee and schedule the session for approved applications, then inspect confirmed schedules. Approval is not a defense result."
+        description="Assign defense committees and schedule sessions for approved applications."
       />
 
       {feedback && (
@@ -569,9 +573,8 @@ function AdminSchedulingPageInner() {
           <DialogHeader>
             <DialogTitle>Schedule this defense?</DialogTitle>
             <DialogDescription>
-              This creates the scheduled defense session and notifies the
-              student and committee. It does not mark the defense as passed or
-              concluded.
+              Confirm the schedule and committee details below. The student and
+              panel members will be notified.
             </DialogDescription>
           </DialogHeader>
           {selected && (

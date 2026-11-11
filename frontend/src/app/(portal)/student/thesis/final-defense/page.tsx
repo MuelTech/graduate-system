@@ -3,6 +3,7 @@
 import { useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { apiClientRequest, ApiError } from "@/lib/api.client";
 import {
   studentThesisJourneyQueryKey,
@@ -14,19 +15,26 @@ import {
   DefenseScheduleSummary,
   DefenseStatusPanel,
 } from "@/components/student/defense-status-panel";
-import { FinalAdviserReviewPanel } from "@/components/student/final-adviser-review-panel";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  FinalAdviserReviewPanel,
+  finalAdviserReviewQueryKey,
+  type FinalAdviserReview,
+} from "@/components/student/final-adviser-review-panel";
+import {
+  ThesisJourneyShell,
+  JourneyStepStatusCard,
+  DocumentUploadSlot,
+} from "@/components/student/thesis-journey-shell";
+import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
   AlertCircle,
   AlertTriangle,
   CheckCircle2,
-  FileText,
   Lock,
   Send,
-  Upload,
-  X,
 } from "lucide-react";
 
 type MissingRequirement = {
@@ -34,75 +42,6 @@ type MissingRequirement = {
   message: string;
   stage: string;
 };
-
-function FileSlot({
-  label,
-  file,
-  inputRef,
-  accept,
-  hint,
-  onPick,
-  onRemove,
-}: {
-  label: string;
-  file: File | null;
-  inputRef: React.RefObject<HTMLInputElement | null>;
-  accept: string;
-  hint: string;
-  onPick: (f: File) => void;
-  onRemove: () => void;
-}) {
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-sm font-semibold text-(--earist-secondary)">
-          {label}
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        {!file ? (
-          <label className="flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-(--earist-border-gray) p-6 transition-colors hover:border-(--earist-primary) hover:bg-(--earist-surface-gray)">
-            <Upload className="mb-2 h-8 w-8 text-(--earist-body-text)/40" />
-            <p className="text-center text-sm font-medium text-(--earist-primary)">
-              Upload
-            </p>
-            <p className="text-xs text-(--earist-body-text)">{hint}</p>
-            <input
-              ref={inputRef}
-              type="file"
-              accept={accept}
-              onChange={(e) => {
-                const f = e.target.files?.[0];
-                if (f) onPick(f);
-              }}
-              className="hidden"
-            />
-          </label>
-        ) : (
-          <div className="flex flex-col gap-3 rounded-lg border border-(--earist-border-gray) p-3">
-            <div className="flex items-center gap-3">
-              <div className="flex h-9 w-9 items-center justify-center rounded bg-(--earist-surface-gray)">
-                <FileText className="h-4 w-4 text-(--earist-primary)" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-medium text-(--earist-primary)">
-                  {file.name}
-                </p>
-              </div>
-            </div>
-            <button
-              type="button"
-              onClick={onRemove}
-              className="flex w-full items-center justify-center rounded p-2 text-xs text-red-500 hover:bg-red-50"
-            >
-              <X className="mr-1 h-4 w-4" /> Remove
-            </button>
-          </div>
-        )}
-      </CardContent>
-    </Card>
-  );
-}
 
 /**
  * WP12 — Final Defense integrated with centralized Journey.
@@ -140,27 +79,49 @@ export default function FinalDefensePage() {
       (await apiClientRequest("/thesis/eligibility/FINAL_DEFENSE")) as {
         eligible: boolean;
         missing: MissingRequirement[];
+        adviserCerts?: { proposal?: boolean; final?: boolean };
       },
     enabled: state === "CURRENT" || state === "AVAILABLE",
     retry: 1,
   });
 
+  const { data: reviewData } = useQuery<FinalAdviserReview>({
+    queryKey: finalAdviserReviewQueryKey,
+    queryFn: async () =>
+      (await apiClientRequest(
+        "/thesis/final-adviser-review",
+      )) as FinalAdviserReview,
+    enabled: state === "CURRENT" || state === "AVAILABLE",
+  });
+
+  const isAdviserCertified =
+    reviewData?.reviewStatus === "ISSUED" ||
+    eligibility?.adviserCerts?.final === true;
+
   const systemGaps = useMemo(
     () =>
       (eligibility?.missing ?? []).filter(
-        (m) => !["FINAL_MANUSCRIPT", "COR", "RECEIPT"].includes(m.code),
+        (m) =>
+          ![
+            "FINAL_MANUSCRIPT",
+            "COR",
+            "RECEIPT",
+            ...(isAdviserCertified ? [] : ["ADVISER_CERT"]),
+          ].includes(m.code),
       ),
-    [eligibility],
+    [eligibility, isAdviserCertified],
   );
 
   const eligibilityReady = eligibility != null && !eligibilityError;
 
   const canSubmit =
     eligibilityReady &&
+    isAdviserCertified &&
     !!corFile &&
     !!receiptFile &&
     (state === "CURRENT" || state === "AVAILABLE") &&
-    systemGaps.length === 0;
+    systemGaps.length === 0 &&
+    !(eligibility?.missing ?? []).some((m) => m.code === "ADVISER_CERT");
 
   const submitFinal = useMutation({
     mutationFn: async () => {
@@ -176,6 +137,7 @@ export default function FinalDefensePage() {
     onSuccess: async () => {
       setSubmitError(null);
       setSubmitSuccess(true);
+      toast.success("Final defense application submitted.");
       await queryClient.invalidateQueries({
         queryKey: studentThesisJourneyQueryKey,
       });
@@ -188,8 +150,10 @@ export default function FinalDefensePage() {
         error instanceof ApiError && error.missing?.length
           ? ` ${error.missing.map((m) => m.message).join(" ")}`
           : "";
-      setSubmitError((error.message || "Failed to submit application") + extra);
+      const fullError = (error.message || "Failed to submit application") + extra;
+      setSubmitError(fullError);
       setSubmitSuccess(false);
+      toast.error(fullError);
     },
   });
 
@@ -216,59 +180,56 @@ export default function FinalDefensePage() {
 
   if (state === "LOCKED") {
     return (
-      <div className="mx-auto max-w-3xl py-8">
-        <Card>
-          <CardContent className="space-y-3 pt-6">
-            <div className="flex items-center gap-2">
-              <Lock className="h-5 w-5 text-(--earist-secondary)" />
-              <p className="font-semibold">Final Defense is locked</p>
-            </div>
-            <p className="text-sm text-(--earist-body-text)">
-              {finalStep?.lockReason || "This step is currently unavailable."}
-            </p>
-            <Link href="/student/thesis" className={buttonVariants({ variant: "outline" })}>
-              Continue in Thesis Journey
-            </Link>
-          </CardContent>
-        </Card>
-      </div>
+      <ThesisJourneyShell
+        activeStep="FINAL_DEFENSE"
+        title="Final Defense"
+        description="Step 5 of your Graduate Thesis Journey."
+        journey={journey}
+      >
+        <JourneyStepStatusCard
+          variant="locked"
+          title="Final Defense is Locked"
+          badgeText="Locked"
+          description={
+            finalStep?.lockReason || "This step is currently unavailable."
+          }
+          nextStepHref="/student/thesis"
+          nextStepLabel="Back to Thesis Journey"
+        />
+      </ThesisJourneyShell>
     );
   }
 
   if (state === "COMPLETED") {
     return (
-      <div className="mx-auto max-w-3xl space-y-4">
-        <div>
-          <h2 className="text-2xl font-bold text-(--earist-primary)">
-            Final Defense
-          </h2>
-        </div>
-        <Card>
-          <CardContent className="space-y-3 pt-6">
-            <div className="flex items-center gap-2 text-emerald-700">
-              <CheckCircle2 className="h-5 w-5" />
-              <p className="font-semibold">Final Defense completed</p>
-            </div>
-            {finalStep?.nextAction && (
-              <p className="text-sm text-(--earist-body-text)">
-                {finalStep.nextAction}
-              </p>
-            )}
-          </CardContent>
-        </Card>
+      <ThesisJourneyShell
+        activeStep="FINAL_DEFENSE"
+        title="Final Defense"
+        description="Formal Final Defense is complete."
+        journey={journey}
+      >
+        <JourneyStepStatusCard
+          variant="completed"
+          title="Final Defense Completed"
+          badgeText="Completed"
+          description={
+            finalStep?.nextAction ||
+            "Congratulations! Your Final Defense has been officially passed and finalized."
+          }
+        />
         <DefenseScheduleSummary session={finalStep?.defenseSession} />
-      </div>
+      </ThesisJourneyShell>
     );
   }
 
   if (state === "WAITING") {
     return (
-      <div className="mx-auto max-w-3xl space-y-4">
-        <div>
-          <h2 className="text-2xl font-bold text-(--earist-primary)">
-            Final Defense
-          </h2>
-        </div>
+      <ThesisJourneyShell
+        activeStep="FINAL_DEFENSE"
+        title="Final Defense"
+        description="Track your Final Defense application, schedule, and official records."
+        journey={journey}
+      >
         <DefenseStatusPanel
           kind="Final"
           step={finalStep}
@@ -277,41 +238,39 @@ export default function FinalDefensePage() {
           extra={
             <Link
               href="/student/thesis"
-              className={buttonVariants({ variant: "outline" })}
+              className={buttonVariants({ variant: "outline", size: "sm" })}
             >
-              Continue in Thesis Journey
+              Back to Thesis Journey
             </Link>
           }
         />
-      </div>
+      </ThesisJourneyShell>
     );
   }
 
   const rejectedHint = (finalStep?.detail || "").toLowerCase().includes("reject");
   if (rejectedHint) {
     return (
-      <div className="mx-auto max-w-3xl space-y-4">
-        <div>
-          <h2 className="text-2xl font-bold text-(--earist-primary)">
-            Final Defense
-          </h2>
-        </div>
+      <ThesisJourneyShell
+        activeStep="FINAL_DEFENSE"
+        title="Final Defense"
+        description="Review feedback and resubmit your Final Defense application."
+        journey={journey}
+      >
         <RejectedApplicationCorrection stage="FINAL" reason={finalStep?.detail} />
-      </div>
+      </ThesisJourneyShell>
     );
   }
 
   return (
-    <div className="mx-auto max-w-3xl space-y-4">
-      <div>
-        <h2 className="text-2xl font-bold text-(--earist-primary)">
-          Final Defense Application
-        </h2>
-        <p className="text-sm text-(--earist-body-text)">
-          Stage-scoped uploads for Final Defense (Cashier payment happens outside
-          GS-IS — upload proof only).
-        </p>
-      </div>
+    <ThesisJourneyShell
+      activeStep="FINAL_DEFENSE"
+      title="Final Defense Application"
+      description="Complete your Adviser manuscript certification and upload your current semester COR and defense-fee proof of payment."
+      journey={journey}
+    >
+      {/* CP4: manuscript → Adviser review/certification before Admin application */}
+      <FinalAdviserReviewPanel />
 
       {submitError && (
         <Alert variant="destructive">
@@ -366,46 +325,111 @@ export default function FinalDefensePage() {
       )}
 
       {/* CP4: certified Final manuscript is system-owned — COR + fee only */}
-      <FinalAdviserReviewPanel />
+      {!isAdviserCertified ? (
+        <Card className="border-dashed border-gray-200 bg-gray-50/60 shadow-none">
+          <CardHeader className="pb-2">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <CardTitle className="flex items-center gap-2 text-base font-bold text-gray-500">
+                <Lock className="h-4 w-4 text-gray-400" aria-hidden="true" />
+                2. Defense Application Requirements — COR &amp; Proof of Payment
+              </CardTitle>
+              <Badge
+                variant="outline"
+                className="border-gray-200 bg-white text-gray-600"
+              >
+                Locked until Adviser Certification
+              </Badge>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-gray-500">
+              Once your Adviser reviews and certifies your Final manuscript in{" "}
+              <span className="font-semibold text-[#333333]">Step 1</span>, this
+              section will automatically unlock so you can upload your current
+              semester{" "}
+              <span className="font-medium text-[#333333]">
+                Certificate of Registration (COR)
+              </span>{" "}
+              and{" "}
+              <span className="font-medium text-[#333333]">
+                Defense-fee Proof of Payment
+              </span>
+              .
+            </p>
+          </CardContent>
+        </Card>
+      ) : (
+        <Card>
+          <CardHeader className="pb-2">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <CardTitle className="text-base font-bold text-[#333333]">
+                2. Defense Application Requirements — COR &amp; Proof of Payment
+              </CardTitle>
+              <Badge className="border border-emerald-200 bg-emerald-50 text-emerald-700">
+                Ready for Upload
+              </Badge>
+            </div>
+            <p className="text-xs text-gray-500">
+              Your Final manuscript is certified. Upload your current semester
+              COR and Cashier defense-fee receipt below to submit your application.
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-5">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <DocumentUploadSlot
+                label="Certificate of Registration (COR)"
+                helper={[
+                  "Upload your current semester Certificate of Registration.",
+                ]}
+                accept=".pdf,.jpg,.jpeg,.png"
+                file={corFile}
+                disabled={submitFinal.isPending}
+                onTriggerPick={() => corInputRef.current?.click()}
+                registerInput={(el) => {
+                  corInputRef.current = el;
+                }}
+                onPick={setCorFile}
+                onRemove={() => {
+                  setCorFile(null);
+                  if (corInputRef.current) corInputRef.current.value = "";
+                }}
+              />
+              <DocumentUploadSlot
+                label="Defense-fee Proof of Payment"
+                helper={[
+                  "Upload your official Cashier proof of payment for Final Defense.",
+                ]}
+                accept=".pdf,.jpg,.jpeg,.png"
+                file={receiptFile}
+                disabled={submitFinal.isPending}
+                onTriggerPick={() => receiptInputRef.current?.click()}
+                registerInput={(el) => {
+                  receiptInputRef.current = el;
+                }}
+                onPick={setReceiptFile}
+                onRemove={() => {
+                  setReceiptFile(null);
+                  if (receiptInputRef.current) receiptInputRef.current.value = "";
+                }}
+              />
+            </div>
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        <FileSlot
-          label="Certificate of Registration (COR)"
-          file={corFile}
-          inputRef={corInputRef}
-          accept=".pdf,.jpg,.jpeg,.png"
-          hint="This application"
-          onPick={setCorFile}
-          onRemove={() => {
-            setCorFile(null);
-            if (corInputRef.current) corInputRef.current.value = "";
-          }}
-        />
-        <FileSlot
-          label="Defense-fee proof of payment"
-          file={receiptFile}
-          inputRef={receiptInputRef}
-          accept=".pdf,.jpg,.jpeg,.png"
-          hint="Cashier proof"
-          onPick={setReceiptFile}
-          onRemove={() => {
-            setReceiptFile(null);
-            if (receiptInputRef.current) receiptInputRef.current.value = "";
-          }}
-        />
-      </div>
-
-      <Button
-        type="button"
-        disabled={!canSubmit || submitFinal.isPending || eligibilityLoading}
-        onClick={() => submitFinal.mutate()}
-        className="w-full bg-(--earist-primary) hover:bg-(--earist-primary)/90 sm:w-auto"
-      >
-        <Send className="mr-2 h-4 w-4" />
-        {submitFinal.isPending
-          ? "Submitting…"
-          : "Submit Final Defense Application"}
-      </Button>
-    </div>
+            <Button
+              type="button"
+              disabled={
+                !canSubmit || submitFinal.isPending || eligibilityLoading
+              }
+              onClick={() => submitFinal.mutate()}
+              className="w-full sm:w-auto"
+            >
+              <Send className="mr-2 h-4 w-4" />
+              {submitFinal.isPending
+                ? "Submitting…"
+                : "Submit Final Defense Application"}
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+    </ThesisJourneyShell>
   );
 }

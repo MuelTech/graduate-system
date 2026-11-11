@@ -7,6 +7,10 @@ import {
   journeyStepFor,
 } from "@/lib/student-thesis-journey";
 import {
+  ThesisJourneyShell,
+  JourneyStepStatusCard,
+} from "@/components/student/thesis-journey-shell";
+import {
   Card,
   CardContent,
   CardHeader,
@@ -14,7 +18,7 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
-import { Info, Lock, Clock, CheckCircle2 } from "lucide-react";
+import { Info, Clock } from "lucide-react";
 
 /**
  * WP12 — canonical Student STRIKE / Plagiarism page.
@@ -66,94 +70,76 @@ export default function StudentStrikePage() {
   }
 
   return (
-    <div className="space-y-4">
-      <div>
-        <h2 className="text-2xl font-bold text-(--earist-primary)">
-          STRIKE / Plagiarism
-        </h2>
-        <p className="text-sm text-(--earist-body-text)">
-          Manuscript plagiarism review status for Final Defense.
-        </p>
-      </div>
-
+    <ThesisJourneyShell
+      activeStep="STRIKE"
+      title="STRIKE / Plagiarism"
+      description="Manuscript plagiarism review status for Final Defense."
+      journey={journey}
+    >
       {strike?.state === "LOCKED" && (
-        <Card>
-          <CardContent className="space-y-2 pt-6">
-            <div className="flex items-center gap-2">
-              <Lock className="h-5 w-5 text-(--earist-secondary)" />
-              <p className="font-semibold">This step is not available yet</p>
-            </div>
-            <p className="text-sm text-(--earist-body-text)">
-              {strike.lockReason || "This step is currently unavailable."}
-            </p>
-            <Link href="/student/thesis" className={buttonVariants({ variant: "outline" })}>
-              Continue in Thesis Journey
-            </Link>
-          </CardContent>
-        </Card>
+        <JourneyStepStatusCard
+          variant="locked"
+          title="STRIKE / Plagiarism is Locked"
+          badgeText="Locked"
+          description={strike.lockReason || "This step is currently unavailable."}
+          nextStepHref="/student/thesis"
+          nextStepLabel="Back to Thesis Journey"
+        />
       )}
 
       {strike && strike.state !== "LOCKED" && !strikeRequired && (
         <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-sm">
-              <Info className="h-4 w-4" />
-              Not required
+          <CardHeader className="border-b border-gray-100 pb-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <CardTitle className="flex items-center gap-2 text-base font-bold text-[#333333]">
+                <Info className="h-4 w-4 text-[#e02b20]" />
+                Plagiarism Check Not Required
+              </CardTitle>
               <Badge variant="outline">Not required</Badge>
-            </CardTitle>
+            </div>
           </CardHeader>
-          <CardContent className="space-y-2 text-sm">
-            <p className="text-(--earist-body-text)">
+          <CardContent className="space-y-3 pt-4 text-sm text-[#333333]">
+            <p className="text-gray-600">
               STRIKE / plagiarism checking is not required for your current
               workflow.
             </p>
             {strike.detail && (
-              <p className="text-xs text-(--earist-body-text)">{strike.detail}</p>
+              <p className="text-xs text-gray-500">{strike.detail}</p>
             )}
             {(finalStep?.state === "CURRENT" ||
               finalStep?.state === "AVAILABLE" ||
               finalStep?.state === "WAITING" ||
               finalStep?.state === "COMPLETED") && (
-              <Link
-                href={journeyRouteFor("FINAL_DEFENSE")}
-                className={buttonVariants()}
-              >
-                Continue to Final Defense
-              </Link>
+              <div>
+                <Link
+                  href={journeyRouteFor("FINAL_DEFENSE")}
+                  className={buttonVariants()}
+                >
+                  Continue to Final Defense
+                </Link>
+              </div>
             )}
           </CardContent>
         </Card>
       )}
 
       {strike && strike.state !== "LOCKED" && strikeRequired && strikeCompleted && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-sm">
-              <CheckCircle2 className="h-5 w-5 text-emerald-600" />
-              Plagiarism check
-              <Badge className="bg-emerald-100 text-emerald-800">Completed</Badge>
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2 text-sm">
-            <p className="text-(--earist-body-text)">
-              The required plagiarism / STRIKE clearance has been recorded.
-            </p>
-            {strike.nextAction && (
-              <p className="text-xs text-(--earist-body-text)">
-                {strike.nextAction}
-              </p>
-            )}
-            {(finalStep?.state === "CURRENT" ||
-              finalStep?.state === "AVAILABLE") && (
-              <Link
-                href={journeyRouteFor("FINAL_DEFENSE")}
-                className={buttonVariants()}
-              >
-                Continue to Final Defense
-              </Link>
-            )}
-          </CardContent>
-        </Card>
+        <JourneyStepStatusCard
+          variant="completed"
+          title="Plagiarism Clearance Recorded"
+          badgeText="Completed"
+          description="The required plagiarism / STRIKE clearance has been recorded."
+          nextStepHref={
+            finalStep?.state === "CURRENT" || finalStep?.state === "AVAILABLE"
+              ? journeyRouteFor("FINAL_DEFENSE")
+              : undefined
+          }
+          nextStepLabel="Continue to Final Defense"
+        >
+          {strike.nextAction && (
+            <p className="text-xs text-gray-500">{strike.nextAction}</p>
+          )}
+        </JourneyStepStatusCard>
       )}
 
       {strike &&
@@ -161,28 +147,32 @@ export default function StudentStrikePage() {
         strikeRequired &&
         !strikeCompleted && (
           <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-sm">
-                <Clock className="h-5 w-5 text-amber-600" />
-                Plagiarism check
-                <Badge className="bg-amber-100 text-amber-800">Pending</Badge>
-              </CardTitle>
+            <CardHeader className="border-b border-gray-100 pb-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <CardTitle className="flex items-center gap-2 text-base font-bold text-[#333333]">
+                  <Clock className="h-4 w-4 text-[#f9a825]" />
+                  Plagiarism Check Pending
+                </CardTitle>
+                <Badge className="border-amber-200 bg-amber-50 text-amber-700">
+                  Pending
+                </Badge>
+              </div>
             </CardHeader>
-            <CardContent className="space-y-2 text-sm">
-              <p className="text-(--earist-body-text)">
+            <CardContent className="space-y-2 pt-4 text-sm text-[#333333]">
+              <p className="text-gray-600">
                 STRIKE / plagiarism clearance is pending.
               </p>
-              <p className="text-xs text-(--earist-body-text)">
+              <p className="text-xs text-gray-500">
                 No eligible STRIKE result has been recorded yet. Follow the
                 instructions provided by the Graduate School or wait for the
                 result to be recorded.
               </p>
-              <p className="text-xs text-(--earist-body-text)">
+              <p className="text-xs text-gray-500">
                 Only records held in this system are shown here.
               </p>
             </CardContent>
           </Card>
         )}
-    </div>
+    </ThesisJourneyShell>
   );
 }

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { apiClientRequest, ApiError } from "@/lib/api.client";
 import {
   adviserAdviseeDetailQueryKey,
@@ -110,10 +111,13 @@ export function AdviserReviewActionPanel({
   const handleMutationError = (mutationError: Error, staleMessage: string) => {
     if (mutationError instanceof ApiError && mutationError.statusCode === 409) {
       setError(STALE_REVIEW_MESSAGE);
+      toast.error(STALE_REVIEW_MESSAGE);
       void invalidate();
       return;
     }
-    setError(mutationError.message || staleMessage);
+    const msg = mutationError.message || staleMessage;
+    setError(msg);
+    toast.error(msg);
   };
 
   const requestChanges = useMutation({
@@ -134,6 +138,7 @@ export function AdviserReviewActionPanel({
     onSuccess: async () => {
       setError(null);
       setRemarks("");
+      toast.success("Revision remarks sent to the student.");
       await invalidate();
     },
     onError: (mutationError: Error) =>
@@ -166,6 +171,7 @@ export function AdviserReviewActionPanel({
       setSignature("");
       setRemarks("");
       setConfirmCertify(false);
+      toast.success("Adviser certification issued.");
       await invalidate();
       // Certification removes the task from the open-review queue; close the
       // action surface so the URL cannot remain pointing at a completed task.
