@@ -63,6 +63,7 @@ const modules: Record<string, any> = {
   "@/components/ui/select": primitives(["Select", "SelectContent", "SelectItem", "SelectTrigger"]),
   "next/link": { __esModule: true, default: ({ children, ...props }: any) => createElement("a", props, children) },
   "lucide-react": new Proxy({}, { get: (_, name) => (props: any) => createElement("svg", { ...props, "data-icon": String(name) }) }),
+  sonner: { toast: { success: vi.fn(), error: vi.fn() } },
   "@base-ui/react/tooltip": { Tooltip: {
     ...primitives(["Root", "Portal", "Positioner", "Popup"]),
     Trigger: ({ render: _render, children, ...props }: any) => createElement("button", props, children),

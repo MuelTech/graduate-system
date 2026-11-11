@@ -38,6 +38,7 @@ const modules: Record<string, unknown> = {
   "@/components/ui/badge": { Badge: tag("span") }, "@/components/ui/button": { Button: tag("button") },
   "@/components/ui/alert": { Alert: tag("aside"), AlertDescription: tag("p") },
   "lucide-react": new Proxy({}, { get: () => tag("i") }),
+  sonner: { toast: { success: vi.fn(), error: vi.fn() } },
   "@/lib/api.client": { apiClientRequest: request }, "@/lib/admin-exam-schedules": helpers,
 };
 const source = readFileSync(path.resolve("../frontend/src/app/(portal)/applicant/schedule/page.tsx"), "utf8");
