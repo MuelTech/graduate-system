@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { apiClientRequest, ApiError } from "@/lib/api.client";
 import { studentThesisJourneyQueryKey } from "@/lib/student-thesis-journey";
 import {
@@ -15,13 +16,13 @@ import { AdviserCertificationRecords } from "@/components/shared/adviser-certifi
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertCircle, CheckCircle2, Clock, FileText, Send, Upload } from "lucide-react";
 
-type FinalReviewStatus =
+export type FinalReviewStatus =
   | "NONE"
   | "AWAITING_REVIEW"
   | "CHANGES_REQUESTED"
   | "ISSUED";
 
-type FinalAdviserReview = {
+export type FinalAdviserReview = {
   thesisId: string | null;
   reviewStatus: FinalReviewStatus;
   reviewRemarks: string | null;
@@ -41,7 +42,8 @@ type FinalAdviserReview = {
   proposalStageComplete: boolean;
 };
 
-const reviewQueryKey = ["student", "final-adviser-review"] as const;
+export const finalAdviserReviewQueryKey = ["student", "final-adviser-review"] as const;
+const reviewQueryKey = finalAdviserReviewQueryKey;
 
 function statusLabel(status: FinalReviewStatus): string {
   switch (status) {
@@ -103,6 +105,7 @@ export function FinalAdviserReviewPanel() {
       setFile(null);
       setManuscriptTitle("");
       if (inputRef.current) inputRef.current.value = "";
+      toast.success("Final manuscript submitted for Adviser review.");
       await queryClient.invalidateQueries({ queryKey: reviewQueryKey });
       await queryClient.invalidateQueries({
         queryKey: studentThesisJourneyQueryKey,
@@ -113,14 +116,16 @@ export function FinalAdviserReviewPanel() {
         e instanceof ApiError && e.missing?.length
           ? ` ${e.missing.map((m) => m.message).join(" ")}`
           : "";
-      setError((e.message || "Failed to submit Final manuscript") + extra);
+      const fullError = (e.message || "Failed to submit Final manuscript") + extra;
+      setError(fullError);
+      toast.error(fullError);
     },
   });
 
   if (isLoading && !data) {
     return (
       <Card>
-        <CardContent className="pt-6 text-sm text-(--earist-body-text)">
+        <CardContent className="pt-6 text-sm text-gray-500">
           Loading Final Adviser review status…
         </CardContent>
       </Card>
@@ -136,18 +141,18 @@ export function FinalAdviserReviewPanel() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-sm font-semibold text-(--earist-secondary)">
-          1. Final Manuscript / Adviser Review
+        <CardTitle className="text-base font-bold text-[#333333]">
+          1. Manuscript Review — Final Manuscript
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-3 text-sm">
+      <CardContent className="space-y-4 text-sm">
         <div className="flex items-center gap-2">
           {status === "ISSUED" ? (
             <CheckCircle2 className="h-5 w-5 text-emerald-700" />
           ) : (
             <Clock className="h-5 w-5 text-amber-600" />
           )}
-          <p className="font-medium text-(--earist-primary)">
+          <p className="font-semibold text-[#333333]">
             {statusLabel(status)}
           </p>
         </div>
@@ -201,22 +206,22 @@ export function FinalAdviserReviewPanel() {
         {status === "ISSUED" && data?.thesisId && <AdviserCertificationRecords thesisId={data.thesisId} stage="FINAL" />}
 
         {status === "AWAITING_REVIEW" && (
-          <p className="text-(--earist-body-text)">
-            Final manuscript submitted for Adviser review. This is not the Final
-            application to Admin yet.
+          <p className="text-gray-600">
+            Final manuscript submitted for Adviser review. Once certified, you
+            may submit your Final Defense application.
           </p>
         )}
 
         {data?.manuscript && (
-          <div className="space-y-1 break-words">
-            <p className="font-medium text-(--earist-secondary)">
-              Thesis/Dissertation Title
+          <div className="space-y-1 break-words rounded-lg border border-gray-100 bg-gray-50/60 p-3">
+            <p className="text-xs font-semibold tracking-wider text-gray-500 uppercase">
+              Thesis / Dissertation Title
             </p>
-            <p>{data.manuscript.manuscriptTitle || "Title not recorded for this manuscript."}</p>
-            <p className="text-xs text-(--earist-body-text)">
+            <p className="font-medium text-[#333333]">{data.manuscript.manuscriptTitle || "Title not recorded for this manuscript."}</p>
+            <p className="text-xs text-gray-500">
               {data.manuscript.originalFilename || "Filename unavailable"}
             </p>
-            <p className="flex items-center gap-2 text-xs text-(--earist-body-text)">
+            <p className="flex items-center gap-2 text-xs text-gray-500">
               <FileText className="h-4 w-4" />
               Current Final manuscript uploaded
               {data.manuscript.uploadedAt
@@ -235,12 +240,12 @@ export function FinalAdviserReviewPanel() {
         )}
 
         {canUpload && !blockedByProposal && !blockedByStrike && (
-          <div className="space-y-2">
+          <div className="space-y-3">
             <label
               htmlFor="final-manuscript-title"
-              className="block font-medium text-(--earist-secondary)"
+              className="block font-semibold text-[#333333]"
             >
-              Thesis/Dissertation Title <span aria-hidden="true">*</span>
+              Thesis / Dissertation Title <span aria-hidden="true" className="text-[#e02b20]">*</span>
             </label>
             <Textarea
               id="final-manuscript-title"
@@ -252,16 +257,16 @@ export function FinalAdviserReviewPanel() {
               aria-describedby="final-manuscript-title-help"
               rows={3}
             />
-            <p id="final-manuscript-title-help" className="text-xs text-(--earist-body-text)">
+            <p id="final-manuscript-title-help" className="text-xs text-gray-500">
               Enter the title for this manuscript. Include the title again with each revision.
             </p>
             {!file ? (
-              <label className="flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-(--earist-border-gray) p-4 hover:border-(--earist-primary)">
-                <Upload className="mb-1 h-6 w-6 text-(--earist-body-text)/40" />
-                <p className="text-sm text-(--earist-primary)">
+              <label className="flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-gray-200 bg-gray-50/40 p-5 transition-colors hover:border-[#e02b20] hover:bg-[#e02b20]/[0.02]">
+                <Upload className="mb-1.5 h-6 w-6 text-gray-400" />
+                <p className="text-sm font-medium text-[#333333]">
                   Upload complete Final manuscript (Ch. 1–5)
                 </p>
-                <p className="text-xs text-(--earist-body-text)">PDF, DOC, DOCX</p>
+                <p className="text-xs text-gray-400">PDF, DOC, DOCX</p>
                 <input
                   ref={inputRef}
                   type="file"
@@ -274,8 +279,8 @@ export function FinalAdviserReviewPanel() {
                 />
               </label>
             ) : (
-              <div className="flex items-center justify-between rounded border border-(--earist-border-gray) p-2">
-                <span className="truncate text-xs">{file.name}</span>
+              <div className="flex items-center justify-between rounded-lg border border-gray-200 bg-gray-50/60 p-2.5">
+                <span className="truncate text-xs font-medium text-[#333333]">{file.name}</span>
                 <Button
                   type="button"
                   variant="ghost"
@@ -293,7 +298,6 @@ export function FinalAdviserReviewPanel() {
               type="button"
               disabled={!file || !manuscriptTitle.trim() || submitManuscript.isPending}
               onClick={() => submitManuscript.mutate()}
-              className="bg-(--earist-primary) hover:bg-(--earist-primary)/90"
             >
               <Send className="mr-2 h-4 w-4" />
               {submitManuscript.isPending

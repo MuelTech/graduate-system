@@ -218,75 +218,74 @@ export function TitleDefensePostSubmission({
   );
 
   return (
-    <div className="mx-auto max-w-3xl space-y-4">
-      <PageHeader title="Title Defense" />
-
+    <div className="w-full space-y-4">
       <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="flex items-center gap-2 text-sm font-semibold text-(--earist-secondary)">
+        <CardHeader className="border-b border-gray-100 pb-3">
+          <CardTitle className="flex items-center gap-2 text-base font-bold text-[#333333]">
             {defenseStatus === "SCHEDULED" ? (
-              <CalendarDays className="h-4 w-4 text-(--earist-secondary)" />
+              <CalendarDays className="h-4 w-4 text-[#e02b20]" />
             ) : (
-              <Clock className="h-4 w-4 text-amber-600" />
+              <Clock className="h-4 w-4 text-[#f9a825]" />
             )}
             {copy.heading}
           </CardTitle>
-          <p className="text-sm text-(--earist-body-text)">{copy.description}</p>
+          <p className="text-sm text-gray-500">{copy.description}</p>
         </CardHeader>
-        <CardContent className="space-y-3">
-          <dl className="divide-y divide-(--earist-border-gray)">
+        <CardContent className="space-y-3 pt-4">
+          <dl className="divide-y divide-gray-100">
             {copy.rows.map((row) => (
               <div
                 key={row.label}
-                className="flex flex-col gap-0.5 py-2 sm:flex-row sm:items-baseline sm:justify-between sm:gap-4"
+                className="flex flex-col gap-0.5 py-2.5 sm:flex-row sm:items-baseline sm:justify-between sm:gap-4"
               >
-                <dt className="text-xs font-medium tracking-wide text-(--earist-body-text) uppercase">
+                <dt className="text-xs font-semibold tracking-wider text-gray-500 uppercase">
                   {row.label}
                 </dt>
-                <dd className="text-sm font-medium break-words text-(--earist-secondary) sm:text-right">
+                <dd className="text-sm font-semibold break-words text-[#333333] sm:text-right">
                   {row.value}
                 </dd>
               </div>
             ))}
           </dl>
           {copy.extra && (
-            <p className="text-sm text-(--earist-body-text)">{copy.extra}</p>
+            <p className="text-sm text-gray-500">{copy.extra}</p>
           )}
         </CardContent>
       </Card>
 
       {defenseStatus === "SCHEDULED" && (
         <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-semibold text-(--earist-secondary)">
+          <CardHeader className="border-b border-gray-100 pb-3">
+            <CardTitle className="flex items-center gap-2 text-base font-bold text-[#333333]">
+              <CalendarDays className="h-4 w-4 text-[#e02b20]" />
               Defense Schedule
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div>
-                <p className="text-xs font-medium tracking-wide text-(--earist-body-text) uppercase">
+          <CardContent className="pt-4">
+            <div className="grid gap-4 sm:grid-cols-3">
+              <div className="rounded-lg border border-gray-100 bg-gray-50/70 p-3">
+                <p className="text-xs font-semibold tracking-wider text-gray-500 uppercase">
                   Date
                 </p>
-                <p className="mt-0.5 flex items-center gap-2 text-sm font-medium text-(--earist-secondary)">
-                  <CalendarDays className="h-4 w-4 shrink-0 text-(--earist-primary)" />
+                <p className="mt-1 flex items-center gap-2 text-sm font-semibold text-[#333333]">
+                  <CalendarDays className="h-4 w-4 shrink-0 text-[#e02b20]" />
                   {formatDefenseDate(session?.defenseDate)}
                 </p>
               </div>
-              <div>
-                <p className="text-xs font-medium tracking-wide text-(--earist-body-text) uppercase">
+              <div className="rounded-lg border border-gray-100 bg-gray-50/70 p-3">
+                <p className="text-xs font-semibold tracking-wider text-gray-500 uppercase">
                   Time
                 </p>
-                <p className="mt-0.5 flex items-center gap-2 text-sm font-medium text-(--earist-secondary)">
-                  <Clock className="h-4 w-4 shrink-0 text-(--earist-primary)" />
+                <p className="mt-1 flex items-center gap-2 text-sm font-semibold text-[#333333]">
+                  <Clock className="h-4 w-4 shrink-0 text-[#e02b20]" />
                   {formatDefenseTime(session?.defenseTime)}
                 </p>
               </div>
-              <div className="sm:col-span-2">
-                <p className="text-xs font-medium tracking-wide text-(--earist-body-text) uppercase">
+              <div className="rounded-lg border border-gray-100 bg-gray-50/70 p-3">
+                <p className="text-xs font-semibold tracking-wider text-gray-500 uppercase">
                   Venue / Meeting Details
                 </p>
-                <div className="mt-0.5 text-sm text-(--earist-secondary)">
+                <div className="mt-1 text-sm text-[#333333]">
                   <VenueValue venueOrLink={session?.venueOrLink} />
                 </div>
               </div>
@@ -296,20 +295,21 @@ export function TitleDefensePostSubmission({
       )}
 
       <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-semibold text-(--earist-secondary)">
+        <CardHeader className="border-b border-gray-100 pb-3">
+          <CardTitle className="flex items-center gap-2 text-base font-bold text-[#333333]">
+            <FileText className="h-4 w-4 text-[#e02b20]" />
             Submitted Documents
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-3 text-sm">
+        <CardContent className="space-y-3 pt-4 text-sm">
           {isLoading && (
-            <p className="text-(--earist-body-text)">
+            <p className="text-gray-500">
               Loading submitted documents…
             </p>
           )}
           {isError && (
             <div className="space-y-2">
-              <p className="text-(--earist-body-text)">
+              <p className="text-gray-500">
                 Unable to load the submitted documents.
               </p>
               <Button
@@ -336,13 +336,13 @@ export function TitleDefensePostSubmission({
       </Card>
 
       {defenseStatus === "APPLICATION_UNDER_REVIEW" && (
-        <div className="flex items-start gap-2 rounded-lg border border-(--earist-border-gray) bg-(--earist-surface-gray) p-3 text-xs text-(--earist-body-text)">
-          <Info className="mt-0.5 h-4 w-4 shrink-0 text-(--earist-secondary)" />
+        <div className="flex items-start gap-2.5 rounded-xl border border-gray-200 bg-white p-4 text-xs text-gray-600 shadow-2xs">
+          <Info className="mt-0.5 h-4 w-4 shrink-0 text-[#e02b20]" />
           <div>
-            <p className="font-medium text-(--earist-secondary)">
+            <p className="font-semibold text-[#333333]">
               Need to correct a submitted document?
             </p>
-            <p>
+            <p className="mt-0.5">
               Documents under active Graduate School review cannot be silently
               replaced directly by the Student. If a correction is required, the
               Graduate School can return the application so you can upload a

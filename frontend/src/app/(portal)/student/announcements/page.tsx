@@ -44,25 +44,22 @@ export default function StudentAnnouncements() {
       {/* Header & Search */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h2
-            className="text-2xl font-bold text-(--earist-primary)"
-            style={{ fontFamily: '"Calibri", sans-serif' }}
-          >
+          <h1 className="text-2xl font-bold tracking-tight text-[#333333]">
             Announcements & Memos
-          </h2>
-          <p className="text-sm text-(--earist-body-text)">
+          </h1>
+          <p className="mt-1 text-sm text-gray-500">
             View official communications and circulars from the Graduate School Office.
           </p>
         </div>
 
         <div className="relative w-full sm:w-72">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-(--earist-secondary)" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
           <input
             type="text"
             placeholder="Search announcements..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full rounded-lg border border-(--earist-border-gray) bg-white pl-9 pr-3 py-2 text-sm text-(--earist-body-text) placeholder:text-(--earist-body-text)/50 focus:border-(--earist-primary) focus:ring-1 focus:ring-(--earist-primary) outline-none transition-colors"
+            className="w-full rounded-lg border border-gray-200 bg-white pl-9 pr-3 py-2 text-sm text-[#333333] placeholder:text-gray-400 focus:border-[#e02b20] focus:ring-2 focus:ring-[#e02b20]/20 outline-none transition-colors"
           />
         </div>
       </div>

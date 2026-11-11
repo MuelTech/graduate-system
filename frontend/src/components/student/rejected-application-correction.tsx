@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { apiClientRequest } from "@/lib/api.client";
 import { studentThesisJourneyQueryKey } from "@/lib/student-thesis-journey";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -103,14 +104,17 @@ export function RejectedApplicationCorrection({
       setError(null);
       setSuccess(true);
       setFiles({});
+      toast.success("Corrected application resubmitted.");
       await queryClient.invalidateQueries({ queryKey: studentThesisJourneyQueryKey });
       await queryClient.invalidateQueries({
         queryKey: ["student", "thesis", "current-application"],
       });
     },
     onError: (err: Error) => {
-      setError(err.message || "Failed to resubmit application");
+      const msg = err.message || "Failed to resubmit application";
+      setError(msg);
       setSuccess(false);
+      toast.error(msg);
     },
   });
 

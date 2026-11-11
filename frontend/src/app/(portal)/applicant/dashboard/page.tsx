@@ -38,31 +38,28 @@ export default async function ApplicantDashboard() {
   const applicant = await res.json();
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       {/* Welcome Header */}
       <div>
-        <h2
-          className="text-2xl font-bold text-(--earist-primary)"
-          style={{ fontFamily: '"Calibri", sans-serif' }}
-        >
+        <h1 className="text-2xl font-bold tracking-tight text-[#333333]">
           Welcome, {applicant.firstName}
-        </h2>
-        <p className="text-sm text-(--earist-body-text)">{applicant.program}</p>
-        <p className="text-xs text-(--earist-body-text)">
+        </h1>
+        <p className="mt-1 text-sm text-gray-500">{applicant.program}</p>
+        <p className="text-xs text-gray-500">
           Applicant ID: {applicant.applicantId}
         </p>
       </div>
 
       {/* Progress Stepper */}
-      <div className="rounded-xl border border-(--earist-border-gray) bg-white px-6 py-4">
-        <p className="mb-3 text-xs font-semibold text-(--earist-secondary)">
+      <div className="rounded-xl border border-gray-100 bg-white px-6 py-5 shadow-sm">
+        <p className="mb-3 text-xs font-semibold tracking-wider text-gray-500 uppercase">
           Applicant Progress
         </p>
         <div className="relative">
           {/* Connector lines */}
-          <div className="absolute top-4 right-4 left-4 h-1 -translate-y-1/2 rounded bg-(--earist-border-gray)" />
+          <div className="absolute top-4 right-4 left-4 h-1 -translate-y-1/2 rounded bg-gray-100" />
           <div
-            className="absolute top-4 left-4 h-1 -translate-y-1/2 rounded bg-(--earist-primary)"
+            className="absolute top-4 left-4 h-1 -translate-y-1/2 rounded bg-[#e02b20]"
             style={{
               width: `calc(${applicant.currentStep / 2} * (100% - 2rem))`,
             }}
@@ -82,10 +79,10 @@ export default async function ApplicantDashboard() {
                   <div
                     className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold ${
                       isCompleted
-                        ? "bg-(--earist-primary) text-white"
+                        ? "bg-[#e02b20] text-white"
                         : isCurrent
-                          ? "bg-(--earist-accent) text-(--earist-primary) ring-2 ring-(--earist-accent)/20"
-                          : "bg-(--earist-surface-gray) text-(--earist-body-text)"
+                          ? "bg-[#f9a825] text-[#333333] ring-2 ring-[#f9a825]/30"
+                          : "bg-gray-100 text-gray-500"
                     }`}
                   >
                     {isCompleted ? <CheckCircle2 className="h-4 w-4" /> : i + 1}
@@ -93,8 +90,8 @@ export default async function ApplicantDashboard() {
                   <span
                     className={`mt-1.5 text-center text-[11px] font-medium ${
                       isCurrent
-                        ? "text-(--earist-primary)"
-                        : "text-(--earist-body-text)"
+                        ? "font-semibold text-[#333333]"
+                        : "text-gray-500"
                     }`}
                   >
                     {step.label}
@@ -112,7 +109,7 @@ export default async function ApplicantDashboard() {
         <Card className="lg:col-span-2">
           <CardHeader>
             <div className="flex items-center justify-between">
-              <CardTitle className="text-sm font-semibold text-(--earist-secondary)">
+              <CardTitle className="text-base font-bold text-[#333333]">
                 Program Alignment
               </CardTitle>
               <Badge
@@ -155,7 +152,7 @@ export default async function ApplicantDashboard() {
                 </AlertDescription>
               </Alert>
             )}
-            <p className="mb-4 text-sm text-(--earist-body-text)">
+            <p className="mb-4 text-sm text-gray-600">
               {applicant.alignmentStatus === "aligned"
                 ? "Your undergraduate program is aligned. You may proceed to schedule your exam."
                 : applicant.alignmentStatus === "cleared"
@@ -166,14 +163,14 @@ export default async function ApplicantDashboard() {
             applicant.alignmentStatus === "cleared" ? (
               <Link
                 href="/applicant/schedule"
-                className="inline-flex items-center gap-1 text-sm font-bold text-(--earist-primary) transition-colors hover:text-(--earist-primary)/80 bg-(--earist-surface-gray) px-4 py-2 rounded-lg border border-(--earist-border-gray)"
+                className="inline-flex items-center gap-1 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-[#333333] shadow-xs transition-colors hover:bg-gray-50"
               >
                 Proceed to Exam Schedule Page <ArrowRight className="h-4 w-4" />
               </Link>
             ) : (
               <Link
                 href="/applicant/alignment"
-                className="inline-flex items-center gap-1 text-sm font-bold text-(--earist-primary) transition-colors hover:text-(--earist-primary)/80 bg-(--earist-surface-gray) px-4 py-2 rounded-lg border border-(--earist-border-gray)"
+                className="inline-flex items-center gap-1 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-[#333333] shadow-xs transition-colors hover:bg-gray-50"
               >
                 Proceed to Program Alignment Page{" "}
                 <ArrowRight className="h-4 w-4" />
@@ -185,7 +182,7 @@ export default async function ApplicantDashboard() {
         {/* Current Status — compact */}
         <Card className="lg:col-span-2">
           <CardHeader>
-            <CardTitle className="text-sm font-semibold text-(--earist-secondary)">
+            <CardTitle className="text-base font-bold text-[#333333]">
               Current Status
             </CardTitle>
           </CardHeader>
@@ -199,7 +196,7 @@ export default async function ApplicantDashboard() {
                   <Badge className="bg-green-100 text-green-700 hover:bg-green-100">
                     Exam Passed
                   </Badge>
-                  <p className="mt-1 text-xs text-(--earist-body-text)">
+                  <p className="mt-1 text-xs text-gray-500">
                     Congratulations! You may now upload your COR.
                   </p>
                 </div>
@@ -207,14 +204,14 @@ export default async function ApplicantDashboard() {
             ) : applicant.currentStep === 1 ? (
               applicant.examDate ? (
                 <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-(--earist-surface-light-red)">
-                    <Clock className="h-5 w-5 text-(--earist-primary)" />
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#e02b20]/10">
+                    <Clock className="h-5 w-5 text-[#e02b20]" />
                   </div>
                   <div>
-                    <Badge className="bg-(--earist-accent) text-(--earist-primary) hover:bg-(--earist-accent)">
+                    <Badge className="bg-[#f9a825]/20 text-amber-900 hover:bg-[#f9a825]/20">
                       Exam Scheduled
                     </Badge>
-                    <p className="mt-1 text-xs text-(--earist-body-text)">
+                    <p className="mt-1 text-xs text-gray-500">
                       Your entrance exam is scheduled.
                     </p>
                   </div>
@@ -228,7 +225,7 @@ export default async function ApplicantDashboard() {
                     <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-100">
                       Ready to Schedule
                     </Badge>
-                    <p className="mt-1 text-xs text-(--earist-body-text)">
+                    <p className="mt-1 text-xs text-gray-500">
                       You may now select your exam schedule.
                     </p>
                   </div>
@@ -243,7 +240,7 @@ export default async function ApplicantDashboard() {
                   <Badge className="bg-amber-100 text-amber-700 hover:bg-amber-100">
                     Pending Alignment
                   </Badge>
-                  <p className="mt-1 text-xs text-(--earist-body-text)">
+                  <p className="mt-1 text-xs text-gray-500">
                     Waiting for program alignment validation.
                   </p>
                 </div>
@@ -256,21 +253,21 @@ export default async function ApplicantDashboard() {
         <Card className="lg:col-span-2">
           <CardHeader>
             <div className="flex items-center justify-between">
-              <CardTitle className="text-sm font-semibold text-(--earist-secondary)">
+              <CardTitle className="text-base font-bold text-[#333333]">
                 Exam Schedule
               </CardTitle>
-              <CalendarClock className="h-5 w-5 text-(--earist-accent)" />
+              <CalendarClock className="h-5 w-5 text-[#e02b20]" />
             </div>
           </CardHeader>
           <CardContent>
-            <div className="mb-3 rounded-lg bg-(--earist-surface-gray) p-3">
-              <p className="text-sm font-semibold text-(--earist-primary)">
+            <div className="mb-3 rounded-lg border border-gray-100 bg-gray-50/70 p-3">
+              <p className="text-sm font-semibold text-[#333333]">
                 {applicant.examDate}
               </p>
-              <p className="text-xs text-(--earist-body-text)">
+              <p className="text-xs text-gray-500">
                 {applicant.examTime}
               </p>
-              <p className="text-xs text-(--earist-body-text)">
+              <p className="text-xs text-gray-500">
                 {applicant.program}
               </p>
             </div>
@@ -288,7 +285,7 @@ export default async function ApplicantDashboard() {
               className={`inline-flex items-center justify-center rounded-lg px-4 py-2 text-sm font-semibold transition-colors ${
                 applicant.alignmentStatus === "pending_waiver"
                   ? "cursor-not-allowed bg-gray-200 text-gray-400"
-                  : "bg-(--earist-primary) text-white hover:bg-(--earist-primary)/90"
+                  : "bg-[#e02b20] text-white hover:bg-[#c62828]"
               }`}
             >
               Select Exam Schedule
@@ -300,24 +297,24 @@ export default async function ApplicantDashboard() {
         <Card className="lg:col-span-2">
           <CardHeader>
             <div className="flex items-center justify-between">
-              <CardTitle className="text-sm font-semibold text-(--earist-secondary)">
+              <CardTitle className="text-base font-bold text-[#333333]">
                 Exam Results
               </CardTitle>
-              <BadgeCheck className="h-5 w-5 text-(--earist-accent)" />
+              <BadgeCheck className="h-5 w-5 text-[#e02b20]" />
             </div>
           </CardHeader>
           <CardContent>
-            <div className="mb-3 flex items-center justify-center rounded-lg bg-(--earist-surface-gray) py-6">
+            <div className="mb-3 flex items-center justify-center rounded-lg border border-gray-100 bg-gray-50/70 py-6">
               <div className="text-center">
-                <FileText className="mx-auto mb-2 h-8 w-8 text-(--earist-body-text)/40" />
-                <p className="text-sm text-(--earist-body-text)">
+                <FileText className="mx-auto mb-2 h-8 w-8 text-gray-300" />
+                <p className="text-sm text-gray-500">
                   Results will appear here after your exam
                 </p>
               </div>
             </div>
             <Link
               href="/applicant/results"
-              className="inline-flex items-center gap-1 text-sm font-semibold text-(--earist-secondary) transition-colors hover:text-(--earist-primary)"
+              className="inline-flex items-center gap-1 text-sm font-semibold text-[#e02b20] transition-colors hover:underline"
             >
               View Detailed Results <ArrowRight className="h-3 w-3" />
             </Link>
@@ -328,26 +325,26 @@ export default async function ApplicantDashboard() {
         <Card className="lg:col-span-2">
           <CardHeader>
             <div className="flex items-center justify-between">
-              <CardTitle className="text-sm font-semibold text-(--earist-secondary)">
+              <CardTitle className="text-base font-bold text-[#333333]">
                 Certificate of Registration (COR)
               </CardTitle>
-              <Upload className="h-5 w-5 text-(--earist-accent)" />
+              <Upload className="h-5 w-5 text-[#e02b20]" />
             </div>
           </CardHeader>
           <CardContent>
-            <div className="flex items-center justify-between gap-4 rounded-lg bg-(--earist-surface-gray) p-4">
+            <div className="flex items-center justify-between gap-4 rounded-lg border border-gray-100 bg-gray-50/70 p-4">
               <div>
-                <p className="text-sm text-(--earist-body-text)">
+                <p className="text-sm text-gray-600">
                   Upload your COR after passing the exam and completing
                   enrollment.
                 </p>
-                <p className="mt-1 text-xs text-(--earist-body-text)">
+                <p className="mt-1 text-xs text-gray-500">
                   Accepted formats: PDF, JPG, PNG (max 5MB)
                 </p>
               </div>
               <Link
                 href="/applicant/cor-upload"
-                className="shrink-0 rounded-lg bg-(--earist-primary) px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-(--earist-primary)/90"
+                className="shrink-0 rounded-lg bg-[#e02b20] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-[#c62828]"
               >
                 Upload COR
               </Link>
@@ -359,12 +356,12 @@ export default async function ApplicantDashboard() {
         <Card className="lg:col-span-2">
           <CardHeader>
             <div className="flex items-center justify-between">
-              <CardTitle className="text-sm font-semibold text-(--earist-secondary)">
+              <CardTitle className="text-base font-bold text-[#333333]">
                 Recent Notifications
               </CardTitle>
               <Link
                 href="/applicant/notifications"
-                className="text-xs font-semibold text-(--earist-secondary) transition-colors hover:text-(--earist-primary)"
+                className="text-xs font-semibold text-[#e02b20] transition-colors hover:underline"
               >
                 View All
               </Link>
@@ -406,26 +403,26 @@ export default async function ApplicantDashboard() {
               ].map((notif, i) => (
                 <div
                   key={i}
-                  className={`flex items-start gap-3 rounded-lg p-2.5 ${
+                  className={`flex items-start gap-3 rounded-lg border border-gray-100 p-3 ${
                     notif.unread
-                      ? "bg-(--earist-surface-light-red)"
-                      : "bg-(--earist-surface-gray)"
+                      ? "bg-[#FFF8F0]"
+                      : "bg-gray-50/50"
                   }`}
                 >
                   <div
-                    className={`mt-0.5 h-2 w-2 shrink-0 rounded-full ${
-                      notif.unread ? "bg-(--earist-accent)" : "bg-transparent"
+                    className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${
+                      notif.unread ? "bg-[#e02b20]" : "bg-transparent"
                     }`}
                   />
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm font-semibold text-(--earist-primary)">
+                    <p className="text-sm font-semibold text-[#333333]">
                       {notif.title}
                     </p>
-                    <p className="truncate text-xs text-(--earist-body-text)">
+                    <p className="truncate text-xs text-gray-500">
                       {notif.desc}
                     </p>
                   </div>
-                  <span className="shrink-0 text-xs text-(--earist-body-text)">
+                  <span className="shrink-0 text-xs text-gray-400">
                     {notif.time}
                   </span>
                 </div>

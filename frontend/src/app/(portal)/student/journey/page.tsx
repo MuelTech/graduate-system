@@ -81,12 +81,12 @@ export default async function StudentAcademicJourneyPage() {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold text-(--earist-primary)">
+        <h1 className="text-2xl font-bold tracking-tight text-[#333333]">
           Academic Journey
-        </h2>
-        <p className="text-sm text-(--earist-body-text)">
+        </h1>
+        <p className="mt-1 text-sm text-gray-500">
           High-level graduate progress. Detailed defense steps are under Thesis
           Journey.
         </p>
@@ -94,7 +94,7 @@ export default async function StudentAcademicJourneyPage() {
 
       {loadFailed && (
         <Card>
-          <CardContent className="pt-6 text-sm text-(--earist-body-text)">
+          <CardContent className="pt-6 text-sm text-gray-500">
             Unable to load your Academic Journey. Please try again later.
           </CardContent>
         </Card>
@@ -102,33 +102,37 @@ export default async function StudentAcademicJourneyPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-sm">Program progress</CardTitle>
+          <CardTitle className="text-base font-bold text-[#333333]">Program progress</CardTitle>
         </CardHeader>
         <CardContent>
           <ol className="space-y-3">
             {PHASES.map((phase) => (
               <li
                 key={phase.label}
-                className="flex flex-wrap items-start gap-3 rounded-lg border border-(--earist-border-gray) p-3"
+                className="flex flex-wrap items-start gap-3.5 rounded-xl border border-gray-100 bg-gray-50/40 p-4 transition-colors hover:bg-gray-50"
               >
-                <phase.icon className="mt-0.5 h-5 w-5 text-(--earist-secondary)" />
+                <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#e02b20]/10 text-[#e02b20]">
+                  <phase.icon className="h-5 w-5" />
+                </div>
                 <div className="min-w-0 flex-1">
-                  <p className="font-medium text-(--earist-primary)">
+                  <p className="font-semibold text-[#333333]">
                     {phase.label}
                   </p>
-                  <p className="text-xs text-(--earist-body-text)">
+                  <p className="text-xs text-gray-500">
                     {phase.blurb}
                   </p>
                   {phase.label === "Comprehensive Examination" && (
-                    <p className="mt-1 text-xs text-(--earist-body-text)">
+                    <p className="mt-1.5 text-xs font-medium text-[#333333]">
                       Status:{" "}
-                      {loadFailed ? "Unavailable" : compExamLabel(compExamStatus)}
+                      <span className="text-gray-600">
+                        {loadFailed ? "Unavailable" : compExamLabel(compExamStatus)}
+                      </span>
                     </p>
                   )}
                   {phase.label === "Thesis / Dissertation Phase" && (
                     <Link
                       href="/student/thesis"
-                      className={`${buttonVariants({ variant: "outline", size: "sm" })} mt-2`}
+                      className={`${buttonVariants({ variant: "outline", size: "sm" })} mt-2.5`}
                     >
                       Open Thesis Journey
                     </Link>

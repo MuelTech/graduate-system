@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { apiClientRequest } from "@/lib/api.client";
 import { ESignaturePad } from "@/components/defense-workspace/e-signature-pad";
 import { AdviserRequestRecords, adviserRequestRecordsQueryKey } from "@/components/shared/adviser-request-records";
@@ -15,6 +16,10 @@ import {
   resolveAdviserRequestUiState,
   roleLabel,
 } from "@/lib/adviser-request-ui-state";
+import {
+  ThesisJourneyShell,
+  JourneyStepStatusCard,
+} from "@/components/student/thesis-journey-shell";
 import {
   Card,
   CardContent,
@@ -36,7 +41,6 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
   AlertCircle,
   Clock,
-  Lock,
   Send,
   UserCheck,
   XCircle,
@@ -126,6 +130,7 @@ function AdviserRequestContent({ viewerScope }: { viewerScope: string }) {
       setSignature("");
       setSelectedUserId("");
       setRemarks("");
+      toast.success("Adviser request submitted successfully.");
       await queryClient.invalidateQueries({
         queryKey: studentThesisJourneyQueryKey,
       });
@@ -135,7 +140,9 @@ function AdviserRequestContent({ viewerScope }: { viewerScope: string }) {
       await queryClient.invalidateQueries({ queryKey: adviserRequestRecordsQueryKey });
     },
     onError: (error: Error) => {
-      setSubmitError(error.message || "Unable to send adviser request.");
+      const msg = error.message || "Unable to send adviser request.";
+      setSubmitError(msg);
+      toast.error(msg);
       setConfirmOpen(false);
       setReview(null);
       setSignature("");
@@ -180,29 +187,13 @@ function AdviserRequestContent({ viewerScope }: { viewerScope: string }) {
   };
 
   return (
-    <div className="mx-auto max-w-3xl space-y-4">
-      <div>
-        <h2 className="text-2xl font-bold text-(--earist-primary)">
-          Adviser Request
-        </h2>
-        <p className="text-sm text-(--earist-body-text)">
-          Choose an eligible adviser from your Title Defense panel.
-        </p>
-      </div>
-
-      {officialTitle && (
-        <Card>
-          <CardContent className="pt-6">
-            <p className="text-xs font-medium uppercase tracking-wide text-(--earist-body-text)">
-              Recorded Title (historical)
-            </p>
-            <p className="mt-1 text-sm font-semibold text-(--earist-primary)">
-              {officialTitle}
-            </p>
-          </CardContent>
-        </Card>
-      )}
-
+    <ThesisJourneyShell
+      activeStep="ADVISER_REQUEST"
+      title="Adviser Request"
+      description="Choose an eligible thesis adviser from your Title Defense panel."
+      journey={journey}
+      officialTitleOverride={officialTitle}
+    >
       {submitError && (
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
@@ -213,7 +204,7 @@ function AdviserRequestContent({ viewerScope }: { viewerScope: string }) {
 
       {uiState === "LOADING" && (
         <Card>
-          <CardContent className="pt-6 text-sm text-(--earist-body-text)">
+          <CardContent className="pt-6 text-sm text-gray-500">
             Loading Adviser Request status…
           </CardContent>
         </Card>
@@ -229,78 +220,62 @@ function AdviserRequestContent({ viewerScope }: { viewerScope: string }) {
               href="/student/thesis"
               className={buttonVariants({ variant: "outline" })}
             >
-              Retry from Thesis Journey
+              Back to Thesis Journey
             </Link>
           </CardContent>
         </Card>
       )}
 
       {uiState === "LOCKED" && (
-        <Card>
-          <CardContent className="space-y-3 pt-6">
-            <div className="flex items-center gap-2">
-              <Lock className="h-5 w-5 text-(--earist-secondary)" />
-              <p className="font-semibold">Adviser Request is locked</p>
-            </div>
-            <p className="text-sm text-(--earist-body-text)">
-              {adviserStep?.lockReason || "This step is currently unavailable."}
-            </p>
-            <Link
-              href="/student/thesis"
-              className={buttonVariants({ variant: "outline" })}
-            >
-              Continue in Thesis Journey
-            </Link>
-          </CardContent>
-        </Card>
+        <JourneyStepStatusCard
+          variant="locked"
+          title="Adviser Request is Locked"
+          badgeText="Locked"
+          description={
+            adviserStep?.lockReason || "This step is currently unavailable."
+          }
+          nextStepHref="/student/thesis"
+          nextStepLabel="Back to Thesis Journey"
+        />
       )}
 
       {uiState === "APPROVED_ACTIVE" && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-sm">
-              <UserCheck className="h-5 w-5 text-emerald-600" />
-              Adviser Request complete
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3 text-sm">
-            <p className="text-(--earist-body-text)">
-              Your Adviser Request process is complete.
-            </p>
-            <p>
-              Active adviser:{" "}
-              <span className="font-semibold">
-                {activeAdviser?.name ?? "Assigned adviser"}
-              </span>
-            </p>
-            <Link
-              href="/student/thesis/proposal-defense"
-              className={buttonVariants()}
-            >
-              Continue to Proposal Defense
-            </Link>
-          </CardContent>
-        </Card>
+        <JourneyStepStatusCard
+          variant="completed"
+          title="Adviser Officially Assigned"
+          badgeText="Completed"
+          description="Your official thesis adviser has been approved by the Dean. You may now proceed to Proposal Defense."
+          nextStepHref="/student/thesis/proposal-defense"
+          nextStepLabel="Continue to Proposal Defense"
+        >
+          <div className="inline-flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50/70 px-3.5 py-2 text-sm">
+            <UserCheck className="h-4 w-4 text-emerald-600" />
+            <span className="text-gray-600">Active adviser:</span>
+            <span className="font-semibold text-emerald-950">
+              {activeAdviser?.name ?? "Assigned adviser"}
+            </span>
+          </div>
+        </JourneyStepStatusCard>
       )}
 
       {uiState === "WAITING_ADVISER" && (
         <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-sm">
-              <Clock className="h-5 w-5 text-amber-600" />
+          <CardHeader className="border-b border-gray-100 pb-3">
+            <CardTitle className="flex items-center gap-2 text-base font-bold text-[#333333]">
+              <Clock className="h-4 w-4 text-[#f9a825]" />
               Waiting for Adviser Response
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-2 text-sm">
-            <p className="text-(--earist-body-text)">
+          <CardContent className="space-y-2 pt-4 text-sm text-[#333333]">
+            <p className="text-gray-600">
               Your adviser request has been sent to{" "}
-              <span className="font-semibold text-(--earist-primary)">
+              <span className="font-semibold text-[#333333]">
                 {req?.requestedAdviserName || "the selected adviser"}
               </span>
               . The requested adviser must respond before the request can
               proceed to Dean review.
             </p>
-            <p className="text-xs text-(--earist-body-text)">
+            <p className="text-xs text-gray-500">
               This is not yet an active adviser assignment.
             </p>
           </CardContent>
@@ -309,22 +284,22 @@ function AdviserRequestContent({ viewerScope }: { viewerScope: string }) {
 
       {uiState === "WAITING_DEAN" && (
         <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-sm">
-              <Clock className="h-5 w-5 text-amber-600" />
+          <CardHeader className="border-b border-gray-100 pb-3">
+            <CardTitle className="flex items-center gap-2 text-base font-bold text-[#333333]">
+              <Clock className="h-4 w-4 text-[#f9a825]" />
               Adviser CONFORME Recorded
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-2 text-sm">
-            <p className="text-(--earist-body-text)">
+          <CardContent className="space-y-2 pt-4 text-sm text-[#333333]">
+            <p className="text-gray-600">
               Your requested adviser has accepted the request. The request is
               now waiting for Dean approval.
             </p>
-            <p className="font-medium">
+            <p className="font-medium text-[#333333]">
               Requested adviser:{" "}
               {req?.requestedAdviserName || "the selected adviser"}
             </p>
-            <p className="text-xs text-(--earist-body-text)">
+            <p className="text-xs text-gray-500">
               No active adviser assignment exists until Dean approval is
               completed.
             </p>
@@ -359,7 +334,7 @@ function AdviserRequestContent({ viewerScope }: { viewerScope: string }) {
 
       {uiState === "UNEXPECTED" && (
         <Card>
-          <CardContent className="pt-6 text-sm text-(--earist-body-text)">
+          <CardContent className="pt-6 text-sm text-gray-500">
             Adviser Request status is unavailable. Open Thesis Journey to
             refresh.
           </CardContent>
@@ -368,19 +343,18 @@ function AdviserRequestContent({ viewerScope }: { viewerScope: string }) {
 
       {needCandidates && (
         <Card>
-          <CardHeader>
-            <CardTitle className="text-sm">
+          <CardHeader className="border-b border-gray-100 pb-3">
+            <CardTitle className="text-base font-bold text-[#333333]">
               Eligible Adviser Candidates
             </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <p className="text-xs text-(--earist-body-text)">
+            <p className="text-xs text-gray-500">
               These candidates come from your Title Defense panel (Chairman and
               Panelists).
             </p>
-
+          </CardHeader>
+          <CardContent className="space-y-4 pt-4">
             {candidatesLoading && (
-              <p className="text-sm text-(--earist-body-text)">
+              <p className="text-sm text-gray-500">
                 Loading eligible candidates…
               </p>
             )}
@@ -407,7 +381,7 @@ function AdviserRequestContent({ viewerScope }: { viewerScope: string }) {
             {!candidatesLoading &&
               !candidatesError &&
               (candidatesData?.candidates.length ?? 0) === 0 && (
-                <p className="text-sm text-(--earist-body-text)">
+                <p className="text-sm text-gray-500">
                   No eligible Title Defense panel member is currently available
                   for adviser selection.
                 </p>
@@ -422,18 +396,18 @@ function AdviserRequestContent({ viewerScope }: { viewerScope: string }) {
                     type="button"
                     aria-pressed={selected}
                     onClick={() => setSelectedUserId(c.userId)}
-                    className={`rounded-lg border p-4 text-left transition-colors focus-visible:outline-2 focus-visible:outline-(--earist-primary) ${
+                    className={`rounded-xl border p-4 text-left transition-all focus-visible:outline-2 focus-visible:outline-[#e02b20] ${
                       selected
-                        ? "border-(--earist-primary) bg-(--earist-surface-light-red) ring-1 ring-(--earist-primary)"
-                        : "border-(--earist-border-gray) hover:bg-(--earist-surface-gray)"
+                        ? "border-[#e02b20] bg-red-50/40 ring-1 ring-[#e02b20]"
+                        : "border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50/60"
                     }`}
                   >
                     <div className="flex items-start justify-between gap-2">
                       <div>
-                        <p className="font-semibold text-(--earist-primary)">
+                        <p className="font-bold text-[#333333]">
                           {c.name}
                         </p>
-                        <p className="text-xs text-(--earist-body-text)">
+                        <p className="text-xs text-gray-500">
                           {roleLabel(c.defenseRole)} — Title Defense
                         </p>
                       </div>
@@ -441,7 +415,7 @@ function AdviserRequestContent({ viewerScope }: { viewerScope: string }) {
                         {selected ? "Selected" : "Select"}
                       </Badge>
                     </div>
-                    <div className="mt-2 space-y-1 text-xs text-(--earist-body-text)">
+                    <div className="mt-2.5 space-y-1 text-xs text-gray-600">
                       <p>Specialization: {c.specialization || "—"}</p>
                       <p>Office: {c.officeAffiliation || "—"}</p>
                     </div>
@@ -452,7 +426,7 @@ function AdviserRequestContent({ viewerScope }: { viewerScope: string }) {
 
             <div className="space-y-2">
               <label
-                className="text-xs font-medium text-(--earist-body-text)"
+                className="text-xs font-medium text-gray-700"
                 htmlFor="request-remarks"
               >
                 Request Reason (Optional)
@@ -470,7 +444,7 @@ function AdviserRequestContent({ viewerScope }: { viewerScope: string }) {
               type="button"
               disabled={!selectedUserId || createRequest.isPending}
               onClick={openSigning}
-              className="w-full bg-(--earist-primary) hover:bg-(--earist-primary)/90 sm:w-auto"
+              className="w-full sm:w-auto"
             >
               <Send className="mr-2 h-4 w-4" />
               Review &amp; Sign Adviser Request
@@ -490,26 +464,26 @@ function AdviserRequestContent({ viewerScope }: { viewerScope: string }) {
             </DialogDescription>
           </DialogHeader>
           {review && (
-            <div className="space-y-2 text-sm">
+            <div className="space-y-2 rounded-lg border border-gray-100 bg-gray-50/70 p-3.5 text-sm">
               <p>
-                <span className="text-(--earist-body-text)">Student: </span>
-                <span className="font-medium">{review.reviewedContext.studentName}</span>
+                <span className="text-gray-500">Student: </span>
+                <span className="font-semibold text-[#333333]">{review.reviewedContext.studentName}</span>
               </p>
               <p>
-                <span className="text-(--earist-body-text)">Student Number: </span>
-                {review.reviewedContext.studentNumber}
+                <span className="text-gray-500">Student Number: </span>
+                <span className="font-medium text-[#333333]">{review.reviewedContext.studentNumber}</span>
               </p>
               <p>
-                <span className="text-(--earist-body-text)">Program: </span>
-                {review.reviewedContext.programName}
+                <span className="text-gray-500">Program: </span>
+                <span className="font-medium text-[#333333]">{review.reviewedContext.programName}</span>
               </p>
               <p>
-                <span className="text-(--earist-body-text)">Requested Adviser: </span>
-                <span className="font-medium">{review.reviewedContext.requestedAdviserName}</span>
+                <span className="text-gray-500">Requested Adviser: </span>
+                <span className="font-semibold text-[#333333]">{review.reviewedContext.requestedAdviserName}</span>
               </p>
               <p className="whitespace-pre-wrap break-words">
-                <span className="text-(--earist-body-text)">Reason: </span>
-                {review.reason || "No reason provided."}
+                <span className="text-gray-500">Reason: </span>
+                <span className="text-[#333333]">{review.reason || "No reason provided."}</span>
               </p>
             </div>
           )}
@@ -528,7 +502,6 @@ function AdviserRequestContent({ viewerScope }: { viewerScope: string }) {
               type="button"
               disabled={createRequest.isPending || !adviserRequestSigningReady(review, signature)}
               onClick={() => createRequest.mutate()}
-              className="bg-(--earist-primary) hover:bg-(--earist-primary)/90"
             >
               <Send className="mr-2 h-4 w-4" />
               {createRequest.isPending ? "Submitting…" : "Sign & Submit Adviser Request"}
@@ -536,6 +509,6 @@ function AdviserRequestContent({ viewerScope }: { viewerScope: string }) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </ThesisJourneyShell>
   );
 }

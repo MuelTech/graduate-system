@@ -31,6 +31,7 @@ import {
   HelpCircle,
 } from "lucide-react";
 import { apiClientRequest } from "@/lib/api.client";
+import { toast } from "sonner";
 
 type EligibilityReason =
   | "FINAL_DEFENSE_NOT_PASSED"
@@ -236,28 +237,26 @@ export default function DatabankSubmitPage() {
       setInstrumentsFile(null);
       setRespondentDataFile(null);
       queryClient.invalidateQueries({ queryKey: ["databank-archive-context"] });
+      toast.success("Research package submitted to the Databank archive.");
     },
     onError: (error: Error) => {
-      alert(error.message || "Databank registration could not be completed.");
+      toast.error(error.message || "Databank registration could not be completed.");
     },
   });
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6">
+    <div className="space-y-6">
       <div>
         <Link
           href="/student/repository"
-          className="mb-2 inline-flex items-center text-xs text-(--earist-secondary) hover:underline"
+          className="mb-2 inline-flex items-center text-xs font-medium text-gray-500 hover:text-[#333333] hover:underline"
         >
           <ArrowLeft className="mr-1 h-3 w-3" /> Back to Research Repository
         </Link>
-        <h2
-          className="text-3xl font-bold text-(--earist-primary)"
-          style={{ fontFamily: '"Calibri", sans-serif' }}
-        >
+        <h1 className="text-2xl font-bold tracking-tight text-[#333333]">
           Research Databank Archive
-        </h2>
-        <p className="mt-2 text-sm text-(--earist-body-text)">
+        </h1>
+        <p className="mt-1 text-sm text-gray-500">
           Submit your post-defense revised research package to the controlled Graduate School Databank (DL-9).
           All archival records are private by default and subject to administrator curation.
         </p>

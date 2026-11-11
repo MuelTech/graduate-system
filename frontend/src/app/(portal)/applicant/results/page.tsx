@@ -54,44 +54,41 @@ export default function ApplicantResultsPage() {
       : "We could not load your examination results. Please try again later.";
 
     return (
-      <div className="space-y-4">
+      <div className="space-y-6">
         {/* Page Header (preserved for consistency) */}
         <div>
-          <h2
-            className="text-2xl font-bold text-(--earist-primary)"
-            style={{ fontFamily: '"Calibri", sans-serif' }}
-          >
+          <h1 className="text-2xl font-bold tracking-tight text-[#333333]">
             Examination Results
-          </h2>
-          <p className="text-sm text-(--earist-body-text)">
+          </h1>
+          <p className="mt-1 text-sm text-gray-500">
             View your entrance examination results
           </p>
         </div>
 
-        <div className="rounded-lg border border-(--earist-border-gray) bg-white p-8 text-center">
+        <div className="rounded-xl border border-gray-100 bg-white p-8 text-center shadow-sm">
           <div
             className={`mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full ${
               isExpectedEmptyState
-                ? "bg-(--earist-surface-light-red)"
+                ? "bg-[#e02b20]/10"
                 : "bg-red-50 text-red-600"
             }`}
           >
             {isExpectedEmptyState ? (
-              <ClipboardList className="h-8 w-8 text-(--earist-primary)" />
+              <ClipboardList className="h-8 w-8 text-[#e02b20]" />
             ) : (
               <AlertTriangle className="h-8 w-8" />
             )}
           </div>
-          <h3 className="mb-2 text-lg font-bold text-(--earist-primary)">
+          <h3 className="mb-2 text-lg font-bold text-[#333333]">
             {isExpectedEmptyState
               ? "Results Not Available"
               : "Error Loading Results"}
           </h3>
-          <p className="mb-4 text-sm text-(--earist-body-text)">{errorMsg}</p>
+          <p className="mb-4 text-sm text-gray-600">{errorMsg}</p>
           {isExpectedEmptyState && (
             <Link
               href="/applicant/dashboard"
-              className="inline-flex items-center gap-1 text-sm font-semibold text-(--earist-secondary) transition-colors hover:text-(--earist-primary)"
+              className="inline-flex items-center gap-1 text-sm font-semibold text-[#e02b20] transition-colors hover:underline"
             >
               <ArrowLeft className="h-4 w-4" /> Back to Dashboard
             </Link>
@@ -108,16 +105,13 @@ export default function ApplicantResultsPage() {
     year: "numeric",
   });
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       {/* Page Header */}
       <div>
-        <h2
-          className="text-2xl font-bold text-(--earist-primary)"
-          style={{ fontFamily: '"Calibri", sans-serif' }}
-        >
+        <h1 className="text-2xl font-bold tracking-tight text-[#333333]">
           Examination Results
-        </h2>
-        <p className="text-sm text-(--earist-body-text)">
+        </h1>
+        <p className="mt-1 text-sm text-gray-500">
           Exam taken on {formattedDate}
         </p>
       </div>
@@ -136,7 +130,7 @@ export default function ApplicantResultsPage() {
                 <Badge className="mb-2 bg-green-100 px-4 py-1 text-base text-green-700">
                   PASSED
                 </Badge>
-                <p className="text-sm text-(--earist-body-text)">
+                <p className="text-sm text-gray-600">
                   Congratulations! You have passed the entrance examination.
                 </p>
               </>
@@ -148,7 +142,7 @@ export default function ApplicantResultsPage() {
                 <Badge className="mb-2 bg-red-100 px-4 py-1 text-base text-red-700">
                   FAILED
                 </Badge>
-                <p className="text-sm text-(--earist-body-text)">
+                <p className="text-sm text-gray-600">
                   You did not meet the passing score for this examination.
                 </p>
               </>
@@ -160,7 +154,7 @@ export default function ApplicantResultsPage() {
       {/* Score Breakdown Card */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-sm font-semibold text-(--earist-secondary)">
+          <CardTitle className="text-base font-bold text-[#333333]">
             Score Breakdown
           </CardTitle>
         </CardHeader>
@@ -196,7 +190,7 @@ export default function ApplicantResultsPage() {
                 </a>
                 <Link
                   href="/applicant/cor-upload"
-                  className="inline-flex items-center gap-1 rounded-lg bg-(--earist-primary) px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-(--earist-primary)/90"
+                  className="inline-flex items-center gap-1 rounded-lg bg-[#e02b20] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-[#c62828]"
                 >
                   <Upload className="mr-1 h-3 w-3" />
                   Upload COR
@@ -211,18 +205,18 @@ export default function ApplicantResultsPage() {
       {result.status === "failed" && !reconsidered && (
         <Card>
           <CardContent className="py-4">
-            <div className="rounded-lg border border-(--earist-border-gray) bg-(--earist-surface-gray) p-4">
-              <p className="mb-2 text-sm font-semibold text-(--earist-primary)">
+            <div className="rounded-lg border border-gray-100 bg-gray-50/70 p-4">
+              <p className="mb-2 text-sm font-semibold text-[#333333]">
                 Re-application Information
               </p>
-              <p className="mb-3 text-sm text-(--earist-body-text)">
+              <p className="mb-3 text-sm text-gray-600">
                 You may re-apply for the entrance examination per institutional
                 policy. Please contact the Graduate School Office for guidance
                 on the re-application process.
               </p>
               <Link
                 href="/applicant/dashboard"
-                className="inline-flex items-center gap-1 text-sm font-semibold text-(--earist-secondary) transition-colors hover:text-(--earist-primary)"
+                className="inline-flex items-center gap-1 text-sm font-semibold text-[#e02b20] transition-colors hover:underline"
               >
                 Back to Dashboard <ArrowRight className="h-3 w-3" />
               </Link>
@@ -232,9 +226,9 @@ export default function ApplicantResultsPage() {
       )}
 
       {/* Email Notice */}
-      <div className="flex items-start gap-2 rounded-lg bg-(--earist-surface-gray) p-3">
-        <Mail className="mt-0.5 h-4 w-4 shrink-0 text-(--earist-body-text)" />
-        <p className="text-xs text-(--earist-body-text)">
+      <div className="flex items-start gap-2 rounded-lg border border-gray-100 bg-white p-3.5 shadow-xs">
+        <Mail className="mt-0.5 h-4 w-4 shrink-0 text-gray-400" />
+        <p className="text-xs text-gray-500">
           Result notifications use your registered email address.
         </p>
       </div>
