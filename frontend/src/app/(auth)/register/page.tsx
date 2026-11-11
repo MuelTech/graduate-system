@@ -222,22 +222,22 @@ export default function RegisterPage() {
         <div className="absolute inset-0 bg-(--earist-primary)/60 backdrop-blur-sm" />
 
         <div className="relative z-10 w-full max-w-120 px-4 py-12">
-          <Card className="shadow-2xl">
+          <Card className="border-gray-100 shadow-2xl">
             <CardContent className="pt-6 text-center">
-              <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-green-100">
-                <CheckCircle className="h-10 w-10 text-green-600" />
+              <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100">
+                <CheckCircle className="h-10 w-10 text-emerald-600" />
               </div>
-              <h2 className="mb-2 text-2xl font-bold text-(--earist-primary)">
+              <h2 className="mb-2 text-2xl font-bold text-[#333333]">
                 Registration Complete
               </h2>
-              <p className="mb-6 text-sm text-(--earist-body-text)">
+              <p className="mb-6 text-sm text-gray-500">
                 Your applicant account has been created successfully.
               </p>
 
-              <Alert className="mb-6 border-(--earist-accent)/30 bg-(--earist-surface-cream)">
-                <Info className="h-4 w-4 text-(--earist-warning)" />
+              <Alert className="mb-6 border-amber-200 bg-amber-50/70">
+                <Info className="h-4 w-4 text-amber-600" />
                 <AlertDescription>
-                  <p className="mb-3 text-sm font-bold text-(--earist-primary)">
+                  <p className="mb-3 text-sm font-bold text-[#333333]">
                     What happens next:
                   </p>
                   <div className="space-y-3">
@@ -249,10 +249,10 @@ export default function RegisterPage() {
                       "Once verified, you will receive your Student credentials via email.",
                     ].map((item, i) => (
                       <div key={i} className="flex gap-3">
-                        <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-(--earist-primary) text-xs font-bold text-white">
+                        <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#e02b20] text-xs font-bold text-white">
                           {i + 1}
                         </div>
-                        <p className="text-left text-sm text-(--earist-body-text)">
+                        <p className="text-left text-sm text-gray-600">
                           {item}
                         </p>
                       </div>
@@ -263,7 +263,7 @@ export default function RegisterPage() {
 
               <Link
                 href="/login"
-                className="inline-flex w-full items-center justify-center rounded-lg bg-(--earist-accent) py-2.5 text-sm font-bold text-(--earist-primary) transition-colors hover:bg-(--earist-accent)/90"
+                className="inline-flex w-full items-center justify-center rounded-lg bg-[#e02b20] py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#c62828]"
               >
                 Sign In to Your Portal
               </Link>
@@ -292,18 +292,15 @@ export default function RegisterPage() {
       <div className="absolute inset-0 bg-(--earist-primary)/60 backdrop-blur-sm" />
 
       <div className="relative z-10 w-full max-w-120 px-4 py-12">
-        <Card className="shadow-2xl">
+        <Card className="border-gray-100 shadow-2xl">
           <CardHeader className="text-center">
-            <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-(--earist-surface-light-red)">
-              <GraduationCap className="h-9 w-9 text-(--earist-primary)" />
+            <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-[#e02b20]/10">
+              <GraduationCap className="h-9 w-9 text-[#e02b20]" />
             </div>
-            <CardTitle
-              className="text-lg text-(--earist-primary)"
-              style={{ fontFamily: '"Calibri", sans-serif' }}
-            >
+            <CardTitle className="text-lg font-bold text-[#333333]">
               EARIST Graduate School
             </CardTitle>
-            <CardDescription>Graduate School Admission</CardDescription>
+            <CardDescription className="text-gray-500">Graduate School Admission</CardDescription>
           </CardHeader>
           <CardContent>
             {/* Step Progress */}
@@ -314,10 +311,10 @@ export default function RegisterPage() {
                     <div
                       className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold transition-all ${
                         s === step
-                          ? "bg-(--earist-accent) text-(--earist-primary) ring-2 ring-(--earist-accent)/30"
+                          ? "bg-[#e02b20] text-white ring-4 ring-[#e02b20]/15"
                           : s < step
-                            ? "bg-(--earist-primary) text-white"
-                            : "bg-(--earist-surface-gray) text-(--earist-body-text)"
+                            ? "bg-emerald-600 text-white"
+                            : "bg-gray-100 text-gray-500"
                       }`}
                     >
                       {s < step ? "✓" : s + 1}
@@ -326,15 +323,15 @@ export default function RegisterPage() {
                       <div
                         className={`h-1 w-12 transition-colors sm:w-20 ${
                           s < step
-                            ? "bg-(--earist-primary)"
-                            : "bg-(--earist-border-gray)"
+                            ? "bg-emerald-600"
+                            : "bg-gray-200"
                         }`}
                       />
                     )}
                   </div>
                 ))}
               </div>
-              <p className="text-center text-sm font-semibold text-(--earist-primary)">
+              <p className="text-center text-sm font-bold text-[#333333]">
                 {stepTitles[step]}
               </p>
             </div>
@@ -640,7 +637,7 @@ export default function RegisterPage() {
                       setStep(step - 1);
                       setError(""); // Clear error on back navigation
                     }}
-                    className="text-(--earist-secondary)"
+                    className="text-gray-600"
                   >
                     <ChevronLeft className="mr-1 h-4 w-4" />
                     Back
@@ -657,7 +654,7 @@ export default function RegisterPage() {
                         setError(""); // Clear error on forward navigation
                       }
                     }}
-                    className="bg-(--earist-primary) hover:bg-(--earist-primary)/90"
+                    className="bg-[#e02b20] text-white hover:bg-[#c62828]"
                   >
                     Continue
                     <ChevronRight className="ml-1 h-4 w-4" />
@@ -666,7 +663,7 @@ export default function RegisterPage() {
                   <Button
                     type="submit"
                     disabled={isSubmitting}
-                    className="bg-(--earist-accent) text-(--earist-primary) hover:bg-(--earist-accent)/90 disabled:opacity-70"
+                    className="bg-[#e02b20] font-semibold text-white hover:bg-[#c62828] disabled:opacity-70"
                   >
                     {isSubmitting ? "Submitting..." : "Submit Registration"}
                   </Button>
@@ -675,14 +672,14 @@ export default function RegisterPage() {
             </form>
 
             <div className="mt-6 flex items-center gap-3">
-              <div className="h-px flex-1 bg-(--earist-border-gray)" />
-              <span className="text-xs text-(--earist-body-text)">or</span>
-              <div className="h-px flex-1 bg-(--earist-border-gray)" />
+              <div className="h-px flex-1 bg-gray-200" />
+              <span className="text-xs text-gray-400">or</span>
+              <div className="h-px flex-1 bg-gray-200" />
             </div>
 
             <Link
               href="/login"
-              className="mt-4 inline-flex w-full items-center justify-center rounded-lg border border-(--earist-primary) py-2.5 text-sm font-semibold text-(--earist-primary) transition-colors hover:bg-(--earist-surface-light-red)"
+              className="mt-4 inline-flex w-full items-center justify-center rounded-lg border border-gray-200 bg-white py-2.5 text-sm font-semibold text-[#333333] transition-colors hover:border-[#e02b20]/40 hover:bg-[#e02b20]/5 hover:text-[#e02b20]"
             >
               Already registered? Sign in
             </Link>

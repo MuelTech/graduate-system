@@ -24,11 +24,12 @@ import {
   Menu,
   X,
   LogOut,
-  ChevronLeft,
+  PanelLeft,
   ChevronDown,
   Megaphone,
 } from "lucide-react";
 import { NotificationBell } from "@/components/layout/notification-bell";
+import { PortalBreadcrumbs } from "@/components/layout/portal-breadcrumbs";
 
 interface AuthMeResponse {
   id?: string;
@@ -97,7 +98,7 @@ const allNavItems = [
 
 /** Shared focus treatment for sidebar controls (Playbook §25). */
 const FOCUS_RING =
-  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--earist-accent) focus-visible:ring-offset-2 focus-visible:ring-offset-(--earist-primary)";
+  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#f9a825] focus-visible:ring-offset-2 focus-visible:ring-offset-[#b71c1c]";
 
 export default function AdminLayout({
   children,
@@ -172,40 +173,39 @@ export default function AdminLayout({
       // Browser extensions (e.g. Definer) inject host nodes into the layout
       // tree and break attribute/text hydration on this shell. Children stay strict.
       suppressHydrationWarning
-      className="flex min-h-screen bg-(--earist-surface-gray)"
+      className="flex min-h-screen bg-[#FFF8F0]"
     >
       {/* Mobile Overlay */}
       {sidebarOpen && (
         <div
-          className="fixed inset-0 z-40 bg-black/50 lg:hidden"
+          className="fixed inset-0 z-40 bg-black/50 backdrop-blur-xs lg:hidden"
           onClick={() => setSidebarOpen(false)}
         />
       )}
 
       {/* Sidebar */}
       <aside
-        className={`fixed inset-y-0 left-0 z-50 flex flex-col bg-(--earist-primary) transition-all duration-300 ${
-          collapsed ? "w-17" : "w-65"
+        className={`fixed inset-y-0 left-0 z-50 flex flex-col border-r border-black/10 bg-[#b71c1c] text-white shadow-xl transition-all duration-300 ${
+          collapsed ? "w-[72px]" : "w-64"
         } ${
           sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
         }`}
       >
         {/* Branding */}
-        <div className="flex h-16 items-center justify-between border-b border-white/10 px-4">
+        <div className="flex h-16 items-center justify-between border-b border-white/15 px-4">
           <Link
             href="/admin/dashboard"
-            className={`flex items-center gap-2 rounded-md ${FOCUS_RING}`}
+            className={`flex items-center gap-3 rounded-lg ${FOCUS_RING}`}
           >
-            <GraduationCap
-              className="h-7 w-7 shrink-0 text-(--earist-accent)"
-              aria-hidden="true"
-            />
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/15 text-[#f9a825] shadow-inner">
+              <GraduationCap className="h-6 w-6 shrink-0" aria-hidden="true" />
+            </div>
             {!collapsed && (
               <span className="flex flex-col">
-                <span className="text-sm leading-tight font-bold text-white">
+                <span className="text-base leading-tight font-bold tracking-wide text-white">
                   EARIST
                 </span>
-                <span className="text-[10px] leading-tight text-white/70">
+                <span className="text-[11px] leading-tight font-medium tracking-wider text-white/75 uppercase">
                   Admin Portal
                 </span>
               </span>
@@ -214,7 +214,7 @@ export default function AdminLayout({
           <button
             onClick={() => setSidebarOpen(false)}
             aria-label="Close navigation"
-            className={`rounded-md text-white/80 transition-colors hover:text-(--earist-accent) lg:hidden ${FOCUS_RING}`}
+            className={`rounded-md p-1 text-white/80 transition-colors hover:bg-white/10 hover:text-white lg:hidden ${FOCUS_RING}`}
           >
             <X className="h-5 w-5" aria-hidden="true" />
           </button>
@@ -223,9 +223,9 @@ export default function AdminLayout({
         {/* Navigation */}
         <nav
           aria-label="Admin navigation"
-          className="flex-1 overflow-y-auto px-2 py-3"
+          className="flex-1 overflow-y-auto px-3 py-4"
         >
-          <ul className="space-y-0.5">
+          <ul className="space-y-1">
             {navItems.map((item) => {
               if ("children" in item) {
                 const isOpen = openMenus[item.label] ?? false;
@@ -234,20 +234,18 @@ export default function AdminLayout({
                     isNavActive(pathname, child.href),
                   ) ?? false;
 
-                // When collapsed the parent is the only location cue, so it
-                // keeps the strong accent; expanded, the active child carries it.
                 const parentState = isActive
                   ? collapsed
-                    ? "bg-(--earist-accent) text-(--earist-primary)"
-                    : "bg-white/10 font-semibold text-white"
-                  : "text-white hover:bg-white/10 hover:text-(--earist-accent)";
+                    ? "border-l-4 border-white bg-white/20 font-semibold text-white rounded-r-lg"
+                    : "bg-white/15 font-semibold text-white rounded-lg"
+                  : "rounded-lg font-medium text-white/80 hover:bg-white/10 hover:text-white";
 
                 return (
                   <li key={item.label}>
                     <button
                       onClick={() => toggleMenu(item.label)}
                       aria-expanded={isOpen}
-                      className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${parentState} ${FOCUS_RING}`}
+                      className={`group flex w-full items-center gap-3 px-3.5 py-2.5 text-sm transition-all ${parentState} ${FOCUS_RING}`}
                       title={collapsed ? item.label : undefined}
                     >
                       <item.icon
@@ -258,7 +256,7 @@ export default function AdminLayout({
                         <>
                           <span className="flex-1 text-left">{item.label}</span>
                           <ChevronDown
-                            className={`h-4 w-4 transition-transform ${
+                            className={`h-4 w-4 text-white/70 transition-transform ${
                               isOpen ? "rotate-180" : ""
                             }`}
                             aria-hidden="true"
@@ -267,7 +265,7 @@ export default function AdminLayout({
                       )}
                     </button>
                     {!collapsed && isOpen && (
-                      <ul className="mt-1 ml-5 space-y-0.5 border-l border-white/10 pl-3">
+                      <ul className="mt-1 ml-4 space-y-1 border-l border-white/20 pl-3">
                         {item.children?.map((child) => {
                           const isChildActive = isNavActive(
                             pathname,
@@ -281,10 +279,10 @@ export default function AdminLayout({
                                 aria-current={
                                   isChildActive ? "page" : undefined
                                 }
-                                className={`block rounded-lg px-3 py-2 text-sm transition-colors ${FOCUS_RING} ${
+                                className={`block rounded-lg px-3 py-2 text-sm transition-all ${FOCUS_RING} ${
                                   isChildActive
-                                    ? "bg-(--earist-accent) font-medium text-(--earist-primary)"
-                                    : "text-white/75 hover:bg-white/10 hover:text-(--earist-accent)"
+                                    ? "bg-white/20 font-semibold text-white shadow-2xs"
+                                    : "text-white/75 hover:bg-white/10 hover:text-white"
                                 }`}
                               >
                                 {child.label}
@@ -305,10 +303,10 @@ export default function AdminLayout({
                     href={item.href!}
                     onClick={() => setSidebarOpen(false)}
                     aria-current={isActive ? "page" : undefined}
-                    className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${FOCUS_RING} ${
+                    className={`group flex items-center gap-3 px-3.5 py-2.5 text-sm transition-all ${FOCUS_RING} ${
                       isActive
-                        ? "bg-(--earist-accent) text-(--earist-primary)"
-                        : "text-white hover:bg-white/10 hover:text-(--earist-accent)"
+                        ? "rounded-r-lg border-l-4 border-white bg-white/20 font-semibold text-white shadow-2xs"
+                        : "rounded-lg font-medium text-white/80 hover:bg-white/10 hover:text-white"
                     }`}
                     title={collapsed ? item.label : undefined}
                   >
@@ -321,28 +319,12 @@ export default function AdminLayout({
           </ul>
         </nav>
 
-        {/* Collapse Toggle (Desktop) */}
-        <div className="hidden border-t border-white/10 p-2 lg:block">
-          <button
-            onClick={() => setCollapsed(!collapsed)}
-            aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-            aria-expanded={!collapsed}
-            className={`flex w-full items-center justify-center rounded-lg p-2 text-white transition-colors hover:bg-white/10 hover:text-(--earist-accent) ${FOCUS_RING}`}
-          >
-            <ChevronLeft
-              className={`h-5 w-5 transition-transform ${
-                collapsed ? "rotate-180" : ""
-              }`}
-              aria-hidden="true"
-            />
-          </button>
-        </div>
-
         {/* Logout */}
-        <div className="border-t border-white/10 p-2">
+        <div className="border-t border-white/15 p-3">
           <button
             onClick={() => signOut({ callbackUrl: "/login" })}
-            className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-white transition-colors hover:bg-white/10 hover:text-(--earist-accent) ${FOCUS_RING}`}
+            className={`flex w-full items-center gap-3 rounded-lg px-3.5 py-2.5 text-sm font-medium text-white/85 transition-colors hover:bg-white/10 hover:text-white ${FOCUS_RING}`}
+            title={collapsed ? "Sign Out" : undefined}
           >
             <LogOut className="h-5 w-5 shrink-0" aria-hidden="true" />
             {!collapsed && <span>Sign Out</span>}
@@ -353,27 +335,45 @@ export default function AdminLayout({
       {/* Main Content */}
       <div
         className={`flex min-w-0 flex-1 flex-col transition-all duration-300 ${
-          collapsed ? "lg:ml-17" : "lg:ml-65"
+          collapsed ? "lg:ml-[72px]" : "lg:ml-64"
         }`}
       >
-        {/* Top Header: mobile navigation + utilities. Page identity lives in
-            the page header, not here (Playbook §8/§10.1). */}
-        <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-(--earist-border-gray) bg-white px-4 sm:px-6">
+        {/* Top Header */}
+        <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-gray-100 bg-white px-4 shadow-2xs sm:px-6">
           <div className="flex items-center gap-3">
             <button
               onClick={() => setSidebarOpen(true)}
               aria-label="Open navigation"
-              className={`rounded-md p-1 text-(--earist-body-text) transition-colors hover:bg-(--earist-surface-gray) lg:hidden ${FOCUS_RING}`}
+              className="rounded-lg p-2 text-gray-600 transition-colors hover:bg-gray-100 hover:text-[#333333] lg:hidden"
             >
-              <Menu className="h-6 w-6" aria-hidden="true" />
+              <Menu className="h-5 w-5" aria-hidden="true" />
             </button>
+            <button
+              onClick={() => setCollapsed(!collapsed)}
+              aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+              aria-expanded={!collapsed}
+              className="hidden rounded-lg p-2 text-gray-500 transition-colors hover:bg-gray-100 hover:text-[#333333] lg:inline-flex"
+              title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+            >
+              <PanelLeft className="h-5 w-5" aria-hidden="true" />
+            </button>
+            <div className="hidden h-5 w-px bg-gray-200 sm:block" />
+            <PortalBreadcrumbs portal="admin" />
           </div>
           <div className="flex items-center gap-3">
+            <div className="hidden flex-col items-end sm:flex">
+              <span className="text-xs font-semibold text-[#333333]">
+                {session?.user?.name || session?.user?.email || "Administrator"}
+              </span>
+              <span className="text-[11px] font-medium text-gray-500">
+                Admin Portal
+              </span>
+            </div>
             <NotificationBell role="ADMIN" />
             <div
               suppressHydrationWarning
               aria-hidden="true"
-              className="flex h-8 w-8 items-center justify-center rounded-full bg-(--earist-primary) text-sm font-bold text-white uppercase"
+              className="flex h-9 w-9 items-center justify-center rounded-full bg-[#e02b20] text-sm font-bold text-white uppercase shadow-xs"
               title={session?.user?.email || "Admin"}
             >
               {session?.user?.email?.charAt(0).toUpperCase() || "A"}
@@ -382,7 +382,7 @@ export default function AdminLayout({
         </header>
 
         {/* Page Content */}
-        <main className="flex-1 p-4 sm:p-6 xl:p-8">
+        <main className="flex-1 p-4 sm:p-6 lg:p-8">
           {!authMeLoaded || isPathAllowed ? children : null}
         </main>
       </div>
