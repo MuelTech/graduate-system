@@ -3,22 +3,22 @@ import { RepositoryBrowser } from "@/components/repository/repository-browser";
 export default function RepositoryPage() {
   return (
     <>
-      {/* Page Header */}
-      <section className="bg-(--earist-primary) py-16">
-        <div className="container mx-auto px-4 text-center sm:px-6 lg:px-8">
-          <h1 className="mb-4 text-4xl font-bold text-white">
-            Research Repository
-          </h1>
-          <p className="mx-auto max-w-2xl text-lg text-white/80">
-            Browse published thesis and dissertation research metadata from
-            EARIST Graduate School students and alumni.
-          </p>
+      <header className="public-information-header">
+        <div className="public-body-frame">
+          <p className="public-body-eyebrow">EARIST Graduate School</p>
+          <div className="public-information-header__layout">
+            <h1 className="public-information-title">Research Repository</h1>
+            <p className="public-information-lead">
+              Explore published graduate research titles, abstracts, and
+              citations from EARIST.
+            </p>
+          </div>
         </div>
-      </section>
+      </header>
 
       {/* Live published research (metadata projection only) */}
-      <section className="bg-white py-12">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+      <section aria-label="Repository catalog" className="public-body-section">
+        <div className="public-body-frame">
           <RepositoryBrowser
             title="Published Research Catalog"
             description="Explore approved graduate theses, dissertations, and research manuscripts. Institutional sign-in required for full-text downloads."

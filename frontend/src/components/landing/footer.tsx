@@ -1,121 +1,106 @@
+import Image from "next/image";
 import Link from "next/link";
-import {
-  GraduationCap,
-  Mail,
-  Phone,
-  MapPin,
-  Globe,
-  ExternalLink,
-} from "lucide-react";
+import { publicSiteContent } from "@/content/public-site-content";
 
-const quickLinks = [
-  { href: "/programs", label: "Programs" },
-  { href: "/repository", label: "Repository" },
-  { href: "/faq", label: "FAQ" },
-  { href: "/login", label: "Login" },
-  { href: "/register", label: "Register" },
-];
+const footerGroups = [
+  {
+    id: "study",
+    title: "Explore the Graduate School",
+    links: [
+      { label: "Home", href: "/" },
+      { label: "News & Announcements", href: "/#news" },
+      { label: "About", href: "/#about" },
+      { label: "Programs", href: "/#programs" },
+    ],
+  },
+  {
+    id: "research",
+    title: "Research & Contact",
+    links: [
+      { label: "Research", href: "/repository" },
+      { label: "Contact Us", href: "/#contact" },
+    ],
+  },
+  {
+    id: "contact",
+    title: "Official platforms",
+    links: [
+      {
+        label: "EARIST Website",
+        href: publicSiteContent.contact.platforms[0].href,
+      },
+      {
+        label: "Apply through Pinnacle ↗",
+        href: publicSiteContent.contact.platforms[1].href,
+      },
+    ],
+  },
+] as const;
 
 export function Footer() {
+  const { institution } = publicSiteContent;
+
   return (
-    <footer className="bg-(--earist-primary) text-white">
-      <div className="container mx-auto px-4 py-12 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3">
-          {/* Left Column — Contact Information */}
+    <footer className="public-footer">
+      <div className="public-body-frame">
+        <div className="public-footer__layout">
           <div>
-            <div className="mb-4 flex items-center gap-2">
-              <GraduationCap className="h-7 w-7 text-(--earist-accent)" />
-              <span className="text-lg font-bold">EARIST Graduate School</span>
-            </div>
-            <ul className="space-y-3">
-              <li className="flex items-start gap-2">
-                <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-(--earist-accent)" />
-                <span className="text-sm text-white/80">
-                  Eulogio &ldquo;Amang&rdquo; Rodriguez Institute of Science and
-                  Technology, Manila, Philippines
-                </span>
-              </li>
-              <li className="flex items-center gap-2">
-                <Mail className="h-4 w-4 shrink-0 text-(--earist-accent)" />
-                <span className="text-sm text-white/80">gs@earist.edu.ph</span>
-              </li>
-              <li className="flex items-center gap-2">
-                <Phone className="h-4 w-4 shrink-0 text-(--earist-accent)" />
-                <span className="text-sm text-white/80">(02) 8534-8267</span>
-              </li>
-            </ul>
+            <Link href="/" className="public-footer__identity">
+              <Image
+                src={institution.sealSrc}
+                alt="EARIST seal"
+                width={56}
+                height={56}
+              />
+              <span>
+                EARIST
+                <span className="public-footer__school">Graduate School</span>
+              </span>
+            </Link>
+            <p className="public-footer__institution">{institution.fullName}</p>
           </div>
 
-          {/* Center Column — Quick Links */}
-          <div>
-            <h3 className="mb-4 text-sm font-semibold tracking-wider text-(--earist-accent) uppercase">
-              Quick Links
-            </h3>
-            <ul className="space-y-2">
-              {quickLinks.map((link) => (
-                <li key={link.href}>
-                  <Link
-                    href={link.href}
-                    className="text-sm text-white/80 transition-colors hover:text-white"
-                  >
-                    {link.label}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          {/* Right Column — Social Media + Mission */}
-          <div>
-            <h3 className="mb-4 text-sm font-semibold tracking-wider text-(--earist-accent) uppercase">
-              Connect With Us
-            </h3>
-            <div className="mb-4 flex gap-3">
-              <a
-                href="#"
-                aria-label="Facebook"
-                className="flex h-9 w-9 items-center justify-center rounded-full bg-white/10 text-white transition-colors hover:bg-(--earist-accent) hover:text-(--earist-primary)"
-              >
-                <Globe className="h-4 w-4" />
-              </a>
-              <a
-                href="#"
-                aria-label="Website"
-                className="flex h-9 w-9 items-center justify-center rounded-full bg-white/10 text-white transition-colors hover:bg-(--earist-accent) hover:text-(--earist-primary)"
-              >
-                <ExternalLink className="h-4 w-4" />
-              </a>
-            </div>
-            <p className="text-sm text-white/70">
-              Committed to excellence in graduate education, research, and
-              community service — producing competent professionals and scholars
-              for national development.
-            </p>
-          </div>
+          <nav
+            aria-label="Footer navigation"
+            className="public-footer__navigation"
+          >
+            {footerGroups.map((group) => (
+              <div key={group.id}>
+                <h2 className="public-footer__group-title">{group.title}</h2>
+                <ul>
+                  {group.links.map((link) => (
+                    <li key={link.href}>
+                      {link.href.startsWith("https://") ? (
+                        <a href={link.href} className="public-footer__link">
+                          {link.label}
+                        </a>
+                      ) : (
+                        <Link href={link.href} className="public-footer__link">
+                          {link.label}
+                        </Link>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+                {group.id === "contact" && (
+                  <div className="public-footer__accounts">
+                    <Link href="/login" className="public-footer__link">
+                      Sign In
+                    </Link>
+                    <Link href="/register" className="public-footer__link">
+                      Create Account
+                    </Link>
+                  </div>
+                )}
+              </div>
+            ))}
+          </nav>
         </div>
-
-        {/* Bottom Bar */}
-        <div className="mt-8 border-t border-white/20 pt-6">
-          <div className="flex flex-col items-center justify-between gap-2 sm:flex-row">
-            <p className="text-xs text-white/50">
-              © {new Date().getFullYear()} EARIST Graduate School Information
-              System. All rights reserved.
-            </p>
-            <div className="flex gap-4">
-              <Link
-                href="/privacy"
-                className="text-xs text-white/50 transition-colors hover:text-white"
-              >
-                Privacy Policy
-              </Link>
-              <Link
-                href="/terms"
-                className="text-xs text-white/50 transition-colors hover:text-white"
-              >
-                Terms of Use
-              </Link>
-            </div>
-          </div>
+        <div className="public-footer__bottom">
+          <p>
+            © {new Date().getFullYear()} EARIST Graduate School Information
+            System. All rights reserved.
+          </p>
         </div>
       </div>
     </footer>
