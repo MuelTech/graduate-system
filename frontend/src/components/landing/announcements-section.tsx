@@ -20,7 +20,7 @@ const slides = [
   {
     title: "Graduate study at EARIST.",
     summary: publicSiteContent.hero.description,
-    category: "News & Announcements",
+    category: "Graduate School Highlights",
     image: publicSiteContent.hero.image,
     treatment: "photograph",
     primary: { label: "Explore Programs", href: "/#programs" },
@@ -28,17 +28,20 @@ const slides = [
   },
   {
     title: "Registered in Pinnacle?",
-    summary: "Sign in or create an account to access examination services.",
-    category: "Applicant examination access",
-    treatment: "statement",
+    summary:
+      "Sign in or create an account to view entrance examination schedules and access applicant services.",
+    category: "Entrance Examination & Applicant Access",
+    image: publicSiteContent.hero.examImage,
+    treatment: "photograph",
+    prerequisite: "A Pinnacle Applicant ID is required to create an account.",
     primary: { label: "Entrance Examination", href: "/login" },
     secondary: { label: "Create Account", href: "/register" },
   },
   {
     title: "Explore graduate research.",
     summary:
-      "Explore published graduate research titles, abstracts, and citations in the Research Repository.",
-    category: "Research Repository",
+      "Browse published graduate theses, dissertations, abstracts, and citations in the Research Repository.",
+    category: "Graduate Research",
     image: publicSiteContent.research.image,
     treatment: "photograph",
     primary: { label: "Browse Research Repository", href: "/repository" },
@@ -280,9 +283,9 @@ export function AnnouncementsSection() {
                   <ArrowRight aria-hidden="true" size={19} />
                 </Link>
               </div>
-              {slide.treatment === "statement" && (
+              {slide.prerequisite && (
                 <p className="public-carousel__prerequisite">
-                  A Pinnacle Applicant ID is required to create an account.
+                  {slide.prerequisite}
                 </p>
               )}
             </div>

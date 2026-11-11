@@ -35,8 +35,8 @@ export function InquiryForm() {
         Send an inquiry
       </h3>
       <p id="inquiry-availability" className="public-inquiry__notice">
-        Online inquiry sending is currently unavailable. Please email{" "}
-        <a href={`mailto:${email}`}>{email}</a> for assistance.
+        Direct form delivery is currently offline. For immediate assistance,
+        please email <a href={`mailto:${email}`}>{email}</a>.
       </p>
       <div className="public-inquiry__fields">
         <label htmlFor="inquiry-name">

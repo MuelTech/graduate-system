@@ -3,7 +3,7 @@
 import { useId, useRef, useState, type KeyboardEvent } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { Menu, X } from "lucide-react";
+import { ChevronRight, Menu, X } from "lucide-react";
 import { publicSiteContent } from "@/content/public-site-content";
 
 const navLinks = [
@@ -11,7 +11,7 @@ const navLinks = [
   { href: "/#news", label: "News" },
   { href: "/#about", label: "About" },
   { href: "/#programs", label: "Programs" },
-  { href: "/repository", label: "Research Repository" },
+  { href: "/repository", label: "Research" },
   { href: "/#contact", label: "Contact" },
 ];
 
@@ -49,6 +49,7 @@ export function Navbar() {
             className="public-masthead__seal"
           />
           <span className="public-masthead__lockup">
+            <span className="public-masthead__school">Graduate School</span>
             <span className="public-masthead__full-name">
               {institution.fullName}
             </span>
@@ -73,7 +74,7 @@ export function Navbar() {
           <Link
             href="/login"
             onClick={closeMenu}
-            className="public-masthead__link"
+            className="public-masthead__signin"
           >
             Sign In
           </Link>
@@ -102,6 +103,12 @@ export function Navbar() {
           )}
         </button>
       </div>
+      <div
+        className="public-masthead__backdrop"
+        hidden={!isOpen}
+        aria-hidden="true"
+        onClick={closeMenu}
+      />
       <nav
         id={menuId}
         aria-label="Mobile navigation"
@@ -109,22 +116,58 @@ export function Navbar() {
         onKeyDown={handleMenuKeyDown}
         className="public-masthead__panel"
       >
+        <div className="public-masthead__drawer-header">
+          <div className="public-masthead__drawer-brand">
+            <Image
+              src={institution.sealSrc}
+              alt=""
+              width={40}
+              height={40}
+              className="public-masthead__drawer-seal"
+            />
+            <div>
+              <span className="public-masthead__drawer-eyebrow">
+                Navigation Menu
+              </span>
+              <span className="public-masthead__drawer-title">
+                Graduate School
+              </span>
+            </div>
+          </div>
+          <button
+            type="button"
+            className="public-masthead__drawer-close"
+            onClick={() => {
+              closeMenu();
+              menuButtonRef.current?.focus();
+            }}
+            aria-label="Close mobile navigation"
+          >
+            <X aria-hidden="true" size={20} />
+          </button>
+        </div>
         <div className="public-masthead__panel-inner">
-          {navLinks.map((link) => (
-            <Link
-              key={link.href}
-              href={link.href}
-              onClick={closeMenu}
-              className="public-masthead__link"
-            >
-              {link.label}
-            </Link>
-          ))}
+          <div className="public-masthead__drawer-links">
+            {navLinks.map((link) => (
+              <Link
+                key={link.href}
+                href={link.href}
+                onClick={closeMenu}
+                className="public-masthead__link"
+              >
+                <span>{link.label}</span>
+                <ChevronRight aria-hidden="true" size={16} />
+              </Link>
+            ))}
+          </div>
           <div className="public-masthead__mobile-account">
+            <p className="public-masthead__mobile-caption">
+              Portal Access &amp; Applicant Services
+            </p>
             <Link
               href="/login"
               onClick={closeMenu}
-              className="public-masthead__link"
+              className="public-masthead__signin"
             >
               Sign In
             </Link>

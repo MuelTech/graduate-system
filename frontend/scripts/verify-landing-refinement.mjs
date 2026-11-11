@@ -219,7 +219,7 @@ try {
         await page
           .locator("main > section")
           .evaluateAll((items) => items.map((item) => item.id)),
-        ["news", "about", "programs", "graduate-research", "contact"],
+        ["home", "news", "about", "programs", "graduate-research", "contact"],
       );
       await expect(page.locator("main h1")).toHaveCount(1);
       await expect(page.locator("body")).not.toContainText("Design preview —");
@@ -256,21 +256,31 @@ try {
       await expect(
         page.getByRole("link", { name: "Entrance Examination", exact: true }),
       ).toHaveAttribute("href", "/login");
-      await expect(
-        page.locator('#applicant-access a[href="/register"]'),
-      ).toHaveAttribute("href", "/register");
-      await expect(page.locator(".public-opening__pinnacle")).toHaveAttribute(
-        "href",
-        "https://earistweb.pinnacle.com.ph/aims/applicants/",
-      );
+      await expect(page.locator("#applicant-access")).toHaveCount(0);
       await expect(
         page.locator(
           'footer a[href="/#getting-started"], footer a[href="/faq"]',
         ),
       ).toHaveCount(0);
-      await expect(page.locator("#registration-guidance")).toHaveText(
-        "A Pinnacle Applicant ID is required.",
+      await expect(page.locator("#news h2")).toHaveText(
+        "Graduate School updates and advisories",
       );
+      await expect(page.locator(".public-news__card")).toHaveCount(3);
+      await expect(page.locator(".public-news__photo-count")).toContainText(
+        "4 Photos",
+      );
+      await expect(page.locator(".public-about__goal-item")).toHaveCount(3);
+      await page.locator(".public-news__read-btn").first().click();
+      await expect(page.locator(".public-news__lightbox")).toBeVisible();
+      await expect(page.locator(".public-news__modal-thumb")).toHaveCount(4);
+      await page
+        .getByRole("button", { name: "Next photo", exact: true })
+        .click();
+      await expect(
+        page.locator(".public-news__modal-thumb").nth(1),
+      ).toHaveAttribute("aria-pressed", "true");
+      await page.keyboard.press("Escape");
+      await expect(page.locator(".public-news__lightbox")).toHaveCount(0);
       await page.close();
     },
   );
@@ -473,12 +483,19 @@ try {
       Math.max(...heights) - Math.min(...heights) < 1,
       `Slide height changed: ${heights}`,
     );
+    const prev = await page
+      .getByRole("button", { name: "Previous announcement", exact: true })
+      .boundingBox();
     const next = await page
       .getByRole("button", { name: "Next announcement", exact: true })
       .boundingBox();
     assert.ok(
-      next.x + next.width <= 320 - 80,
-      "Carousel controls intrude into the chatbot launcher's right-edge space",
+      Math.abs(prev.y - next.y) < 1,
+      "Mobile previous and next arrows must align on the same horizontal row",
+    );
+    assert.ok(
+      Math.abs(prev.x - (320 - (next.x + next.width))) < 2,
+      "Mobile previous and next arrows must be symmetrically positioned",
     );
     await page.close();
   });
@@ -495,7 +512,7 @@ try {
         "News",
         "About",
         "Programs",
-        "Research Repository",
+        "Research",
         "Contact",
       ];
       for (const route of ["/about", "/programs", "/repository", "/faq"]) {

@@ -9,7 +9,7 @@ export const publicSiteContent = {
   hero: {
     serviceLabel: "Graduate School Information System",
     description:
-      "Explore graduate programs, published research, and information for applicants and the EARIST academic community.",
+      "Advance your professional practice, scholarship, and leadership through master's and doctoral studies at EARIST.",
     programsHref: "/#programs",
     registrationGuidance: "A Pinnacle Applicant ID is required.",
     image: {
@@ -20,6 +20,13 @@ export const publicSiteContent = {
       caption: "Design placeholder image — not EARIST photography",
       // Built-in image_gen. Full prompt/provenance and production replacement gate:
       // docs/superpowers/reports/2026-11-08-landing-page-redesign-v2-assets.md.
+    },
+    examImage: {
+      src: "/images/landing/v2/exam-preview.jpg",
+      width: 1376,
+      height: 768,
+      alt: "Generated illustration of a fictional academic examination and assessment hall with wooden desks and warm daylight.",
+      caption: "Design placeholder image — not EARIST photography",
     },
   },
   // Working catalog selected by the owner from https://earist.edu.ph/graduate-school-2/.
@@ -97,21 +104,98 @@ export const publicSiteContent = {
   news: {
     sampleLabel: "Sample content — design review only",
     reviewNote: "Layout samples for review, not official announcements.",
-    featured: {
-      title: "Sample announcement headline",
-      summary:
-        "This sample shows how a featured Graduate School announcement could appear. It does not describe an official event or notice.",
-    },
-    items: [
+    posts: [
       {
-        title: "Sample Graduate School update",
-        summary:
-          "A short sample summary used to review headline length and spacing.",
+        id: "comprehensive-exam-passers-2026",
+        category: "Examination Results",
+        publishedAt: "September 6, 2026",
+        title: "Congratulations, Comprehensive Examination Passers!",
+        content: `The EARIST Graduate School proudly congratulates all graduate students who successfully passed the Comprehensive Examination held on September 6, 2026!
+
+Your success is a testament to your dedication, perseverance, and commitment to academic excellence. This achievement marks another significant milestone in your graduate school journey and brings you one step closer to completing your degree.
+
+May this accomplishment inspire you to continue pursuing excellence as you move forward to the next stage of your academic journey.
+
+Congratulations, Passers!
+Excellence • Integrity • Service`,
+        images: [
+          {
+            src: "/images/landing/news/comprehensive-exam-passers-cover.jpg",
+            width: 671,
+            height: 951,
+            alt: "EARIST Graduate School List of Passers poster for the Comprehensive Examination held on September 6, 2026.",
+          },
+          {
+            src: "/images/landing/news/comprehensive-exam-passers-edd.jpg",
+            width: 663,
+            height: 953,
+            alt: "List of Comprehensive Examination passers for Doctor of Education Major in Educational Management (13 passers).",
+          },
+          {
+            src: "/images/landing/news/comprehensive-exam-passers-phd-psych.jpg",
+            width: 664,
+            height: 955,
+            alt: "List of Comprehensive Examination passers for Doctor of Philosophy in Industrial Psychology (4 passers).",
+          },
+          {
+            src: "/images/landing/news/comprehensive-exam-passers-maed.jpg",
+            width: 669,
+            height: 954,
+            alt: "List of Comprehensive Examination passers for Master of Arts in Education Major in Administration and Supervision (7 passers).",
+          },
+        ],
       },
       {
-        title: "Sample campus information",
-        summary:
-          "Sample copy for reviewing a campus-information feature. No official notice or event is described.",
+        id: "comprehensive-exam-rescheduled-2026",
+        category: "Important Announcement",
+        publishedAt: "September 6, 2026",
+        title: "Comprehensive Examination Rescheduled to September 6, 2026",
+        content: `Please be informed that the Graduate School Comprehensive Examination has been RESCHEDULED to September 6, 2026 (Sunday).
+
+Call Time: 7:00 AM
+Testing Rooms: The list of assigned testing rooms will be available at the Graduate School Office.
+
+All examinees are reminded to arrive at their assigned testing rooms by 7:00 AM, bring the necessary examination requirements, and observe proper examination protocols.
+
+See you tomorrow, examinees!
+Please stay safe, and good luck!
+
+GRADUATE SCHOOL
+EARIST`,
+        images: [
+          {
+            src: "/images/landing/news/comprehensive-exam-rescheduled.jpg",
+            width: 789,
+            height: 950,
+            alt: "EARIST Graduate School announcement poster: Comprehensive Examination rescheduled to September 6, 2026 (Sunday) with 7:00 AM call time.",
+          },
+        ],
+      },
+      {
+        id: "enrollment-extended-habagat-2026",
+        category: "Enrollment Advisory",
+        publishedAt: "September 3, 2026",
+        title: "Graduate School Enrollment Extended Until September 3, 2026",
+        content: `Dear EARIST Graduate School Students,
+
+In consideration of the prevailing Southwest Monsoon (Habagat) and to provide students from affected areas sufficient time to complete their enrollment, the Graduate School enrollment period is extended until September 3, 2026.
+
+We encourage all students who have not yet completed their enrollment to take advantage of this extension and accomplish the necessary requirements within the extended period.
+
+Most importantly, please prioritize your safety. Avoid unnecessary travel, stay updated with weather advisories, and follow the guidance of local authorities, especially those in areas affected by heavy rains and flooding.
+
+Stay safe, everyone! Take care and be guided accordingly.
+
+EARIST Graduate School
+Excellence. Innovation. Service. Since 1945.`,
+        images: [
+          {
+            src: "/images/landing/news/enrollment-extended-habagat.jpg",
+            width: 946,
+            height: 955,
+            alt: "EARIST Graduate School announcement poster: Enrollment extended until September 3, 2026 due to the Southwest Monsoon.",
+          },
+        ],
       },
     ],
   },

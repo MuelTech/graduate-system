@@ -17,7 +17,7 @@ const footerGroups = [
     id: "research",
     title: "Research & Contact",
     links: [
-      { label: "Research Repository", href: "/repository" },
+      { label: "Research", href: "/repository" },
       { label: "Contact Us", href: "/#contact" },
     ],
   },
