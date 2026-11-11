@@ -40,15 +40,25 @@ const transporter = nodemailer.createTransport({
     },
 });
 
-const redisConnection = new IORedis(process.env.REDIS_URL || "redis://localhost:6379", {
-    maxRetriesPerRequest: null
-});
+const isRedisConfigured = Boolean(process.env.REDIS_URL?.trim());
+const isTestEnv = process.env.NODE_ENV === "test" || Boolean(process.env.VITEST);
 
-redisConnection.on("error", (err) => {
-    console.error("❌ [Redis Error] Connection failed:", err.message);
-});
+const redisConnection = isRedisConfigured || isTestEnv
+    ? new IORedis(process.env.REDIS_URL || "redis://localhost:6379", {
+        maxRetriesPerRequest: null,
+        lazyConnect: !isRedisConfigured,
+    })
+    : null;
 
-export const emailQueue = new Queue("email-queue", { connection: redisConnection });
+if (redisConnection && isRedisConfigured) {
+    redisConnection.on("error", (err) => {
+        console.error("❌ [Redis Error] Connection failed:", err.message);
+    });
+}
+
+export const emailQueue = redisConnection
+    ? new Queue("email-queue", { connection: redisConnection })
+    : (null as unknown as Queue);
 
 // Core Service Methods
 export class EmailService {
@@ -117,6 +127,11 @@ export class EmailService {
             throw error;
         }
 
+        if (!emailQueue) {
+            console.log(`ℹ️ [EmailService] Redis queue disabled; skipping email '${templateKey}' to ${to}.`);
+            return;
+        }
+
         await emailQueue.add("send-single-email", {
             to,
             subject: template.subject,
@@ -154,6 +169,11 @@ export class EmailService {
                 templateKey
             }
         }));
+
+        if (!emailQueue) {
+            console.log(`ℹ️ [EmailService] Redis queue disabled; skipping batch '${templateKey}' (${jobs.length} recipients).`);
+            return;
+        }
 
         await emailQueue.addBulk(jobs);
         console.log(`✅ [EmailService] Added ${jobs.length} jobs to the queue.`);

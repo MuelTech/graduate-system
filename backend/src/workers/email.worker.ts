@@ -5,42 +5,50 @@ import dotenv from "dotenv";
 
 dotenv.config();
 
-const redisConnection = new IORedis(process.env.REDIS_URL || "redis://localhost:6379", {
-    maxRetriesPerRequest: null
-});
+const isRedisConfigured = Boolean(process.env.REDIS_URL?.trim());
 
-redisConnection.on("ready", () => {
-    console.log("✅ [BullMQ] Successfully connected to Redis Cloud!");
-});
-console.log("Starting BullMQ Email Worker...");
+let emailWorker: Worker | null = null;
 
-const emailWorker = new Worker(
-    "email-queue",
-    async (job: Job) => {
-        const { to, subject, html, templateKey } = job.data;
+if (isRedisConfigured) {
+    const redisConnection = new IORedis(process.env.REDIS_URL!, {
+        maxRetriesPerRequest: null
+    });
 
-        console.log(`Processing job ${job.id} - Template ${templateKey} | To: ${to}`);
+    redisConnection.on("ready", () => {
+        console.log("✅ [BullMQ] Successfully connected to Redis Cloud!");
+    });
+    console.log("Starting BullMQ Email Worker...");
 
-        try {
-            await EmailService.sendDirectEmail(to, subject, html, templateKey);
-            console.log(`[EmailWorker] Successfully completed job ${job.id}`);
-        } catch (error: any) {
-            console.error(`Failed to do job ${job.id}:`, error.message);
-            throw error;
+    emailWorker = new Worker(
+        "email-queue",
+        async (job: Job) => {
+            const { to, subject, html, templateKey } = job.data;
+
+            console.log(`Processing job ${job.id} - Template ${templateKey} | To: ${to}`);
+
+            try {
+                await EmailService.sendDirectEmail(to, subject, html, templateKey);
+                console.log(`[EmailWorker] Successfully completed job ${job.id}`);
+            } catch (error: any) {
+                console.error(`Failed to do job ${job.id}:`, error.message);
+                throw error;
+            }
+        },
+        {
+            connection: redisConnection,
+            concurrency: 5, // Process up to 5 emails at the exact same time
+            limiter: {
+                max: 10,
+                duration: 1000 // Rate limit: Max 10 emails per second to prevent overwhelming your SMTP provider
+            }
         }
-    },
-    {
-        connection: redisConnection,
-        concurrency: 5, // Process up to 5 emails at the exact same time
-        limiter: {
-            max: 10,
-            duration: 1000 // Rate limit: Max 10 emails per second to prevent overwhelming your SMTP provider
-        }
-    }
-);
+    );
 
-emailWorker.on("error", err => {
-    console.error("Redis/Internal Error:", err.message);
-});
+    emailWorker.on("error", err => {
+        console.error("Redis/Internal Error:", err.message);
+    });
+} else {
+    console.log("ℹ️ [BullMQ] REDIS_URL not set — Email Worker is disabled.");
+}
 
 export default emailWorker;

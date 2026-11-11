@@ -86,7 +86,27 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       }
       return session;
     },
+    redirect({ url, baseUrl }: { url: string; baseUrl: string }) {
+      const effectiveBaseUrl =
+        baseUrl === "https://localhost:3000"
+          ? "https://graduate.earist.app"
+          : baseUrl;
+      if (url.startsWith("/")) return `${effectiveBaseUrl}${url}`;
+      try {
+        const parsed = new URL(url);
+        if (parsed.origin === "https://localhost:3000") {
+          return `https://graduate.earist.app${parsed.pathname}${parsed.search}${parsed.hash}`;
+        }
+        if (parsed.origin === effectiveBaseUrl || parsed.origin === baseUrl) {
+          return url;
+        }
+      } catch {
+        // Ignore invalid URL and fall back to effectiveBaseUrl
+      }
+      return effectiveBaseUrl;
+    },
   },
+  trustHost: true,
   pages: { signIn: "/login" },
   session: { strategy: "jwt", maxAge: 24 * 60 * 60 },
 });
