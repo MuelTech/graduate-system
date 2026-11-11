@@ -66,7 +66,7 @@ export default function PanelistSignaturesPage() {
       setSelectedDoc(null);
       setShowConfirm(false);
       setSignatureData("");
-      toast.success("RAP report digitally signed.");
+      toast.success("Rapporteur Report digitally signed.");
     },
     onError: (err: Error) => {
       toast.error(err.message || "Failed to record digital signature.");
@@ -82,7 +82,7 @@ export default function PanelistSignaturesPage() {
     <div className="space-y-6 pb-24">
       <PageHeader
         title="E-Signatures"
-        description="Review and sign your pending Committee Report signatures. Signing is limited to your own assigned slot."
+        description="Review and sign your pending Rapporteur Report signatures. Signing is limited to your own assigned slot."
       />
 
       <div className="flex gap-2 border-b border-gray-200">
@@ -109,7 +109,7 @@ export default function PanelistSignaturesPage() {
             ) : pendingDocs.length === 0 ? (
               <div className="rounded-xl border border-dashed border-gray-200 bg-white p-8 text-center text-gray-500">
                 <CheckCircle2 className="mx-auto mb-2 h-8 w-8 text-emerald-500" />
-                <p className="text-sm">No pending Committee Report signatures.</p>
+                <p className="text-sm">No pending Rapporteur Report signatures.</p>
               </div>
             ) : (
               pendingDocs.map((rap: PendingDoc) => (
@@ -163,7 +163,7 @@ export default function PanelistSignaturesPage() {
                     <div className="text-center">
                       <FileText className="mx-auto mb-2 h-10 w-10 text-gray-300" />
                       <p className="text-sm font-semibold text-[#333333]">
-                        Committee Report
+                        Rapporteur Report
                       </p>
                       <p className="text-xs text-gray-500 capitalize">
                         {selectedDocument.rapReport.defenseType.replace(
@@ -208,7 +208,7 @@ export default function PanelistSignaturesPage() {
                           <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
                           <span>
                             By confirming, you are securely attaching your
-                            timestamped e-signature to this official Committee Report.
+                            timestamped e-signature to this official Rapporteur Report.
                             Double-signing is blocked.
                           </span>
                         </p>
@@ -249,7 +249,7 @@ export default function PanelistSignaturesPage() {
           </h3>
           <p className="text-sm">
             {signedDocs.length === 0
-              ? "No signed Committee Report slots loaded in this view yet."
+              ? "No signed Rapporteur Report slots loaded in this view yet."
               : `${signedDocs.length} signed slot(s).`}
           </p>
         </div>

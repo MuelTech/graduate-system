@@ -9,10 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { DocumentViewer } from "@/components/ui/document-viewer";
 import { AdviserCertificationRecords } from "@/components/shared/adviser-certification-records";
-import {
-  DEFENSE_REQUIREMENT_LABELS,
-  STAGE_LABELS,
-} from "@/components/admin/defense-applications/labels";
+import { DEFENSE_REQUIREMENT_LABELS } from "@/components/admin/defense-applications/labels";
 import type { ScheduledDefenseSubmission } from "@/types/scheduled-defense-submission";
 
 function formatDocumentDate(value: string): string {
@@ -85,7 +82,6 @@ function SubmissionContext({
         )}
         {data && (
           <>
-            <p>Defense Stage: {STAGE_LABELS[data.stage] ?? data.stage}</p>
             <section className="space-y-2" aria-label="Manuscript">
               <h3 className="font-semibold">Manuscript</h3>
               {data.manuscriptIntegrityError && (

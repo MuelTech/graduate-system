@@ -64,9 +64,9 @@ interface DatabankArchiveContext {
 
 const REASON_MESSAGES: Record<string, string> = {
   FINAL_DEFENSE_NOT_PASSED:
-    "Final Defense is not yet formally PASSED and concluded.",
+    "Final Defense is not yet formally Passed and concluded.",
   FINAL_RAP_NOT_FINALIZED:
-    "The Final Defense RAP is not yet FINALIZED (all signatures complete).",
+    "The Final Defense Rapporteur Report is not yet finalized and signed.",
   OFFICIAL_TITLE_MISSING:
     "The official research title is not yet recorded from the Title Defense.",
   RESEARCH_CONTEXT_MISSING:
@@ -292,7 +292,7 @@ export default function DatabankSubmitPage() {
             <p className="text-(--earist-body-text)">Required completed research gates:</p>
             <ul className="space-y-1">
               <li className="flex items-start gap-2">
-                <Badge variant="outline">Final Defense — PASSED</Badge>
+                <Badge variant="outline">Final Defense — Passed</Badge>
                 <span className="text-xs text-(--earist-body-text)">
                   {data.reasons.includes("FINAL_DEFENSE_NOT_PASSED")
                     ? "Not yet recorded."
@@ -300,10 +300,10 @@ export default function DatabankSubmitPage() {
                 </span>
               </li>
               <li className="flex items-start gap-2">
-                <Badge variant="outline">Final RAP — FINALIZED</Badge>
+                <Badge variant="outline">Final Rapporteur Report — Finalized</Badge>
                 <span className="text-xs text-(--earist-body-text)">
                   {data.reasons.includes("FINAL_RAP_NOT_FINALIZED")
-                    ? "Not yet finalized (pending panelist/adviser signatures)."
+                    ? "Not yet finalized (pending committee signatures)."
                     : "Finalized."}
                 </span>
               </li>
@@ -342,12 +342,12 @@ export default function DatabankSubmitPage() {
                   <CheckCircle2 className="mr-1 h-3 w-3" /> Final Defense — Passed
                 </Badge>
                 <Badge className="bg-green-100 text-green-800 border-green-300">
-                  <CheckCircle2 className="mr-1 h-3 w-3" /> Final RAP — Finalized
+                  <CheckCircle2 className="mr-1 h-3 w-3" /> Final Rapporteur Report — Finalized
                 </Badge>
               </div>
               <p className="text-xs text-(--earist-body-text)">
                 Final Defense concluded {formatDate(data.researchContext?.finalDefenseConcludedAt ?? null)} ·
-                Final RAP finalized {formatDate(data.researchContext?.finalRapFinalizedAt ?? null)}
+                Final Rapporteur Report finalized {formatDate(data.researchContext?.finalRapFinalizedAt ?? null)}
               </p>
             </CardContent>
           </Card>

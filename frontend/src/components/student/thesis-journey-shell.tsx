@@ -20,6 +20,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import {
+  formatJourneyCopy,
   JOURNEY_STEP_ORDER,
   journeyLabelFor,
   journeyRouteFor,
@@ -143,7 +144,7 @@ export function ThesisJourneyShell({
                 return (
                   <div
                     key={key}
-                    title={step?.lockReason || `${label} is locked`}
+                    title={formatJourneyCopy(step?.lockReason) || `${label} is locked`}
                     className="cursor-not-allowed"
                   >
                     {content}
@@ -257,7 +258,11 @@ export function JourneyStepStatusCard({
       </CardHeader>
       <CardContent className="space-y-4 pt-4 text-sm text-[#333333]">
         {description ? (
-          <div className="text-sm text-gray-600">{description}</div>
+          <div className="text-sm text-gray-600">
+            {typeof description === "string"
+              ? formatJourneyCopy(description)
+              : description}
+          </div>
         ) : null}
         {children}
         {nextStepHref && nextStepLabel ? (

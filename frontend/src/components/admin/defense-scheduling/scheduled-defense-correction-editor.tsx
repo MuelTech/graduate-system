@@ -265,8 +265,8 @@ export function ScheduledDefenseCorrectionEditor({
           <DialogHeader>
             <DialogTitle>Save schedule and committee changes?</DialogTitle>
             <DialogDescription>
-              This updates the current scheduled defense. The defense attempt and
-              manuscript remain unchanged.
+              Review the updated schedule and committee details below before
+              saving.
             </DialogDescription>
           </DialogHeader>
 

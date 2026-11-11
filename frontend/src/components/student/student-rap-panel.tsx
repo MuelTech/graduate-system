@@ -28,8 +28,38 @@ interface StudentRapAccess {
   message: string;
 }
 
+const OUTCOME_LABELS: Record<string, string> = {
+  PASSED: "Passed",
+  REDEFENSE_REQUIRED: "Re-defense Required",
+  REVISION_REQUIRED: "Revision Required",
+  FAILED: "Failed",
+};
+
+const RAP_STATUS_LABELS: Record<string, string> = {
+  FINALIZED: "Finalized",
+  ALL_SIGNED: "Signed",
+  DISTRIBUTED: "Finalized",
+  FOR_SIGNATURE: "Awaiting Signatures",
+  PARTIALLY_SIGNED: "Awaiting Signatures",
+  DRAFT: "In Preparation",
+};
+
+const ROLE_LABELS: Record<string, string> = {
+  CHAIRMAN: "Chairman",
+  PANELIST: "Panelist",
+  RAPPORTEUR: "Rapporteur",
+  ADVISER: "Adviser",
+  FACILITATOR: "Facilitator",
+  DEAN: "Dean",
+};
+
+function formatRole(role: string | null): string | null {
+  if (!role) return null;
+  return ROLE_LABELS[role] ?? role.replace(/_/g, " ");
+}
+
 /**
- * Student-safe RAP status/access.
+ * Student-safe Rapporteur Report status/access.
  * Never shows live Rapporteur draft notes or private evaluator score sheets.
  */
 export function StudentRapPanel({ scheduleId }: { scheduleId: string }) {
@@ -54,7 +84,7 @@ export function StudentRapPanel({ scheduleId }: { scheduleId: string }) {
         <div className="flex flex-wrap items-center justify-between gap-2">
           <CardTitle className="flex items-center gap-2 text-base font-bold text-[#333333]">
             <FileText className="h-4 w-4 text-[#e02b20]" />
-            Official Defense RAP (Report of Action and Proceedings)
+            Rapporteur Report
           </CardTitle>
           <div className="flex flex-wrap gap-2">
             {data.formalOutcome && (
@@ -67,11 +97,14 @@ export function StudentRapPanel({ scheduleId }: { scheduleId: string }) {
                       : "border-amber-200 bg-amber-50 text-amber-700"
                 }
               >
-                {data.formalOutcome}
+                {OUTCOME_LABELS[data.formalOutcome] ??
+                  data.formalOutcome.replace(/_/g, " ")}
               </Badge>
             )}
             {data.rapStatus && (
-              <Badge variant="outline">RAP: {data.rapStatus}</Badge>
+              <Badge variant="outline">
+                {RAP_STATUS_LABELS[data.rapStatus] ?? "In Progress"}
+              </Badge>
             )}
           </div>
         </div>
@@ -94,7 +127,7 @@ export function StudentRapPanel({ scheduleId }: { scheduleId: string }) {
             {data.officialContent.decisionsAndRecommendations && (
               <div className="rounded-lg border border-gray-100 bg-gray-50/70 p-3.5">
                 <p className="mb-2 text-xs font-semibold tracking-wider text-gray-500 uppercase">
-                  Official RAP Decisions &amp; Recommendations
+                  Decisions &amp; Recommendations
                 </p>
                 <pre className="whitespace-pre-wrap font-sans text-xs leading-relaxed text-[#333333]">
                   {data.officialContent.decisionsAndRecommendations}
@@ -111,7 +144,9 @@ export function StudentRapPanel({ scheduleId }: { scheduleId: string }) {
                     <span className="font-medium text-[#333333]">
                       {s.name}{" "}
                       {s.roleAtDefense ? (
-                        <span className="text-gray-500">({s.roleAtDefense})</span>
+                        <span className="text-gray-500">
+                          ({formatRole(s.roleAtDefense)})
+                        </span>
                       ) : (
                         ""
                       )}
@@ -136,14 +171,13 @@ export function StudentRapPanel({ scheduleId }: { scheduleId: string }) {
               onClick={() => window.print()}
             >
               <Printer className="mr-2 h-4 w-4" />
-              View / Print / Download Official RAP
+              Print / Download Rapporteur Report
             </Button>
           </div>
         ) : (
           <p className="text-xs text-gray-500">
-            Official RAP content becomes available after the RAP is finalized.
-            Internal draft notes and private evaluator score sheets are not
-            shared.
+            The official Rapporteur Report will be available here once finalized
+            and signed by the defense committee.
           </p>
         )}
       </CardContent>

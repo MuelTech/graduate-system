@@ -104,17 +104,17 @@ export function defenseStatusDescription(
 ): string {
   switch (status) {
     case "APPLICATION_UNDER_REVIEW":
-      return `Your ${kind} Defense application has been submitted and is under Admin review.`;
+      return `Your ${kind} Defense application has been submitted and is currently under Graduate School verification.`;
     case "APPROVED_WAITING_SCHEDULE":
-      return `Your ${kind} Defense application is approved. Waiting for the defense schedule.`;
+      return `Your ${kind} Defense application requirements have been approved by the Graduate School. Waiting for your defense schedule and committee assignment.`;
     case "SCHEDULED":
-      return `Your ${kind} Defense is scheduled. See the schedule details below.`;
+      return `Your ${kind} Defense has been scheduled. Review your schedule details below and prepare to attend your defense.`;
     case "DEFENSE_IN_PROGRESS":
-      return `Your ${kind} Defense session is currently in progress.`;
+      return `Your ${kind} Defense session is currently in progress with your defense committee.`;
     case "AWAITING_CONCLUSION":
-      return `The ${kind} Defense session has finished deliberation. The official result is not yet available.`;
+      return `Your ${kind} Defense session has finished deliberation. The Committee Chairman is recording the official verdict.`;
     case "FINALIZING_RECORDS":
-      return `Formal result: Passed. Required RAP/signatures are still being finalized before the next step unlocks.`;
+      return `Formal result: Passed. The Rapporteur Report is being finalized and signed by the defense committee before the next step unlocks.`;
     case "COMPLETED":
       return `${kind} Defense is complete.`;
     case "FAILED":
@@ -128,6 +128,19 @@ export function defenseStatusDescription(
     default:
       return fallback || `Await ${kind} Defense updates.`;
   }
+}
+
+/**
+ * Formats backend-supplied journey text (`lockReason`, `detail`, `nextAction`)
+ * into clear student-facing copy, expanding `RAP` to `Rapporteur Report` and
+ * `Admin review` to `Graduate School review`.
+ */
+export function formatJourneyCopy(text: string | null | undefined): string | null {
+  if (!text) return null;
+  return text
+    .replace(/\bAdmin review\b/gi, "Graduate School review")
+    .replace(/\b(Title|Proposal|Final)\s+RAP\b/g, "$1 Rapporteur Report")
+    .replace(/\bRAP\b/g, "Rapporteur Report");
 }
 
 /** User-friendly session status label (never raw enum keys). */

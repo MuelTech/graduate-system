@@ -391,7 +391,7 @@ function AdminSchedulingPageInner() {
     <div className="space-y-6">
       <PageHeader
         title="Scheduling &amp; Panels"
-        description="Assign a defense committee and schedule the session for approved applications, then inspect confirmed schedules. Approval is not a defense result."
+        description="Assign defense committees and schedule sessions for approved applications."
       />
 
       {feedback && (
@@ -573,9 +573,8 @@ function AdminSchedulingPageInner() {
           <DialogHeader>
             <DialogTitle>Schedule this defense?</DialogTitle>
             <DialogDescription>
-              This creates the scheduled defense session and notifies the
-              student and committee. It does not mark the defense as passed or
-              concluded.
+              Confirm the schedule and committee details below. The student and
+              panel members will be notified.
             </DialogDescription>
           </DialogHeader>
           {selected && (

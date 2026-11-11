@@ -308,7 +308,7 @@ export default function AdminDefenseApplicationsPage() {
     <div className="space-y-6">
       <PageHeader
         title="Defense Applications"
-        description="Review Title, Proposal, and Final Defense applications. Approved applications proceed to panel assignment and scheduling; approval is not a defense result."
+        description="Review submitted Title, Proposal, and Final Defense applications."
       />
 
       {/* Workflow navigation (counts, not KPIs) */}

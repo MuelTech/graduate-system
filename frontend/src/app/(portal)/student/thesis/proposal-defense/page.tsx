@@ -239,7 +239,7 @@ export default function ProposalDefensePage() {
       <ThesisJourneyShell
         activeStep="PROPOSAL_DEFENSE"
         title="Proposal Defense"
-        description="Track your Proposal Defense application and schedule status."
+        description="Track your Proposal Defense application, schedule, and official records."
         journey={journey}
       >
         <DefenseStatusPanel
@@ -250,7 +250,7 @@ export default function ProposalDefensePage() {
           extra={
             <Link
               href="/student/thesis"
-              className={buttonVariants({ variant: "outline" })}
+              className={buttonVariants({ variant: "outline", size: "sm" })}
             >
               Back to Thesis Journey
             </Link>

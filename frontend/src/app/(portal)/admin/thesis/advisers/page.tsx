@@ -117,8 +117,7 @@ export default function AdminAdviserRequestReviewPage() {
           Adviser Request Review
         </h1>
         <p className="mt-1 text-sm text-gray-500">
-          Review adviser requests that have received the requested
-          adviser&apos;s CONFORME and are waiting for Dean decision.
+          Review and approve thesis adviser requests endorsed by faculty.
         </p>
       </div>
 
@@ -301,8 +300,8 @@ export default function AdminAdviserRequestReviewPage() {
             </DialogTitle>
             <DialogDescription>
               {pendingDecision?.decision === "APPROVED"
-                ? `The requested adviser has already recorded CONFORME. Approval will officially assign ${pendingDecision.adviserName} as the student's adviser.`
-                : "No active adviser assignment will be created. The student may submit another valid adviser request."}
+                ? `This will officially assign ${pendingDecision.adviserName} as the student's thesis adviser.`
+                : "This will reject the request and allow the student to submit a new adviser request."}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-2">

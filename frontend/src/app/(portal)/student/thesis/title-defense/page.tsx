@@ -16,7 +16,6 @@ import {
   DefenseScheduleSummary,
   DefenseStatusPanel,
 } from "@/components/student/defense-status-panel";
-import { TitleDefensePostSubmission } from "@/components/student/title-defense-post-submission";
 import { LocalFilePreviewDialog } from "@/components/student/local-file-preview-dialog";
 import {
   ThesisJourneyShell,
@@ -293,32 +292,11 @@ export default function TitleDefensePage() {
   }
 
   if (state === "WAITING") {
-    // UIUX-4C: Title post-submission status — Under Review / Approved / Scheduled.
-    const ds = titleStep?.defenseStatus;
-    if (
-      ds === "APPLICATION_UNDER_REVIEW" ||
-      ds === "APPROVED_WAITING_SCHEDULE" ||
-      ds === "SCHEDULED"
-    ) {
-      return (
-        <ThesisJourneyShell
-          activeStep="TITLE_DEFENSE"
-          title="Title Defense"
-          description="Track your Title Defense application and schedule status."
-          journey={journey}
-        >
-          <TitleDefensePostSubmission
-            defenseStatus={ds}
-            session={titleStep?.defenseSession}
-          />
-        </ThesisJourneyShell>
-      );
-    }
     return (
       <ThesisJourneyShell
         activeStep="TITLE_DEFENSE"
         title="Title Defense"
-        description="Track your Title Defense session and official records."
+        description="Track your Title Defense application, schedule, and official records."
         journey={journey}
       >
         <DefenseStatusPanel
@@ -329,7 +307,7 @@ export default function TitleDefensePage() {
           extra={
             <Link
               href="/student/thesis"
-              className={buttonVariants({ variant: "outline" })}
+              className={buttonVariants({ variant: "outline", size: "sm" })}
             >
               Back to Thesis Journey
             </Link>
