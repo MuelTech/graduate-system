@@ -2385,7 +2385,7 @@ html:has(.earist-public) {
     --public-frame-max: min(86vw, 2240px);
   }
   .earist-public .public-carousel__viewport {
-    min-height: clamp(640px, calc(100svh - 88px), 800px);
+    min-height: max(640px, calc(100svh - 88px));
   }
   .earist-public .public-carousel__arrow--previous {
     left: max(20px, calc((100% - var(--public-frame-max)) / 2 - 68px));
@@ -2423,7 +2423,7 @@ html:has(.earist-public) {
     padding-inline: 14px;
   }
   .earist-public .public-carousel__viewport {
-    min-height: clamp(680px, calc(100svh - 92px), 860px);
+    min-height: max(680px, calc(100svh - 96px));
   }
   .earist-public .public-carousel__copy h2 {
     max-width: 980px;
