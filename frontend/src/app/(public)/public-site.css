@@ -2379,24 +2379,18 @@ html:has(.earist-public) {
   }
 }
 
-/* Large desktop & 27-inch monitor: 1320px sweet-spot bodysections & full-screen widescreen Hero */
+/* Large desktop & 27-inch monitor: 1320px sweet-spot container & full-screen Hero */
 @media (min-width: 1440px) {
   .earist-public {
     --public-frame-max: 1320px;
-    --public-hero-frame-max: min(86vw, 2240px);
-  }
-  .earist-public .public-masthead__inner,
-  .earist-public .public-carousel__identity,
-  .earist-public .public-carousel__copy {
-    width: min(100% - 48px, var(--public-hero-frame-max));
   }
   .earist-public .public-carousel__viewport {
     min-height: max(640px, calc(100svh - 84px));
   }
   .earist-public .public-carousel__arrow--previous {
-    left: max(20px, calc((100% - var(--public-hero-frame-max)) / 2 - 68px));
+    left: 28px;
   }
   .earist-public .public-carousel__arrow--next {
-    right: max(20px, calc((100% - var(--public-hero-frame-max)) / 2 - 68px));
+    right: 28px;
   }
 }
