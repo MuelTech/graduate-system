@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { apiClientRequest, ApiError } from "@/lib/api.client";
 import {
   panelistAdviserRequestsQueryKey,
@@ -58,7 +59,13 @@ export function AdviserRequestActionDialog({
       );
     },
     onSuccess: async () => {
+      const wasConformed = decision === "CONFORMED";
       setError(null);
+      toast.success(
+        wasConformed
+          ? "Adviser CONFORME recorded and forwarded for Dean review."
+          : "Adviser request declined.",
+      );
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: adviserWorkspaceQueryKey }),
         queryClient.invalidateQueries({
@@ -69,7 +76,9 @@ export function AdviserRequestActionDialog({
       onClose();
     },
     onError: async (mutationError: Error) => {
-      setError(mutationError.message || "Unable to record your response.");
+      const msg = mutationError.message || "Unable to record your response.";
+      setError(msg);
+      toast.error(msg);
       // Authoritative refresh only; never auto-retry the transition.
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: adviserWorkspaceQueryKey }),

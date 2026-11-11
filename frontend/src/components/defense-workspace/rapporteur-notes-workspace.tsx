@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { apiClientRequest, ApiError } from "@/lib/api.client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -54,6 +55,7 @@ export function RapporteurNotesWorkspace({
       setState("saved");
       dirtyRef.current = false;
       setDirty(false);
+      toast.success("Defense notes saved.");
       await queryClient.invalidateQueries({
         queryKey: ["defenseWorkspace", scheduleId],
       });
@@ -64,6 +66,7 @@ export function RapporteurNotesWorkspace({
         e instanceof ApiError && e.statusCode === 409
           ? e.message
           : "Error saving notes";
+      toast.error(msg);
       console.error(msg);
     },
   });
@@ -76,11 +79,13 @@ export function RapporteurNotesWorkspace({
       ),
     onSuccess: async () => {
       setConfirmFinalize(false);
+      toast.success("Defense notes finalized.");
       await queryClient.invalidateQueries({
         queryKey: ["defenseWorkspace", scheduleId],
       });
     },
     onError: (e: Error) => {
+      toast.error(e.message || "Failed to finalize defense notes.");
       console.error(e.message);
     },
   });

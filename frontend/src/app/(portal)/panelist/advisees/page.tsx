@@ -12,7 +12,7 @@ export default function MyAdviseesPage() {
     <Suspense
       fallback={
         <div
-          className="mx-auto w-full max-w-6xl space-y-4"
+          className="w-full space-y-4"
           aria-busy="true"
           aria-live="polite"
         >

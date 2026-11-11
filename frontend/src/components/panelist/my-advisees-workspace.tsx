@@ -51,8 +51,8 @@ const EMPTY_MESSAGES = {
 function Meta({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div className="min-w-0">
-      <dt className="text-xs font-medium text-(--earist-body-text)">{label}</dt>
-      <dd className="mt-0.5 text-sm break-words text-(--earist-secondary)">
+      <dt className="text-xs font-medium text-gray-500">{label}</dt>
+      <dd className="mt-0.5 text-sm font-medium break-words text-[#333333]">
         {value}
       </dd>
     </div>
@@ -70,10 +70,10 @@ function EmptyState({
     <Card>
       <CardContent className="flex flex-col items-center gap-2 py-8 text-center">
         <Icon
-          className="h-7 w-7 text-(--earist-body-text)/40"
+          className="h-7 w-7 text-gray-300"
           aria-hidden="true"
         />
-        <p className="text-sm text-(--earist-body-text)">{message}</p>
+        <p className="text-sm text-gray-500">{message}</p>
       </CardContent>
     </Card>
   );
@@ -137,7 +137,7 @@ function ActiveAdviseeCard({ advisee }: { advisee: AdviserActiveAdviseeDto }) {
     <Card className="h-full">
       <CardHeader className="gap-2">
         <div className="flex flex-wrap items-start justify-between gap-2">
-          <CardTitle className="text-lg font-semibold text-(--earist-primary)">
+          <CardTitle className="text-lg font-bold text-[#333333]">
             {advisee.student.name}
           </CardTitle>
           {reviewLabel ? (
@@ -149,7 +149,7 @@ function ActiveAdviseeCard({ advisee }: { advisee: AdviserActiveAdviseeDto }) {
             </Badge>
           ) : null}
         </div>
-        <p className="text-sm leading-5 text-(--earist-body-text)">
+        <p className="text-sm leading-5 text-gray-500">
           {advisee.student.studentNumber || "—"}
           <span aria-hidden="true"> · </span>
           {advisee.student.program || "—"}
@@ -178,7 +178,7 @@ function ActiveAdviseeCard({ advisee }: { advisee: AdviserActiveAdviseeDto }) {
           href={`/faculty/advisees/${advisee.student.id}`}
           className={cn(
             buttonVariants(),
-            "mt-auto min-h-11 w-full bg-(--earist-primary) px-5 font-semibold text-white hover:bg-(--earist-primary)/90",
+            "mt-auto min-h-11 w-full bg-[#e02b20] px-5 font-semibold text-white hover:bg-[#c62828]",
           )}
         >
           Open Advisee
@@ -204,17 +204,17 @@ function IncomingRequestCard({
   const actionable = state === "ACTIONABLE";
 
   return (
-    <Card className={cn(highlighted && "ring-2 ring-(--earist-primary)/30")}>
+    <Card className={cn(highlighted && "ring-2 ring-[#e02b20]/30")}>
       <CardHeader className="gap-2">
         <div className="flex flex-wrap items-start justify-between gap-2">
-          <CardTitle className="text-base font-semibold text-(--earist-primary)">
+          <CardTitle className="text-base font-bold text-[#333333]">
             {request.student.name}
           </CardTitle>
           <Badge variant="outline" className={requestBadgeClass(state)}>
             {requestStatusLabel(state)}
           </Badge>
         </div>
-        <p className="text-xs text-(--earist-body-text)">
+        <p className="text-xs text-gray-500">
           {request.student.studentNumber || "—"}
           <span aria-hidden="true"> · </span>
           {request.student.program || "—"}
@@ -231,11 +231,11 @@ function IncomingRequestCard({
           ) : null}
         </dl>
         {request.reason ? (
-          <div className="rounded-lg border border-(--earist-border-gray) bg-(--earist-surface-gray) p-3">
-            <p className="text-xs font-medium text-(--earist-body-text)">
+          <div className="rounded-xl border border-gray-100 bg-gray-50/70 p-3.5">
+            <p className="text-xs font-medium text-gray-500">
               Student remarks
             </p>
-            <p className="mt-1 text-sm break-words text-(--earist-secondary)">
+            <p className="mt-1 text-sm break-words text-[#333333]">
               {request.reason}
             </p>
           </div>
@@ -245,7 +245,7 @@ function IncomingRequestCard({
             <Button
               type="button"
               size="sm"
-              className="bg-(--earist-primary) text-white hover:bg-(--earist-primary)/90"
+              className="bg-[#e02b20] text-white hover:bg-[#c62828]"
               onClick={() => onAction(request, "CONFORMED")}
             >
               CONFORME / Accept
@@ -277,7 +277,7 @@ function ReviewTaskCard({
     <Card>
       <CardHeader className="gap-2">
         <div className="flex flex-wrap items-start justify-between gap-2">
-          <CardTitle className="text-base font-semibold text-(--earist-primary)">
+          <CardTitle className="text-base font-bold text-[#333333]">
             {task.student.name}
           </CardTitle>
           <div className="flex flex-wrap gap-1.5">
@@ -290,7 +290,7 @@ function ReviewTaskCard({
             </Badge>
           </div>
         </div>
-        <p className="text-xs text-(--earist-body-text)">
+        <p className="text-xs text-gray-500">
           {task.student.studentNumber || "—"}
         </p>
       </CardHeader>
@@ -310,11 +310,11 @@ function ReviewTaskCard({
           />
         </dl>
         {task.reviewRemarks ? (
-          <div className="rounded-lg border border-(--earist-border-gray) bg-(--earist-surface-gray) p-3">
-            <p className="text-xs font-medium text-(--earist-body-text)">
+          <div className="rounded-xl border border-gray-100 bg-gray-50/70 p-3.5">
+            <p className="text-xs font-medium text-gray-500">
               Review remarks
             </p>
-            <p className="mt-1 text-sm break-words text-(--earist-secondary)">
+            <p className="mt-1 text-sm break-words text-[#333333]">
               {task.reviewRemarks}
             </p>
           </div>
@@ -454,7 +454,7 @@ export function MyAdviseesWorkspace() {
   };
 
   return (
-    <div className="mx-auto w-full max-w-6xl space-y-6">
+    <div className="w-full space-y-6">
       <PageHeader
         title="My Advisees"
         description="Manage your active advisees, adviser requests, and manuscript reviews."
@@ -500,16 +500,16 @@ export function MyAdviseesWorkspace() {
 
       {!isLoading && !isError && data ? (
         <Tabs value={tab} onValueChange={handleTabChange} className="space-y-4">
-          <TabsList className="grid w-full grid-cols-1 gap-1 rounded-lg border border-(--earist-border-gray) bg-(--earist-surface-gray) p-1 group-data-horizontal/tabs:h-auto sm:grid-cols-3">
+          <TabsList className="grid w-full grid-cols-1 gap-1 rounded-xl border border-gray-200 bg-gray-100/80 p-1 group-data-horizontal/tabs:h-auto sm:grid-cols-3">
             <TabsTrigger
               value="active"
-              className="h-auto min-h-11 rounded-md border border-transparent px-4 py-2 text-base font-medium text-(--earist-body-text) hover:bg-white/60 hover:text-(--earist-primary) data-active:bg-white data-active:text-(--earist-primary) data-active:shadow-sm data-active:hover:bg-white data-active:hover:text-(--earist-primary)"
+              className="h-auto min-h-11 rounded-lg border border-transparent px-4 py-2 text-sm font-medium text-gray-600 hover:bg-white/60 hover:text-[#333333] data-active:bg-white data-active:font-semibold data-active:text-[#e02b20] data-active:shadow-xs data-active:hover:bg-white data-active:hover:text-[#e02b20]"
             >
               Active Advisees
             </TabsTrigger>
             <TabsTrigger
               value="requests"
-              className="h-auto min-h-11 rounded-md border border-transparent px-4 py-2 text-base font-medium text-(--earist-body-text) hover:bg-white/60 hover:text-(--earist-primary) data-active:bg-white data-active:text-(--earist-primary) data-active:shadow-sm data-active:hover:bg-white data-active:hover:text-(--earist-primary)"
+              className="h-auto min-h-11 rounded-lg border border-transparent px-4 py-2 text-sm font-medium text-gray-600 hover:bg-white/60 hover:text-[#333333] data-active:bg-white data-active:font-semibold data-active:text-[#e02b20] data-active:shadow-xs data-active:hover:bg-white data-active:hover:text-[#e02b20]"
             >
               Adviser Requests
               {requestWorkloadCount > 0 ? (
@@ -518,7 +518,7 @@ export function MyAdviseesWorkspace() {
             </TabsTrigger>
             <TabsTrigger
               value="reviews"
-              className="h-auto min-h-11 rounded-md border border-transparent px-4 py-2 text-base font-medium text-(--earist-body-text) hover:bg-white/60 hover:text-(--earist-primary) data-active:bg-white data-active:text-(--earist-primary) data-active:shadow-sm data-active:hover:bg-white data-active:hover:text-(--earist-primary)"
+              className="h-auto min-h-11 rounded-lg border border-transparent px-4 py-2 text-sm font-medium text-gray-600 hover:bg-white/60 hover:text-[#333333] data-active:bg-white data-active:font-semibold data-active:text-[#e02b20] data-active:shadow-xs data-active:hover:bg-white data-active:hover:text-[#e02b20]"
             >
               Manuscript Reviews
               {reviewWorkloadCount > 0 ? (

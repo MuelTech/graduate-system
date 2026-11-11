@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { apiClientRequest } from "@/lib/api.client";
 import { AdviserRequestRecords, adviserRequestRecordsQueryKey } from "@/components/shared/adviser-request-records";
 import {
@@ -82,16 +83,24 @@ export default function AdminAdviserRequestReviewPage() {
       );
     },
     onSuccess: async () => {
+      const wasApproved = pendingDecision?.decision === "APPROVED";
       setActionError(null);
       setPendingDecision(null);
       setRemarks("");
+      toast.success(
+        wasApproved
+          ? "Adviser assignment approved."
+          : "Adviser request rejected.",
+      );
       await queryClient.invalidateQueries({
         queryKey: adminDeanReviewQueryKey,
       });
       await queryClient.invalidateQueries({ queryKey: adviserRequestRecordsQueryKey });
     },
     onError: (error: Error) => {
-      setActionError(error.message || "Unable to record the Dean decision.");
+      const msg = error.message || "Unable to record the Dean decision.";
+      setActionError(msg);
+      toast.error(msg);
       setPendingDecision(null);
       setRemarks("");
       void queryClient.invalidateQueries({
@@ -102,12 +111,12 @@ export default function AdminAdviserRequestReviewPage() {
   });
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold text-(--earist-primary)">
+        <h1 className="text-2xl font-bold tracking-tight text-[#333333]">
           Adviser Request Review
-        </h2>
-        <p className="text-sm text-(--earist-body-text)">
+        </h1>
+        <p className="mt-1 text-sm text-gray-500">
           Review adviser requests that have received the requested
           adviser&apos;s CONFORME and are waiting for Dean decision.
         </p>
@@ -123,7 +132,7 @@ export default function AdminAdviserRequestReviewPage() {
 
       {isLoading && (
         <Card>
-          <CardContent className="pt-6 text-sm text-(--earist-body-text)">
+          <CardContent className="pt-6 text-sm text-gray-500">
             Loading adviser requests…
           </CardContent>
         </Card>
@@ -151,8 +160,8 @@ export default function AdminAdviserRequestReviewPage() {
       {!isLoading && !isError && requests.length === 0 && (
         <Card>
           <CardContent className="flex flex-col items-center gap-2 pt-8 pb-8 text-center">
-            <Inbox className="h-8 w-8 text-(--earist-body-text)/40" />
-            <p className="text-sm text-(--earist-body-text)">
+            <Inbox className="h-8 w-8 text-gray-300" />
+            <p className="text-sm text-gray-500">
               No adviser requests are currently waiting for Dean review.
             </p>
           </CardContent>
@@ -163,8 +172,8 @@ export default function AdminAdviserRequestReviewPage() {
         {requests.map((row) => (
           <Card key={row.id}>
             <CardHeader>
-              <CardTitle className="flex flex-wrap items-center gap-2 text-sm">
-                <span className="font-semibold text-(--earist-primary)">
+              <CardTitle className="flex flex-wrap items-center gap-2 text-base">
+                <span className="font-bold text-[#333333]">
                   {row.student.name}
                 </span>
                 <Badge variant="outline">
@@ -178,34 +187,34 @@ export default function AdminAdviserRequestReviewPage() {
             <CardContent className="space-y-3 text-sm">
               <div className="grid gap-2 sm:grid-cols-2">
                 <div>
-                  <p className="text-xs text-(--earist-body-text)">Program</p>
-                  <p>{row.student.program || "—"}</p>
+                  <p className="text-xs font-medium text-gray-500">Program</p>
+                  <p className="text-[#333333]">{row.student.program || "—"}</p>
                 </div>
                 <div>
-                  <p className="text-xs text-(--earist-body-text)">
+                  <p className="text-xs font-medium text-gray-500">
                     Request date
                   </p>
-                  <p>
+                  <p className="text-[#333333]">
                     {row.requestDate
                       ? new Date(row.requestDate).toLocaleDateString()
                       : "—"}
                   </p>
                 </div>
                 <div className="sm:col-span-2">
-                  <p className="text-xs text-(--earist-body-text)">
+                  <p className="text-xs font-medium text-gray-500">
                     Official selected title
                   </p>
-                  <p className="font-medium text-(--earist-primary)">
+                  <p className="font-semibold text-[#333333]">
                     {row.officialTitle || "—"}
                   </p>
                 </div>
                 <div className="sm:col-span-2">
-                  <p className="text-xs text-(--earist-body-text)">
+                  <p className="text-xs font-medium text-gray-500">
                     Requested adviser
                   </p>
-                  <p className="font-medium">
+                  <p className="font-medium text-[#333333]">
                     {row.requestedAdviser.name}
-                    <span className="ml-2 font-normal text-(--earist-body-text)">
+                    <span className="ml-2 font-normal text-gray-500">
                       {titleDefenseRoleLabel(row.titleDefenseRole)}
                       {row.requestedAdviser.specialization
                         ? ` · ${row.requestedAdviser.specialization}`
@@ -217,16 +226,16 @@ export default function AdminAdviserRequestReviewPage() {
                   </p>
                 </div>
                 <div className="sm:col-span-2">
-                  <p className="text-xs text-(--earist-body-text)">
+                  <p className="text-xs font-medium text-gray-500">
                     Student remarks
                   </p>
-                  <p>{row.reason || "—"}</p>
+                  <p className="text-gray-600">{row.reason || "—"}</p>
                 </div>
                 <div className="sm:col-span-2">
-                  <p className="text-xs text-(--earist-body-text)">
+                  <p className="text-xs font-medium text-gray-500">
                     Adviser response
                   </p>
-                  <p>
+                  <p className="text-gray-600">
                     CONFORME recorded
                     {row.adviserRespondedAt
                       ? ` · ${new Date(row.adviserRespondedAt).toLocaleDateString()}`

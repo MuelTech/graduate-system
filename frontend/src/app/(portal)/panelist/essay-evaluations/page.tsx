@@ -208,13 +208,13 @@ export default function FacultyEssayEvaluationsPage() {
             <div className="w-full sm:min-w-[220px] sm:flex-1">
               <label
                 htmlFor="essay-search"
-                className="mb-1 block text-sm font-medium text-(--earist-body-text)"
+                className="mb-1 block text-xs font-semibold uppercase tracking-wider text-gray-500"
               >
                 Search
               </label>
               <div className="relative">
                 <Search
-                  className="absolute top-1/2 left-2.5 h-4 w-4 -translate-y-1/2 text-(--earist-body-text)/60"
+                  className="absolute top-1/2 left-2.5 h-4 w-4 -translate-y-1/2 text-gray-400"
                   aria-hidden="true"
                 />
                 <Input
@@ -234,7 +234,7 @@ export default function FacultyEssayEvaluationsPage() {
             <div className="w-full sm:w-72">
               <label
                 htmlFor="essay-program"
-                className="mb-1 block text-sm font-medium text-(--earist-body-text)"
+                className="mb-1 block text-xs font-semibold uppercase tracking-wider text-gray-500"
               >
                 Program
               </label>
@@ -276,7 +276,7 @@ export default function FacultyEssayEvaluationsPage() {
             <div className="w-full sm:w-48">
               <label
                 htmlFor="essay-status"
-                className="mb-1 block text-sm font-medium text-(--earist-body-text)"
+                className="mb-1 block text-xs font-semibold uppercase tracking-wider text-gray-500"
               >
                 Evaluation Status
               </label>
@@ -327,12 +327,12 @@ export default function FacultyEssayEvaluationsPage() {
           </div>
         ) : isError ? (
           <div className="flex flex-col items-center justify-center gap-3 px-6 py-14 text-center">
-            <AlertCircle className="h-8 w-8 text-(--earist-secondary)" />
+            <AlertCircle className="h-8 w-8 text-[#e02b20]" />
             <div className="space-y-1">
-              <p className="text-sm font-semibold text-(--earist-primary)">
+              <p className="text-sm font-semibold text-[#333333]">
                 Unable to load essay evaluations
               </p>
-              <p className="text-sm text-(--earist-body-text)">
+              <p className="text-sm text-gray-500">
                 Something went wrong while loading the submissions. Please try
                 again.
               </p>
@@ -347,13 +347,13 @@ export default function FacultyEssayEvaluationsPage() {
           </div>
         ) : pageRows.length === 0 ? (
           <div className="flex flex-col items-center justify-center gap-2 px-6 py-14 text-center">
-            <ClipboardCheck className="h-10 w-10 text-(--earist-body-text)/40" />
-            <p className="text-sm font-semibold text-(--earist-primary)">
+            <ClipboardCheck className="h-10 w-10 text-gray-300" />
+            <p className="text-sm font-semibold text-[#333333]">
               {isFiltered
                 ? "No essay submissions match the current filters"
                 : "No entrance exam essay submissions yet"}
             </p>
-            <p className="max-w-sm text-xs text-(--earist-body-text)">
+            <p className="max-w-sm text-xs text-gray-500">
               {isFiltered
                 ? "Try clearing your search or status filter."
                 : "Completed applicant entrance exams will appear here for essay evaluation."}
@@ -362,7 +362,7 @@ export default function FacultyEssayEvaluationsPage() {
         ) : (
           <Table>
             <TableHeader>
-              <TableRow className="hover:bg-(--earist-surface-gray)">
+              <TableRow>
                 <TableHead>Applicant</TableHead>
                 <TableHead>Program</TableHead>
                 <TableHead>Exam Schedule</TableHead>
@@ -374,24 +374,24 @@ export default function FacultyEssayEvaluationsPage() {
               {pageRows.map((row) => (
                 <TableRow key={row.id}>
                   <TableCell>
-                    <p className="text-sm font-semibold text-foreground">
+                    <p className="text-sm font-semibold text-[#333333]">
                       {row.name}
                     </p>
-                    <p className="mt-0.5 text-xs text-(--earist-body-text)">
+                    <p className="mt-0.5 text-xs text-gray-500">
                       {row.pinnacleId}
                     </p>
-                    <p className="mt-0.5 text-xs text-(--earist-body-text)">
+                    <p className="mt-0.5 text-xs text-gray-500">
                       {row.email}
                     </p>
                   </TableCell>
-                  <TableCell className="text-sm text-(--earist-body-text)">
+                  <TableCell className="text-sm text-gray-600">
                     {row.programName}
                   </TableCell>
-                  <TableCell className="text-sm text-(--earist-body-text)">
+                  <TableCell className="text-sm text-gray-600">
                     {row.examDate ? (
                       <div>
-                        <p>{formatExamDate(row.examDate)}</p>
-                        <p className="mt-0.5 text-xs text-(--earist-body-text)">
+                        <p className="font-medium text-[#333333]">{formatExamDate(row.examDate)}</p>
+                        <p className="mt-0.5 text-xs text-gray-500">
                           {formatExamTime(row.examTime)}
                         </p>
                       </div>
@@ -403,8 +403,8 @@ export default function FacultyEssayEvaluationsPage() {
                     <Badge
                       className={
                         row.isEvaluated
-                          ? "bg-emerald-100 text-emerald-700"
-                          : "bg-amber-100 text-amber-800"
+                          ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                          : "bg-amber-50 text-amber-700 border border-amber-200"
                       }
                     >
                       {row.isEvaluated ? "Evaluated" : "Pending Evaluation"}
@@ -419,7 +419,7 @@ export default function FacultyEssayEvaluationsPage() {
                           size: "sm",
                         }),
                         !row.isEvaluated &&
-                          "bg-(--earist-primary) text-white hover:bg-(--earist-primary)/90",
+                          "bg-[#e02b20] text-white hover:bg-[#c62828]",
                       )}
                     >
                       {row.isEvaluated ? "View Evaluation" : "Evaluate Essay"}

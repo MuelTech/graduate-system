@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { PageHeader } from "@/components/ui/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -83,9 +84,12 @@ export default function AdminStorageHealthPage() {
       setScanError(null);
       setScanResult(result);
       queryClient.invalidateQueries({ queryKey: ["storage-health"] });
+      toast.success("Storage diagnostic scan completed.");
     },
     onError: (error: Error) => {
-      setScanError(error.message || "Integrity scan could not be completed.");
+      const msg = error.message || "Integrity scan could not be completed.";
+      setScanError(msg);
+      toast.error(msg);
     },
   });
 
@@ -143,30 +147,30 @@ export default function AdminStorageHealthPage() {
       )}
 
       {/* Capacity + managed objects */}
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2 text-xs text-(--earist-body-text)">
-              <Database className="h-4 w-4" /> Managed objects
+          <CardContent className="p-5">
+            <div className="flex items-center gap-2 text-xs font-medium text-gray-500">
+              <Database className="h-4 w-4 text-[#e02b20]" /> Managed objects
             </div>
-            <p className="mt-1 text-lg font-bold text-(--earist-primary)">
+            <p className="mt-1 text-2xl font-bold text-[#333333]">
               {data.managedObjects.count}
             </p>
-            <p className="text-xs text-(--earist-body-text)">
+            <p className="text-xs text-gray-500">
               {formatBytes(data.managedObjects.totalBytes)}
             </p>
           </CardContent>
         </Card>
 
         <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2 text-xs text-(--earist-body-text)">
-              <HardDrive className="h-4 w-4" /> Free disk space
+          <CardContent className="p-5">
+            <div className="flex items-center gap-2 text-xs font-medium text-gray-500">
+              <HardDrive className="h-4 w-4 text-[#e02b20]" /> Free disk space
             </div>
-            <p className="mt-1 text-lg font-bold text-(--earist-primary)">
+            <p className="mt-1 text-2xl font-bold text-[#333333]">
               {capacity.available ? formatBytes(capacity.freeBytes) : "Unavailable"}
             </p>
-            <p className="text-xs text-(--earist-body-text)">
+            <p className="text-xs text-gray-500">
               {capacity.available
                 ? `${formatPercent(capacity.freePercent)} free`
                 : "Capacity API unavailable on this platform"}
@@ -175,16 +179,16 @@ export default function AdminStorageHealthPage() {
         </Card>
 
         <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2 text-xs text-(--earist-body-text)">
-              <Server className="h-4 w-4" /> Capacity threshold
+          <CardContent className="p-5">
+            <div className="flex items-center gap-2 text-xs font-medium text-gray-500">
+              <Server className="h-4 w-4 text-[#e02b20]" /> Capacity threshold
             </div>
-            <p className="mt-1 text-sm font-semibold text-(--earist-body-text)">
+            <p className="mt-1 text-sm font-semibold text-[#333333]">
               {capacity.minimumFreePercent === null
                 ? "Not configured"
                 : `Min ${capacity.minimumFreePercent}% free`}
             </p>
-            <div className="mt-1">
+            <div className="mt-1.5">
               {capacity.pressure === null ? (
                 <Badge className="bg-gray-100 text-gray-600">Unclassified</Badge>
               ) : capacity.pressure ? (
@@ -199,14 +203,14 @@ export default function AdminStorageHealthPage() {
         </Card>
 
         <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2 text-xs text-(--earist-body-text)">
-              <Activity className="h-4 w-4" /> Provider
+          <CardContent className="p-5">
+            <div className="flex items-center gap-2 text-xs font-medium text-gray-500">
+              <Activity className="h-4 w-4 text-[#e02b20]" /> Provider
             </div>
-            <p className="mt-1 text-lg font-bold text-(--earist-primary)">
+            <p className="mt-1 text-2xl font-bold text-[#333333]">
               {data.provider}
             </p>
-            <p className="text-xs text-(--earist-body-text)">
+            <p className="text-xs text-gray-500">
               Unclassified legacy files: {data.legacyOrUnclassified.count} (
               {formatBytes(data.legacyOrUnclassified.totalBytes)})
             </p>

@@ -3,6 +3,7 @@
 import { Suspense, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { apiClientRequest } from "@/lib/api.client";
 import { cn } from "@/lib/utils";
 import { PageHeader } from "@/components/ui/page-header";
@@ -333,18 +334,21 @@ function AdminSchedulingPageInner() {
         type: "success",
         message: when,
       });
+      toast.success(when);
     },
     onError: (error: Error & { missing?: MissingRequirement[] }) => {
       const missing = error.missing ?? [];
       setMissingItems(missing);
       setShowConfirm(false);
+      const errMsg = missing.length
+        ? "The defense could not be scheduled. No changes were saved."
+        : error.message ||
+          "The defense could not be scheduled. No changes were saved.";
       setFeedback({
         type: "error",
-        message: missing.length
-          ? "The defense could not be scheduled. No changes were saved."
-          : error.message ||
-            "The defense could not be scheduled. No changes were saved.",
+        message: errMsg,
       });
+      toast.error(errMsg);
     },
   });
 

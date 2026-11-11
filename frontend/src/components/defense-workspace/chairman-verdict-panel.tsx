@@ -13,6 +13,7 @@
 
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { AlertCircle, CheckCircle2, Gavel } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -61,10 +62,15 @@ export function ChairmanVerdictPanel({ scheduleId }: { scheduleId: string }) {
     onSuccess: async () => {
       setConfirming(false);
       setError(null);
+      toast.success("Formal defense verdict recorded.");
       await queryClient.invalidateQueries({ queryKey: ["defenseWorkspace", scheduleId] });
       await queryClient.invalidateQueries({ queryKey: ["conclusionReadiness", scheduleId] });
     },
-    onError: (error: Error) => setError(error.message || "Could not record the verdict."),
+    onError: (error: Error) => {
+      const msg = error.message || "Could not record the verdict.";
+      setError(msg);
+      toast.error(msg);
+    },
   });
 
   if (!data || !data.isChairman || data.concluded) return null;

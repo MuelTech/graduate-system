@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { apiClientRequest } from "@/lib/api.client";
 import { getClientBackendBaseUrl } from "@/lib/backend-origin.client";
+import { toast } from "sonner";
 
 interface Memo {
   id: string;
@@ -104,9 +105,10 @@ export default function AdminMemosPage() {
       setAudience("ALL");
       setProgramId("");
       setSelectedFile(null);
+      toast.success("Official memorandum broadcasted.");
     },
     onError: (err: Error) => {
-      alert(`Error broadcasting memo: ${err.message}`);
+      toast.error(`Error broadcasting memo: ${err.message}`);
     },
   });
 
@@ -119,9 +121,10 @@ export default function AdminMemosPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-memos"] });
+      toast.success("Memorandum archived.");
     },
     onError: (err: Error) => {
-      alert(`Error archiving memo: ${err.message}`);
+      toast.error(`Error archiving memo: ${err.message}`);
     },
   });
 
@@ -158,20 +161,17 @@ export default function AdminMemosPage() {
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h2
-            className="text-2xl font-bold text-(--earist-primary)"
-            style={{ fontFamily: '"Calibri", sans-serif' }}
-          >
+          <h1 className="text-2xl font-bold tracking-tight text-[#333333]">
             Announcements & Memos
-          </h2>
-          <p className="text-sm text-(--earist-body-text)">
+          </h1>
+          <p className="mt-1 text-sm text-gray-500">
             Broadcast official circulars and notices via portal and email.
           </p>
         </div>
         {!isComposing && (
           <Button
             onClick={() => setIsComposing(true)}
-            className="bg-(--earist-primary) text-white hover:bg-(--earist-primary)/90 shadow-sm"
+            className="shadow-sm"
           >
             <Plus className="mr-2 h-4 w-4" /> Compose Memo
           </Button>
@@ -271,7 +271,7 @@ export default function AdminMemosPage() {
                   if (e.target.files && e.target.files[0]) {
                     const file = e.target.files[0];
                     if (file.type !== "application/pdf") {
-                      alert("Only PDF documents are permitted for memo circulars.");
+                      toast.error("Only PDF documents are permitted for memo circulars.");
                       return;
                     }
                     setSelectedFile(file);

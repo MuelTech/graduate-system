@@ -65,7 +65,7 @@ export default function FacultyProfilePage() {
       />
 
       {isLoading ? (
-        <div className="grid max-w-4xl gap-6 md:grid-cols-2" aria-busy="true">
+        <div className="grid gap-6 md:grid-cols-2" aria-busy="true">
           <Card>
             <CardHeader>
               <Skeleton className="h-5 w-44" />
@@ -89,9 +89,9 @@ export default function FacultyProfilePage() {
       ) : isError || !profile ? (
         <Card className="max-w-2xl">
           <CardContent className="flex flex-col items-start gap-2 py-6">
-            <p className="flex items-center gap-2 text-sm text-(--earist-body-text)">
+            <p className="flex items-center gap-2 text-sm text-gray-500">
               <CircleAlert
-                className="h-4 w-4 text-(--earist-secondary)"
+                className="h-4 w-4 text-[#e02b20]"
                 aria-hidden="true"
               />
               Unable to load your faculty profile.
@@ -100,7 +100,7 @@ export default function FacultyProfilePage() {
               type="button"
               onClick={() => void refetch()}
               disabled={isFetching}
-              className="inline-flex items-center text-sm font-medium text-(--earist-secondary) hover:underline disabled:opacity-60"
+              className="inline-flex items-center text-sm font-semibold text-[#e02b20] hover:underline disabled:opacity-60"
             >
               <RefreshCw
                 className={cn(
@@ -114,13 +114,13 @@ export default function FacultyProfilePage() {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid max-w-4xl gap-6 md:grid-cols-2">
+        <div className="grid gap-6 md:grid-cols-2">
           {/* Personal & Academic Information */}
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-base text-(--earist-primary)">
+              <CardTitle className="flex items-center gap-2 text-base font-bold text-[#333333]">
                 <User
-                  className="h-4 w-4 text-(--earist-secondary)"
+                  className="h-4 w-4 text-[#e02b20]"
                   aria-hidden="true"
                 />
                 Faculty Information
@@ -128,42 +128,42 @@ export default function FacultyProfilePage() {
             </CardHeader>
             <CardContent className="space-y-4 text-sm">
               <div>
-                <p className="text-xs text-(--earist-body-text)">Full Name</p>
-                <p className="font-semibold text-(--earist-primary)">
+                <p className="text-xs font-medium text-gray-500">Full Name</p>
+                <p className="font-semibold text-[#333333]">
                   {formatFacultyName(profile.user)}
                 </p>
               </div>
               <div>
-                <p className="text-xs text-(--earist-body-text)">
+                <p className="text-xs font-medium text-gray-500">
                   Email Address
                 </p>
-                <p className="text-foreground">
+                <p className="font-medium text-[#333333]">
                   {profile.user?.email || "—"}
                 </p>
               </div>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div>
-                  <p className="text-xs text-(--earist-body-text)">
+                  <p className="text-xs font-medium text-gray-500">
                     Highest Qualification
                   </p>
-                  <p className="text-foreground">
+                  <p className="font-medium text-[#333333]">
                     {profile.highestEducationalAttainment || "Not specified"}
                   </p>
                 </div>
                 <div>
-                  <p className="text-xs text-(--earist-body-text)">
+                  <p className="text-xs font-medium text-gray-500">
                     Specialization
                   </p>
-                  <p className="text-foreground">
+                  <p className="font-medium text-[#333333]">
                     {profile.specialization || "Not specified"}
                   </p>
                 </div>
               </div>
               <div>
-                <p className="text-xs text-(--earist-body-text)">
+                <p className="text-xs font-medium text-gray-500">
                   Office / College Affiliation
                 </p>
-                <p className="text-foreground">
+                <p className="font-medium text-[#333333]">
                   {profile.officeAffiliation || "Not specified"}
                 </p>
               </div>
@@ -173,21 +173,21 @@ export default function FacultyProfilePage() {
           {/* Classification & Assigned Access */}
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-base text-(--earist-primary)">
+              <CardTitle className="flex items-center gap-2 text-base font-bold text-[#333333]">
                 <ShieldCheck
-                  className="h-4 w-4 text-(--earist-secondary)"
+                  className="h-4 w-4 text-[#e02b20]"
                   aria-hidden="true"
                 />
                 Classification & Academic Access
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="flex items-center justify-between gap-3 rounded-lg border border-(--earist-border-gray) bg-(--earist-surface-gray) p-3">
+              <div className="flex items-center justify-between gap-3 rounded-xl border border-gray-100 bg-gray-50/70 p-3.5">
                 <div className="space-y-0.5">
-                  <p className="text-sm font-medium text-foreground">
+                  <p className="text-sm font-semibold text-[#333333]">
                     Faculty Classification
                   </p>
-                  <p className="text-xs text-(--earist-body-text)">
+                  <p className="text-xs text-gray-500">
                     {isExternal
                       ? "External faculty member invited for defense committees"
                       : "Internal EARIST Graduate School faculty member"}
@@ -196,21 +196,21 @@ export default function FacultyProfilePage() {
                 <Badge
                   className={
                     isExternal
-                      ? "bg-purple-100 text-purple-700"
-                      : "bg-blue-100 text-blue-700"
+                      ? "bg-purple-50 text-purple-700 border border-purple-200"
+                      : "bg-blue-50 text-blue-700 border border-blue-200"
                   }
                 >
                   {isExternal ? "External Faculty" : "Internal Faculty"}
                 </Badge>
               </div>
 
-              <div className="flex items-center justify-between gap-3 rounded-lg border border-(--earist-border-gray) bg-(--earist-surface-gray) p-3">
+              <div className="flex items-center justify-between gap-3 rounded-xl border border-gray-100 bg-gray-50/70 p-3.5">
                 <div className="space-y-0.5">
-                  <p className="flex items-center gap-1.5 text-sm font-medium text-foreground">
-                    <UserCheck className="h-4 w-4 text-(--earist-secondary)" />
+                  <p className="flex items-center gap-1.5 text-sm font-semibold text-[#333333]">
+                    <UserCheck className="h-4 w-4 text-[#e02b20]" />
                     Thesis / Dissertation Adviser Eligibility
                   </p>
-                  <p className="text-xs text-(--earist-body-text)">
+                  <p className="text-xs text-gray-500">
                     {isExternal
                       ? "External faculty cannot serve as thesis/dissertation advisers."
                       : "Managed by the Graduate School Administrator."}
@@ -221,7 +221,7 @@ export default function FacultyProfilePage() {
                     isExternal
                       ? "bg-gray-100 text-gray-600"
                       : profile.isAvailableAsAdviser
-                        ? "bg-green-100 text-green-700"
+                        ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
                         : "bg-gray-100 text-gray-600"
                   }
                 >
@@ -233,13 +233,13 @@ export default function FacultyProfilePage() {
                 </Badge>
               </div>
 
-              <div className="flex items-center justify-between gap-3 rounded-lg border border-(--earist-border-gray) bg-(--earist-surface-gray) p-3">
+              <div className="flex items-center justify-between gap-3 rounded-xl border border-gray-100 bg-gray-50/70 p-3.5">
                 <div className="space-y-0.5">
-                  <p className="flex items-center gap-1.5 text-sm font-medium text-foreground">
-                    <GraduationCap className="h-4 w-4 text-(--earist-secondary)" />
+                  <p className="flex items-center gap-1.5 text-sm font-semibold text-[#333333]">
+                    <GraduationCap className="h-4 w-4 text-[#e02b20]" />
                     Entrance Exam Essay Evaluation
                   </p>
-                  <p className="text-xs text-(--earist-body-text)">
+                  <p className="text-xs text-gray-500">
                     {canEvaluateEssays
                       ? "You are authorized to evaluate applicant entrance exam essays."
                       : "Assigned by the Administrator to designated Program Chairs / Evaluators."}
@@ -248,7 +248,7 @@ export default function FacultyProfilePage() {
                 <Badge
                   className={
                     canEvaluateEssays
-                      ? "bg-emerald-100 text-emerald-700"
+                      ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
                       : "bg-gray-100 text-gray-600"
                   }
                 >
