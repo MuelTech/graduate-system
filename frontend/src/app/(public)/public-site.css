@@ -1,5 +1,6 @@
 /* Public components only. Never target global elements or shared widget internals. */
 .earist-public {
+  --public-frame-max: 1200px;
   background: #fff;
 }
 .earist-public .public-skip-link {
@@ -35,7 +36,7 @@
   box-shadow: 0 2px 10px rgba(56, 20, 20, 0.04);
 }
 .earist-public .public-masthead__inner {
-  width: min(100% - 48px, 1200px);
+  width: min(100% - 48px, var(--public-frame-max));
   margin-inline: auto;
   display: flex;
   align-items: center;
@@ -304,7 +305,7 @@
   border-bottom: 1px solid #e8e1d5;
 }
 .earist-public .public-review-notice__text {
-  width: min(100% - 48px, 1200px);
+  width: min(100% - 48px, var(--public-frame-max));
   margin-inline: auto;
   padding-block: 9px;
   font-size: 13px;
@@ -318,7 +319,7 @@
 .earist-public .public-hero__composition {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  width: min(100% - 48px, 1200px);
+  width: min(100% - 48px, var(--public-frame-max));
   margin-inline: auto;
   gap: 28px;
   padding-block: 32px;
@@ -604,9 +605,9 @@
   inset: 0;
   background: linear-gradient(
     90deg,
-    rgba(35, 10, 16, 0.91) 0%,
-    rgba(35, 10, 16, 0.78) 55%,
-    rgba(35, 10, 16, 0.5) 100%
+    rgba(68, 14, 20, 0.93) 0%,
+    rgba(84, 18, 24, 0.82) 52%,
+    rgba(68, 14, 20, 0.62) 100%
   );
 }
 .earist-public .public-carousel__copy {
@@ -768,7 +769,7 @@
   position: absolute;
   z-index: 4;
   top: 76px;
-  right: max(24px, calc((100% - 1200px) / 2));
+  right: max(24px, calc((100% - var(--public-frame-max)) / 2));
   width: 1px;
   height: 1px;
   overflow: hidden;
@@ -1057,7 +1058,7 @@
   scroll-margin-top: 128px;
 }
 .earist-public .public-body-frame {
-  width: min(100% - 48px, 1200px);
+  width: min(100% - 48px, var(--public-frame-max));
   margin-inline: auto;
 }
 .earist-public .public-body-eyebrow {
@@ -2375,5 +2376,81 @@ html:has(.earist-public) {
   .earist-public .public-program-directory__list h3,
   .earist-public .public-school-about__goals h3 {
     font-size: 20px;
+  }
+}
+
+/* Large desktop & 27-inch monitor (1080p / 1440p / 4K) responsive scaling */
+@media (min-width: 1440px) {
+  .earist-public {
+    --public-frame-max: min(86vw, 2240px);
+  }
+  .earist-public .public-carousel__viewport {
+    min-height: clamp(640px, calc(100svh - 88px), 800px);
+  }
+  .earist-public .public-carousel__arrow--previous {
+    left: max(20px, calc((100% - var(--public-frame-max)) / 2 - 68px));
+  }
+  .earist-public .public-carousel__arrow--next {
+    right: max(20px, calc((100% - var(--public-frame-max)) / 2 - 68px));
+  }
+}
+
+@media (min-width: 1800px) {
+  .earist-public .public-masthead__inner {
+    min-height: 92px;
+    gap: 28px;
+  }
+  .earist-public .public-masthead__seal {
+    width: 64px;
+    height: 64px;
+  }
+  .earist-public .public-masthead__school {
+    font-size: 20px;
+  }
+  .earist-public .public-masthead__full-name {
+    max-width: 360px;
+    font-size: 13px;
+  }
+  .earist-public .public-masthead__desktop-nav {
+    gap: 24px;
+  }
+  .earist-public .public-masthead__link,
+  .earist-public .public-masthead__signin,
+  .earist-public .public-masthead__register {
+    font-size: 16px;
+  }
+  .earist-public .public-masthead__link {
+    padding-inline: 14px;
+  }
+  .earist-public .public-carousel__viewport {
+    min-height: clamp(680px, calc(100svh - 92px), 860px);
+  }
+  .earist-public .public-carousel__copy h2 {
+    max-width: 980px;
+    font-size: clamp(64px, 4.2vw, 88px);
+  }
+  .earist-public .public-carousel__summary {
+    max-width: 760px;
+    font-size: 22px;
+  }
+  .earist-public .public-body-section {
+    padding-block: 84px;
+  }
+  .earist-public .public-body-title {
+    max-width: 760px;
+    font-size: 44px;
+  }
+  .earist-public .public-body-copy {
+    max-width: 720px;
+    font-size: 19px;
+  }
+  .earist-public .public-news__grid {
+    gap: 36px;
+  }
+  .earist-public .public-news__card-body {
+    padding: 28px;
+  }
+  .earist-public .public-news__card-title {
+    font-size: 24px;
   }
 }

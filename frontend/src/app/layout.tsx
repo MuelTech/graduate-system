@@ -5,9 +5,17 @@ import QueryProvider from "@/components/providers/query-provider";
 import { Toaster } from "@/components/ui/sonner";
 
 export const metadata: Metadata = {
-  title: "EARIST Graduate School Information System",
+  title: {
+    default: "EARIST - Graduate School",
+    template: "%s | EARIST - Graduate School",
+  },
   description:
-    "Your comprehensive portal for graduate school management — from application to thesis defense and research repository.",
+    'Official Graduate School portal and research repository of Eulogio "Amang" Rodriguez Institute of Science and Technology (EARIST).',
+  icons: {
+    icon: "/favicon.ico",
+    shortcut: "/favicon.ico",
+    apple: "/images/landing/earist-logo.jpg",
+  },
 };
 
 export default function RootLayout({
