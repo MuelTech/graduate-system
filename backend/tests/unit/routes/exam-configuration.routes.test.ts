@@ -6,7 +6,10 @@ import jwt from "jsonwebtoken";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { EXAM_CONFIGURATION_KEY } from "../../../src/services/exam-configuration.rules";
 
-const db = vi.hoisted(() => ({ systemSetting: { findUnique: vi.fn(), findMany: vi.fn(), upsert: vi.fn(), update: vi.fn() } }));
+const db = vi.hoisted(() => ({
+  systemSetting: { findUnique: vi.fn(), findMany: vi.fn(), upsert: vi.fn(), update: vi.fn() },
+  user: { findUnique: vi.fn() },
+}));
 vi.mock("../../../src/config/database", () => ({ default: db }));
 import router from "../../../src/routes/exam-engine.routes";
 import settingsRouter from "../../../src/routes/settings.routes";
@@ -29,6 +32,7 @@ beforeAll(async () => {
 afterAll(async () => { const closed = once(server, "close"); server.close(); server.closeAllConnections(); await closed; });
 beforeEach(() => {
   vi.resetAllMocks(); vi.stubEnv("JWT_SECRET", secret); stored = null;
+  db.user.findUnique.mockResolvedValue({ isActive: true, role: "ADMIN", adminAccessLevel: "FULL" });
   db.systemSetting.findUnique.mockImplementation(async () => stored);
   db.systemSetting.upsert.mockImplementation(async ({ create, update }) => { stored = stored ? { ...stored, ...update } : create; return stored; });
 });

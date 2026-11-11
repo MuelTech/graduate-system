@@ -307,7 +307,7 @@ export function evaluateCandidateEligibility(
   if (input.userRole !== "FACULTY" && input.userRole !== "PANELIST") {
     return {
       eligible: false,
-      reason: "Adviser candidate must have a FACULTY user role.",
+      reason: "Adviser candidate must have a FACULTY or PANELIST user role.",
     };
   }
   if (!input.userIsActive) {

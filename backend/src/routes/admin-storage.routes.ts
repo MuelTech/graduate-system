@@ -9,9 +9,19 @@ import {
 const router = Router();
 const controller = new StorageHealthController();
 
-router.use(authenticateJWT, requireRole(["ADMIN"]), requireAdminCapability("settings.manage"));
-
-router.get("/health", controller.getHealth);
-router.post("/integrity-scan", controller.runIntegrityScan);
+router.get(
+  "/health",
+  authenticateJWT,
+  requireRole(["ADMIN"]),
+  requireAdminCapability("settings.manage"),
+  controller.getHealth,
+);
+router.post(
+  "/integrity-scan",
+  authenticateJWT,
+  requireRole(["ADMIN"]),
+  requireAdminCapability("settings.manage"),
+  controller.runIntegrityScan,
+);
 
 export default router;

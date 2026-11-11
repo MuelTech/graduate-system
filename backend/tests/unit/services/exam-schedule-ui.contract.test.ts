@@ -22,6 +22,19 @@ const modules: Record<string, unknown> = {
   },
   "next/link": { __esModule: true, default: tag("a") },
   "@/components/ui/card": { Card: tag("section"), CardContent: tag("div"), CardHeader: tag("header"), CardTitle: tag("h3") },
+  "@/components/ui/page-header": {
+    PageHeader: ({ title, description, actions }: any) =>
+      createElement("header", {}, title, description, actions),
+  },
+  "@/components/ui/table": {
+    TableCard: tag("div"),
+    Table: tag("table"),
+    TableHeader: tag("thead"),
+    TableBody: tag("tbody"),
+    TableRow: tag("tr"),
+    TableHead: tag("th"),
+    TableCell: tag("td"),
+  },
   "@/components/ui/badge": { Badge: tag("span") }, "@/components/ui/button": { Button: tag("button") },
   "@/components/ui/alert": { Alert: tag("aside"), AlertDescription: tag("p") },
   "lucide-react": new Proxy({}, { get: () => tag("i") }),

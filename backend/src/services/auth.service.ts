@@ -207,7 +207,7 @@ export class AuthService {
             throw new AppError("Invalid credentials!", 401);
         }
 
-        if (!user.isActive) {
+        if (user.isActive === false) {
             throw new AppError("This account has been deactivated. Please contact the Administrator.", 403);
         }
 
@@ -262,7 +262,7 @@ export class AuthService {
 
     async getMe(userId: string): Promise<UserResponse> {
         const user = await this.authRepository.findUserById(userId);
-        if (!user || !user.isActive) {
+        if (!user || user.isActive === false) {
             throw new AppError("Account not found or inactive.", 403);
         }
         const effectiveRole: UserRole = user.role === UserRole.PANELIST ? UserRole.FACULTY : user.role;

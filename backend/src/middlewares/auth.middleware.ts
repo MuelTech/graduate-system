@@ -204,6 +204,10 @@ export const requireEssayEvaluationAccess = async (
       res.status(401).json({ error: "Unauthorized." });
       return;
     }
+    if (req.user.role !== "ADMIN" && !isFacultyRole(req.user.role)) {
+      res.status(403).json({ error: "Forbidden. You do not have permissions for this action." });
+      return;
+    }
     const user = await prisma.user.findUnique({
       where: { id: req.user.userId },
       select: {
@@ -216,11 +220,11 @@ export const requireEssayEvaluationAccess = async (
         },
       },
     });
-    if (!user || !user.isActive) {
+    if (!user || user.isActive === false) {
       res.status(403).json({ error: "Forbidden. Account is inactive." });
       return;
     }
-    if (user.role === "ADMIN") {
+    if (req.user.role === "ADMIN" && user.role === "ADMIN") {
       if (user.adminAccessLevel === "RESTRICTED") {
         const caps = sanitizeAdminCapabilities(user.adminCapabilities);
         if (!caps.includes("exam.records.manage")) {
@@ -231,7 +235,12 @@ export const requireEssayEvaluationAccess = async (
       next();
       return;
     }
-    if (isFacultyRole(user.role) && user.panelist?.isActive && user.panelist?.canEvaluateEssays) {
+    if (
+      isFacultyRole(req.user.role) &&
+      isFacultyRole(user.role) &&
+      user.panelist?.isActive &&
+      user.panelist?.canEvaluateEssays
+    ) {
       next();
       return;
     }
