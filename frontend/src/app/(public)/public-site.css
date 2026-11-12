@@ -1,6 +1,13 @@
 /* Public components only. Never target global elements or shared widget internals. */
 .earist-public {
   --public-frame-max: 1200px;
+  --earist-primary: #8b1a1a;
+  --earist-secondary: #a83240;
+  --earist-accent: #d4a843;
+  --earist-surface-light-red: #fdf0f0;
+  --earist-surface-cream: #fff8ec;
+  --earist-body-text: #4a4a5a;
+  --earist-heading-dark: #262220;
   background: #fff;
 }
 .earist-public .public-skip-link {
@@ -1202,7 +1209,7 @@
 }
 .earist-public .public-programs__degree-name {
   display: block;
-  color: var(--earist-primary);
+  color: var(--earist-heading-dark);
   font-weight: 700;
 }
 .earist-public .public-research {
@@ -1384,7 +1391,7 @@
   font-size: 20px;
   font-weight: 700;
   line-height: 1.3;
-  color: var(--earist-primary);
+  color: var(--earist-heading-dark);
 }
 .earist-public .public-about__goal-item p {
   margin-top: 10px;
@@ -1630,7 +1637,8 @@
 }
 .earist-public .public-news__card-title {
   margin-top: 12px;
-  color: var(--earist-primary);
+  color: var(--earist-heading-dark);
+  transition: color 150ms ease;
   font-size: 20px;
   font-weight: 700;
   line-height: 1.32;
@@ -1700,7 +1708,7 @@
   font-size: 22px;
   font-weight: 700;
   line-height: 1.3;
-  color: var(--earist-primary);
+  color: var(--earist-heading-dark);
 }
 .earist-public .public-news__lightbox-close {
   display: inline-flex;
@@ -1835,7 +1843,7 @@
 }
 .earist-public .public-contact__group-title {
   margin-bottom: 18px;
-  color: var(--earist-primary);
+  color: var(--earist-heading-dark);
   font-size: 22px;
   font-weight: 700;
   line-height: 1.3;
