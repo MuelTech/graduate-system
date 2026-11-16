@@ -19,6 +19,11 @@ const prismaMock = vi.hoisted(() => ({
 }));
 
 vi.mock("../../../src/config/database", () => ({ default: prismaMock }));
+vi.mock("../../../../frontend/src/lib/api.client", () => ({
+  apiClientRequest: vi.fn(),
+}));
+
+import { processSignatureImageData } from "../../../../frontend/src/lib/user-signature";
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -176,5 +181,70 @@ describe("UserSignatureService", () => {
         }),
       }),
     );
+  });
+});
+
+describe("processSignatureImageData (paper background removal)", () => {
+  function makeSamplePaperGrid(): Uint8ClampedArray {
+    // 4x4 RGBA grid filled with warm off-white paper (242, 240, 234, 255)
+    const data = new Uint8ClampedArray(4 * 4 * 4);
+    for (let i = 0; i < 16; i++) {
+      const idx = i * 4;
+      data[idx] = 242;
+      data[idx + 1] = 240;
+      data[idx + 2] = 234;
+      data[idx + 3] = 255;
+    }
+    // Pixel (1, 1): black pen ink
+    const p1 = (1 * 4 + 1) * 4;
+    data[p1] = 20;
+    data[p1 + 1] = 20;
+    data[p1 + 2] = 25;
+    data[p1 + 3] = 255;
+    // Pixel (2, 2): blue ballpen ink
+    const p2 = (2 * 4 + 2) * 4;
+    data[p2] = 30;
+    data[p2 + 1] = 70;
+    data[p2 + 2] = 175;
+    data[p2 + 3] = 255;
+    return data;
+  }
+
+  it("removes paper background to alpha=0 while keeping dark/blue ink and tight bounds", () => {
+    const data = makeSamplePaperGrid();
+    const bounds = processSignatureImageData(data, 4, 4, {
+      removeBackground: true,
+      strength: "standard",
+    });
+
+    // Top-left paper pixel becomes transparent
+    expect(data[3]).toBe(0);
+    // Black ink pixel at (1, 1) stays opaque
+    expect(data[(1 * 4 + 1) * 4 + 3]).toBe(255);
+    // Blue ink pixel at (2, 2) stays opaque
+    expect(data[(2 * 4 + 2) * 4 + 3]).toBe(255);
+    expect(bounds).toEqual({
+      minX: 1,
+      minY: 1,
+      maxX: 2,
+      maxY: 2,
+      hasInk: true,
+    });
+  });
+
+  it("preserves original pixel alpha when removeBackground is false", () => {
+    const data = makeSamplePaperGrid();
+    const bounds = processSignatureImageData(data, 4, 4, {
+      removeBackground: false,
+    });
+
+    expect(data[3]).toBe(255);
+    expect(bounds).toEqual({
+      minX: 0,
+      minY: 0,
+      maxX: 3,
+      maxY: 3,
+      hasInk: true,
+    });
   });
 });

@@ -12,6 +12,7 @@ import {
   MY_SIGNATURE_VAULT_QUERY_KEY,
   normalizeUploadedSignatureImage,
   saveMySignatureVault,
+  type BackgroundCleanupStrength,
   type SignatureCaptureMethod,
 } from "@/lib/user-signature";
 
@@ -52,7 +53,11 @@ export function ESignaturePad({
   const initialMode: "draw" | "upload" =
     defaultMode === "upload" && allowUpload ? "upload" : "draw";
   const [mode, setMode] = useState<"draw" | "upload">(initialMode);
+  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [uploadedName, setUploadedName] = useState<string | null>(null);
+  const [removeBg, setRemoveBg] = useState(true);
+  const [bgStrength, setBgStrength] =
+    useState<BackgroundCleanupStrength>("standard");
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [uploadBusy, setUploadBusy] = useState(false);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -128,6 +133,7 @@ export function ESignaturePad({
     drawingRef.current = false;
     strokeStartedRef.current = false;
     setHasDrawn(false);
+    setUploadedFile(null);
     setUploadedName(null);
     setUploadError(null);
   };
@@ -222,15 +228,24 @@ export function ESignaturePad({
     onChangeRef.current(savedSignatureData);
   };
 
-  const handleUploadFile = async (file: File) => {
+  const processUploadedFile = async (
+    file: File,
+    nextRemoveBg: boolean,
+    nextStrength: BackgroundCleanupStrength,
+  ) => {
     setUploadError(null);
     setUploadBusy(true);
     try {
-      const pngDataUrl = await normalizeUploadedSignatureImage(file);
+      const pngDataUrl = await normalizeUploadedSignatureImage(file, {
+        removeBackground: nextRemoveBg,
+        strength: nextStrength,
+      });
+      setUploadedFile(file);
       setUploadedName(file.name);
       onMethodChange?.("UPLOAD");
       onChangeRef.current(pngDataUrl);
     } catch (err) {
+      setUploadedFile(null);
       setUploadedName(null);
       onChangeRef.current("");
       setUploadError(
@@ -238,6 +253,20 @@ export function ESignaturePad({
       );
     } finally {
       setUploadBusy(false);
+    }
+  };
+
+  const handleToggleRemoveBg = (checked: boolean) => {
+    setRemoveBg(checked);
+    if (uploadedFile) {
+      void processUploadedFile(uploadedFile, checked, bgStrength);
+    }
+  };
+
+  const handleSelectStrength = (nextStrength: BackgroundCleanupStrength) => {
+    setBgStrength(nextStrength);
+    if (uploadedFile && removeBg) {
+      void processUploadedFile(uploadedFile, removeBg, nextStrength);
     }
   };
 
@@ -351,7 +380,7 @@ export function ESignaturePad({
           )}
 
           {allowUpload && mode === "upload" ? (
-            <div className="space-y-2 rounded border border-dashed border-gray-300 bg-gray-50/60 p-4 text-center">
+            <div className="space-y-3 rounded border border-dashed border-gray-300 bg-gray-50/60 p-4 text-center">
               <input
                 ref={uploadInputRef}
                 type="file"
@@ -361,7 +390,7 @@ export function ESignaturePad({
                 onChange={(e) => {
                   const file = e.target.files?.[0];
                   if (file) {
-                    void handleUploadFile(file);
+                    void processUploadedFile(file, removeBg, bgStrength);
                   }
                   e.target.value = "";
                 }}
@@ -381,9 +410,44 @@ export function ESignaturePad({
                     : "Choose Signature Image (PNG / JPEG)"}
               </Button>
               <p className="text-[11px] text-gray-500">
-                Maximum 1 MB. Transparent PNG recommended for clean document
-                placement.
+                Maximum 1 MB. Photos of signatures on paper are automatically
+                cropped and made transparent.
               </p>
+
+              <div className="flex flex-col items-center gap-2 border-t border-gray-200/80 pt-3 text-xs">
+                <label className="inline-flex cursor-pointer items-center gap-2 font-medium text-[#333333]">
+                  <input
+                    type="checkbox"
+                    checked={removeBg}
+                    disabled={disabled || uploadBusy}
+                    onChange={(e) => handleToggleRemoveBg(e.target.checked)}
+                    className="h-3.5 w-3.5 accent-[#e02b20]"
+                  />
+                  Auto-remove paper background (transparent PNG)
+                </label>
+
+                {removeBg && uploadedFile && (
+                  <div className="flex flex-wrap items-center justify-center gap-1.5">
+                    <span className="text-[11px] text-gray-500">
+                      Cleanup intensity:
+                    </span>
+                    {(["light", "standard", "strong"] as const).map((level) => (
+                      <Button
+                        key={level}
+                        type="button"
+                        size="sm"
+                        variant={bgStrength === level ? "default" : "outline"}
+                        disabled={disabled || uploadBusy}
+                        onClick={() => handleSelectStrength(level)}
+                        className="h-6 px-2 text-[11px] capitalize"
+                      >
+                        {level}
+                      </Button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
               {uploadError && (
                 <p role="alert" className="text-xs font-medium text-red-600">
                   {uploadError}
@@ -428,7 +492,7 @@ export function ESignaturePad({
             <img
               src={value}
               alt="Signature preview"
-              className="h-12 border border-(--earist-border-gray) bg-white object-contain px-2"
+              className="h-12 border border-(--earist-border-gray) bg-white bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:8px_8px] object-contain px-2"
             />
             {enableProfileVault && value !== savedSignatureData && (
               <Button
