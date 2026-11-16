@@ -68,6 +68,7 @@ model User {
   examAmendmentsRequested            ExamScheduleAmendment[] @relation("ExamAmendmentRequestedBy")
   examAmendmentsDecided              ExamScheduleAmendment[] @relation("ExamAmendmentDecidedBy")
   examResultDecisions                ExamResultDecision[]
+  savedSignature                     UserSignature?
   customRole                         CustomRole?               @relation("UserCustomRole", fields: [customRoleId], references: [id])
 
   @@index([customRoleId], map: "users_custom_role_id_fkey")
@@ -1980,4 +1981,17 @@ model ExamRevisionMedia {
   media ExamMedia @relation(fields: [mediaId], references: [id], onDelete: Restrict)
   @@id([revisionId, mediaId])
   @@map("exam_revision_media")
+}
+
+model UserSignature {
+  id            String   @id @default(uuid()) @map("signature_id")
+  userId        String   @unique @map("user_id")
+  signatureData String   @map("signature_data") @db.LongText
+  method        String   @default("DRAW") @map("signature_method")
+  version       Int      @default(1) @map("signature_version")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_signatures")
 }

@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/ui/page-header";
 import { Skeleton } from "@/components/ui/skeleton";
+import { SignatureVaultCard } from "@/components/profile/signature-vault-card";
 import {
   CircleAlert,
   RefreshCw,
@@ -61,7 +62,7 @@ export default function FacultyProfilePage() {
     <div className="space-y-6">
       <PageHeader
         title="Profile"
-        description="View your faculty profile and assigned academic access."
+        description="View your faculty profile, assigned academic access, and official e-signature vault."
       />
 
       {isLoading ? (
@@ -259,6 +260,8 @@ export default function FacultyProfilePage() {
           </Card>
         </div>
       )}
+
+      <SignatureVaultCard />
     </div>
   );
 }

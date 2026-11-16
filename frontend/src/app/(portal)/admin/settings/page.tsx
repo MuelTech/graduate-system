@@ -855,6 +855,7 @@ export default function AdminSettingsPage() {
                                   value={padDraftSignature}
                                   onChange={setPadDraftSignature}
                                   allowTyped
+                                  enableProfileVault={false}
                                   readyText="Signature ready — click Apply Signature below."
                                   requiredText="Draw or type the official's signature above."
                                 />

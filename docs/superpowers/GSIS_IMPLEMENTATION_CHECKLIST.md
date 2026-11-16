@@ -338,21 +338,25 @@ Changing `Available as Adviser` must not erase existing/historical Adviser assig
 
 ## Current behavior
 
-The existing Panelist E-Signatures page is **document-specific**. The signer currently draws a signature and sends `signatureData` for that signing action. It is not currently a reusable profile-signature vault.
+The standalone Panelist E-Signatures page (`/faculty/signatures`) has been retired and redirects to `/faculty/defenses`, where contextual signing happens inside Defense Workspace / My Advisees. Users now have a unified **Saved Profile E-Signature Vault** (`UserSignature`, `/api/auth/me/signature`) accessible via:
+
+- A skippable first-login onboarding prompt (`FirstLoginSignatureModal`) after authentication/password change;
+- Permanent **Official E-Signature Vault** management on both `/faculty/profile` and `/student/profile`;
+- Integrated one-click **"Use My Saved Signature"** and **"Save to My Profile Vault"** actions inside the shared `ESignaturePad` across document signing flows (while still requiring explicit per-document confirmation).
 
 | Status | Item | Current / target state |
 | --- | --- | --- |
 | ✅ | Explicit per-document signing | Current flows record signatures only after an explicit signing/finalization action. |
-| 🟡 | Current draw-signature UX | Works for existing document-specific flows but requires drawing again. |
-| ⏳ | Saved signature profile | Faculty can create a reusable signature asset once. |
-| ⏳ | Draw saved signature | Supported source for reusable signature profile. |
-| ⏳ | Upload saved signature | Supported source for reusable signature profile, subject to validation/security rules. |
-| ⏳ | Replace/update saved signature | Controlled profile operation. |
-| ⏳ | Signature version/snapshot | Signed records must preserve the exact signature evidence/version used at signing time. |
-| ⏳ | Explicit Apply/Sign confirmation | Reusable signature must never silently auto-sign a document. |
-| ⏳ | Signer + signedAt + exact document binding | Timestamp remains important, but timestamp alone is insufficient evidence. |
-| ⏳ | Migrate applicable workflows | Evaluate Individual Evaluation, Committee Report, Adviser certifications, and future official approvals separately. |
-| ❓ | Dean/VPAA/President digital signature use | Requires explicit institutional policy before reuse on forms. |
+| ✅ | Current draw/type/upload/vault signature UX | Unified `ESignaturePad` supports Draw, Type, PNG/JPEG Upload, and one-click Saved Signature application with explicit confirmation. |
+| ✅ | Saved signature profile | Faculty and Students can create and manage a reusable signature asset (`user_signatures` table, `/api/auth/me/signature`) with skippable first-login setup and Profile page management. |
+| ✅ | Draw saved signature | Supported source for reusable signature profile. |
+| ✅ | Upload saved signature | Supported source (PNG/JPEG, validated magic bytes and size limit, normalized to PNG). |
+| ✅ | Replace/update saved signature | Controlled profile operation on `/faculty/profile` and `/student/profile`, audited via `AuditLog`. |
+| ✅ | Signature version/snapshot | `UserSignature.version` increments on every update; signed documents continue to store immutable per-document image snapshots so updating a profile signature never alters previously signed records. |
+| ✅ | Explicit Apply/Sign confirmation | Applying a saved signature only populates the signature pad; reusable signatures never silently auto-sign any document. |
+| ✅ | Signer + signedAt + exact document binding | Signed document records (`OralExamScore`, `RapReportSignature`, `AdviserCertification`, `AdviserRequestSignedState`) store actor, timestamp, and immutable snapshot evidence. |
+| ✅ | Migrate applicable workflows | `CommitteeReportSignatureDialog`, `EvaluationFinalizationDialog`, `AdviserReviewActionPanel`, and `StudentAdviserRequestPage` all inherit `ESignaturePad` vault reuse and PNG/JPEG upload; `/faculty/signatures` redirects to `/faculty/defenses`. |
+| ✅ | Dean/VPAA/President digital signature use | Configured centrally by Admin under `System Settings -> Institutional Officials` (separate from personal `UserSignature` vaults) and printed onto GS-006/007, GS-011, and GS-020. |
 
 ---
 
@@ -853,15 +857,15 @@ For each review, record:
 
 This list is intentionally orderable and may change. *(Completed items: Exam Phase A, Exam Phase B + Booking Visibility, Faculty/Admin Role Access, Adviser Eligibility under Faculty model, Portal UI/UX Design System Overhaul, and Public Landing Page Redesign V2 are now merged to `main`.)*
 
-1. Design institutional officials + academic master-data authority (Program / Major / Curriculum Checklist) needed by official forms and student academic progress.
+1. Complete remaining academic master-data authority (Program / Major / Curriculum Checklist) needed by official forms and student academic progress *(Institutional Officials & Defense Application O.R. No. / Amount Paid now implemented on active branch `feat/institutional-officials-and-or-number`)*.
 2. Review collaborator work: email integration, notifications, announcement, memo, analytics & reports.
 3. Fix Admin scheduling-stage requirement/document visibility and Comprehensive Exam history/strike recording.
 4. Design Admin Student document/submission overview and fallback matrix.
 5. Design and implement Continuing Student COR-based onboarding (`CONT-STUDENT-1`) and pre-GSIS legacy academic/thesis standing initialization (`CONT-STUDENT-2`).
 6. Define Student inactivity/return/reactivation policy and Admin recovery flow.
-7. Revisit reusable signature profile architecture.
+7. *(Completed on `feat/reusable-esignature-profile`)* Reusable E-Signature Profile Vault (§6), Student Profile page enhancement, and retirement of redundant `/faculty/signatures`.
 8. Continue Chatbot/RAG implementation planning/audit and COR OCR fallback evaluation.
-9. Resolve Defense Application Amount Paid / O.R. client policy when available.
+9. *(Completed on `feat/institutional-officials-and-or-number`)* Defense Application Amount Paid (`P 900.00`) & Student-entered O.R. No. capture policy.
 10. Continue system-wide wording/terminology audit for any remaining unreviewed surfaces.
 11. Complete production-readiness/security/operations audit (password recovery, health readiness, worker startup, backups) and convert blockers into bounded packages.
 12. After core workflows stabilize, design returning-graduate / multiple-academic-career architecture.

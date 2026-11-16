@@ -9,12 +9,12 @@ import { apiClientRequest } from "@/lib/api.client";
 import { ChatbotWidget } from "@/components/chatbot/chatbot-widget";
 import { NotificationBell } from "@/components/layout/notification-bell";
 import { PortalBreadcrumbs } from "@/components/layout/portal-breadcrumbs";
+import { FirstLoginSignatureModal } from "@/components/profile/first-login-signature-modal";
 import {
   LayoutDashboard,
   User,
   FileCheck2,
   ClipboardCheck,
-  PenTool,
   Users,
   Library,
   Megaphone,
@@ -107,7 +107,6 @@ export default function PanelistLayout({
     ...(!isExternal
       ? [{ href: "/faculty/advisees", label: "My Advisees", icon: Users }]
       : []),
-    { href: "/faculty/signatures", label: "E-Signatures", icon: PenTool },
     { href: "/faculty/repository", label: "Repository", icon: Library },
     {
       href: "/faculty/announcements",
@@ -263,6 +262,9 @@ export default function PanelistLayout({
         {/* Page Content */}
         <main className="flex-1 p-4 sm:p-6 lg:p-8">{children}</main>
       </div>
+
+      {/* First-Login Skippable E-Signature Onboarding */}
+      <FirstLoginSignatureModal portalLabel="Faculty Portal" />
 
       {/* AI Chatbot Widget */}
       <ChatbotWidget />
