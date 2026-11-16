@@ -55,6 +55,32 @@ function safeFilenameToken(value: string): string {
   return String(value ?? "").replace(/[^A-Za-z0-9_-]/g, "");
 }
 
+function parseRequiredOrNumber(body: Record<string, unknown> | undefined): string {
+  const raw = body?.orNumber;
+  const trimmed = typeof raw === "string" ? raw.trim() : "";
+  if (!trimmed) {
+    throw new AppError("Official Receipt (O.R.) number is required.", 400);
+  }
+  if (trimmed.length > 64) {
+    throw new AppError("Official Receipt (O.R.) number must be 64 characters or fewer.", 400);
+  }
+  return trimmed;
+}
+
+function parseOptionalOrNumber(body: Record<string, unknown> | undefined): string | undefined {
+  if (!body || !Object.prototype.hasOwnProperty.call(body, "orNumber")) {
+    return undefined;
+  }
+  const trimmed = typeof body.orNumber === "string" ? body.orNumber.trim() : "";
+  if (!trimmed) {
+    throw new AppError("Official Receipt (O.R.) number cannot be empty.", 400);
+  }
+  if (trimmed.length > 64) {
+    throw new AppError("Official Receipt (O.R.) number must be 64 characters or fewer.", 400);
+  }
+  return trimmed;
+}
+
 /** FORM-INT-1/2: official documents return PDF bytes only. */
 function sendPdfResponse(
   res: Response,
@@ -273,6 +299,7 @@ export class ThesisController {
           'Title Defense Proposal Package, COR, and proof of payment are all required.',
         );
       }
+      const orNumber = parseRequiredOrNumber(req.body);
 
       const result = await this.thesisService.applyTitleDefense(
         req.user.userId, 
@@ -281,6 +308,7 @@ export class ThesisController {
           conceptPaper: managedUploadFromMulter(files.conceptPaper[0], req.user.userId),
           cor: managedUploadFromMulter(files.cor[0], req.user.userId),
           receipt: managedUploadFromMulter(files.receipt[0], req.user.userId),
+          orNumber,
         },
       );
       commitRequestUploads(req);
@@ -303,12 +331,14 @@ export class ThesisController {
 
       if (!cor) throw new Error('COR is required');
       if (!receipt) throw new Error('Defense-fee proof of payment is required');
+      const orNumber = parseRequiredOrNumber(req.body);
 
       const result = await this.thesisService.applyProposalDefense(
         req.user.userId,
         {
           cor: managedUploadFromMulter(cor, req.user.userId),
           receipt: managedUploadFromMulter(receipt, req.user.userId),
+          orNumber,
         },
       );
       commitRequestUploads(req);
@@ -330,12 +360,14 @@ export class ThesisController {
 
       if (!cor) throw new Error('COR is required');
       if (!receipt) throw new Error('Defense-fee proof of payment is required');
+      const orNumber = parseRequiredOrNumber(req.body);
 
       const result = await this.thesisService.applyFinalDefense(
         req.user.userId,
         {
           cor: managedUploadFromMulter(cor, req.user.userId),
           receipt: managedUploadFromMulter(receipt, req.user.userId),
+          orNumber,
         },
       );
       commitRequestUploads(req);
@@ -580,6 +612,7 @@ export class ThesisController {
       const conceptPaper = first('conceptPaper');
       const cor = first('cor');
       const receipt = first('receipt');
+      const orNumber = parseOptionalOrNumber(req.body);
 
       const result = await this.thesisService.resubmitApplication(uploader, id, {
         conceptPaper: conceptPaper
@@ -587,6 +620,7 @@ export class ThesisController {
           : undefined,
         cor: cor ? managedUploadFromMulter(cor, uploader) : undefined,
         receipt: receipt ? managedUploadFromMulter(receipt, uploader) : undefined,
+        orNumber,
       });
       // DL-2 FIX1 / DL-6: application persisted — protect the new managed files.
       commitRequestUploads(req);

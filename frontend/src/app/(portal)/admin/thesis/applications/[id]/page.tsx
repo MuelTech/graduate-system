@@ -489,6 +489,21 @@ export default function DefenseApplicationDetailPage() {
                             · {formatDateTime(slot.current.uploadedAt)}
                           </p>
                         )}
+                        {slot.docType === "RECEIPT" &&
+                          (historyQuery.data?.application.orNumber || app.orNumber) && (
+                            <p className="mt-1 text-xs font-medium text-[#333333]">
+                              O.R. No.:{" "}
+                              <span className="font-semibold">
+                                {historyQuery.data?.application.orNumber || app.orNumber}
+                              </span>{" "}
+                              · Amount Paid:{" "}
+                              <span className="font-semibold">
+                                {historyQuery.data?.application.amountPaid ||
+                                  app.amountPaid ||
+                                  "P 900.00"}
+                              </span>
+                            </p>
+                          )}
                       </div>
                       {slot.current && (
                         <Button
@@ -660,6 +675,26 @@ export default function DefenseApplicationDetailPage() {
                 value={student.program?.programName || "Not recorded"}
               />
               <SummaryRow label="Defense Stage" value={stageLabel} />
+              {(app.orNumber || historyQuery.data?.application.orNumber) && (
+                <>
+                  <SummaryRow
+                    label="O.R. No."
+                    value={
+                      historyQuery.data?.application.orNumber ||
+                      app.orNumber ||
+                      "—"
+                    }
+                  />
+                  <SummaryRow
+                    label="Amount Paid"
+                    value={
+                      historyQuery.data?.application.amountPaid ||
+                      app.amountPaid ||
+                      "P 900.00"
+                    }
+                  />
+                </>
+              )}
               <SummaryRow
                 label="Submitted"
                 value={formatDate(app.createdAt)}

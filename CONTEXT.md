@@ -12,56 +12,56 @@ Repository:
 
 `MuelTech/graduate-system`
 
-Active initiative branch:
+Active primary branch:
 
-`refactor/document-lifecycle`
+`main` (latest merged HEAD: `939afc0e` — PR #52)
 
-Document Lifecycle documentation baseline:
+Living master status & pending-work index:
 
-`8815f68e0242a84bf8b235b7f9914af8249243e5`  
-`docs: define document lifecycle architecture`
+`docs/superpowers/GSIS_IMPLEMENTATION_CHECKLIST.md`
 
-The branch was created from the accepted/current Defense correction branch checkpoint:
+### Completed & merged major initiatives on `main`
 
-`refactor/defense-workflow-corrections`  
-`ef62ff302386142ebab098668102cdf7a6e429e3`
+- **Defense Workflow & Collaborative Defense Workspace** (PR #33, PR #35)
+- **Adviser Workflow / My Advisees** (PR #36)
+- **Document Lifecycle Infrastructure (`DL-0` through `DL-12`, except `DL-5` EARIST COR template parser which awaits official COR sample)** (PR #34 and operations guides)
+- **Official Defense Document Forms, Pre-Defense Document Integrity (`PREDEF`), Schedule & Committee Correction (`DEF-CORR-1`), and Official Adviser Request (`GS-020`)** (PR #37, PR #40, PR #41, PR #42, PR #43)
+- **Entrance Examination Mixed-Content Integration (Phase A), Exam Engine & Scheduling Lifecycle (Phase B), and Schedule Booking Visibility** (PR #45, PR #46, PR #47, PR #48)
+- **Faculty & Administrator Role Access (`UserRole.FACULTY`, Essay Evaluation capability, Full/Restricted Administrator permissions, `/faculty/*` routes)** (PR #49)
+- **Portal UI/UX Design System & Reusable Component Overhaul** (PR #50)
+- **Public Landing Page Redesign V2** (PR #51, PR #52)
 
-Document Lifecycle production implementation has **not** started yet. The next implementation package is **DL-1 — Core storage metadata and provider abstraction** after this context refresh is reviewed.
-
-### Historical Defense checkpoint
-
-The backend/domain correction pass CP1-CP10 was completed and accepted. CP10 was accepted at:
-
-`5de128505cfe356388c441ff3aa7c3ed0756eb11`
-
-Seven later frontend/docs integration commits advanced the Defense correction branch to `ef62ff...`. Those later commits did not change the accepted backend Defense semantics.
-
-Do not resume old WP/CP roadmaps as if they were pending work. They are implementation history unless a current canonical plan explicitly references them.
+Do not resume old WP/CP/DL/Phase-A/Phase-B roadmaps as if they were pending work. They are accepted implementation history unless a current canonical plan explicitly references them. Always check `docs/superpowers/GSIS_IMPLEMENTATION_CHECKLIST.md` for current pending workstreams.
 
 ---
 
 ## 2. Canonical documentation hierarchy
 
-Read these in this order for work that touches Thesis/Defense or documents.
+Read these in this order for work that touches Thesis/Defense, Examinations, Access Control, UI Copy, or Documents.
+
+### Tier 0 — master status & pending-work index
+
+0. `docs/superpowers/GSIS_IMPLEMENTATION_CHECKLIST.md`
 
 ### Tier 1 — canonical business/domain rules
 
 1. `docs/superpowers/DEFENSE_WORKFLOW_SOURCE_OF_TRUTH.md`
 2. `docs/superpowers/DOCUMENT_LIFECYCLE_SOURCE_OF_TRUTH.md`
+3. `docs/superpowers/COLLABORATIVE_DEFENSE_WORKSPACE_AND_RAP_SOURCE_OF_TRUTH.md`
+4. `docs/superpowers/EXAM_CONTENT_SOURCE_OF_TRUTH.md`
+5. `docs/superpowers/FACULTY_ADMIN_ACCESS_SOURCE_OF_TRUTH.md`
+6. `docs/superpowers/USER_FACING_COPY_SOURCE_OF_TRUTH.md`
 
-### Tier 2 — current technical design
+### Tier 2 — current technical design & plans
 
-3. `docs/superpowers/specs/2026-09-26-defense-session-workflow-design.md`
-4. `docs/superpowers/specs/2026-10-02-document-lifecycle-storage-design.md`
+7. `docs/superpowers/plans/2026-11-11-faculty-admin-access-implementation.md`
+8. `docs/superpowers/plans/2026-11-11-ui-design-system-overhaul.md`
+9. `docs/superpowers/specs/2026-09-26-defense-session-workflow-design.md`
+10. `docs/superpowers/specs/2026-10-02-document-lifecycle-storage-design.md`
 
-### Tier 3 — current implementation plans
+### Tier 3 — implementation reference/history
 
-5. `docs/superpowers/plans/2026-09-26-post-qa-defense-workflow-corrections.md` — completed correction history/reference
-6. `docs/superpowers/plans/2026-10-02-document-lifecycle-implementation.md` — active plan
-
-### Tier 4 — implementation reference/history
-
-7. `docs/superpowers/STUDENT_THESIS_JOURNEY_IMPLEMENTATION_REFERENCE.md`
+11. `docs/superpowers/STUDENT_THESIS_JOURNEY_IMPLEMENTATION_REFERENCE.md`
 
 Historical documents remain useful background but are superseded where they conflict with newer canonical sources, especially:
 
@@ -705,7 +705,7 @@ Do not invent these:
 - GS-011 Adviser concurrence / Dean attestation e-sign details;
 - exact RAP printed layout;
 - re-defense/multiple-attempt policy;
-- Faculty/Admin target access model is now defined by `docs/superpowers/FACULTY_ADMIN_ACCESS_SOURCE_OF_TRUTH.md`; implementation remains pending and must preserve compatibility/history rather than blindly renaming `PANELIST` references;
+- Faculty/Admin target access model is defined by `docs/superpowers/FACULTY_ADMIN_ACCESS_SOURCE_OF_TRUTH.md` and implemented/merged via PR #49 (`4abbf3b8`); preserve compatibility/history with `PANELIST` references in Defense/Adviser models rather than blindly renaming `Panelist` / `PanelRole`;
 - exact post-Final clearance/corrected archival manuscript authority;
 - exact file-type policy by document category beyond confirmed current behavior;
 - Research Databank retention;
@@ -797,43 +797,27 @@ No merge, force push, branch deletion, or unrelated feature work unless explicit
 
 ---
 
-## 22. Active Document Lifecycle package roadmap
+## 22. Document Lifecycle package status (historical reference)
 
-Current active plan:
+Status summary:
 
 ```text
 DL-0  Documentation/audit baseline — COMPLETE
-↓
-DL-1  Core storage metadata + provider abstraction — NEXT
-↓
-DL-2  Secure upload pipeline + cleanup
-↓
-DL-3  Applicant COR lifecycle consolidation
-↓
-DL-4  Native COR PDF extraction framework
-↓
-DL-5  EARIST COR parser — BLOCKED until COR sample is supplied
-↓
-DL-6  Defense supporting evidence lifecycle
-↓
-DL-7  Proposal/Final manuscript integration
-↓
-DL-8  Admin document review/history
-↓
-DL-9  Research Databank archival refactor
-↓
-DL-10 Research Repository publication separation
-↓
-DL-11 Storage health/operations
-↓
-DL-12 Migration/backfill + production-readiness verification
+DL-1  Core storage metadata + provider abstraction — COMPLETE
+DL-2  Secure upload pipeline + cleanup — COMPLETE
+DL-3  Applicant COR lifecycle consolidation — COMPLETE
+DL-4  Native COR PDF extraction framework — COMPLETE
+DL-5  EARIST COR parser — BLOCKED until official COR sample is supplied
+DL-6  Defense supporting evidence lifecycle — COMPLETE
+DL-7  Proposal/Final manuscript integration — COMPLETE
+DL-8  Admin document review/history — COMPLETE
+DL-9  Research Databank archival refactor — COMPLETE
+DL-10 Research Repository publication separation — COMPLETE
+DL-11 Storage health/operations — COMPLETE
+DL-12 Migration/backfill + production-readiness verification — COMPLETE
 ```
 
-The exact active plan is maintained in:
-
-`docs/superpowers/plans/2026-10-02-document-lifecycle-implementation.md`
-
-If this summary and the active plan differ, the active plan wins.
+See `docs/operations/document-lifecycle-production-readiness.md` and `docs/superpowers/GSIS_IMPLEMENTATION_CHECKLIST.md` for current pending items.
 
 ---
 
@@ -866,7 +850,7 @@ Do not assume every command is required for every package. Run the checks approp
 
 ## 24. Important implementation rules
 
-1. Read this file for orientation, then read the relevant canonical source-of-truth/spec/plan.
+1. Read this file for orientation, then read `docs/superpowers/GSIS_IMPLEMENTATION_CHECKLIST.md` and the relevant canonical source-of-truth/spec/plan.
 2. Preserve accepted business behavior unless an approved canonical document explicitly changes it.
 3. Do not treat old plans, retired branches, comments, or UI text as institutional authority.
 4. Do not add new policy to resolve an ambiguity.
@@ -891,20 +875,21 @@ Do not assume every command is required for every package. Run the checks approp
 
 Before implementing:
 
-1. confirm branch = `refactor/document-lifecycle`;
-2. confirm remote HEAD;
-3. read this `CONTEXT.md`;
-4. read the cross-cutting engineering guardrail:
+1. confirm current branch and remote HEAD;
+2. read this `CONTEXT.md` and `docs/superpowers/GSIS_IMPLEMENTATION_CHECKLIST.md`;
+3. read the cross-cutting engineering guardrail:
    - `docs/superpowers/ENGINEERING_VERIFICATION_POLICY.md`;
-5. read the domain-specific canonical documents required by the assigned work, including:
+4. read the domain-specific canonical documents required by the assigned work, including:
    - `docs/superpowers/DEFENSE_WORKFLOW_SOURCE_OF_TRUTH.md`;
    - `docs/superpowers/DOCUMENT_LIFECYCLE_SOURCE_OF_TRUTH.md`;
+   - `docs/superpowers/FACULTY_ADMIN_ACCESS_SOURCE_OF_TRUTH.md`;
+   - `docs/superpowers/USER_FACING_COPY_SOURCE_OF_TRUTH.md`;
    - the applicable design/specification and implementation plan for the active package;
-6. inspect the actual current code involved in the assigned package;
-7. implement only that package;
-8. run risk-based/package-appropriate verification;
-9. stop and report for independent review.
+5. inspect the actual current code involved in the assigned package;
+6. implement only that package;
+7. run risk-based/package-appropriate verification;
+8. stop and report for independent review.
 
 ---
 
-*Updated: 2026-10-19 — added the cross-cutting risk-based verification policy for coding-agent work. This file is intentionally an onboarding/index document; canonical source-of-truth and engineering-policy files govern detailed behavior.*
+*Updated: 2026-11-17 — synchronized project state and completed initiatives through PR #52 (`939afc0e`). This file is intentionally an onboarding/index document; canonical source-of-truth and engineering-policy files govern detailed behavior.*

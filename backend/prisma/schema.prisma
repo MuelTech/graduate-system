@@ -662,6 +662,9 @@ model ThesisRecord {
   titleApplicationSubmittedAt    DateTime?              @map("title_application_submitted_at")
   proposalApplicationSubmittedAt DateTime?              @map("proposal_application_submitted_at")
   finalApplicationSubmittedAt    DateTime?              @map("final_application_submitted_at")
+  titleOrNumber                  String?                @map("title_or_number") @db.VarChar(64)
+  proposalOrNumber               String?                @map("proposal_or_number") @db.VarChar(64)
+  finalOrNumber                  String?                @map("final_or_number") @db.VarChar(64)
   adviserCertifications     AdviserCertification[]
   defenseSchedules          DefenseSchedule[]
   eLibrary                  ELibrary?
@@ -1355,7 +1358,7 @@ model SchoolYearCalendar {
 model SystemSetting {
   id                String      @id @default(uuid()) @map("setting_id")
   settingKey        String      @unique @map("setting_key")
-  settingValue      String?     @map("setting_value") @db.Text
+  settingValue      String?     @map("setting_value") @db.LongText
   settingType       SettingType @map("setting_type")
   label             String?
   description       String?     @db.Text

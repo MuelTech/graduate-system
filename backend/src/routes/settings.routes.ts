@@ -12,6 +12,8 @@ router.use(requireAdminCapability("settings.manage"));
 
 // System Settings Routes
 router.get("/", controller.getAllSettings.bind(controller));
+router.get("/institutional-officials", controller.getInstitutionalOfficials.bind(controller));
+router.put("/institutional-officials", controller.updateInstitutionalOfficials.bind(controller));
 router.put("/:key", controller.updateSetting.bind(controller));
 
 // Email Templates Routes

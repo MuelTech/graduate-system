@@ -291,6 +291,7 @@ export class ThesisService {
       conceptPaper?: ManagedUploadInput;
       cor?: ManagedUploadInput;
       receipt?: ManagedUploadInput;
+      orNumber?: string;
     } = {},
   ) {
     const student = await this.thesisRepo.getStudentByUserId(userId);
@@ -305,6 +306,13 @@ export class ThesisService {
     }
 
     const stage = thesis.stage as DefenseEvidenceStage;
+    const normalizedOrNumber =
+      typeof replacements.orNumber === "string" && replacements.orNumber.trim().length > 0
+        ? replacements.orNumber.trim()
+        : undefined;
+    if (normalizedOrNumber && normalizedOrNumber.length > 64) {
+      throw new AppError('Official Receipt (O.R.) number must be 64 characters or fewer.', 400);
+    }
 
     // Map replacement fields to stage-scoped slots; reject wrong-stage evidence.
     const requested: Array<{ docType: DefenseEvidenceDocType; upload: ManagedUploadInput }> = [];
@@ -330,6 +338,7 @@ export class ThesisService {
       studentId: student.id,
       stage,
       replacements: requested,
+      ...(normalizedOrNumber ? { orNumber: normalizedOrNumber } : {}),
       audit: {
         actorId: userId,
         description: `Defense ${stage} application resubmitted with ${
@@ -416,12 +425,20 @@ export class ThesisService {
 
     const stage = (requestedStage ?? thesis.stage) as DefenseEvidenceStage;
     const documents = await this.thesisRepo.getEvidenceHistory(thesis.id, stage);
+    const stageOrNumber =
+      stage === "TITLE"
+        ? thesis.titleOrNumber ?? thesis.orNumber ?? null
+        : stage === "PROPOSAL"
+          ? thesis.proposalOrNumber ?? thesis.orNumber ?? null
+          : thesis.finalOrNumber ?? thesis.orNumber ?? null;
 
     return {
       thesisId: thesis.id,
       stage,
       status: thesis.status,
       rejectionReason: thesis.rejectionReason ?? null,
+      orNumber: stageOrNumber,
+      amountPaid: "P 900.00",
       evidence: documents.map((d) => ({
         id: d.id,
         docType: d.docType,
@@ -443,6 +460,7 @@ export class ThesisService {
       conceptPaper: ManagedUploadInput;
       cor: ManagedUploadInput;
       receipt: ManagedUploadInput;
+      orNumber?: string;
     },
   ) {
     const student = await this.thesisRepo.getStudentByUserId(userId);
@@ -490,7 +508,7 @@ export class ThesisService {
 
   async applyProposalDefense(
     userId: string,
-    evidence: { cor: ManagedUploadInput; receipt: ManagedUploadInput },
+    evidence: { cor: ManagedUploadInput; receipt: ManagedUploadInput; orNumber?: string },
   ) {
     const student = await this.thesisRepo.getStudentByUserId(userId);
     if (!student) throw new AppError('Student profile not found.', 404);
@@ -518,7 +536,7 @@ export class ThesisService {
 
   async applyFinalDefense(
     userId: string,
-    evidence: { cor: ManagedUploadInput; receipt: ManagedUploadInput },
+    evidence: { cor: ManagedUploadInput; receipt: ManagedUploadInput; orNumber?: string },
   ) {
     const student = await this.thesisRepo.getStudentByUserId(userId);
     if (!student) throw new AppError('Student profile not found.', 404);

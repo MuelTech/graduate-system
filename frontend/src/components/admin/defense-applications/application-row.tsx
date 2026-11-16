@@ -24,6 +24,8 @@ import {
 
 export type DefenseApplicationDto = ApprovedApplicationDto & {
   rejectionReason?: string | null;
+  orNumber?: string | null;
+  amountPaid?: string | null;
   thesisDocuments: Array<{ id: string; docType: string; isCurrent?: boolean }>;
 };
 

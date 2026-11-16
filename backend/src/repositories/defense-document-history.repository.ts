@@ -36,6 +36,10 @@ export class DefenseApplicationDocumentHistoryRepository {
         status: true,
         rejectionReason: true,
         studentId: true,
+        orNumber: true,
+        titleOrNumber: true,
+        proposalOrNumber: true,
+        finalOrNumber: true,
       },
     });
   }

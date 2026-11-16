@@ -7,6 +7,9 @@ import { apiClientRequest } from "@/lib/api.client";
 import { studentThesisJourneyQueryKey } from "@/lib/student-thesis-journey";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { FileText, Upload, X, AlertCircle, CheckCircle2, Send } from "lucide-react";
 
@@ -29,6 +32,8 @@ interface CurrentApplication {
   stage: DefenseEvidenceStage;
   status: string;
   rejectionReason: string | null;
+  orNumber?: string | null;
+  amountPaid?: string | null;
   evidence: EvidenceDto[];
 }
 
@@ -70,6 +75,7 @@ export function RejectedApplicationCorrection({
 }) {
   const queryClient = useQueryClient();
   const [files, setFiles] = useState<Record<string, File | null>>({});
+  const [orNumberOverride, setOrNumberOverride] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const inputRefs = useRef<Record<string, HTMLInputElement | null>>({});
@@ -79,6 +85,7 @@ export function RejectedApplicationCorrection({
     queryFn: async () => apiClientRequest("/thesis/defense/current"),
   });
 
+  const effectiveOrNumber = orNumberOverride ?? application?.orNumber ?? "";
   const permittedSlots = STAGE_SLOTS[stage] ?? [];
   const currentByType = new Map(
     (application?.evidence ?? [])
@@ -95,6 +102,9 @@ export function RejectedApplicationCorrection({
         const file = files[field];
         if (field && file) formData.append(field, file);
       }
+      if (effectiveOrNumber.trim()) {
+        formData.append("orNumber", effectiveOrNumber.trim());
+      }
       return apiClientRequest(`/thesis/defense/${application?.thesisId}/resubmit`, {
         method: "PUT",
         body: formData,
@@ -104,6 +114,7 @@ export function RejectedApplicationCorrection({
       setError(null);
       setSuccess(true);
       setFiles({});
+      setOrNumberOverride(null);
       toast.success("Corrected application resubmitted.");
       await queryClient.invalidateQueries({ queryKey: studentThesisJourneyQueryKey });
       await queryClient.invalidateQueries({
@@ -198,6 +209,30 @@ export function RejectedApplicationCorrection({
                   <p className="mt-2 flex items-center gap-1 text-xs text-(--earist-body-text)">
                     <FileText className="h-3 w-3" /> {file.name}
                   </p>
+                )}
+                {docType === "RECEIPT" && (
+                  <div className="mt-3 border-t border-gray-100 pt-3">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <Label
+                        htmlFor="resubmit-or-number"
+                        className="text-xs font-semibold text-[#333333]"
+                      >
+                        Official Receipt (O.R.) Number
+                      </Label>
+                      <Badge variant="outline" className="text-[11px]">
+                        Defense Fee: {application?.amountPaid || "P 900.00"}
+                      </Badge>
+                    </div>
+                    <Input
+                      id="resubmit-or-number"
+                      type="text"
+                      maxLength={64}
+                      value={effectiveOrNumber}
+                      onChange={(e) => setOrNumberOverride(e.target.value)}
+                      placeholder="e.g., OR-2026-001234"
+                      className="mt-1.5 max-w-sm bg-white"
+                    />
+                  </div>
                 )}
                 <input
                   ref={(el) => {

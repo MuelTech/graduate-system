@@ -1,5 +1,10 @@
 import { SettingsRepository, AuditLogQuery } from "../repositories/settings.repository";
 import { AppError } from "../utils/AppError";
+import {
+    loadInstitutionalOfficials,
+    updateInstitutionalOfficials,
+    type InstitutionalOfficialUpdatePayload,
+} from "./institutional-officials.service";
 
 export class SettingsService {
     private repository = new SettingsRepository();
@@ -10,6 +15,17 @@ export class SettingsService {
 
     async updateSetting(settingKey: string, settingValue: string, userId: string) {
         return this.repository.updateSetting(settingKey, settingValue, userId);
+    }
+
+    async getInstitutionalOfficials() {
+        return loadInstitutionalOfficials();
+    }
+
+    async updateInstitutionalOfficials(
+        payload: InstitutionalOfficialUpdatePayload,
+        userId: string,
+    ) {
+        return updateInstitutionalOfficials(payload, userId);
     }
 
     async getAllEmailTemplates() {

@@ -22,10 +22,16 @@ export function createApp() {
   );
 
   app.use(cookieParser());
-  // Only this signing endpoint accepts the bounded base64 envelope for a 1 MiB image.
+  // Only these signing endpoints accept bounded base64 envelopes for signature images.
   app.use("/api/thesis/adviser/request", (req, res, next) => {
     express.json({ limit: "1500kb" })(req, res, (error) => {
       if (error?.type === "entity.too.large") { res.status(413).json({ error: "The Student signature submission is too large." }); return; }
+      next(error);
+    });
+  });
+  app.use("/api/settings/institutional-officials", (req, res, next) => {
+    express.json({ limit: "4mb" })(req, res, (error) => {
+      if (error?.type === "entity.too.large") { res.status(413).json({ error: "The Institutional Officials signature payload is too large." }); return; }
       next(error);
     });
   });

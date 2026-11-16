@@ -8,6 +8,8 @@ import {
   adviserRequestEvidenceHash, parseSignedAdviserRequestState, validateStudentRequestSignature,
   type SignedAdviserRequestState,
 } from "./adviser-request-signed-state";
+import { loadInstitutionalOfficials } from "./institutional-officials.service";
+import { validateOfficialFormSignatureImage } from "./official-form-signature-image";
 
 export interface AdviserRequestRecordActor { userId: string; role: string }
 export interface AdviserRequestSnapshot extends SignedAdviserRequestState {
@@ -20,22 +22,31 @@ export interface AdviserRequestSnapshot extends SignedAdviserRequestState {
   deanReviewedById: string;
   deanReviewedAt: string;
   finalizedAt: string;
-  printedDeanName: "";
-  printedDeanSignature: null;
+  printedDeanName: string;
+  printedDeanSignature: string | null;
 }
 
 /** Signing-bound display values come exclusively from the preserved signed state. */
 export function finalizedAdviserRequestSnapshot(
-  signed: SignedAdviserRequestState, adviserRespondedAt: Date | null, deanUserId: string, now: Date,
+  signed: SignedAdviserRequestState,
+  adviserRespondedAt: Date | null,
+  deanUserId: string,
+  now: Date,
+  deanOfficial?: { name?: string | null; signatureData?: string | null },
 ): AdviserRequestSnapshot {
   if (!adviserRespondedAt || !Number.isFinite(adviserRespondedAt.getTime()) || !deanUserId) {
     throw new AppError("The exact Adviser confirmation and Graduate School approval evidence are required.", 409);
   }
+  const printedDeanName = typeof deanOfficial?.name === "string" ? deanOfficial.name.trim() : "";
+  const printedDeanSignature =
+    typeof deanOfficial?.signatureData === "string" && deanOfficial.signatureData.trim().length > 0
+      ? deanOfficial.signatureData.trim()
+      : null;
   return {
     ...signed, formCode: "EARIST-QSF-GS-020", revision: "Rev. 00", effectiveDate: "06.20.25",
     adviserStatus: "CONFORMED", adviserRespondedAt: adviserRespondedAt.toISOString(),
     deanStatus: "APPROVED", deanReviewedById: deanUserId, deanReviewedAt: now.toISOString(),
-    finalizedAt: now.toISOString(), printedDeanName: "", printedDeanSignature: null,
+    finalizedAt: now.toISOString(), printedDeanName, printedDeanSignature,
   };
 }
 
@@ -65,7 +76,8 @@ function snapshotOf(row: AdviserRequestOfficialRecord & { request: { status: str
     || row.request.adviserStatus !== "CONFORMED" || row.request.deanStatus !== "APPROVED"
     || !snapshot.deanReviewedById || !Number.isFinite(Date.parse(snapshot.adviserRespondedAt))
     || !Number.isFinite(Date.parse(snapshot.deanReviewedAt)) || snapshot.finalizedAt !== row.finalizedAt.toISOString()
-    || snapshot.printedDeanName !== "" || snapshot.printedDeanSignature !== null
+    || typeof snapshot.printedDeanName !== "string"
+    || (snapshot.printedDeanSignature !== null && typeof snapshot.printedDeanSignature !== "string")
     || adviserRequestEvidenceHash(snapshot, row.signatureData) !== row.evidenceHash) {
     throw new AppError("The finalized Adviser Request record is incomplete or unsupported.", 409);
   }
@@ -109,12 +121,20 @@ export class AdviserRequestRecordService {
     const row = await this.source(id, actor);
     const snapshot = snapshotOf(row);
     const signature = await validateStudentRequestSignature(row.signatureData);
+    const officials = await loadInstitutionalOfficials(prisma);
+    const printedDeanName = (snapshot.printedDeanName || officials.dean.name || "").trim();
+    const rawDeanSig = snapshot.printedDeanSignature || officials.dean.signatureData || null;
+    const printedDeanSignature = rawDeanSig
+      ? await validateOfficialFormSignatureImage(rawDeanSig)
+      : undefined;
     try {
       const pdf = await renderAdviserRequest({
         logos: await loadOfficialFormLogos(), requestDate: snapshot.requestDateDisplay,
         requestedAdviserName: snapshot.requestedAdviserName, reason: snapshot.reason,
         studentName: snapshot.studentName, studentNumber: snapshot.studentNumber,
         programName: snapshot.programName, studentSignature: signature,
+        ...(printedDeanName ? { printedDeanName } : {}),
+        ...(printedDeanSignature ? { printedDeanSignature } : {}),
       });
       return { pdf, filename: `${sanitizeOfficialNamePart(snapshot.studentName)}-Adviser-Request.pdf` };
     } catch (error) {

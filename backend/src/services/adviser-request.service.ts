@@ -31,6 +31,7 @@ import type { Prisma } from "@prisma/client";
 import { adviserRequestEvidenceHash, assertSignedAdviserRequest, validateStudentRequestSignature,
   ADVISER_REQUEST_CONTRACT, type SignedAdviserRequestState } from "./adviser-request-signed-state";
 import { finalizedAdviserRequestSnapshot } from "./adviser-request-record.service";
+import { loadInstitutionalOfficials } from "./institutional-officials.service";
 import { formatOfficialApplicationDate } from "./official-form-display";
 import { loadOfficialFormLogos } from "./official-form-assets";
 import { renderAdviserRequest } from "../documents/official-defense/adviser-request/adviser-request.renderer";
@@ -679,7 +680,14 @@ export class AdviserRequestService {
           const evidence = await tx.adviserRequestSignedState.findUnique({ where: { requestId } });
           const signed = assertSignedAdviserRequest(current, evidence);
           await validateStudentRequestSignature(evidence!.signatureData);
-          const snapshot = finalizedAdviserRequestSnapshot(signed, current.adviserRespondedAt, deanUserId, now);
+          const officials = await loadInstitutionalOfficials(tx);
+          const snapshot = finalizedAdviserRequestSnapshot(
+            signed,
+            current.adviserRespondedAt,
+            deanUserId,
+            now,
+            officials.dean,
+          );
           // A primary key on requestId prevents duplicate official records. Failure rolls back approval and assignment.
           await tx.adviserRequestOfficialRecord.create({ data: {
             requestId, studentUserId: signed.studentUserId, requestedAdviserId: signed.requestedAdviserId,

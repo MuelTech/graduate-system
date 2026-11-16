@@ -24,6 +24,9 @@ import {
   meanAcademicValues,
   roundAcademicValue,
 } from "./academic-number.rules";
+import { loadInstitutionalOfficials } from "./institutional-officials.service";
+
+export const OFFICIAL_DEFENSE_FEE_DISPLAY = "P 900.00";
 
 const committeePolicy = new DefenseCommitteePolicy();
 
@@ -121,6 +124,8 @@ export interface OfficialSummaryDocumentSource {
   summaryId: string | null;
   snapshot: OralExamSummarySnapshot | null;
   adviserName: string | null;
+  deanName?: string | null;
+  deanSignatureData?: string | null;
 }
 
 export interface DefenseApplicationAssignmentSource {
@@ -152,6 +157,14 @@ export interface OfficialDefenseApplicationDocumentSource {
   /** Latest successful submission/resubmission for the EXACT schedule stage. */
   applicationSubmittedAt: string | null;
   assignments: DefenseApplicationAssignmentSource[];
+  officialReceiptNumber?: string | null;
+  amountPaid?: string | null;
+  deanName?: string | null;
+  vicePresidentName?: string | null;
+  presidentName?: string | null;
+  deanSignatureData?: string | null;
+  vicePresidentSignatureData?: string | null;
+  presidentSignatureData?: string | null;
 }
 
 export interface OfficialEvaluationBundleAssignment {
@@ -663,12 +676,18 @@ export class OfficialDefenseRecordService {
       }
     }
 
+    const officials = await loadInstitutionalOfficials(prisma);
+
     return {
       scheduleId,
       defenseType,
       summaryId: summary?.id ?? null,
       snapshot: (summary?.snapshotData ?? null) as OralExamSummarySnapshot | null,
       adviserName,
+      ...(officials.dean.name ? { deanName: officials.dean.name } : {}),
+      ...(officials.dean.signatureData
+        ? { deanSignatureData: officials.dean.signatureData }
+        : {}),
     };
   }
 
@@ -759,6 +778,19 @@ export class OfficialDefenseRecordService {
           : defenseType === "FINAL_DEFENSE"
             ? schedule.thesis?.finalApplicationSubmittedAt
             : null;
+    const rawOrNumber =
+      defenseType === "TITLE_DEFENSE"
+        ? schedule.thesis?.titleOrNumber ?? schedule.thesis?.orNumber
+        : defenseType === "PROPOSAL_DEFENSE"
+          ? schedule.thesis?.proposalOrNumber ?? schedule.thesis?.orNumber
+          : defenseType === "FINAL_DEFENSE"
+            ? schedule.thesis?.finalOrNumber ?? schedule.thesis?.orNumber
+            : null;
+    const officialReceiptNumber =
+      typeof rawOrNumber === "string" && rawOrNumber.trim().length > 0
+        ? rawOrNumber.trim()
+        : null;
+    const officials = await loadInstitutionalOfficials(prisma);
 
     return {
       scheduleId: schedule.id,
@@ -784,6 +816,24 @@ export class OfficialDefenseRecordService {
         name: `${assignment.user.firstName} ${assignment.user.lastName}`.trim(),
         createdAt: assignment.createdAt.toISOString(),
       })),
+      ...(officialReceiptNumber
+        ? {
+            officialReceiptNumber,
+            amountPaid: OFFICIAL_DEFENSE_FEE_DISPLAY,
+          }
+        : {}),
+      ...(officials.dean.name ? { deanName: officials.dean.name } : {}),
+      ...(officials.vpaa.name ? { vicePresidentName: officials.vpaa.name } : {}),
+      ...(officials.president.name ? { presidentName: officials.president.name } : {}),
+      ...(officials.dean.signatureData
+        ? { deanSignatureData: officials.dean.signatureData }
+        : {}),
+      ...(officials.vpaa.signatureData
+        ? { vicePresidentSignatureData: officials.vpaa.signatureData }
+        : {}),
+      ...(officials.president.signatureData
+        ? { presidentSignatureData: officials.president.signatureData }
+        : {}),
     };
   }
 

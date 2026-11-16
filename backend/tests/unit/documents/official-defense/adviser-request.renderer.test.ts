@@ -86,10 +86,10 @@ describe("GS020-1A pure official Adviser Request renderer", () => {
     expect(text).not.toMatch(/Title:|Thesis\/Dissertation Title|PASSED|REDEFENSE|Score|Verdict|Defense Stage/);
   });
 
-  it("has only the approved display contract, with no second Adviser or Dean authority", () => {
+  it("has only the approved display contract, with no second Adviser authority", () => {
     expectTypeOf<keyof AdviserRequestRenderInput>().toEqualTypeOf<
       "logos" | "requestDate" | "requestedAdviserName" | "reason" | "studentName"
-      | "studentNumber" | "programName" | "studentSignature"
+      | "studentNumber" | "programName" | "studentSignature" | "printedDeanName" | "printedDeanSignature"
     >();
   });
 
