@@ -230,17 +230,15 @@ export async function renderOralExamCriteria(input: OralExamCriteriaRenderInput)
   text("Remarks:", 62, 675 + bodyShift, 54, 13, 9);
   text(input.remarks, 122, 674 + bodyShift, 222, 14, 9, regular, "left", "Remarks");
 
-  if (input.evaluatorSignature) {
-    const name = fitText(regular, input.evaluatorPrintedName, { width: 150, height: 20 }, {
-      size: 9, minSize: 8, field: "Evaluator printed name",
-    });
-    const nameTop = 748 - (name?.height ?? 0);
-    await drawContainedImage(doc, page, input.evaluatorSignature, { x: 63, top: nameTop - 26, width: 140, height: 23 });
-  }
   textBox(page, regular, input.evaluatorPrintedName, { x: 58, top: 728, width: 150, height: 20 }, {
     size: 9, minSize: 8, align: "center", verticalAlign: "bottom", field: "Evaluator printed name",
   });
   rule(page, 58, 749, 208);
+  if (input.evaluatorSignature) {
+    await drawContainedImage(doc, page, input.evaluatorSignature, {
+      x: 63, top: 722, width: 140, height: 27,
+    });
+  }
   text("Signature over printed name of Panelist", 58, 753, 200, 13, 8);
 
   return doc.save();

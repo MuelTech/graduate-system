@@ -136,8 +136,8 @@ describe("GS020-1A pure official Adviser Request renderer", () => {
     const [x, y, width, height] = transforms[2];
     expect(x).toBeGreaterThanOrEqual(330);
     expect(x + width).toBeLessThanOrEqual(502);
-    expect(841.89 - y - height).toBeGreaterThanOrEqual(460);
-    expect(841.89 - y).toBeLessThanOrEqual(484);
+    expect(841.89 - y - height).toBeGreaterThanOrEqual(482);
+    expect(841.89 - y).toBeLessThanOrEqual(514);
     expect(width / height).toBeCloseTo(mimeType === "image/png" ? 4 : 1, 6);
     expect(joined(await inspect(pdfBytes))).toContain(input.studentName);
   });

@@ -117,15 +117,15 @@ export async function renderAdviserCertification(input: AdviserCertificationRend
   text(".", 78 + requestWidth, issuedTop + 10 + requestHeight, 6, 14);
 
   const signatureRule = 550 + bodyShift + requestHeight - 13;
-  if (input.adviserSignature) {
-    await drawContainedImage(doc, page, input.adviserSignature, {
-      x: 80, top: signatureRule - 62, width: 158, height: 34,
-    });
-  }
   textBox(page, regular, input.adviserPrintedName, {
     x: 80, top: signatureRule - 27, width: 158, height: 26,
   }, { size: 11, minSize: 10, align: "center", verticalAlign: "bottom", field: "Adviser printed name" });
   rule(page, 76, signatureRule, 242);
+  if (input.adviserSignature) {
+    await drawContainedImage(doc, page, input.adviserSignature, {
+      x: 80, top: signatureRule - 34, width: 158, height: 34,
+    });
+  }
   text("(Adviser’s Printed Name and Signature)", 76, signatureRule + 12, 300, 15);
   text("EARIST-QSF-GS-017 Rev. 01 (06.20.25)", 76, 800, 450, 15, 10.5, oblique);
   return doc.save();

@@ -318,18 +318,18 @@ export async function renderDefenseApplication(input: DefenseApplicationRenderIn
     field: string,
     sigImage?: PdfImageInput,
   ) => {
-    if (sigImage) {
-      await drawContainedImage(doc, page, sigImage, {
-        x: 248,
-        top: lineTop - 26,
-        width: 112,
-        height: 22,
-      });
-    }
     textBox(page, regular, name, { x: 238, top: lineTop - 21, width: 132, height: 20 }, {
       size: 10, minSize: 8, align: "center", verticalAlign: "bottom", field,
     });
     rule(page, 236, lineTop, 372);
+    if (sigImage) {
+      await drawContainedImage(doc, page, sigImage, {
+        x: 244,
+        top: lineTop - 24,
+        width: 120,
+        height: 24,
+      });
+    }
     text(caption, 204, lineTop + 4, 200, 12, 9.5, regular, "center");
   };
   // Keep the approval block after the table; short values retain the accepted
