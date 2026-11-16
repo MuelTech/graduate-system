@@ -5,8 +5,8 @@
 **Initiative state:** merged to `main` via PR #37  
 **Branch base:** `main` @ `d8ac8479fd34226dc837cba9048a1db5a1f72776`  
 **Documentation checkpoint:** `81c9d29b5cb6f7b6b2c7d5e454850d438eeb491f`  
-**Status:** STATIC FORM PHASE CLOSED — FORM-INT-0 ACCEPTED — FORM-INT-PRE1 ACCEPTED — FORM-INT-1 ACCEPTED — FORM-INT-2 + TITLE LAYOUT FIX-1 ACCEPTED — FORM-INT-3 ACCEPTED — FORM-INT-4 FIX-1/FIX-2/FIX-3/FIX-4 ACCEPTED — PAYMENT/O.R. POLICY PENDING
-**Last updated:** 2026-10-24
+**Status:** STATIC FORM PHASE CLOSED — FORM-INT-0 THROUGH FORM-INT-4 ACCEPTED — PAYMENT/O.R. & INSTITUTIONAL OFFICIALS IMPLEMENTED
+**Last updated:** 2026-11-17
 
 ## Purpose
 
@@ -301,8 +301,8 @@ The following mappings are now canonical for future integration work:
 | Email (Personal Gmail Only) | Auto-fill from the exact Student user's `User.email`. Applicant registration is already backend-enforced as `@gmail.com`; development-only `@earist.edu.ph` panelist accounts are unrelated to this student field. |
 | Date and Time | Server-owned timestamp of the latest successful Defense Application submission or resubmission for the exact defense stage. |
 | Date of Application | Date portion of the same exact latest successful submission/resubmission timestamp. |
-| Amount Paid | **Client confirmation pending.** Do not infer from the printed fee table or receipt presence. |
-| O.R. No. | **Client confirmation pending.** Do not infer from filename, upload metadata, or receipt presence. |
+| Amount Paid | **Implemented (`P 900.00`).** Populated dynamically on GS-006/007 with `P 900.00` when stage O.R. No. is recorded. |
+| O.R. No. | **Implemented (Student-entered per stage).** Required input alongside Cashier proof-of-payment upload on Title, Proposal, Final, and rejected-application resubmission (`title_or_number`, `proposal_or_number`, `final_or_number`). |
 
 Submission-time semantics are now explicit:
 
@@ -333,7 +333,7 @@ Accepted persistence/mapping behavior:
 
 Independent remote diff/source review confirmed the implementation is bounded and the legacy-null behavior shown during owner QA is expected, not a detection failure.
 
-FIX-4 is accepted. The overall FORM-INT-4 initiative remains open only for the unresolved `Amount Paid` / `O.R. No.` client policy.
+FIX-4 was accepted, and subsequent work implemented the confirmed `Amount Paid` (`P 900.00`) / stage-scoped Student-entered `O.R. No.` policy as well as Admin-configured `Institutional Officials` (Dean, VPAA, President names & e-signatures).
 
 ## Explicitly deferred
 
@@ -526,14 +526,15 @@ FIX-4 acceptance notes:
 - historical schedule printing resolves the timestamp by exact `DefenseSchedule.defenseType`, never by current mutable thesis stage;
 - legacy records created before the migration keep null timestamps and therefore blank printed filing date/time fields until a new successful submission/resubmission occurs;
 - Student cellphone/email mapping is correct; blank/development values reflect fixture data rather than renderer/source failure;
-- Amount Paid and O.R. remain intentionally blank pending client confirmation.
+- Historical pre-O.R. records with null O.R. numbers keep blank printed payment/O.R. fields; new Title, Proposal, Final, and rejected resubmission filings require Student-entered `O.R. No.` alongside proof of payment and print `Amount Paid: P 900.00` + `O.R. No.` on generated GS-006/007 PDFs;
+- `Admin -> System Settings -> Institutional Officials` provides printed names and drawn/uploaded e-signatures for Dean (Graduate School), VPAA, and University President across GS-006/007, GS-011, and newly finalized GS-020 forms.
 
 Agent-reported FIX-4 verification includes TEMPLATE-3 48/48, official Defense Application service/source 44/44, evaluator bundle 26/26, TEMPLATE-1 11/11, Prisma validation/generation, migration deploy/status, forms check, backend build, diff check, and synthetic raster QA.
 
 Independent remote review confirmed the additive nullable migration, exact-schedule timestamp selection, Student email mapping, blank payment/O.R. mapping, and intentional legacy-null behavior.
 
-**FORM-INT-4 FIX-4 is ACCEPTED / COMPLETE.**
+**FORM-INT-4 FIX-4 is ACCEPTED / COMPLETE; Payment/O.R. & Institutional Officials are now IMPLEMENTED.**
 
-Do not implement Amount Paid / O.R. until the client confirms their authoritative capture/verification policy.
+Stage-scoped Student-entered `O.R. No.`, `Amount Paid: P 900.00`, and Institutional Officials integration have been implemented cleanly without fabricating historical values.
 
-The overall Official Defense Document Forms integration remains open only for that payment/O.R. policy decision. GS Form No. 22 and generated-document persistence/versioning remain deferred.
+GS Form No. 22 / Committee Report official PDF renderer and permanent generated-document persistence/versioning remain the only deferred items from this initiative.
