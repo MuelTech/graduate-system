@@ -34,6 +34,8 @@ export interface UserResponse {
   suffix?: string | null;
   role: UserRole;
   mustChangePassword: boolean;
+  hasAcceptedTerms?: boolean;
+  termsAcceptedAt?: Date | null;
   adminAccessLevel?: "FULL" | "RESTRICTED" | null;
   adminCapabilities?: string[];
   facultyProfile?: {

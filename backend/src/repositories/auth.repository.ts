@@ -93,6 +93,16 @@ export class AuthRepository {
         });
     }
 
+    async acceptTerms(userId: string): Promise<User> {
+        return prisma.user.update({
+            where: { id: userId },
+            data: {
+                hasAcceptedTerms: true,
+                termsAcceptedAt: new Date(),
+            },
+        });
+    }
+
     async findUserById(userId: string) {
         return prisma.user.findUnique({
             where: { id: userId },

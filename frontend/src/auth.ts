@@ -42,6 +42,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             role: data.user.role,
             accessToken: data.token,
             mustChangePassword: data.user.mustChangePassword,
+            hasAcceptedTerms: Boolean(data.user.hasAcceptedTerms),
             adminAccessLevel: data.user.adminAccessLevel ?? null,
             adminCapabilities: Array.isArray(data.user.adminCapabilities)
               ? data.user.adminCapabilities
@@ -61,16 +62,22 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     }),
   ],
   callbacks: {
-    jwt({ token, user }: { token: JWT; user?: User }) {
+    jwt({ token, user, trigger, session }: { token: JWT; user?: User; trigger?: string; session?: any }) {
       if (user) {
         token.id = user.id!;
         const rawRole = user.role?.toLowerCase() ?? "";
         token.role = rawRole === "panelist" ? "faculty" : rawRole;
         token.accessToken = user.accessToken ?? "";
         token.mustChangePassword = user.mustChangePassword ?? false;
+        token.hasAcceptedTerms = user.hasAcceptedTerms ?? false;
         token.adminAccessLevel = user.adminAccessLevel ?? null;
         token.adminCapabilities = user.adminCapabilities ?? null;
         token.facultyProfile = user.facultyProfile ?? null;
+      }
+      if (trigger === "update" && session) {
+        if (typeof session.hasAcceptedTerms === "boolean") {
+          token.hasAcceptedTerms = session.hasAcceptedTerms;
+        }
       }
       return token;
     },
@@ -80,6 +87,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         session.user.role = token.role;
         session.user.accessToken = token.accessToken;
         session.user.mustChangePassword = token.mustChangePassword;
+        session.user.hasAcceptedTerms = token.hasAcceptedTerms;
         session.user.adminAccessLevel = token.adminAccessLevel ?? null;
         session.user.adminCapabilities = token.adminCapabilities ?? null;
         session.user.facultyProfile = token.facultyProfile ?? null;

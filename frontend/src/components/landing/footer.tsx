@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { publicSiteContent } from "@/content/public-site-content";
+import { FooterTermsButton } from "@/components/landing/footer-terms-button";
 
 const footerGroups = [
   {
@@ -97,10 +98,15 @@ export function Footer() {
           </nav>
         </div>
         <div className="public-footer__bottom">
-          <p>
-            © {new Date().getFullYear()} EARIST Graduate School Information
-            System. All rights reserved.
-          </p>
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
+            <p>
+              © {new Date().getFullYear()} EARIST Graduate School Information
+              System. All rights reserved.
+            </p>
+            <div className="flex items-center gap-4">
+              <FooterTermsButton />
+            </div>
+          </div>
         </div>
       </div>
     </footer>

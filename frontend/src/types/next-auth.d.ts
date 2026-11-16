@@ -13,6 +13,7 @@ declare module "next-auth" {
     role?: string;
     accessToken?: string;
     mustChangePassword?: boolean;
+    hasAcceptedTerms?: boolean;
     adminAccessLevel?: "FULL" | "RESTRICTED" | null;
     adminCapabilities?: string[] | null;
     facultyProfile?: FacultySessionProfile | null;
@@ -24,6 +25,7 @@ declare module "next-auth" {
       role: string;
       accessToken: string;
       mustChangePassword: boolean;
+      hasAcceptedTerms: boolean;
       adminAccessLevel?: "FULL" | "RESTRICTED" | null;
       adminCapabilities?: string[] | null;
       facultyProfile?: FacultySessionProfile | null;
@@ -37,6 +39,7 @@ declare module "@auth/core/jwt" {
     role: string;
     accessToken: string;
     mustChangePassword: boolean;
+    hasAcceptedTerms: boolean;
     adminAccessLevel?: "FULL" | "RESTRICTED" | null;
     adminCapabilities?: string[] | null;
     facultyProfile?: FacultySessionProfile | null;

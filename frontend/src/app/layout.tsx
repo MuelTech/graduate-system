@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Instrument_Sans } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/components/providers/session-provider";
+import { TermsGate } from "@/components/providers/terms-gate";
 import QueryProvider from "@/components/providers/query-provider";
 import { Toaster } from "@/components/ui/sonner";
 
@@ -36,7 +37,9 @@ export default function RootLayout({
     >
       <body className="flex min-h-full flex-col font-sans text-[#333333]">
         <QueryProvider>
-          <AuthProvider>{children}</AuthProvider>
+          <AuthProvider>
+            <TermsGate>{children}</TermsGate>
+          </AuthProvider>
         </QueryProvider>
         <Toaster position="top-center" />
       </body>
