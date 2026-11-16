@@ -136,6 +136,13 @@ describe("UserSignatureService", () => {
     await expect(
       service.saveVault("user-1", {
         signatureData: STUDENT_SIGNATURE,
+        method: "TYPE",
+      }),
+    ).rejects.toMatchObject({ statusCode: 400 });
+
+    await expect(
+      service.saveVault("user-1", {
+        signatureData: STUDENT_SIGNATURE,
         method: "FAX",
       }),
     ).rejects.toMatchObject({ statusCode: 400 });

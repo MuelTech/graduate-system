@@ -212,7 +212,7 @@ Names, programs, signatures, payment metadata, and institutional approvals must 
 
 | Status | Item | Current / target state |
 | --- | --- | --- |
-| ✅ | Institutional office-holder configuration | Implemented under `Admin -> System Settings -> Institutional Officials` for Dean (Graduate School), VPAA, and University President, supporting both printed full name and e-signature (upload PNG/JPEG or draw/type pad). |
+| ✅ | Institutional office-holder configuration | Implemented under `Admin -> System Settings -> Institutional Officials` for Dean (Graduate School), VPAA, and University President, supporting both printed full name and e-signature (upload PNG/JPEG or draw pad). |
 | ⏳ | Effective office-holder history | Determine whether effective dates/history are needed so old official records can preserve the correct office holder across term transitions (GS-020 snapshots already preserve their finalized Dean identity; `AuditLog` records updates). |
 | ✅ | Institutional official signature policy | Implemented per project-owner confirmation: Institutional Officials supports both printed names and uploaded/drawn e-signatures for Dean, VPAA, and President. |
 | ✅ | Official-form integration | Integrated into Defense Application (`GS-006/007`), Oral Examination Summary (`GS-011`), and Adviser Request (`GS-020`). |
@@ -347,7 +347,7 @@ The standalone Panelist E-Signatures page (`/faculty/signatures`) has been retir
 | Status | Item | Current / target state |
 | --- | --- | --- |
 | ✅ | Explicit per-document signing | Current flows record signatures only after an explicit signing/finalization action. |
-| ✅ | Current draw/type/upload/vault signature UX | Unified `ESignaturePad` supports Draw, Type, PNG/JPEG Upload, and one-click Saved Signature application with explicit confirmation. |
+| ✅ | Current draw/upload/vault signature UX | Unified `ESignaturePad` supports Draw, PNG/JPEG Upload, and one-click Saved Signature application with explicit confirmation (legacy typed-name fallback removed). |
 | ✅ | Saved signature profile | Faculty and Students can create and manage a reusable signature asset (`user_signatures` table, `/api/auth/me/signature`) with skippable first-login setup and Profile page management. |
 | ✅ | Draw saved signature | Supported source for reusable signature profile. |
 | ✅ | Upload saved signature | Supported source (PNG/JPEG, validated magic bytes and size limit, normalized to PNG). |

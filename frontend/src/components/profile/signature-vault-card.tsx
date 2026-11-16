@@ -155,13 +155,12 @@ export function SignatureVaultCard() {
               value={draftSignature}
               onChange={setDraftSignature}
               onMethodChange={setDraftMethod}
-              allowTyped
               allowUpload
               enableProfileVault={false}
               defaultMode="draw"
               disabled={saveMutation.isPending}
               readyText="Signature ready to save to your profile vault."
-              requiredText="Draw, type, or upload a PNG/JPEG image of your signature."
+              requiredText="Draw or upload a PNG/JPEG image of your signature."
             />
             <div className="flex flex-wrap justify-end gap-2">
               <Button

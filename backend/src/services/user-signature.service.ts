@@ -2,7 +2,7 @@ import prisma from "../config/database";
 import { AppError } from "../utils/AppError";
 import { decodeOfficialFormSignature } from "./official-form-signature";
 
-export const SIGNATURE_CAPTURE_METHODS = ["DRAW", "TYPE", "UPLOAD"] as const;
+export const SIGNATURE_CAPTURE_METHODS = ["DRAW", "UPLOAD"] as const;
 export type SignatureCaptureMethod = (typeof SIGNATURE_CAPTURE_METHODS)[number];
 
 export interface UserSignatureVaultDto {
@@ -28,13 +28,13 @@ function normalizeMethod(raw: unknown): SignatureCaptureMethod {
     return "DRAW";
   }
   if (typeof raw !== "string") {
-    throw new AppError("Signature method must be DRAW, TYPE, or UPLOAD.", 400);
+    throw new AppError("Signature method must be DRAW or UPLOAD.", 400);
   }
   const upper = raw.trim().toUpperCase();
   if ((SIGNATURE_CAPTURE_METHODS as readonly string[]).includes(upper)) {
     return upper as SignatureCaptureMethod;
   }
-  throw new AppError("Signature method must be DRAW, TYPE, or UPLOAD.", 400);
+  throw new AppError("Signature method must be DRAW or UPLOAD.", 400);
 }
 
 function validateVaultSignature(raw: unknown): string {

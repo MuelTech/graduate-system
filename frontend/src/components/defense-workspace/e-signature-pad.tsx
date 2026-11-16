@@ -16,7 +16,7 @@ import {
 } from "@/lib/user-signature";
 
 /**
- * CP6-FIX3 + §6 Vault: shared e-signature input supporting Type, Draw,
+ * CP6-FIX3 + §6 Vault: shared e-signature input supporting Draw,
  * Image Upload (normalized to PNG), and optional Profile Signature Vault reuse.
  * Applying a saved signature fills this input only and never auto-submits forms.
  */
@@ -25,10 +25,9 @@ export function ESignaturePad({
   onChange,
   onMethodChange,
   disabled,
-  allowTyped = true,
   allowUpload = true,
   enableProfileVault = true,
-  defaultMode,
+  defaultMode = "draw",
   autoFocus = false,
   readyText = "Signature ready for evaluation finalize.",
   requiredText = "Signature required before finalize.",
@@ -37,38 +36,26 @@ export function ESignaturePad({
   onChange: (signatureData: string) => void;
   onMethodChange?: (method: SignatureCaptureMethod) => void;
   disabled?: boolean;
-  /** Evaluation and Committee Report signing keep Type disabled; Profile/Adviser retain Type support. */
-  allowTyped?: boolean;
   /** Allow uploading a PNG or JPEG signature image (normalized onto canvas as PNG). */
   allowUpload?: boolean;
   /** Show "Use My Saved Signature" & "Save to My Profile Vault" integration. */
   enableProfileVault?: boolean;
-  /** Initial signature mode (defaults to "type" when allowTyped is true, otherwise "draw"). */
-  defaultMode?: "type" | "draw" | "upload";
-  /** Focus the signature input when it mounts (e.g. after moving to Sign). */
+  /** Initial signature mode ("draw" or "upload"; defaults to "draw"). */
+  defaultMode?: "draw" | "upload";
+  /** Focus the signature canvas when it mounts (e.g. after moving to Sign). */
   autoFocus?: boolean;
   /** Optional caller-specific helper copy; defaults preserve Evaluation signing. */
   readyText?: string;
   requiredText?: string;
 }) {
   const queryClient = useQueryClient();
-  const initialMode: "type" | "draw" | "upload" =
-    defaultMode === "type" && allowTyped
-      ? "type"
-      : defaultMode === "upload" && allowUpload
-        ? "upload"
-        : defaultMode === "draw"
-          ? "draw"
-          : allowTyped
-            ? "type"
-            : "draw";
-  const [mode, setMode] = useState<"type" | "draw" | "upload">(initialMode);
-  const [typed, setTyped] = useState("");
+  const initialMode: "draw" | "upload" =
+    defaultMode === "upload" && allowUpload ? "upload" : "draw";
+  const [mode, setMode] = useState<"draw" | "upload">(initialMode);
   const [uploadedName, setUploadedName] = useState<string | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [uploadBusy, setUploadBusy] = useState(false);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
   const uploadInputRef = useRef<HTMLInputElement>(null);
   const [hasDrawn, setHasDrawn] = useState(false);
   const instructionsId = useId();
@@ -112,7 +99,7 @@ export function ESignaturePad({
         throw new Error("Please provide a valid signature first.");
       }
       const method: SignatureCaptureMethod =
-        mode === "type" ? "TYPE" : mode === "upload" ? "UPLOAD" : "DRAW";
+        mode === "upload" ? "UPLOAD" : "DRAW";
       return saveMySignatureVault({ signatureData: value, method });
     },
     onSuccess: (updatedVault) => {
@@ -130,36 +117,9 @@ export function ESignaturePad({
   });
 
   useEffect(() => {
-    if (!autoFocus || disabled || isUsingSaved) return;
-    const target =
-      allowTyped && mode === "type"
-        ? inputRef.current
-        : mode === "draw"
-          ? canvasRef.current
-          : null;
-    target?.focus();
-  }, [allowTyped, autoFocus, disabled, isUsingSaved, mode]);
-
-  const emitTypedSignature = (name: string) => {
-    setTyped(name);
-    if (!name.trim()) {
-      onChangeRef.current("");
-      return;
-    }
-    const canvas = document.createElement("canvas");
-    canvas.width = 480;
-    canvas.height = 120;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) {
-      onChangeRef.current("");
-      return;
-    }
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.fillStyle = "#111827";
-    ctx.font = "32px 'Segoe UI', system-ui, sans-serif";
-    ctx.fillText(name.trim(), 12, 72);
-    onChangeRef.current(canvas.toDataURL("image/png"));
-  };
+    if (!autoFocus || disabled || isUsingSaved || mode !== "draw") return;
+    canvasRef.current?.focus();
+  }, [autoFocus, disabled, isUsingSaved, mode]);
 
   const resetLocalInputs = () => {
     const canvas = canvasRef.current;
@@ -168,17 +128,14 @@ export function ESignaturePad({
     drawingRef.current = false;
     strokeStartedRef.current = false;
     setHasDrawn(false);
-    setTyped("");
     setUploadedName(null);
     setUploadError(null);
   };
 
-  const switchMode = (next: "type" | "draw" | "upload") => {
+  const switchMode = (next: "draw" | "upload") => {
     if (mode === next && !isUsingSaved) return;
     setMode(next);
-    onMethodChange?.(
-      next === "type" ? "TYPE" : next === "upload" ? "UPLOAD" : "DRAW",
-    );
+    onMethodChange?.(next === "upload" ? "UPLOAD" : "DRAW");
     resetLocalInputs();
     onChangeRef.current("");
   };
@@ -271,6 +228,7 @@ export function ESignaturePad({
     try {
       const pngDataUrl = await normalizeUploadedSignatureImage(file);
       setUploadedName(file.name);
+      onMethodChange?.("UPLOAD");
       onChangeRef.current(pngDataUrl);
     } catch (err) {
       setUploadedName(null);
@@ -286,11 +244,7 @@ export function ESignaturePad({
   const isValid =
     isUsingSaved ||
     (mode === "upload" && Boolean(uploadedName) && isDataUrl(value)) ||
-    (allowTyped && mode === "type"
-      ? Boolean(typed.trim()) && isDataUrl(value)
-      : mode === "draw" && hasDrawn && isDataUrl(value));
-
-  const showModeButtons = allowTyped || allowUpload;
+    (mode === "draw" && hasDrawn && isDataUrl(value));
 
   return (
     <div className="space-y-3 rounded-lg border border-(--earist-border-gray) p-3">
@@ -347,19 +301,8 @@ export function ESignaturePad({
       {!isUsingSaved && (
         <>
           <div className="flex flex-wrap gap-2">
-            {showModeButtons && (
+            {allowUpload && (
               <>
-                {allowTyped && (
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant={mode === "type" ? "default" : "outline"}
-                    disabled={disabled}
-                    onClick={() => switchMode("type")}
-                  >
-                    Type
-                  </Button>
-                )}
                 <Button
                   type="button"
                   size="sm"
@@ -369,24 +312,22 @@ export function ESignaturePad({
                 >
                   Draw
                 </Button>
-                {allowUpload && (
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant={mode === "upload" ? "default" : "outline"}
-                    disabled={disabled}
-                    onClick={() => switchMode("upload")}
-                  >
-                    Upload PNG/JPEG
-                  </Button>
-                )}
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={mode === "upload" ? "default" : "outline"}
+                  disabled={disabled}
+                  onClick={() => switchMode("upload")}
+                >
+                  Upload PNG/JPEG
+                </Button>
               </>
             )}
             <Button
               type="button"
               size="sm"
               variant="ghost"
-              className={showModeButtons ? "ml-auto" : "ml-auto"}
+              className="ml-auto"
               disabled={disabled}
               onClick={clear}
             >
@@ -403,25 +344,13 @@ export function ESignaturePad({
                 id={instructionsId}
                 className="text-[12px] text-(--earist-body-text)"
               >
-                Use a pointer or touch device to draw. You can also upload an
-                image or apply a saved signature from your profile.
+                Use a pointer or touch device to draw, or upload a PNG/JPEG
+                signature image.
               </p>
             </div>
           )}
 
-          {allowTyped && mode === "type" ? (
-            <input
-              ref={inputRef}
-              value={typed}
-              disabled={disabled}
-              onChange={(e) => emitTypedSignature(e.target.value)}
-              placeholder="Type your full name as e-signature"
-              aria-label="Type your full name as e-signature"
-              aria-describedby={statusId}
-              autoComplete="name"
-              className="w-full rounded border border-(--earist-border-gray) px-2 py-2 text-sm focus-visible:ring-2 focus-visible:ring-(--earist-primary)/40 focus-visible:outline-none"
-            />
-          ) : allowUpload && mode === "upload" ? (
+          {allowUpload && mode === "upload" ? (
             <div className="space-y-2 rounded border border-dashed border-gray-300 bg-gray-50/60 p-4 text-center">
               <input
                 ref={uploadInputRef}
@@ -490,8 +419,6 @@ export function ESignaturePad({
           </p>
         ) : isValid ? (
           <p>{readyText}</p>
-        ) : allowTyped && mode === "type" && typed.trim() ? (
-          <p>Type cleared or invalid — enter your name.</p>
         ) : (
           <p>{requiredText}</p>
         )}
@@ -501,7 +428,7 @@ export function ESignaturePad({
             <img
               src={value}
               alt="Signature preview"
-              className="h-12 border border-(--earist-border-gray) bg-white px-2 object-contain"
+              className="h-12 border border-(--earist-border-gray) bg-white object-contain px-2"
             />
             {enableProfileVault && value !== savedSignatureData && (
               <Button

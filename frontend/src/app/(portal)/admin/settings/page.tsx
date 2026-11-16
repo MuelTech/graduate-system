@@ -809,7 +809,7 @@ export default function AdminSettingsPage() {
                                     <PenTool className="mr-1.5 h-3.5 w-3.5" />
                                     {isPadOpen
                                       ? "Close Pad"
-                                      : "Draw / Type Signature"}
+                                      : "Draw Signature"}
                                   </Button>
                                   {entry.signatureData && (
                                     <Button
@@ -854,10 +854,10 @@ export default function AdminSettingsPage() {
                                 <ESignaturePad
                                   value={padDraftSignature}
                                   onChange={setPadDraftSignature}
-                                  allowTyped
+                                  allowUpload={false}
                                   enableProfileVault={false}
                                   readyText="Signature ready — click Apply Signature below."
-                                  requiredText="Draw or type the official's signature above."
+                                  requiredText="Draw the official's signature above."
                                 />
                                 <div className="flex flex-wrap justify-end gap-2">
                                   <Button

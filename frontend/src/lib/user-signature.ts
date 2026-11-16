@@ -1,6 +1,6 @@
 import { apiClientRequest } from "@/lib/api.client";
 
-export type SignatureCaptureMethod = "DRAW" | "TYPE" | "UPLOAD";
+export type SignatureCaptureMethod = "DRAW" | "UPLOAD";
 
 export interface UserSignatureVaultDto {
   hasSignature: boolean;
@@ -44,8 +44,6 @@ export function formatSignatureMethodLabel(
   switch (method) {
     case "DRAW":
       return "Drawn";
-    case "TYPE":
-      return "Typed";
     case "UPLOAD":
       return "Uploaded Image";
     default:

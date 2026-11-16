@@ -87,10 +87,9 @@ export function CommitteeReportSignatureDialog({
           value={signature}
           onChange={setSignature}
           disabled={signPending}
-          allowTyped={false}
           autoFocus
           readyText="Signature ready."
-          requiredText="Draw your signature before confirming."
+          requiredText="Draw or upload your signature before confirming."
         />
 
         {signError && (

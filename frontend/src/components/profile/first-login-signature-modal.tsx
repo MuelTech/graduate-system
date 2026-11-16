@@ -135,13 +135,12 @@ export function FirstLoginSignatureModal({
           value={signature}
           onChange={setSignature}
           onMethodChange={setMethod}
-          allowTyped
           allowUpload
           enableProfileVault={false}
           defaultMode="draw"
           disabled={saveMutation.isPending}
           readyText="Signature ready to save to your profile vault."
-          requiredText="Draw, type, or upload a PNG/JPEG image of your signature."
+          requiredText="Draw or upload a PNG/JPEG image of your signature."
         />
 
         <p className="flex items-start gap-2 rounded-lg border border-gray-100 bg-gray-50 p-3 text-xs text-gray-600">
