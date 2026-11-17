@@ -20,7 +20,6 @@ function ContextItem({ label, value }: { label: string; value: string }) {
 
 export function DefenseSummaryCard({ application }: Props) {
   const student = application.student;
-  const isTitle = application.stage === "TITLE";
 
   return (
     <Card>
@@ -53,25 +52,6 @@ export function DefenseSummaryCard({ application }: Props) {
             value={defenseTypeLabel(application.stage)}
           />
         </div>
-
-        {isTitle && application.thesisTitles.length > 0 && (
-          <div className="rounded-lg border border-(--earist-border-gray) bg-(--earist-surface-gray) p-3">
-            <p className="text-xs font-semibold text-(--earist-secondary)">
-              Proposed Research Titles
-            </p>
-            <ol className="mt-2 list-decimal space-y-1 pl-5 text-sm text-(--earist-body-text)">
-              {application.thesisTitles.map((t) => (
-                <li key={t.id} className="break-words">
-                  {t.titleText}
-                </li>
-              ))}
-            </ol>
-            <p className="mt-2 text-xs text-(--earist-body-text)">
-              The official title is selected at Title Defense conclusion — not
-              during scheduling.
-            </p>
-          </div>
-        )}
       </CardContent>
     </Card>
   );

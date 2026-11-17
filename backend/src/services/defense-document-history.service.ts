@@ -52,6 +52,7 @@ export interface DocumentSummaryDto {
   id: string;
   docType: string;
   defenseStage: string | null;
+  manuscriptTitle: string | null;
   originalFilename: string | null;
   verifiedMimeType: string | null;
   sizeBytes: number | null;
@@ -85,6 +86,7 @@ export interface ManuscriptReviewDto {
   reviewedDocumentId: string | null;
   bindingValid: boolean;
   certifiedDocumentId: string | null;
+  certifiedManuscriptTitle: string | null;
   versions: ManuscriptVersionDto[];
   warning: string | null;
 }
@@ -127,6 +129,7 @@ function toSummary(doc: {
   id: string;
   docType: string;
   defenseStage: string | null;
+  manuscriptTitle?: string | null;
   originalFilename: string | null;
   verifiedMimeType: string | null;
   sizeBytes: number | null;
@@ -138,6 +141,7 @@ function toSummary(doc: {
     id: doc.id,
     docType: doc.docType,
     defenseStage: doc.defenseStage,
+    manuscriptTitle: doc.manuscriptTitle ?? null,
     originalFilename: doc.originalFilename,
     verifiedMimeType: doc.verifiedMimeType,
     sizeBytes: doc.sizeBytes,
@@ -310,6 +314,17 @@ export class DefenseApplicationDocumentHistoryService {
     );
     const certifiedDocumentId =
       bindingValid && cert?.status === "ISSUED" ? reviewedDocumentId : null;
+    const certReviewedDoc = cert?.reviewedDocument as
+      | { manuscriptTitle?: string | null }
+      | null
+      | undefined;
+    const certifiedManuscriptTitle = certifiedDocumentId
+      ? (certReviewedDoc?.manuscriptTitle ??
+        (versions.find((d) => d.id === certifiedDocumentId) as
+          | { manuscriptTitle?: string | null }
+          | undefined)?.manuscriptTitle ??
+        null)
+      : null;
 
     const currentHeads = versions.filter((d) => d.isCurrent !== false);
     let warning: string | null = null;
@@ -341,6 +356,7 @@ export class DefenseApplicationDocumentHistoryService {
       reviewedDocumentId,
       bindingValid,
       certifiedDocumentId,
+      certifiedManuscriptTitle,
       versions: versionDtos,
       warning,
     };

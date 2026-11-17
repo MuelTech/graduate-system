@@ -83,7 +83,11 @@ function SubmissionContext({
         {data && (
           <>
             <section className="space-y-2" aria-label="Manuscript">
-              <h3 className="font-semibold">Manuscript</h3>
+              <h3 className="font-semibold">
+                {data.stage === "TITLE"
+                  ? "Title Defense Proposal Package"
+                  : "Manuscript"}
+              </h3>
               {data.manuscriptIntegrityError && (
                 <p role="alert" className="text-destructive">
                   The scheduled manuscript could not be verified. The
@@ -92,13 +96,15 @@ function SubmissionContext({
               )}
               {data.manuscript && (
                 <>
-                  <p>
-                    <span className="font-medium">
-                      Thesis/Dissertation Title:{" "}
-                    </span>
-                    {data.manuscript.manuscriptTitle ||
-                      "Title not recorded for this manuscript."}
-                  </p>
+                  {(data.stage === "PROPOSAL" || data.stage === "FINAL") && (
+                    <p>
+                      <span className="font-medium">
+                        Thesis/Dissertation Title:{" "}
+                      </span>
+                      {data.manuscript.manuscriptTitle ||
+                        "Title not recorded for this manuscript."}
+                    </p>
+                  )}
                   <p className="text-xs break-words text-(--earist-body-text)">
                     {data.manuscript.originalFilename || "Filename unavailable"}
                   </p>

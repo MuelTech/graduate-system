@@ -228,62 +228,70 @@ describe("DL-8 manuscript authority", () => {
     const { svc } = makeService({
       thesis: { id: "thesis-1", stage: "PROPOSAL", status: "PENDING", rejectionReason: null, studentId: "s" },
       docs: [
-        doc({ id: "p1", docType: "PROPOSAL_CHAPTERS", defenseStage: "PROPOSAL", isCurrent: false }),
-        doc({ id: "p2", docType: "PROPOSAL_CHAPTERS", defenseStage: "PROPOSAL", isCurrent: false }),
-        doc({ id: "p3", docType: "PROPOSAL_CHAPTERS", defenseStage: "PROPOSAL", isCurrent: true, supersedesDocumentId: "p2" }),
+        doc({ id: "p1", docType: "PROPOSAL_CHAPTERS", defenseStage: "PROPOSAL", isCurrent: false, manuscriptTitle: "Draft Proposal V1" }),
+        doc({ id: "p2", docType: "PROPOSAL_CHAPTERS", defenseStage: "PROPOSAL", isCurrent: false, manuscriptTitle: "Certified Proposal V2" }),
+        doc({ id: "p3", docType: "PROPOSAL_CHAPTERS", defenseStage: "PROPOSAL", isCurrent: true, supersedesDocumentId: "p2", manuscriptTitle: "Newer Uncertified V3" }),
       ],
-      certs: [cert({ status: "ISSUED", reviewedDocumentId: "p2", reviewedDocument: { id: "p2", thesisId: "thesis-1", docType: "PROPOSAL_CHAPTERS", defenseStage: "PROPOSAL" } })],
+      certs: [cert({ status: "ISSUED", reviewedDocumentId: "p2", reviewedDocument: { id: "p2", thesisId: "thesis-1", docType: "PROPOSAL_CHAPTERS", defenseStage: "PROPOSAL", manuscriptTitle: "Certified Proposal V2" } })],
     });
     const dto = await svc.getDocumentHistory("thesis-1", "PROPOSAL");
     expect(dto.manuscriptReview?.certifiedDocumentId).toBe("p2");
+    expect(dto.manuscriptReview?.certifiedManuscriptTitle).toBe("Certified Proposal V2");
     expect(dto.manuscriptReview?.bindingValid).toBe(true);
     const byId = Object.fromEntries((dto.manuscriptReview?.versions ?? []).map((v) => [v.id, v]));
     expect(byId.p2.isCertified).toBe(true);
     expect(byId.p2.isReviewedByAdviser).toBe(true);
+    expect(byId.p2.manuscriptTitle).toBe("Certified Proposal V2");
     expect(byId.p3.isCertified).toBe(false);
     expect(byId.p3.isVersionHead).toBe(true);
+    expect(byId.p3.manuscriptTitle).toBe("Newer Uncertified V3");
   });
 
   it("wrong docType binding fails closed with a warning", async () => {
     const { svc } = makeService({
-      docs: [doc({ id: "p2", docType: "PROPOSAL_CHAPTERS", defenseStage: "PROPOSAL", isCurrent: true })],
-      certs: [cert({ status: "ISSUED", reviewedDocumentId: "p2", reviewedDocument: { id: "p2", thesisId: "thesis-1", docType: "COR", defenseStage: "PROPOSAL" } })],
+      docs: [doc({ id: "p2", docType: "PROPOSAL_CHAPTERS", defenseStage: "PROPOSAL", isCurrent: true, manuscriptTitle: "Proposal V2" })],
+      certs: [cert({ status: "ISSUED", reviewedDocumentId: "p2", reviewedDocument: { id: "p2", thesisId: "thesis-1", docType: "COR", defenseStage: "PROPOSAL", manuscriptTitle: "Proposal V2" } })],
     });
     const dto = await svc.getDocumentHistory("thesis-1", "PROPOSAL");
     expect(dto.manuscriptReview?.bindingValid).toBe(false);
     expect(dto.manuscriptReview?.certifiedDocumentId).toBeNull();
+    expect(dto.manuscriptReview?.certifiedManuscriptTitle).toBeNull();
     expect(dto.manuscriptReview?.warning).toBeTruthy();
     expect((dto.manuscriptReview?.versions ?? []).every((v) => !v.isCertified)).toBe(true);
   });
 
   it("cross-thesis and unbound bindings fail closed", async () => {
     const { svc } = makeService({
-      docs: [doc({ id: "p2", docType: "PROPOSAL_CHAPTERS", defenseStage: "PROPOSAL", isCurrent: true })],
-      certs: [cert({ status: "ISSUED", reviewedDocumentId: "p2", reviewedDocument: { id: "p2", thesisId: "thesis-other", docType: "PROPOSAL_CHAPTERS", defenseStage: "PROPOSAL" } })],
+      docs: [doc({ id: "p2", docType: "PROPOSAL_CHAPTERS", defenseStage: "PROPOSAL", isCurrent: true, manuscriptTitle: "Proposal V2" })],
+      certs: [cert({ status: "ISSUED", reviewedDocumentId: "p2", reviewedDocument: { id: "p2", thesisId: "thesis-other", docType: "PROPOSAL_CHAPTERS", defenseStage: "PROPOSAL", manuscriptTitle: "Other Proposal" } })],
     });
     const dto = await svc.getDocumentHistory("thesis-1", "PROPOSAL");
     expect(dto.manuscriptReview?.bindingValid).toBe(false);
     expect(dto.manuscriptReview?.certifiedDocumentId).toBeNull();
+    expect(dto.manuscriptReview?.certifiedManuscriptTitle).toBeNull();
 
     const unbound = makeService({
-      docs: [doc({ id: "p2", docType: "PROPOSAL_CHAPTERS", defenseStage: "PROPOSAL", isCurrent: true })],
+      docs: [doc({ id: "p2", docType: "PROPOSAL_CHAPTERS", defenseStage: "PROPOSAL", isCurrent: true, manuscriptTitle: "Proposal V2" })],
       certs: [cert({ status: "AWAITING_REVIEW", reviewedDocumentId: null, reviewedDocument: null })],
     });
     const dto2 = await unbound.svc.getDocumentHistory("thesis-1", "PROPOSAL");
     expect(dto2.manuscriptReview?.bindingValid).toBe(false);
     expect(dto2.manuscriptReview?.certificationStatus).toBe("AWAITING_REVIEW");
     expect(dto2.manuscriptReview?.certifiedDocumentId).toBeNull();
+    expect(dto2.manuscriptReview?.certifiedManuscriptTitle).toBeNull();
   });
 
   it("no certification still reports versions read-only", async () => {
     const { svc } = makeService({
-      docs: [doc({ id: "p1", docType: "PROPOSAL_CHAPTERS", defenseStage: "PROPOSAL", isCurrent: true })],
+      docs: [doc({ id: "p1", docType: "PROPOSAL_CHAPTERS", defenseStage: "PROPOSAL", isCurrent: true, manuscriptTitle: "Uncertified Title" })],
       certs: [],
     });
     const dto = await svc.getDocumentHistory("thesis-1", "PROPOSAL");
     expect(dto.manuscriptReview?.certificationStatus).toBe("NONE");
     expect(dto.manuscriptReview?.versions).toHaveLength(1);
+    expect(dto.manuscriptReview?.versions[0].manuscriptTitle).toBe("Uncertified Title");
     expect(dto.manuscriptReview?.certifiedDocumentId).toBeNull();
+    expect(dto.manuscriptReview?.certifiedManuscriptTitle).toBeNull();
   });
 });
 

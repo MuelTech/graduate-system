@@ -29,6 +29,7 @@ import {
   type SchedulingQueueTab,
 } from "@/components/admin/defense-scheduling/scheduling-queue-panel";
 import { DefenseSummaryCard } from "@/components/admin/defense-scheduling/defense-summary-card";
+import { ReadyDefenseSubmission } from "@/components/admin/defense-scheduling/ready-defense-submission";
 import { DefenseCommitteeBuilder } from "@/components/admin/defense-scheduling/defense-committee-builder";
 import { DefenseScheduleForm } from "@/components/admin/defense-scheduling/defense-schedule-form";
 import { DefenseReviewSummary } from "@/components/admin/defense-scheduling/defense-review-summary";
@@ -511,6 +512,11 @@ function AdminSchedulingPageInner() {
               {selected && (
                 <>
                   <DefenseSummaryCard application={selected} />
+                  <ReadyDefenseSubmission
+                    key={`${selected.id}:${selected.stage}`}
+                    thesisId={selected.thesisId ?? selected.id}
+                    stage={selected.stage}
+                  />
                   <DefenseCommitteeBuilder
                     key={selected.id}
                     policy={policy}

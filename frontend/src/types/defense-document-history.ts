@@ -15,6 +15,7 @@ export interface DefenseDocumentSummary {
   id: string;
   docType: string;
   defenseStage: string | null;
+  manuscriptTitle?: string | null;
   originalFilename: string | null;
   verifiedMimeType: string | null;
   sizeBytes: number | null;
@@ -45,6 +46,7 @@ export interface DefenseManuscriptReview {
   reviewedDocumentId: string | null;
   bindingValid: boolean;
   certifiedDocumentId: string | null;
+  certifiedManuscriptTitle?: string | null;
   versions: DefenseManuscriptVersion[];
   warning: string | null;
 }
