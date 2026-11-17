@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { getClientBackendBaseUrl } from "@/lib/backend-origin.client";
+import { TermsModal } from "@/components/common/terms-modal";
 import {
   GraduationCap,
   Eye,
@@ -37,6 +38,8 @@ export default function RegisterPage() {
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
+  const [showTermsModal, setShowTermsModal] = useState(false);
   const [formData, setFormData] = useState({
     applicantId: "",
     firstName: "",
@@ -170,6 +173,10 @@ export default function RegisterPage() {
         }
         if (formData.password !== formData.confirmPassword) {
           setError("Passwords do not match.");
+          return false;
+        }
+        if (!agreedToTerms) {
+          setError("You must agree to the Terms and Conditions and Data Privacy Statement to proceed.");
           return false;
         }
         break;
@@ -596,6 +603,7 @@ export default function RegisterPage() {
                       </button>
                     </div>
                   </div>
+
                   <div>
                     <label className="mb-1.5 block text-sm font-semibold text-(--earist-secondary)">
                       Confirm Password <span className="text-red-500">*</span>
@@ -623,6 +631,33 @@ export default function RegisterPage() {
                         )}
                       </button>
                     </div>
+                  </div>
+
+                  <div className="pt-2">
+                    <label className="flex items-start gap-2.5 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={agreedToTerms}
+                        onChange={(e) => {
+                          setAgreedToTerms(e.target.checked);
+                          if (error.includes("Terms and Conditions")) {
+                            setError("");
+                          }
+                        }}
+                        className="mt-0.5 h-4 w-4 rounded border-gray-300 text-[#e02b20] focus:ring-[#e02b20]"
+                      />
+                      <span className="text-xs text-gray-600 leading-normal">
+                        I have read, understood, and agree to the{" "}
+                        <button
+                          type="button"
+                          onClick={() => setShowTermsModal(true)}
+                          className="font-semibold text-[#e02b20] underline hover:text-[#b71c1c]"
+                        >
+                          Terms & Conditions and Data Privacy Notice
+                        </button>
+                        . <span className="text-red-500">*</span>
+                      </span>
+                    </label>
                   </div>
                 </div>
               )}
@@ -662,7 +697,7 @@ export default function RegisterPage() {
                 ) : (
                   <Button
                     type="submit"
-                    disabled={isSubmitting}
+                    disabled={isSubmitting || !agreedToTerms}
                     className="bg-[#e02b20] font-semibold text-white hover:bg-[#c62828] disabled:opacity-70"
                   >
                     {isSubmitting ? "Submitting..." : "Submit Registration"}
@@ -695,6 +730,11 @@ export default function RegisterPage() {
           </Link>
         </div>
       </div>
+
+      <TermsModal
+        open={showTermsModal}
+        onOpenChange={setShowTermsModal}
+      />
     </div>
   );
 }

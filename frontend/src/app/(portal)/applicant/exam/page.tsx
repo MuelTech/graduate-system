@@ -53,6 +53,7 @@ import {
   CheckCircle2,
   FileText,
   Send,
+  ShieldCheck,
 } from "lucide-react";
 
 export default function ApplicantExamPage() {
@@ -71,6 +72,7 @@ export default function ApplicantExamPage() {
   const submitBusy = useRef(false);
   const [receipt, setReceipt] = useState<ExamFinalizationReceipt | null>(null);
   const [submissionUncertain, setSubmissionUncertain] = useState(false);
+  const [honorPledgeAgreed, setHonorPledgeAgreed] = useState(false);
   const query = useQuery<ExecutionClock | null>({
     queryKey: ["applicant-exam-execution", userId],
     enabled: !!userId,
@@ -504,9 +506,30 @@ export default function ApplicantExamPage() {
                   Please refresh examination status and try again.
                 </p>
               )}
+              {execution.canStart && (
+                <div className="rounded-lg border border-amber-200 bg-amber-50/70 p-4 text-xs text-amber-900 space-y-2.5">
+                  <div className="flex items-center gap-1.5 font-semibold text-sm text-amber-950">
+                    <ShieldCheck className="h-4 w-4 text-[#e02b20]" />
+                    <span>Academic Honor Code & Anti-Cheating Declaration</span>
+                  </div>
+                  <p className="leading-relaxed text-gray-700">
+                    By starting this entrance examination, you solemnly pledge that you will complete all multiple-choice and essay components independently. The use of unauthorized reference materials, third-party assistance, communication devices, or generative AI tools is strictly prohibited and subject to immediate disqualification and admission forfeiture under EARIST academic guidelines.
+                  </p>
+                  <label className="flex items-start gap-2 pt-1 font-medium cursor-pointer text-gray-900">
+                    <input
+                      type="checkbox"
+                      checked={honorPledgeAgreed}
+                      onChange={(e) => setHonorPledgeAgreed(e.target.checked)}
+                      className="mt-0.5 h-4 w-4 rounded border-gray-300 text-[#e02b20] focus:ring-[#e02b20]"
+                    />
+                    <span>I understand, accept, and pledge to uphold the EARIST Examination Honor Code.</span>
+                  </label>
+                </div>
+              )}
+
               <div className="flex flex-wrap gap-2">
                 <Button
-                  disabled={!execution.canStart || start.isPending}
+                  disabled={!execution.canStart || start.isPending || !honorPledgeAgreed}
                   onClick={() => {
                     if (startBusy.current) return;
                     startBusy.current = true;

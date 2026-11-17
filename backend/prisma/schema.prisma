@@ -20,6 +20,8 @@ model User {
   suffix                             String?
   isActive                           Boolean                   @default(true) @map("is_active")
   mustChangePassword                 Boolean                   @default(false) @map("must_change_password")
+  hasAcceptedTerms                   Boolean                   @default(false) @map("has_accepted_terms")
+  termsAcceptedAt                    DateTime?                 @map("terms_accepted_at")
   createdById                        String?                   @map("created_by_id")
   updatedById                        String?                   @map("updated_by_id")
   createdAt                          DateTime                  @default(now()) @map("created_at")

@@ -34,7 +34,7 @@ export class AuthController {
                 res.status(500).json({ error: "An unexpected error occurred." });
             }
         }
-    }
+    };
 
     changePassword = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
         try {
@@ -61,7 +61,7 @@ export class AuthController {
                 res.status(500).json({ error: "An unexpected error occurred." });
             }
         }
-    }
+    };
 
     getMe = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
         try {
@@ -79,5 +79,23 @@ export class AuthController {
                 res.status(500).json({ error: "An unexpected error occurred." });
             }
         }
-    }
+    };
+
+    acceptTerms = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+        try {
+            const userId = req.user?.userId;
+            if (!userId) {
+                res.status(401).json({ error: "Unauthorized" });
+                return;
+            }
+            const result = await this.authService.acceptTerms(userId);
+            res.status(200).json(result);
+        } catch (error: unknown) {
+            if (error instanceof AppError) {
+                res.status(error.statusCode).json({ error: error.message });
+            } else {
+                res.status(500).json({ error: "An unexpected error occurred." });
+            }
+        }
+    };
 }

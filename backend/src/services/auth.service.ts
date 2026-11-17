@@ -120,7 +120,9 @@ export class AuthService {
             passwordHash: hashedPassword,
             firstName: data.firstName,
             lastName: data.lastName,
-            role: UserRole.APPLICANT
+            role: UserRole.APPLICANT,
+            hasAcceptedTerms: true,
+            termsAcceptedAt: new Date()
         };
 
         const parseDob = new Date(`${data.dateOfBirth}T00:00:00.000Z`);
@@ -157,7 +159,7 @@ export class AuthService {
         // 6. Save atomically
         const newUser = await this.authRepository.registerApplicant(userData, studentData, bridgingWaiverData);
 
-        return { id: newUser.id, email: newUser.email, role: newUser.role, mustChangePassword: false }
+        return { id: newUser.id, email: newUser.email, role: newUser.role, mustChangePassword: false, hasAcceptedTerms: true }
     }
 
     async login(data: LoginInput): Promise<LoginResponse> {
@@ -239,6 +241,10 @@ export class AuthService {
                 suffix: user.suffix,
                 role: effectiveRole,
                 mustChangePassword: user.mustChangePassword,
+            hasAcceptedTerms: Boolean((user as any).hasAcceptedTerms),
+            termsAcceptedAt: (user as any).termsAcceptedAt ?? null,
+                hasAcceptedTerms: Boolean((user as any).hasAcceptedTerms),
+                termsAcceptedAt: (user as any).termsAcceptedAt ?? null,
                 adminAccessLevel: effectiveRole === UserRole.ADMIN ? (user.adminAccessLevel ?? "FULL") : null,
                 adminCapabilities:
                     effectiveRole === UserRole.ADMIN
@@ -276,6 +282,8 @@ export class AuthService {
             suffix: user.suffix,
             role: effectiveRole,
             mustChangePassword: user.mustChangePassword,
+            hasAcceptedTerms: Boolean((user as any).hasAcceptedTerms),
+            termsAcceptedAt: (user as any).termsAcceptedAt ?? null,
             adminAccessLevel: effectiveRole === UserRole.ADMIN ? (user.adminAccessLevel ?? "FULL") : null,
             adminCapabilities:
                 effectiveRole === UserRole.ADMIN
@@ -317,5 +325,17 @@ export class AuthService {
         );
 
         return { token };
+    }
+
+    async acceptTerms(userId: string): Promise<{ success: boolean; termsAcceptedAt: Date }> {
+        const user = await this.authRepository.findUserById(userId);
+        if (!user) {
+            throw new AppError("User not found!", 404);
+        }
+        const updated = await this.authRepository.acceptTerms(userId);
+        return {
+            success: true,
+            termsAcceptedAt: updated.termsAcceptedAt!,
+        };
     }
 }
