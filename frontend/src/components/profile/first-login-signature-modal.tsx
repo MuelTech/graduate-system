@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { usePathname } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSession } from "next-auth/react";
@@ -32,24 +32,20 @@ export function FirstLoginSignatureModal({
   const pathname = usePathname();
   const { data: session, status } = useSession();
   const queryClient = useQueryClient();
-  const [hydrated, setHydrated] = useState(false);
-  const [dismissed, setDismissed] = useState(false);
+  const [dismissed, setDismissed] = useState(() => {
+    if (typeof window === "undefined") return false;
+    try {
+      return (
+        sessionStorage.getItem(SIGNATURE_ONBOARDING_SKIP_STORAGE_KEY) === "1"
+      );
+    } catch {
+      return false;
+    }
+  });
   const [signature, setSignature] = useState("");
   const [method, setMethod] = useState<SignatureCaptureMethod>("DRAW");
 
-  useEffect(() => {
-    setHydrated(true);
-    try {
-      if (sessionStorage.getItem(SIGNATURE_ONBOARDING_SKIP_STORAGE_KEY) === "1") {
-        setDismissed(true);
-      }
-    } catch {
-      // sessionStorage unavailable
-    }
-  }, []);
-
   const canPrompt =
-    hydrated &&
     status === "authenticated" &&
     session?.user?.mustChangePassword !== true &&
     !pathname.endsWith("/profile");
