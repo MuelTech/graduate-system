@@ -6,7 +6,19 @@ export class StudentRepository {
     return prisma.student.findUnique({
       where: { userId },
       include: {
-        user: true,
+        user: {
+          select: {
+            id: true,
+            email: true,
+            title: true,
+            firstName: true,
+            lastName: true,
+            suffix: true,
+            role: true,
+            isActive: true,
+            createdAt: true,
+          },
+        },
         program: true,
         undergraduateProgram: true,
         previousMastersProgram: true,
@@ -25,7 +37,18 @@ export class StudentRepository {
         thesisRecords: {
           include: {
             assignment: {
-              include: { adviser: true },
+              include: {
+                adviser: {
+                  select: {
+                    id: true,
+                    email: true,
+                    title: true,
+                    firstName: true,
+                    lastName: true,
+                    suffix: true,
+                  },
+                },
+              },
             },
             thesisTitles: true,
             defenseSchedules: {
@@ -44,7 +67,18 @@ export class StudentRepository {
         },
         adviserAssignments: {
           where: { isActive: true },
-          include: { adviser: true },
+          include: {
+            adviser: {
+              select: {
+                id: true,
+                email: true,
+                title: true,
+                firstName: true,
+                lastName: true,
+                suffix: true,
+              },
+            },
+          },
         },
         adviserRequests: {
           where: { status: "PENDING" },

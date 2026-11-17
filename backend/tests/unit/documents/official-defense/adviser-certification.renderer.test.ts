@@ -132,7 +132,7 @@ describe("PREDEF-1A pure GS-017 Adviser Certification renderer", () => {
     expect(doc.getPage(0).node.Resources()!.lookup(PDFName.of("XObject"), PDFDict).entries()).toHaveLength(3);
     expect(joined(await inspect(pdfBytes))).toContain(input.adviserPrintedName);
     // The third draw-image transform remains wholly inside the signature box,
-    // above the printed-name area and below the request continuation.
+    // overlapping directly across the printed name right on the signature line.
     const transforms = [...(await pageContent(pdfBytes)).matchAll(
       /q\s+1 0 0 1 ([\d.]+) ([\d.]+) cm\s+1 0 0 1 0 0 cm\s+([\d.]+) 0 0 ([\d.]+) 0 0 cm\s+1 0 0 1 0 0 cm\s+\/[^\s]+ Do/g,
     )];
@@ -140,8 +140,8 @@ describe("PREDEF-1A pure GS-017 Adviser Certification renderer", () => {
     const [x, y, width, height] = transforms[2].slice(1).map(Number);
     expect(x).toBeGreaterThanOrEqual(80);
     expect(x + width).toBeLessThanOrEqual(238);
-    expect(841.89 - y - height).toBeGreaterThanOrEqual(488);
-    expect(841.89 - y).toBeLessThanOrEqual(522);
+    expect(841.89 - y - height).toBeGreaterThanOrEqual(516);
+    expect(841.89 - y).toBeLessThanOrEqual(550);
   });
 
   it("preserves four explicit title lines and long unbroken text above their rules", async () => {

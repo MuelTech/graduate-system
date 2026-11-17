@@ -7,6 +7,7 @@ import { ChatbotWidget } from "@/components/chatbot/chatbot-widget";
 import { signOut, useSession } from "next-auth/react";
 import { NotificationBell } from "@/components/layout/notification-bell";
 import { PortalBreadcrumbs } from "@/components/layout/portal-breadcrumbs";
+import { FirstLoginSignatureModal } from "@/components/profile/first-login-signature-modal";
 import {
   LayoutDashboard,
   User,
@@ -392,6 +393,8 @@ export default function StudentLayout({
 
         <main className="flex-1 p-4 sm:p-6 lg:p-8">{children}</main>
       </div>
+
+      <FirstLoginSignatureModal portalLabel="Student Portal" />
 
       <ChatbotWidget />
     </div>

@@ -662,7 +662,7 @@ export function buildPanelistDashboard(
       responsibleRole: "Other required signatories",
       statusText: "Waiting for other signatures",
       date: s.signedDate,
-      href: "/panelist/signatures",
+      href: "/panelist/defenses",
       _sortMs: wallDateMs(s.signedDate),
     });
   }

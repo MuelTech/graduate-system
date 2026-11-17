@@ -108,13 +108,13 @@ export async function renderAdviserRequest(input: AdviserRequestRenderInput): Pr
   for (const row of reasonRows) rule(page, row.x, row.top + 12, row.x + row.width);
 
   text("Very truly yours,", 360, 444, 155);
-  if (input.studentSignature) {
-    await drawContainedImage(doc, page, input.studentSignature, {
-      x: 330, top: 460, width: 172, height: 24,
-    });
-  }
   field(input.studentName, "Student name", 330, 486, 172, 26);
   rule(page, 326, 514, 506);
+  if (input.studentSignature) {
+    await drawContainedImage(doc, page, input.studentSignature, {
+      x: 330, top: 482, width: 172, height: 32,
+    });
+  }
   text("Graduate Student", 326, 518, 180, 14, 10.5, regular, "center");
   text("(Signature Over Printed Name)", 326, 532, 180, 14, 10.5, oblique, "center");
   text("Student No.:", 326, 558, 59);
@@ -134,18 +134,18 @@ export async function renderAdviserRequest(input: AdviserRequestRenderInput): Pr
   rule(page, 76, 638, 242);
   text("Adviser", 76, 642, 166, 14, 11, oblique, "center");
   text("Approved:", 76, 704, 180);
-  if (input.printedDeanSignature) {
-    await drawContainedImage(doc, page, input.printedDeanSignature, {
-      x: 82,
-      top: 720,
-      width: 126,
-      height: 24,
-    });
-  }
   if (input.printedDeanName?.trim()) {
     field(input.printedDeanName, "Dean name", 76, 736, 138, 26);
   }
   rule(page, 76, 764, 214);
+  if (input.printedDeanSignature) {
+    await drawContainedImage(doc, page, input.printedDeanSignature, {
+      x: 82,
+      top: 732,
+      width: 126,
+      height: 32,
+    });
+  }
   text("Dean, Graduate School", 76, 768, 138, 14, 10.5, regular, "center");
   text("EARIST-QSF-GS-020 Rev. 00 (06.20.25)", 76, 800, 450, 15, 10.5, boldOblique);
   return doc.save();

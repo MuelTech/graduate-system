@@ -250,7 +250,6 @@ export function EvaluationFinalizationDialog({
               value={signature}
               onChange={setSignature}
               disabled={finalizePending}
-              allowTyped={false}
               autoFocus
             />
 

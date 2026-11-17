@@ -155,15 +155,15 @@ export async function renderOralExamSummary(input: OralExamSummaryRenderInput): 
   // block in that freed region instead of leaving an accidental empty gap.
   const deanTop = input.stage === "title" ? 610 + bodyShift : 722;
   text("Attested:", 76, deanTop, 130, 16, 11);
+  signatoryName(input.deanName, 76, deanTop + 46, 140, "Dean name");
   if (input.deanSignature) {
     await drawContainedImage(doc, page, input.deanSignature, {
-      x: 86,
-      top: deanTop + 14,
-      width: 120,
-      height: 24,
+      x: 82,
+      top: deanTop + 20,
+      width: 128,
+      height: 26,
     });
   }
-  signatoryName(input.deanName, 76, deanTop + 46, 140, "Dean name");
   text("Dean, Graduate School", 76, deanTop + 50, 160, 14, 10.5);
   return doc.save();
 }

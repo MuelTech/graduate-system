@@ -30,6 +30,7 @@ Living master status & pending-work index:
 - **Faculty & Administrator Role Access (`UserRole.FACULTY`, Essay Evaluation capability, Full/Restricted Administrator permissions, `/faculty/*` routes)** (PR #49)
 - **Portal UI/UX Design System & Reusable Component Overhaul** (PR #50)
 - **Public Landing Page Redesign V2** (PR #51, PR #52)
+- **Institutional Officials Config + Defense O.R. No./Amount Paid + Reusable E-Signature Profile Vault** (`feat/institutional-officials-and-or-number` → `feat/reusable-esignature-profile`)
 
 Do not resume old WP/CP/DL/Phase-A/Phase-B roadmaps as if they were pending work. They are accepted implementation history unless a current canonical plan explicitly references them. Always check `docs/superpowers/GSIS_IMPLEMENTATION_CHECKLIST.md` for current pending workstreams.
 
@@ -892,4 +893,4 @@ Before implementing:
 
 ---
 
-*Updated: 2026-11-17 — synchronized project state and completed initiatives through PR #52 (`939afc0e`). This file is intentionally an onboarding/index document; canonical source-of-truth and engineering-policy files govern detailed behavior.*
+*Updated: 2026-11-17 — synchronized project state through PR #52 (`939afc0e`), Institutional Officials + O.R. No. (`feat/institutional-officials-and-or-number`), and Reusable E-Signature Profile Vault + Student/Faculty Profile (`feat/reusable-esignature-profile`). This file is intentionally an onboarding/index document; canonical source-of-truth and engineering-policy files govern detailed behavior.*

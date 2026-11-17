@@ -17,6 +17,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { ESignaturePad } from "@/components/defense-workspace/e-signature-pad";
+import { normalizeUploadedSignatureImage } from "@/lib/user-signature";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiClientRequest } from "@/lib/api.client";
 import { toast } from "sonner";
@@ -96,8 +97,6 @@ const OFFICIAL_ROLE_META: Array<{
     placeholder: "e.g., ENGR. ROGELIO REYES",
   },
 ];
-
-const MAX_SIGNATURE_UPLOAD_BYTES = 1024 * 1024;
 
 export default function AdminSettingsPage() {
   const queryClient = useQueryClient();
@@ -251,30 +250,24 @@ export default function AdminSettingsPage() {
     });
   };
 
-  const handleUploadOfficialSignature = (role: OfficialRoleKey, file: File) => {
-    if (!["image/png", "image/jpeg"].includes(file.type)) {
-      toast.error("Signature file must be a PNG or JPEG image.");
-      return;
-    }
-    if (file.size > MAX_SIGNATURE_UPLOAD_BYTES) {
-      toast.error("Signature image must be 1 MB or smaller.");
-      return;
-    }
-    const reader = new FileReader();
-    reader.onload = () => {
-      const result = typeof reader.result === "string" ? reader.result : "";
-      if (!result.startsWith("data:image/")) {
-        toast.error("Could not read signature image.");
-        return;
-      }
-      updateOfficialField(role, { signatureData: result });
+  const handleUploadOfficialSignature = async (
+    role: OfficialRoleKey,
+    file: File,
+  ) => {
+    try {
+      const cleanedPng = await normalizeUploadedSignatureImage(file, {
+        removeBackground: true,
+        strength: "standard",
+      });
+      updateOfficialField(role, { signatureData: cleanedPng });
       setActiveSignaturePadRole(null);
       setPadDraftSignature("");
-    };
-    reader.onerror = () => {
-      toast.error("Failed to read signature file.");
-    };
-    reader.readAsDataURL(file);
+      toast.success("Signature image uploaded and paper background removed.");
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : "Failed to process signature image.",
+      );
+    }
   };
 
   const saveOfficialsMutation = useMutation({
@@ -809,7 +802,7 @@ export default function AdminSettingsPage() {
                                     <PenTool className="mr-1.5 h-3.5 w-3.5" />
                                     {isPadOpen
                                       ? "Close Pad"
-                                      : "Draw / Type Signature"}
+                                      : "Draw Signature"}
                                   </Button>
                                   {entry.signatureData && (
                                     <Button
@@ -837,7 +830,7 @@ export default function AdminSettingsPage() {
                                     onChange={(e) => {
                                       const file = e.target.files?.[0];
                                       if (file) {
-                                        handleUploadOfficialSignature(
+                                        void handleUploadOfficialSignature(
                                           meta.key,
                                           file,
                                         );
@@ -854,9 +847,10 @@ export default function AdminSettingsPage() {
                                 <ESignaturePad
                                   value={padDraftSignature}
                                   onChange={setPadDraftSignature}
-                                  allowTyped
+                                  allowUpload={false}
+                                  enableProfileVault={false}
                                   readyText="Signature ready — click Apply Signature below."
-                                  requiredText="Draw or type the official's signature above."
+                                  requiredText="Draw the official's signature above."
                                 />
                                 <div className="flex flex-wrap justify-end gap-2">
                                   <Button

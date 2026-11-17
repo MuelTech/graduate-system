@@ -1104,14 +1104,12 @@ The supplied GS-020 shows a **CONFORME: Adviser** area but does not establish a 
 
 Existing Dean/Admin approval remains authoritative workflow evidence and must continue to preserve the reviewing actor and review timestamp.
 
-However, GS-IS does not yet have an approved authoritative institutional-office-holder source for the printed **Dean, Graduate School** identity/signature. For the first GS-020 implementation:
+`Admin -> System Settings -> Institutional Officials` now provides the authoritative configured printed names and drawn/uploaded e-signatures for **Dean, Graduate School**, **Vice President for Academic Affairs**, and **University President**:
 
-- keep the printed Dean name/signature area blank;
-- do not hard-code or infer a Dean name from arbitrary Admin accounts;
-- do not fabricate a Dean signature;
-- preserve the actual Dean/Admin approval actor internally for audit/workflow authority.
-
-A future **System Settings / Institutional Officials** package may provide the authoritative Dean display identity for newly finalized records. It must not retroactively rewrite older finalized GS-020 snapshots that were created while the printed Dean identity was blank.
+- newly finalized GS-020 snapshots capture the configured Dean identity/signature at approval time (or fall back to the active configuration if blank on older snapshots);
+- GS-006/007 Defense Applications and GS-011 Oral Examination Summaries populate configured Dean/VPAA/President printed names and e-signatures on generated PDFs;
+- updating Institutional Officials never retroactively rewrites older finalized GS-020 snapshots; and
+- the actual Dean/Admin approval actor and timestamp remain preserved internally for audit/workflow authority.
 
 #### 9.5.5 Immutable finalized snapshot + on-demand PDF
 
@@ -1924,7 +1922,7 @@ Canonical rules:
 
 - no online payment gateway is required for the defense refactor;
 - no GS-IS-generated receipt is required;
-- the system may store O.R. number and amount as supporting metadata when useful;
+- the Student enters the stage-specific Official Receipt (`O.R. No.`) alongside uploading the Cashier defense-fee proof of payment (`title_or_number`, `proposal_or_number`, `final_or_number`, required across initial filings and rejected-application resubmissions), which populates `O.R. No.` and `Amount Paid: P 900.00` on the generated Defense Application PDF;
 - Title, Proposal, and Final proof-of-payment evidence must be stage-specific; and
 - a Title receipt must never satisfy Proposal or Final automatically.
 
@@ -2770,7 +2768,7 @@ These are the highest-priority questions.
 
 **Resolved project-scope decisions that no longer need to block the refactor:**
 
-- Defense fees are paid externally at the EARIST Cashier; GS-IS only stores stage-specific proof/receipt and optional O.R./amount metadata.
+- Defense fees are paid externally at the EARIST Cashier; GS-IS stores stage-specific proof/receipt uploads together with Student-entered stage `O.R. No.` (`title_or_number`, `proposal_or_number`, `final_or_number`) and populates `O.R. No.` + `Amount Paid: P 900.00` onto GS-006/007 Defense Application PDFs.
 - The Title supporting sections (Rationale, SOP, Hypothesis, Population, Research Locale, Student Profile, etc.) remain inside the uploaded Title Defense proposal package; students do not encode them as separate GS-IS fields.
 - Application Form generation and Process Flow document support are deferred follow-up features.
 - Physical packaging requirements are not automatic digital upload requirements.
@@ -2817,6 +2815,7 @@ Every workflow-policy update should add an entry below.
 
 | Version | Date | Change | Source |
 |---|---|---|---|
+| 1.16 | 2026-11-17 | Added stage-scoped Student-entered Defense Application `O.R. No.` + `Amount Paid: P 900.00`, Admin-configured `Institutional Officials` (Dean, VPAA, President names & Draw/Upload e-signatures), Reusable Profile E-Signature Vault (`UserSignature`, Draw & PNG/JPEG Upload only), full Student Profile page, and retirement of redundant `/faculty/signatures` page. | Project-owner confirmation (`feat/institutional-officials-and-or-number` & `feat/reusable-esignature-profile`) |
 | 1.15-draft | 2026-10-21 | Closed the Adviser Workflow / My Advisees implementation through ADV-8; recorded the accepted Adviser HEAD, final Adviser-facing labels, single-active-Adviser fail-closed review authority, exact historical manuscript wording, and final verification evidence boundaries. | Accepted `refactor/adviser-workflow` implementation + project-owner visual acceptance + ADV-8 final re-verification |
 | 1.0-draft | 2026-09-22 | Consolidated old workflow/UIUX references, current `refactor/defense-workflow` audit, current client panel counts, and EARIST research into one canonical refactor specification. | Client + project references + EARIST research |
 | 1.1-draft | 2026-09-22 | Integrated current EARIST 2025 forms, printable-form placement, adviser conforme/dean approval flow, formal defense approval chain, form-specific signatories, and revised committee interpretation. | Current EARIST forms supplied by client |
@@ -2830,6 +2829,7 @@ Every workflow-policy update should add an entry below.
 
 | Date | Decision | Status / Source |
 |---|---|---|
+| 2026-11-17 | Defense Application filings require Student-entered stage `O.R. No.` alongside proof of payment (reflected with `Amount Paid: P 900.00` on GS-006/007); Dean, VPAA, and President names and e-signatures are managed via `Admin -> System Settings -> Institutional Officials`; Faculty/Students store reusable Draw/Upload e-signatures in `UserSignature` (`GET/PUT/DELETE /api/auth/me/signature`) with skippable onboarding and explicit confirmation; standalone `/faculty/signatures` redirects to `/faculty/defenses`. | CONFIRMED_PROJECT_DESIGN / IMPLEMENTED (`feat/institutional-officials-and-or-number` & `feat/reusable-esignature-profile`) |
 | 2026-10-21 | Current Adviser authority is the sole active `AdviserAssignment` across Adviser workspace, scheduling, academic document access, and Proposal/Final review APIs; duplicate active rows fail closed. Accepted Adviser workspace labels are **Active Advisees**, **Adviser Requests**, and **Manuscript Reviews**. | CONFIRMED_PROJECT_DESIGN / IMPLEMENTED_AND_ACCEPTED — ADV-8 CLOSED at `e8876239` |
 | 2026-09-22 | Title application does not require adviser. | Current client/project clarification — CONFIRMED_CLIENT |
 | 2026-09-24 | After formal Title Defense PASS and official-title selection, the student may begin Adviser Request. | Current client clarification — CONFIRMED_CLIENT |

@@ -62,10 +62,11 @@ describe("RAP-1 admin RAP Reports retirement contracts", () => {
     expect(dashboard).not.toContain("/admin/thesis/rap-reports");
   });
 
-  it("Panelist E-Signatures workflow remains active (pending + own-slot sign)", () => {
+  it("Panelist standalone E-Signatures page redirects to /faculty/defenses and is removed from sidebar", () => {
     const page = read(PANELIST_SIGNATURES);
-    expect(page).toContain("/thesis/defense/rap-reports/pending");
-    expect(page).toContain("/thesis/defense/rap-reports/${selectedDoc}/sign");
+    const panelistLayout = read(`${FE}/app/(portal)/panelist/layout.tsx`);
+    expect(page).toContain('redirect("/faculty/defenses")');
+    expect(panelistLayout).not.toContain("/faculty/signatures");
   });
 
   it("preserved backend RAP endpoints remain (student access, panelist sign, reminder)", () => {

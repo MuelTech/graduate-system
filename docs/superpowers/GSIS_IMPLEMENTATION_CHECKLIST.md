@@ -74,7 +74,7 @@ progression checkpoint, the later checkpoint governs the current status.
 - **Finalized-only official document:** no official downloadable GS-020 before Adviser `CONFORMED` + Dean `APPROVED`.
 - **Student e-signature:** after choosing an eligible Adviser and reviewing the exact request, the Student must explicitly sign the request before submission; the signature evidence and `signedAt` belong to that exact request.
 - **Adviser authority:** Student selection is a request/nomination only. The requested Adviser must still explicitly CONFORME or decline. The supplied form does not establish a separate Adviser signature-image requirement, so do not invent one.
-- **Dean authority:** existing Dean/Admin approval remains authoritative workflow evidence, but printed Dean name/signature remain blank until an approved institutional-office-holder source exists.
+- **Dean authority:** existing Dean/Admin approval remains authoritative workflow evidence; printed Dean name/signature on newly finalized snapshots and on-demand PDFs now populate from `Admin -> System Settings -> Institutional Officials` without retroactively mutating historical snapshots.
 - **Immutable snapshot, not stored PDF:** after final approval, preserve the exact GS-020 display data/signature evidence/form revision as an immutable snapshot and render the PDF reproducibly on demand. Do not rebuild an old GS-020 from mutable current/latest profile or office-holder data.
 - **Visibility:** owning Student, the requested Adviser for that request, and authorized Admin may View/Download the same finalized GS-020 record. Other defense participants do not gain access merely from committee membership.
 - **Student placement:** the primary Student surface remains `/student/thesis/adviser-request`; the finalized record appears there after approval rather than on a separate mandatory-upload page.
@@ -197,7 +197,7 @@ DEF-CORR-1 is accepted for its documented scope on the feature branch. Acceptanc
 | ✅ | GS-011 Dean name | Consumes Admin-configured Institutional Officials name & e-signature (`dean`). |
 | ✅ | GS-011 stage-aware Adviser layout | Accepted after implementation, independent remote source review, and project-owner visual QA: explicit `stage` contract; Title omits the entire `Concurred In` / Adviser signature rule / `Thesis/Dissertation Adviser` block and moves Dean `Attested` into the freed lower-page region; Proposal/Final keep the block and require exactly one ADVISER `PanelAssignment` on the exact defense schedule. Missing/ambiguous Adviser seats fail closed; no current/live Adviser fallback. |
 | ✅ | Adviser Certification PDF (GS-017) + Adviser certification guardrail | PREDEF-1A renderer, PREDEF-1B0 exact manuscript-title authority, and PREDEF-1B/1C live certification/visibility integration are accepted and merged through PR #41. GS-017 is generated from the exact issued `reviewedDocumentId`, the Adviser sees the exact title/file before Certify & Sign, and Adviser/Student/Admin receive the accepted bounded read-only record visibility. GS-017 remains system-owned and is never a Student upload requirement. |
-| ✅ | Adviser Request PDF (GS-020) | Completed and merged through PR #43. The official EARIST-QSF-GS-020 Rev. 00 renderer, exact-request Student e-signature, immutable finalized snapshot after Adviser `CONFORMED` + Dean `APPROVED`, and on-demand read-only View/Download for Student/requested Adviser/Admin are implemented. Dean printed identity/signature remains blank until authoritative Institutional Officials configuration exists. |
+| ✅ | Adviser Request PDF (GS-020) | Completed and merged through PR #43, with Institutional Dean integration added in `feat/institutional-officials-and-or-number`. The official EARIST-QSF-GS-020 Rev. 00 renderer, exact-request Student e-signature, immutable finalized snapshot after Adviser `CONFORMED` + Dean `APPROVED`, and on-demand read-only View/Download for Student/requested Adviser/Admin are implemented. Configured Institutional Officials (`dean` name & e-signature) populate newly finalized snapshots and PDFs without mutating older records. |
 | ⏳ | Course & Major authoritative formatting | Replace dependence on one static/freeform program string with future academic master-data authority where applicable. |
 | 🚫 | GS Form No. 22 / Committee Report official PDF | Deferred document renderer/integration package. |
 | 🚫 | Generated official-document persistence/versioning | Current accepted forms are primarily on-demand; immutable generated-copy/version lifecycle remains separate work. |
@@ -212,7 +212,7 @@ Names, programs, signatures, payment metadata, and institutional approvals must 
 
 | Status | Item | Current / target state |
 | --- | --- | --- |
-| ✅ | Institutional office-holder configuration | Implemented under `Admin -> System Settings -> Institutional Officials` for Dean (Graduate School), VPAA, and University President, supporting both printed full name and e-signature (upload PNG/JPEG or draw/type pad). |
+| ✅ | Institutional office-holder configuration | Implemented under `Admin -> System Settings -> Institutional Officials` for Dean (Graduate School), VPAA, and University President, supporting both printed full name and e-signature (upload PNG/JPEG or draw pad). |
 | ⏳ | Effective office-holder history | Determine whether effective dates/history are needed so old official records can preserve the correct office holder across term transitions (GS-020 snapshots already preserve their finalized Dean identity; `AuditLog` records updates). |
 | ✅ | Institutional official signature policy | Implemented per project-owner confirmation: Institutional Officials supports both printed names and uploaded/drawn e-signatures for Dean, VPAA, and President. |
 | ✅ | Official-form integration | Integrated into Defense Application (`GS-006/007`), Oral Examination Summary (`GS-011`), and Adviser Request (`GS-020`). |
@@ -338,21 +338,25 @@ Changing `Available as Adviser` must not erase existing/historical Adviser assig
 
 ## Current behavior
 
-The existing Panelist E-Signatures page is **document-specific**. The signer currently draws a signature and sends `signatureData` for that signing action. It is not currently a reusable profile-signature vault.
+The standalone Panelist E-Signatures page (`/faculty/signatures`) has been retired and redirects to `/faculty/defenses`, where contextual signing happens inside Defense Workspace / My Advisees. Users now have a unified **Saved Profile E-Signature Vault** (`UserSignature`, `/api/auth/me/signature`) accessible via:
+
+- A skippable first-login onboarding prompt (`FirstLoginSignatureModal`) after authentication/password change;
+- Permanent **Official E-Signature Vault** management on both `/faculty/profile` and `/student/profile`;
+- Integrated one-click **"Use My Saved Signature"** and **"Save to My Profile Vault"** actions inside the shared `ESignaturePad` across document signing flows (while still requiring explicit per-document confirmation).
 
 | Status | Item | Current / target state |
 | --- | --- | --- |
 | ✅ | Explicit per-document signing | Current flows record signatures only after an explicit signing/finalization action. |
-| 🟡 | Current draw-signature UX | Works for existing document-specific flows but requires drawing again. |
-| ⏳ | Saved signature profile | Faculty can create a reusable signature asset once. |
-| ⏳ | Draw saved signature | Supported source for reusable signature profile. |
-| ⏳ | Upload saved signature | Supported source for reusable signature profile, subject to validation/security rules. |
-| ⏳ | Replace/update saved signature | Controlled profile operation. |
-| ⏳ | Signature version/snapshot | Signed records must preserve the exact signature evidence/version used at signing time. |
-| ⏳ | Explicit Apply/Sign confirmation | Reusable signature must never silently auto-sign a document. |
-| ⏳ | Signer + signedAt + exact document binding | Timestamp remains important, but timestamp alone is insufficient evidence. |
-| ⏳ | Migrate applicable workflows | Evaluate Individual Evaluation, Committee Report, Adviser certifications, and future official approvals separately. |
-| ❓ | Dean/VPAA/President digital signature use | Requires explicit institutional policy before reuse on forms. |
+| ✅ | Current draw/upload/vault signature UX | Unified `ESignaturePad` supports Draw, PNG/JPEG Upload, and one-click Saved Signature application with explicit confirmation (legacy typed-name fallback removed). |
+| ✅ | Saved signature profile | Faculty and Students can create and manage a reusable signature asset (`user_signatures` table, `/api/auth/me/signature`) with skippable first-login setup and Profile page management. |
+| ✅ | Draw saved signature | Supported source for reusable signature profile. |
+| ✅ | Upload saved signature | Supported source (PNG/JPEG, validated magic bytes and size limit, normalized to PNG). |
+| ✅ | Replace/update saved signature | Controlled profile operation on `/faculty/profile` and `/student/profile`, audited via `AuditLog`. |
+| ✅ | Signature version/snapshot | `UserSignature.version` increments on every update; signed documents continue to store immutable per-document image snapshots so updating a profile signature never alters previously signed records. |
+| ✅ | Explicit Apply/Sign confirmation | Applying a saved signature only populates the signature pad; reusable signatures never silently auto-sign any document. |
+| ✅ | Signer + signedAt + exact document binding | Signed document records (`OralExamScore`, `RapReportSignature`, `AdviserCertification`, `AdviserRequestSignedState`) store actor, timestamp, and immutable snapshot evidence. |
+| ✅ | Migrate applicable workflows | `CommitteeReportSignatureDialog`, `EvaluationFinalizationDialog`, `AdviserReviewActionPanel`, and `StudentAdviserRequestPage` all inherit `ESignaturePad` vault reuse and PNG/JPEG upload; `/faculty/signatures` redirects to `/faculty/defenses`. |
+| ✅ | Dean/VPAA/President digital signature use | Configured centrally by Admin under `System Settings -> Institutional Officials` (separate from personal `UserSignature` vaults) and printed onto GS-006/007, GS-011, and GS-020. |
 
 ---
 
@@ -853,15 +857,15 @@ For each review, record:
 
 This list is intentionally orderable and may change. *(Completed items: Exam Phase A, Exam Phase B + Booking Visibility, Faculty/Admin Role Access, Adviser Eligibility under Faculty model, Portal UI/UX Design System Overhaul, and Public Landing Page Redesign V2 are now merged to `main`.)*
 
-1. Design institutional officials + academic master-data authority (Program / Major / Curriculum Checklist) needed by official forms and student academic progress.
+1. Complete remaining academic master-data authority (Program / Major / Curriculum Checklist) needed by official forms and student academic progress *(Institutional Officials & Defense Application O.R. No. / Amount Paid now implemented on active branch `feat/institutional-officials-and-or-number`)*.
 2. Review collaborator work: email integration, notifications, announcement, memo, analytics & reports.
 3. Fix Admin scheduling-stage requirement/document visibility and Comprehensive Exam history/strike recording.
 4. Design Admin Student document/submission overview and fallback matrix.
 5. Design and implement Continuing Student COR-based onboarding (`CONT-STUDENT-1`) and pre-GSIS legacy academic/thesis standing initialization (`CONT-STUDENT-2`).
 6. Define Student inactivity/return/reactivation policy and Admin recovery flow.
-7. Revisit reusable signature profile architecture.
+7. *(Completed on `feat/reusable-esignature-profile`)* Reusable E-Signature Profile Vault (§6), Student Profile page enhancement, and retirement of redundant `/faculty/signatures`.
 8. Continue Chatbot/RAG implementation planning/audit and COR OCR fallback evaluation.
-9. Resolve Defense Application Amount Paid / O.R. client policy when available.
+9. *(Completed on `feat/institutional-officials-and-or-number`)* Defense Application Amount Paid (`P 900.00`) & Student-entered O.R. No. capture policy.
 10. Continue system-wide wording/terminology audit for any remaining unreviewed surfaces.
 11. Complete production-readiness/security/operations audit (password recovery, health readiness, worker startup, backups) and convert blockers into bounded packages.
 12. After core workflows stabilize, design returning-graduate / multiple-academic-career architecture.

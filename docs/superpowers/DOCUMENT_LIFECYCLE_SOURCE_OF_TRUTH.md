@@ -173,7 +173,7 @@ Finalized GS-020 is a system-owned official representation of one exact Adviser 
 
 The finalized GS-020 authority is an immutable data snapshot, not the existence of a permanently stored PDF binary. The first implementation should render View/Download PDF bytes reproducibly on demand from that snapshot. The snapshot must preserve the applicable form code/revision and exact display/signature/workflow values at finalization so later Student/Adviser profile changes, Adviser replacement, Program-label changes, or institutional-office-holder configuration cannot silently rewrite the historical record.
 
-For the initial GS-020 implementation, the printed Dean identity/signature remains blank because no approved institutional office-holder source exists yet. The actual Dean/Admin reviewer identity and timestamp remain authoritative workflow/audit evidence. A future Institutional Officials setting may populate newly finalized snapshots only; it must not retroactively change older GS-020 records.
+Following initial GS-020 release, `Admin -> System Settings -> Institutional Officials` has been implemented to configure authoritative names and e-signatures for Dean (Graduate School), VPAA, and University President. Newly finalized GS-020 snapshots capture the configured Dean identity/signature (and fall back cleanly when not yet populated), while previously finalized historical records remain untouched and immutable.
 
 Owning Student, the requested Adviser for the exact request, and authorized Admin/Dean users may View/Download the same finalized GS-020 record read-only. Other defense participants do not gain access merely from committee membership.
 

@@ -915,7 +915,7 @@ Do not show ordinary faculty users:
 
 There is no valid new-attempt state where the defense is CONCLUDED while a required Committee Report signature remains pending.
 
-The existing `/panelist/signatures` page may remain as a secondary task inbox/history surface, but it must not be the primary blind post-defense signing flow. A pending task should open the exact Defense Workspace/report.
+The former standalone `/panelist/signatures` (`/faculty/signatures`) page has been retired and redirects to `/faculty/defenses` so all Committee Report signing occurs contextually inside the exact Defense Workspace after reviewing the frozen report. Reusable personal e-signatures (`UserSignature`, Draw or PNG/JPEG Upload) are managed through the skippable first-login onboarding modal and under `/faculty/profile` and `/student/profile`.
 
 ### 10.5 No silent reopening
 
