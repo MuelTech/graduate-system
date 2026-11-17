@@ -49,7 +49,7 @@ progression checkpoint, the later checkpoint governs the current status.
 | --- | --- | --- |
 | ✅ | GS020-1A — Official GS-020 renderer | Accepted at `76bdd3c4f3c4525e528679009a1a93e123b81d26`. Pure typed-input → PDF-bytes renderer, representative normal/long/signature/blank samples, focused renderer verification, independent remote source review, and project-owner visual acceptance completed. No live workflow/API/frontend/schema integration was included. |
 | ✅ | GS020-1B — Finalized record integration | Accepted at `0b3c9f756d66d16b9a27a680264780599bca9242`. Exact-request Student e-signature, write-once signed state, atomic Dean approval + immutable official snapshot + AdviserAssignment, on-demand PDF generation, and ownership/role-scoped Adviser Request View/Download are implemented. Legacy unsigned requests are not backfilled/fabricated. Full manual/browser QA was waived by the project owner. |
-| ⏳ | Institutional Dean display integration | For this package, keep the printed Dean identity/signature area blank because no authoritative institutional office-holder source is configured yet. A future System Settings / Institutional Officials package may populate new snapshots only; it must not rewrite older finalized GS-020 snapshots. |
+| ✅ | Institutional Dean display integration | Implemented via Institutional Officials configuration (`Admin Settings -> Institutional Officials`): snapshots capture configured Dean name/signature for new GS-020 approvals, and PDF generation prints configured Dean identity/signature without mutating older snapshots. |
 
 ### GS020-1A acceptance evidence
 
@@ -189,12 +189,12 @@ DEF-CORR-1 is accepted for its documented scope on the feature branch. Acceptanc
 | ✅ | Filing timestamp history | Title / Proposal / Final have independent nullable server-owned submission timestamps; successful resubmission updates only the exact stage. |
 | ✅ | Legacy filing behavior | Pre-migration records with no authoritative timestamp remain blank rather than receiving fabricated dates. |
 | ✅ | Paper-only instruction cleanup | `Note: Please write legibly` removed from generated Defense Application. |
-| ❓ | Defense Application Amount Paid | Client authority/capture policy still required. Do not infer from printed fee table or receipt presence. |
-| ❓ | Defense Application O.R. No. | Client authority/capture policy still required. Do not infer from upload filename/metadata. |
-| ⏳ | Defense Application Dean name | Must come from an authoritative institutional office-holder source, not renderer hardcoding. |
-| ⏳ | Defense Application VPAA name | Same institutional office-holder configuration requirement. |
-| ⏳ | Defense Application President name | Same institutional office-holder configuration requirement. |
-| ⏳ | GS-011 Dean name | Must use authoritative institutional configuration. |
+| ✅ | Defense Application Amount Paid | Populated with the official form amount (`P 900.00`) when stage O.R. No. is recorded. |
+| ✅ | Defense Application O.R. No. | Student enters the Official Receipt (O.R.) No. when uploading defense-fee proof of payment (Title, Proposal, Final, and rejected resubmission); stored per stage and printed on GS-006/007. |
+| ✅ | Defense Application Dean name | Consumes Admin-configured Institutional Officials name & e-signature (`dean`). |
+| ✅ | Defense Application VPAA name | Consumes Admin-configured Institutional Officials name & e-signature (`vpaa`). |
+| ✅ | Defense Application President name | Consumes Admin-configured Institutional Officials name & e-signature (`president`). |
+| ✅ | GS-011 Dean name | Consumes Admin-configured Institutional Officials name & e-signature (`dean`). |
 | ✅ | GS-011 stage-aware Adviser layout | Accepted after implementation, independent remote source review, and project-owner visual QA: explicit `stage` contract; Title omits the entire `Concurred In` / Adviser signature rule / `Thesis/Dissertation Adviser` block and moves Dean `Attested` into the freed lower-page region; Proposal/Final keep the block and require exactly one ADVISER `PanelAssignment` on the exact defense schedule. Missing/ambiguous Adviser seats fail closed; no current/live Adviser fallback. |
 | ✅ | Adviser Certification PDF (GS-017) + Adviser certification guardrail | PREDEF-1A renderer, PREDEF-1B0 exact manuscript-title authority, and PREDEF-1B/1C live certification/visibility integration are accepted and merged through PR #41. GS-017 is generated from the exact issued `reviewedDocumentId`, the Adviser sees the exact title/file before Certify & Sign, and Adviser/Student/Admin receive the accepted bounded read-only record visibility. GS-017 remains system-owned and is never a Student upload requirement. |
 | ✅ | Adviser Request PDF (GS-020) | Completed and merged through PR #43. The official EARIST-QSF-GS-020 Rev. 00 renderer, exact-request Student e-signature, immutable finalized snapshot after Adviser `CONFORMED` + Dean `APPROVED`, and on-demand read-only View/Download for Student/requested Adviser/Admin are implemented. Dean printed identity/signature remains blank until authoritative Institutional Officials configuration exists. |
@@ -212,10 +212,10 @@ Names, programs, signatures, payment metadata, and institutional approvals must 
 
 | Status | Item | Current / target state |
 | --- | --- | --- |
-| ⏳ | Institutional office-holder configuration | Admin-manageable authoritative names for Dean, Graduate School; Vice President for Academic Affairs; President; and future official offices as needed. |
-| ⏳ | Effective office-holder history | Determine whether effective dates/history are needed so old official records can preserve the correct office holder. |
-| ❓ | Institutional official signature policy | Name authority and signature authority are separate. Confirm which official forms are digitally signed by Dean / VPAA / President. |
-| ⏳ | Official-form integration | Forms consume configured office-holder identity only after the configuration/source is implemented and approved. |
+| ✅ | Institutional office-holder configuration | Implemented under `Admin -> System Settings -> Institutional Officials` for Dean (Graduate School), VPAA, and University President, supporting both printed full name and e-signature (upload PNG/JPEG or draw/type pad). |
+| ⏳ | Effective office-holder history | Determine whether effective dates/history are needed so old official records can preserve the correct office holder across term transitions (GS-020 snapshots already preserve their finalized Dean identity; `AuditLog` records updates). |
+| ✅ | Institutional official signature policy | Implemented per project-owner confirmation: Institutional Officials supports both printed names and uploaded/drawn e-signatures for Dean, VPAA, and President. |
+| ✅ | Official-form integration | Integrated into Defense Application (`GS-006/007`), Oral Examination Summary (`GS-011`), and Adviser Request (`GS-020`). |
 
 ---
 
@@ -253,8 +253,10 @@ Current repository and institutional-reference facts:
 
 # 4. Faculty and Administrator Access Management
 
-**Canonical authority:** `docs/superpowers/FACULTY_ADMIN_ACCESS_SOURCE_OF_TRUTH.md`  
+**Canonical authority:** `docs/superpowers/FACULTY_ADMIN_ACCESS_SOURCE_OF_TRUTH.md`
 **Design specification:** `docs/superpowers/specs/2026-11-08-faculty-admin-access-design.md`
+**Implementation plan:** `docs/superpowers/plans/2026-11-11-faculty-admin-access-implementation.md`
+**Status:** ✅ **ACCEPTED / MERGED** via PR #49 (`4abbf3b8`) and refined in PR #50 (`64cca804`).
 
 ## Approved target
 
@@ -265,35 +267,35 @@ The conceptual system-role model remains exactly:
 - Faculty
 - Admin
 
-The current broad `PANELIST` account identity is planned to migrate to **FACULTY** with compatibility/history preservation. Defense-specific Panelist/Chairman/Rapporteur/Facilitator/Adviser roles remain assignment-driven and are not permanent Faculty permissions.
+The broad `PANELIST` account identity has been migrated to **FACULTY** (`UserRole.FACULTY`) with zero-breakage compatibility/history preservation for existing `PANELIST` records and tests. Defense-specific Panelist/Chairman/Rapporteur/Facilitator/Adviser roles remain assignment-driven and are not permanent Faculty permissions.
 
 Faculty and Admin are separate account roles in the approved target. Faculty does **not** receive Admin access. If one real person legitimately performs both functions, the approved target uses separate Faculty and Admin accounts.
 
 ### Current repository facts
 
-- `UserRole` currently includes `ADMIN`, `STUDENT`, `PANELIST`, `CUSTOM`, and `APPLICANT`.
-- `CustomRole` and `RoleFeatureAccess` already exist with `canView` / `canEdit` feature access.
-- Defense assignment roles are separately represented by `PanelRole`: `CHAIRMAN`, `PANELIST`, `ADVISER`, `RAPPORTEUR`, `FACILITATOR`.
-- current Panelist profile already contains `isExternal` and `isAvailableAsAdviser`.
-- external panelists are already excluded from adviser candidacy.
+- `UserRole` includes `ADMIN`, `STUDENT`, `FACULTY`, `PANELIST` (retained for legacy/test fixture compatibility), `CUSTOM`, and `APPLICANT`.
+- `AdminAccessLevel` (`FULL` / `RESTRICTED`) and `adminCapabilities` on `User` govern Administrator module access, while `canEvaluateEssays` on `Panelist` governs Faculty Essay Evaluation access.
+- Defense assignment roles remain separately represented by `PanelRole`: `CHAIRMAN`, `PANELIST`, `ADVISER`, `RAPPORTEUR`, `FACILITATOR`.
+- Faculty (`Panelist`) profile contains `isExternal`, `isAvailableAsAdviser` (Admin-controlled only), and `canEvaluateEssays`.
+- External faculty are excluded from adviser candidacy.
 
 | Status | Item | Current / target state |
 | --- | --- | --- |
-| ⏳ | Broad PANELIST identity → FACULTY | Approved target. Requires repository-grounded migration/compatibility design; do not blindly rename APIs/routes/data because Panelist remains a valid defense-assignment term. |
+| ✅ | Broad PANELIST identity → FACULTY | Implemented and merged via PR #49 (`4abbf3b8`). `UserRole.FACULTY` is canonical for Faculty accounts with seamless backend/frontend compatibility for `PANELIST` and canonical `/faculty/*` routes. |
 | ✅ | Faculty/Admin product architecture | Decision resolved by the canonical Faculty/Admin source of truth. Four roles remain Applicant / Student / Faculty / Admin; Faculty and Admin stay separate account roles. |
-| ⏳ | Faculty configured access | Initial direct Faculty access for this feature is **Essay Evaluation**. Exact technical capability keys remain implementation-plan work. |
-| ⏳ | Dynamic Faculty dashboard/navigation | Dashboard and sidebar must reflect effective Faculty work from Essay Evaluation access plus authoritative Adviser/Defense assignments. Do not show irrelevant zero-value work areas. |
+| ✅ | Faculty configured access | Implemented via `canEvaluateEssays` on Faculty profiles, `/api/exam/faculty/essay-evaluations` endpoints, and `/faculty/essay-evaluations` UI. |
+| ✅ | Dynamic Faculty dashboard/navigation | Implemented and merged via PR #49. Zero-flicker sidebar and dashboard dynamically reflect `canEvaluateEssays` and `!isExternal` (`My Advisees`), plus authoritative Adviser/Defense assignments. |
 | ✅ | Defense roles are contextual | Chairman / Panelist / Rapporteur / Facilitator / Adviser are not permanent Faculty permission checkboxes; authority continues to come from exact workflow assignments. |
-| ⏳ | Internal / External Faculty migration | Preserve affiliation classification. External Faculty may participate in permitted defense work but cannot be assigned as Adviser. |
-| ⏳ | Admin-controlled Available as Adviser | Authorized Admin controls whether an **Internal** Faculty member is currently available to receive a new Adviser assignment. External Faculty are never available as Adviser. |
-| ⏳ | Dedicated Faculty Management | Target User Management includes Applicants / Students / Faculty / Administrators. Faculty Management owns account/profile, Internal/External, Essay Evaluation access, Available as Adviser, and read-only assignment summaries where useful. |
-| ⏳ | Dedicated Administrators Management | Admin accounts are managed separately with **Full Administrator** / **Restricted Administrator** access levels and direct per-Admin capabilities. |
+| ✅ | Internal / External Faculty migration | Implemented and preserved. External Faculty may participate in permitted defense work but cannot be assigned as Adviser (`isAvailableAsAdviser` forced `false`). |
+| ✅ | Admin-controlled Available as Adviser | Implemented and merged via PR #49. Authorized Admin controls whether an **Internal** Faculty member is currently available to receive a new Adviser assignment; Faculty self-service toggle is removed. |
+| ✅ | Dedicated Faculty Management | Implemented at `/admin/users/faculty` with Internal/External classification, Essay Evaluation toggle, Available as Adviser toggle, and read-only assignment summaries. |
+| ✅ | Dedicated Administrators Management | Implemented at `/admin/users/administrators` with **Full Administrator** / **Restricted Administrator** access levels, 4-card module capability editor, and Last Active Full Administrator protection. |
 | ✅ | Full Administrator terminology/authority | Approved administrative authority model. Full Administrator is not a fifth role; it is an Admin account with complete approved administrative capabilities plus Administrator-access management. |
-| ⏳ | Restricted Administrator capabilities | Restricted Admin sees/uses only explicitly granted administrative modules/actions; backend enforcement is required. |
-| ⏳ | Custom Roles retirement | User-facing Custom Roles is retired in the target UX. Existing `CUSTOM` / `CustomRole` / `RoleFeatureAccess` must be audited for reuse/migration rather than blindly deleted. |
-| ⏳ | Backend permission enforcement | API authorization must enforce Faculty/Admin capabilities and assignment-scoped authority; hiding frontend links is insufficient. |
-| ⏳ | Login role migration | Target login choices are Applicant / Student / Faculty / Administrator. No second post-login workspace chooser is required. |
-| ⏳ | Repository audit + implementation plan | Coding agent should first audit current auth/schema/routes/workflows and produce dependency-ordered bounded packages. No production implementation is authorized by documentation alone. |
+| ✅ | Restricted Administrator capabilities | Implemented with backend `requireAdminCapability` / `requireFullAdmin` guards and live `/api/auth/me` capability resolution (`b81702fd`). |
+| ✅ | Custom Roles retirement | User-facing Custom Roles is retired from the Admin sidebar and replaced by Dedicated Administrators Management. |
+| ✅ | Backend permission enforcement | Implemented via `requireAdminCapability`, `requireFullAdmin`, and `requireEssayEvaluator` middlewares alongside assignment-scoped defense authority. |
+| ✅ | Login role migration | Implemented. Login choices are `Applicant / Student / Faculty / Administrator` with no second post-login workspace chooser. |
+| ✅ | Repository audit + implementation plan | Completed in `docs/superpowers/plans/2026-11-11-faculty-admin-access-implementation.md` and merged via PR #49. |
 
 ## Important boundary: configured access vs assigned work
 
@@ -320,13 +322,13 @@ The Faculty/Admin source of truth resolves the previously open adviser-capacity 
 
 | Status | Item | Current / target state |
 | --- | --- | --- |
-| 🐞 | Remove self-controlled adviser availability | Faculty should not control adviser availability with their own on/off toggle in the target model. |
-| ⏳ | Admin-controlled **Available as Adviser** | Authorized Admin determines whether an Internal Faculty member may receive new Adviser assignments. |
-| ✅ | External adviser prohibition | External Panelist / future External Faculty must not become thesis/dissertation Advisers or appear as valid Adviser candidates. |
+| ✅ | Remove self-controlled adviser availability | Completed in PR #49: Faculty self-service availability mutation (`PATCH /api/panelists/me/availability`) is blocked for Faculty; profile displays read-only Admin-managed status. |
+| ✅ | Admin-controlled **Available as Adviser** | Implemented in PR #49: Authorized Admin determines whether an Internal Faculty member may receive new Adviser assignments. |
+| ✅ | External adviser prohibition | External Panelist / External Faculty must not become thesis/dissertation Advisers or appear as valid Adviser candidates. |
 | ✅ | No adviser load cap in this feature | Do **not** add an Admin-configurable adviser load limit/capacity rule as part of Faculty/Admin access work. Current no-load-cap behavior remains until separately approved. |
-| ⏳ | Adviser candidate filtering | Candidate lists must exclude External, inactive, or unavailable Faculty and continue to enforce existing Adviser workflow requirements server-side. |
-| ⏳ | Assignment-derived Adviser UI | `My Advisees` and Adviser authority come from actual AdviserAssignment relationships, not a manual "Adviser Page Access" permission. |
-| 🔍 | Existing Adviser workflow audit | Audit GS-020/request/Dean-approval/AdviserAssignment behavior during the technical planning package to preserve accepted authority and compatibility. |
+| ✅ | Adviser candidate filtering | Candidate lists exclude External, inactive, or unavailable Faculty and continue to enforce existing Adviser workflow requirements server-side. |
+| ✅ | Assignment-derived Adviser UI | `My Advisees` and Adviser authority come from actual AdviserAssignment relationships (hidden in sidebar only when `isExternal === true`). |
+| ✅ | Existing Adviser workflow audit | Verified and preserved across GS-020/request/Dean-approval/AdviserAssignment in PR #49 (`UserRole.FACULTY` and `UserRole.PANELIST` supported seamlessly). |
 
 Changing `Available as Adviser` must not erase existing/historical Adviser assignments. Availability means eligibility for a **new** assignment, not ownership of an existing Student relationship.
 
@@ -707,11 +709,11 @@ The first B10 run correctly found a real current-actor authorization gap in the 
 | ✅ | Scoring / answer integrity | **B8 accepted for Phase B progression.** New results use frozen B2/B4/B6/B7 evidence, exact Decimal arithmetic, configured MCQ points/essay maximum/percentage threshold and immutable scoring basis; later bank/config changes cannot retroactively alter the computed result. Legacy final records retain honest unknown provenance where B8 evidence is absent. |
 | ✅ | Finalized FAILED-result reconsideration | **B9 ACCEPTED FOR PHASE B PROGRESSION — 2026-11-05.** Current active ADMIN may record one separate **PASSED — RECONSIDERED** decision only for valid B8 computed FAILED. Original application/score FAILED, answers, numbers, basis, threshold and scoredAt remain unchanged. Applicant/Admin projections, both COR gates, Admin Applicant list/filter/count/detail and Applicant progression recognize validated effective pass. Existing queued-email evidence is retained; generic B8 result-email action rejects after decision. Reason/actor/time/audit required; no revoke/regrade, Program Chair authority or legacy reinterpretation. |
 | ✅ | Automated regression / acceptance coverage | **B10 / Phase B core acceptance completed 2026-11-06.** Core automated verification, independent remote source/diff review, project-owner functional/manual QA and project-owner visual/UI acceptance passed for the agreed non-email scope. The accepted EXAM-B10-MQA-UI correction and Admin assignment copy FIX-1 are included. Email Integration remains a separate deferred feature and hosted CI/whole-system production readiness are not claimed by this row. |
-| ⏳ | Program Chair examination permissions | Future Faculty permission architecture should govern applicant exam checking/essay grading where appropriate. |
+| ✅ | Program Chair examination permissions | Implemented and merged via PR #49 (`4abbf3b8`). Faculty accounts granted `canEvaluateEssays: true` can access `/faculty/essay-evaluations` and evaluate entrance exam essays via `requireEssayEvaluator`. |
 
-**Current Exam boundary:** the agreed non-email Phase B core is accepted. Do not
+**Current Exam boundary:** the agreed non-email Phase B core and Faculty Essay Evaluation access are accepted. Do not
 equate that subsystem acceptance with **whole-system production readiness**.
-Email Integration, Program Chair/Faculty permissions, the deferred
+Email Integration, the deferred
 EXAM-SCHEDULE-CREATE-ASSIGN package, and the cross-system production-readiness
 items in Section 21 remain separate work.
 
@@ -849,25 +851,20 @@ For each review, record:
 
 # 15. Immediate Priority Queue
 
-This list is intentionally orderable and may change.
+This list is intentionally orderable and may change. *(Completed items: Exam Phase A, Exam Phase B + Booking Visibility, Faculty/Admin Role Access, Adviser Eligibility under Faculty model, Portal UI/UX Design System Overhaul, and Public Landing Page Redesign V2 are now merged to `main`.)*
 
-0. Complete **Phase A — Applicant Examination Mixed-Content Integration** using `EXAM_CONTENT_SOURCE_OF_TRUTH.md` and the 2026-10-29 implementation plan (EXAM-CONTENT-1 through EXAM-CONTENT-6).
-1. Immediately after Phase A acceptance, complete **Phase B — Exam Engine / Scheduling Audit** covering timer, autosave/recovery, essay lifecycle, submission/timeout rules, scheduling semantics, question activation/selection, and regression coverage before treating Applicant Examination as production-ready.
-2. Continue collecting missing-feature/process notes from the project owner.
-3. Design Faculty identity / multi-permission architecture, taking existing `CustomRole` / `RoleFeatureAccess` into account.
-4. Redesign public Landing / Login / Applicant Sign-up and credential-state routing around the future Faculty model.
-5. Redesign Adviser eligibility/capacity under the future Faculty model.
-6. Design institutional officials + academic master-data authority needed by official forms.
-7. Review collaborator work: email, notifications, announcement, memo, analytics.
-8. Fix Admin scheduling-stage requirement/document visibility.
-9. Design Admin Student document/submission overview and fallback matrix.
-10. Define Student inactivity/return/reactivation policy and Admin recovery flow.
-11. Revisit reusable signature profile architecture.
-12. Continue Chatbot/RAG implementation planning/audit.
-13. Resolve Defense Application Amount Paid / O.R. client policy when available.
-14. Run a system-wide wording/terminology audit as UI surfaces are redesigned and Faculty terminology is introduced.
-15. Complete production-readiness/security/operations audit and convert blockers into bounded packages.
-16. After core workflows stabilize, design returning-graduate / multiple-academic-career architecture.
+1. Design institutional officials + academic master-data authority (Program / Major / Curriculum Checklist) needed by official forms and student academic progress.
+2. Review collaborator work: email integration, notifications, announcement, memo, analytics & reports.
+3. Fix Admin scheduling-stage requirement/document visibility and Comprehensive Exam history/strike recording.
+4. Design Admin Student document/submission overview and fallback matrix.
+5. Design and implement Continuing Student COR-based onboarding (`CONT-STUDENT-1`) and pre-GSIS legacy academic/thesis standing initialization (`CONT-STUDENT-2`).
+6. Define Student inactivity/return/reactivation policy and Admin recovery flow.
+7. Revisit reusable signature profile architecture.
+8. Continue Chatbot/RAG implementation planning/audit and COR OCR fallback evaluation.
+9. Resolve Defense Application Amount Paid / O.R. client policy when available.
+10. Continue system-wide wording/terminology audit for any remaining unreviewed surfaces.
+11. Complete production-readiness/security/operations audit (password recovery, health readiness, worker startup, backups) and convert blockers into bounded packages.
+12. After core workflows stabilize, design returning-graduate / multiple-academic-career architecture.
 
 ---
 
@@ -901,30 +898,30 @@ Do not mark a feature accepted because a page, model, or route merely exists. Ac
 
 Current repository facts:
 
-- the current Login page explicitly presents Applicant, Student, Administrator, Panelist, and Other Roles choices;
+- the public Graduate School website (Home, Programs, About, News, Repository) has been redesigned and merged via PR #51 (`c1066b0e`) and PR #52 (`939afc0e`);
+- the Login page presents `Applicant`, `Student`, `Faculty`, and `Administrator` choices (merged via PR #49 and styled in PR #50);
 - Applicant authenticates with Applicant ID + password;
 - Student authenticates with Student Number + existing password;
-- Admin/Panelist/other roles use email + password;
-- the current middleware forces first-login password change only when `role === "panelist"` and `mustChangePassword === true`;
-- the current Change Password page itself is generic, but route access/enforcement is Panelist-specific;
-- Applicant registration is the public sign-up flow and creates an Applicant account; Faculty/Admin account creation must not become public sign-up accidentally;
-- COR promotion currently preserves the Applicant's existing password when the account becomes a Student.
+- Faculty and Administrator use email + password;
+- middleware forces first-login password change (`/change-password`) for both Faculty (`faculty`/`panelist`) and Administrator (`admin`) accounts when `mustChangePassword === true`;
+- Applicant registration is the public sign-up flow and creates an Applicant account; Faculty/Admin account creation remains Admin-provisioned with default password = `LAST NAME in ALL CAPS` and `mustChangePassword = true`;
+- COR promotion preserves the Applicant's existing password when the account becomes a Student.
 
 | Status | Item | Current / target state |
 | --- | --- | --- |
-| ⏳ | Graduate School landing-page redesign | Redesign the public Graduate School landing experience to match the final GS-IS visual identity and clearly guide Applicant / Student / Faculty users. |
-| ⏳ | Login-page redesign | Redesign visual hierarchy, credential guidance, responsive behavior, and error/success states. |
-| ⏳ | Sign-up / Applicant registration redesign | Refresh the public Applicant registration experience while preserving verified registration rules and program-selection authority. |
-| ⏳ | Panelist → Faculty terminology migration in auth UX | Login labels, redirects, routes, messages, session typing, guards, tests, and navigation must be reviewed when the account identity changes to Faculty. |
-| ❓ | Future login entry model | Decide whether Admin remains a visible login choice or Faculty signs in once and receives Admin/module access from permissions. Do not lock this until the Faculty permission architecture is finalized. |
-| ⏳ | Permission-aware post-login routing | Future Faculty users may have multiple capabilities. Redirect/navigation should not assume one mutually exclusive role maps to exactly one dashboard. |
-| 🐞 | Role-specific forced password gate | Current middleware hardcodes forced password change to Panelist only. This will be incorrect after the Faculty refactor and is too narrow even for other temporary-password accounts. |
-| ⏳ | Credential-state-based forced password change | Enforce `mustChangePassword` for any authenticated account that is explicitly flagged, regardless of Applicant/Student/Faculty/Admin identity, subject to safe exceptions for the change-password route itself. |
-| ✅ / 🟡 | Applicant-created password → Student promotion | Current Student promotion keeps the Applicant's existing password. A promoted Student should not be forced to change a password merely because the role changed if the password was self-created and `mustChangePassword` is false. |
-| ⏳ | Temporary/generated password policy | Faculty or any account provisioned with a temporary/default password should set `mustChangePassword = true` and be forced through the change-password flow before normal portal access. |
-| ⏳ | Student temporary/reset credential behavior | If a Student is ever issued a temporary/reset password by an authorized workflow, the same generic `mustChangePassword` gate should apply. |
-| ⏳ | Change-password UX redesign | Align the page visually with the redesigned auth surfaces and ensure safe return/login behavior after completion. |
-| ⏳ | Auth regression coverage | Update login, middleware, NextAuth/session, role/permission routing, forced-password, and COR credential-handoff tests when Faculty/auth redesign is implemented. |
+| ✅ | Graduate School landing-page redesign | Implemented and merged via PR #51 (`c1066b0e`) and PR #52 (`939afc0e`). Includes V2 institutional masthead, full-viewport widescreen hero carousel, official EARIST Graduate School programs directory, news section, About page, and Repository framing. |
+| ✅ | Login-page redesign | Implemented and merged via PR #49 (`4abbf3b8`) and PR #50 (`64cca804`) with updated visual hierarchy, role selector (`Applicant / Student / Faculty / Administrator`), and credential guidance. |
+| ✅ | Sign-up / Applicant registration redesign | Implemented and merged via PR #50 (`64cca804`), preserving verified registration rules and program-selection authority. |
+| ✅ | Panelist → Faculty terminology migration in auth UX | Implemented and merged via PR #49 (`4abbf3b8`). Login labels, `/faculty/*` canonical routes, middleware redirects/rewrites, session typing, guards, and tests are updated. |
+| ✅ | Future login entry model | Resolved by `FACULTY_ADMIN_ACCESS_SOURCE_OF_TRUTH.md` and implemented in PR #49: `Applicant / Student / Faculty / Administrator` are distinct login choices with no second post-login chooser. |
+| ✅ | Permission-aware post-login routing | Implemented in PR #49: Faculty routes to `/faculty/dashboard` with capability-aware sidebar (`canEvaluateEssays`, `!isExternal`), and Restricted Administrators route with capability-filtered navigation and route guards. |
+| ✅ | Role-specific forced password gate | Fixed in PR #49: `middleware.ts` enforces `/change-password` when `mustChangePassword === true` for both Faculty and Administrator accounts. |
+| 🟡 | Credential-state-based forced password change | Enforced for Faculty and Admin accounts (`mustChangePassword === true`); extend to Student/Applicant accounts when Admin-issued temporary/reset passwords (§21.1) are implemented. |
+| ✅ | Applicant-created password → Student promotion | Current Student promotion keeps the Applicant's existing self-created password with `mustChangePassword = false`. |
+| ✅ | Temporary/generated password policy | Implemented in PR #49 for Faculty and Admin provisioning: default password is `LAST NAME in ALL CAPS` with `mustChangePassword = true` forced on first login. |
+| ⏳ | Student temporary/reset credential behavior | When Admin-assisted Student password reset (§21.1) is implemented, apply the same `mustChangePassword = true` gate to Student accounts. |
+| ✅ | Change-password UX redesign | Implemented and merged via PR #50 (`64cca804`), aligned with the redesigned auth surfaces. |
+| ✅ | Auth regression coverage | Updated in PR #49 (`71d7fb9d`) covering login, middleware, Faculty/Admin role access, and UI contract tests. |
 
 ### Credential rule to preserve
 

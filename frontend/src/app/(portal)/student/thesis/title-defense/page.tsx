@@ -23,6 +23,9 @@ import {
   DocumentUploadSlot,
 } from "@/components/student/thesis-journey-shell";
 import { Button, buttonVariants } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
   Dialog,
@@ -139,6 +142,7 @@ export default function TitleDefensePage() {
     cor: null,
     receipt: null,
   });
+  const [orNumber, setOrNumber] = useState("");
   const inputRefs = useRef<Record<string, HTMLInputElement | null>>({});
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitSuccess, setSubmitSuccess] = useState(false);
@@ -156,7 +160,8 @@ export default function TitleDefensePage() {
 
   const allDocsSelected =
     files.package !== null && files.cor !== null && files.receipt !== null;
-  const canSubmit = allDocsSelected && !submitSuccess;
+  const canSubmit =
+    allDocsSelected && orNumber.trim().length > 0 && !submitSuccess;
 
   const submitTitle = useMutation({
     mutationFn: async () => {
@@ -166,6 +171,7 @@ export default function TitleDefensePage() {
       for (const config of DOCUMENTS) {
         formData.append(config.field, files[config.key]!);
       }
+      formData.append("orNumber", orNumber.trim());
       return apiClientRequest("/thesis/defense/title", {
         method: "POST",
         body: formData,
@@ -394,6 +400,39 @@ export default function TitleDefensePage() {
               </div>
             ))}
           </div>
+
+          <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-2xs">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <Label
+                  htmlFor="title-or-number"
+                  className="text-sm font-bold text-[#333333]"
+                >
+                  Official Receipt (O.R.) Number <span className="text-[#e02b20]">*</span>
+                </Label>
+                <p className="mt-0.5 text-xs text-gray-500">
+                  Enter the exact O.R. No. shown on your Cashier proof of payment. It will reflect on your official Defense Application form.
+                </p>
+              </div>
+              <Badge
+                variant="outline"
+                className="border-gray-200 bg-gray-50 font-semibold text-[#333333]"
+              >
+                Defense Fee: P 900.00
+              </Badge>
+            </div>
+            <Input
+              id="title-or-number"
+              type="text"
+              maxLength={64}
+              value={orNumber}
+              disabled={submitTitle.isPending || submitSuccess}
+              onChange={(e) => setOrNumber(e.target.value)}
+              placeholder="e.g., OR-2026-001234"
+              className="mt-3 max-w-md"
+              required
+            />
+          </div>
         </div>
 
         <Button
@@ -448,6 +487,16 @@ export default function TitleDefensePage() {
                     </li>
                   );
                 })}
+                <li className="space-y-0.5 pt-1">
+                  <div className="flex flex-wrap gap-x-1">
+                    <span className="font-semibold text-[#333333]">Official Receipt (O.R.) No.:</span>
+                    <span>{orNumber.trim() || "—"}</span>
+                  </div>
+                  <div className="flex flex-wrap gap-x-1">
+                    <span className="font-semibold text-[#333333]">Amount Paid:</span>
+                    <span>P 900.00</span>
+                  </div>
+                </li>
               </ul>
             </div>
             <p className="rounded-lg border border-gray-100 bg-gray-50 p-3 text-xs text-gray-600">

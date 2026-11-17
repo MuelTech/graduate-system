@@ -70,6 +70,8 @@ export interface DefenseHistoryApplicationState {
   currentThesisStage: DefenseHistoryStage;
   status: string | null;
   rejectionReason: string | null;
+  orNumber?: string | null;
+  amountPaid?: string | null;
 }
 
 export interface DefenseDocumentHistory {

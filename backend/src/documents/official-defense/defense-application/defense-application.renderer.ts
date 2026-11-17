@@ -2,7 +2,7 @@ import {
   grayscale, PDFDocument, PDFFont, PDFPage, popGraphicsState, pushGraphicsState, StandardFonts, translate,
 } from "pdf-lib";
 import { institutionalHeader } from "../shared/institutional-header";
-import { A4, rule } from "../shared/pdf-layout";
+import { A4, drawContainedImage, rule, type PdfImageInput } from "../shared/pdf-layout";
 import { fitText, textBox } from "../shared/pdf-text";
 import type { DefenseApplicationRenderInput } from "./defense-application.types";
 
@@ -311,7 +311,21 @@ export async function renderDefenseApplication(input: DefenseApplicationRenderIn
     if (index + 1 < committeeNames.length) rule(page, tableX, top + committeeRowHeight, tableX + tableWidth, 0.6);
   });
 
-  const signature = (name: string, lineTop: number, caption: string, field: string) => {
+  const signature = async (
+    name: string,
+    lineTop: number,
+    caption: string,
+    field: string,
+    sigImage?: PdfImageInput,
+  ) => {
+    if (sigImage) {
+      await drawContainedImage(doc, page, sigImage, {
+        x: 248,
+        top: lineTop - 26,
+        width: 112,
+        height: 22,
+      });
+    }
     textBox(page, regular, name, { x: 238, top: lineTop - 21, width: 132, height: 20 }, {
       size: 10, minSize: 8, align: "center", verticalAlign: "bottom", field,
     });
@@ -326,10 +340,16 @@ export async function renderDefenseApplication(input: DefenseApplicationRenderIn
   const approvedTop = Math.max(variant.approvedTop, vicePresidentLine + 23);
   const presidentLine = Math.max(variant.presidentLine, approvedTop + 29);
   text("Prepared by:", 68, tableBottom + 14, 150, 13, 9.5, oblique);
-  signature(input.deanName, deanLine, "Dean, Graduate School", "Dean name");
+  await signature(input.deanName, deanLine, "Dean, Graduate School", "Dean name", input.deanSignature);
   text("Recommending Approval:", 68, recommendationTop, 190, 13, 9.5, oblique);
-  signature(input.vicePresidentName, vicePresidentLine, "Vice President for Academic Affairs", "Vice President name");
+  await signature(
+    input.vicePresidentName,
+    vicePresidentLine,
+    "Vice President for Academic Affairs",
+    "Vice President name",
+    input.vicePresidentSignature,
+  );
   text("Approved:", 68, approvedTop, 130, 13, 9.5, oblique);
-  signature(input.presidentName, presidentLine, "President", "President name");
+  await signature(input.presidentName, presidentLine, "President", "President name", input.presidentSignature);
   return doc.save();
 }

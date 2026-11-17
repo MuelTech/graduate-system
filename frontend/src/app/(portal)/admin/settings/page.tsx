@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { AuditLogItem } from "@/types";
 import { PageHeader } from "@/components/ui/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -14,6 +14,9 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import { ESignaturePad } from "@/components/defense-workspace/e-signature-pad";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiClientRequest } from "@/lib/api.client";
 import { toast } from "sonner";
@@ -38,6 +41,10 @@ import {
   Lock,
   Search,
   Trash2,
+  Award,
+  Upload,
+  PenTool,
+  X,
 } from "lucide-react";
 
 type EmailTemplateItem = {
@@ -47,6 +54,50 @@ type EmailTemplateItem = {
   description?: string;
   variables?: string;
 };
+
+type OfficialRoleKey = "dean" | "vpaa" | "president";
+
+type InstitutionalOfficialEntry = {
+  name: string;
+  signatureData: string | null;
+  updatedAt: string | null;
+};
+
+type InstitutionalOfficialsState = Record<OfficialRoleKey, InstitutionalOfficialEntry>;
+
+const EMPTY_OFFICIALS: InstitutionalOfficialsState = {
+  dean: { name: "", signatureData: null, updatedAt: null },
+  vpaa: { name: "", signatureData: null, updatedAt: null },
+  president: { name: "", signatureData: null, updatedAt: null },
+};
+
+const OFFICIAL_ROLE_META: Array<{
+  key: OfficialRoleKey;
+  title: string;
+  forms: string;
+  placeholder: string;
+}> = [
+  {
+    key: "dean",
+    title: "Dean, Graduate School",
+    forms: "Appears on Defense Application (GS-006/007), Oral Exam Summary (GS-011), and Adviser Request (GS-020).",
+    placeholder: "e.g., DR. JUAN DELA CRUZ",
+  },
+  {
+    key: "vpaa",
+    title: "Vice President for Academic Affairs (VPAA)",
+    forms: "Appears on Defense Application (GS-006/007) Recommending Approval.",
+    placeholder: "e.g., DR. MARIA SANTOS",
+  },
+  {
+    key: "president",
+    title: "University President",
+    forms: "Appears on Defense Application (GS-006/007) Approved section.",
+    placeholder: "e.g., ENGR. ROGELIO REYES",
+  },
+];
+
+const MAX_SIGNATURE_UPLOAD_BYTES = 1024 * 1024;
 
 export default function AdminSettingsPage() {
   const queryClient = useQueryClient();
@@ -73,12 +124,23 @@ export default function AdminSettingsPage() {
   const [auditEndDate, setAuditEndDate] = useState("");
   const [selectedLogs, setSelectedLogs] = useState<string[]>([]);
 
+  // Institutional Officials state
+  const [officialsDraft, setOfficialsDraft] =
+    useState<InstitutionalOfficialsState | null>(null);
+  const [activeSignaturePadRole, setActiveSignaturePadRole] =
+    useState<OfficialRoleKey | null>(null);
+  const [padDraftSignature, setPadDraftSignature] = useState("");
+  const officialFileInputRefs = useRef<
+    Partial<Record<OfficialRoleKey, HTMLInputElement | null>>
+  >({});
+
   const tabs = [
     { id: "programs", label: "Programs", icon: BookOpen },
     { id: "chatbot", label: "AI Chatbot FAQ", icon: GraduationCap },
     { id: "email", label: "Email Templates", icon: Mail },
     { id: "strike", label: "STRIKE Settings", icon: Shield },
     { id: "academic_year", label: "Academic Year", icon: Calendar },
+    { id: "officials", label: "Institutional Officials", icon: Award },
     { id: "session", label: "Session & Security", icon: Lock },
     { id: "audit", label: "Audit Logs", icon: FileText },
   ];
@@ -157,6 +219,93 @@ export default function AdminSettingsPage() {
       return await apiClientRequest("/settings/email-templates");
     },
     enabled: activeTab === "email",
+  });
+
+  // Fetch Institutional Officials
+  const { data: officialsData, isLoading: officialsLoading } =
+    useQuery<InstitutionalOfficialsState>({
+      queryKey: ["institutionalOfficials"],
+      queryFn: async () =>
+        (await apiClientRequest(
+          "/settings/institutional-officials",
+        )) as InstitutionalOfficialsState,
+      enabled: activeTab === "officials",
+    });
+
+  const effectiveOfficials: InstitutionalOfficialsState =
+    officialsDraft ?? officialsData ?? EMPTY_OFFICIALS;
+
+  const updateOfficialField = (
+    role: OfficialRoleKey,
+    patch: Partial<InstitutionalOfficialEntry>,
+  ) => {
+    setOfficialsDraft((prev) => {
+      const base = prev ?? officialsData ?? EMPTY_OFFICIALS;
+      return {
+        ...base,
+        [role]: {
+          ...base[role],
+          ...patch,
+        },
+      };
+    });
+  };
+
+  const handleUploadOfficialSignature = (role: OfficialRoleKey, file: File) => {
+    if (!["image/png", "image/jpeg"].includes(file.type)) {
+      toast.error("Signature file must be a PNG or JPEG image.");
+      return;
+    }
+    if (file.size > MAX_SIGNATURE_UPLOAD_BYTES) {
+      toast.error("Signature image must be 1 MB or smaller.");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = typeof reader.result === "string" ? reader.result : "";
+      if (!result.startsWith("data:image/")) {
+        toast.error("Could not read signature image.");
+        return;
+      }
+      updateOfficialField(role, { signatureData: result });
+      setActiveSignaturePadRole(null);
+      setPadDraftSignature("");
+    };
+    reader.onerror = () => {
+      toast.error("Failed to read signature file.");
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const saveOfficialsMutation = useMutation({
+    mutationFn: async (state: InstitutionalOfficialsState) =>
+      apiClientRequest("/settings/institutional-officials", {
+        method: "PUT",
+        body: JSON.stringify({
+          dean: {
+            name: state.dean.name,
+            signatureData: state.dean.signatureData,
+          },
+          vpaa: {
+            name: state.vpaa.name,
+            signatureData: state.vpaa.signatureData,
+          },
+          president: {
+            name: state.president.name,
+            signatureData: state.president.signatureData,
+          },
+        }),
+      }),
+    onSuccess: (updated: InstitutionalOfficialsState) => {
+      queryClient.setQueryData(["institutionalOfficials"], updated);
+      setOfficialsDraft(null);
+      setActiveSignaturePadRole(null);
+      setPadDraftSignature("");
+      toast.success("Institutional officials saved successfully.");
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || "Failed to save institutional officials.");
+    },
   });
 
   // Helper to safely populate state without triggering the useEffect linter
@@ -540,6 +689,243 @@ export default function AdminSettingsPage() {
             </Card>
           )}
 
+          {/* Institutional Officials Tab */}
+          {activeTab === "officials" && (
+            <div className="space-y-4">
+              <Card>
+                <CardHeader>
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div>
+                      <CardTitle className="text-lg font-bold text-[#333333]">
+                        Institutional Officials &amp; E-Signatures
+                      </CardTitle>
+                      <p className="mt-0.5 text-sm text-gray-500">
+                        Configure the printed names and official e-signatures used on generated Defense Applications, Oral Examination Summaries, and Adviser Request forms.
+                      </p>
+                    </div>
+                    {officialsDraft && (
+                      <Badge variant="outline" className="border-amber-200 bg-amber-50 text-amber-800">
+                        Unsaved changes
+                      </Badge>
+                    )}
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-5">
+                  {officialsLoading ? (
+                    <div className="py-8 text-center text-sm text-gray-500">
+                      Loading institutional officials...
+                    </div>
+                  ) : (
+                    <>
+                      {OFFICIAL_ROLE_META.map((meta) => {
+                        const entry = effectiveOfficials[meta.key];
+                        const isPadOpen = activeSignaturePadRole === meta.key;
+
+                        return (
+                          <div
+                            key={meta.key}
+                            className="space-y-4 rounded-xl border border-gray-200 bg-white p-4"
+                          >
+                            <div>
+                              <h3 className="text-sm font-bold text-[#333333]">
+                                {meta.title}
+                              </h3>
+                              <p className="text-xs text-gray-500">{meta.forms}</p>
+                            </div>
+
+                            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                              <div className="space-y-1.5">
+                                <Label
+                                  htmlFor={`official-name-${meta.key}`}
+                                  className="text-xs font-semibold text-gray-700"
+                                >
+                                  Printed Full Name &amp; Title
+                                </Label>
+                                <Input
+                                  id={`official-name-${meta.key}`}
+                                  type="text"
+                                  maxLength={120}
+                                  value={entry.name}
+                                  onChange={(e) =>
+                                    updateOfficialField(meta.key, {
+                                      name: e.target.value,
+                                    })
+                                  }
+                                  placeholder={meta.placeholder}
+                                />
+                                {entry.updatedAt && (
+                                  <p className="text-[11px] text-gray-400">
+                                    Last updated:{" "}
+                                    {new Date(entry.updatedAt).toLocaleString()}
+                                  </p>
+                                )}
+                              </div>
+
+                              <div className="space-y-2">
+                                <Label className="text-xs font-semibold text-gray-700">
+                                  Official E-Signature (PNG / JPEG)
+                                </Label>
+                                <div className="flex min-h-[76px] items-center justify-center rounded-lg border border-dashed border-gray-300 bg-gray-50/70 p-2">
+                                  {entry.signatureData ? (
+                                    <img
+                                      src={entry.signatureData}
+                                      alt={`${meta.title} signature preview`}
+                                      className="max-h-14 w-auto object-contain"
+                                    />
+                                  ) : (
+                                    <span className="text-xs text-gray-400">
+                                      No signature configured (printed blank)
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="flex flex-wrap gap-2">
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() =>
+                                      officialFileInputRefs.current[
+                                        meta.key
+                                      ]?.click()
+                                    }
+                                  >
+                                    <Upload className="mr-1.5 h-3.5 w-3.5" />
+                                    Upload Image
+                                  </Button>
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => {
+                                      if (isPadOpen) {
+                                        setActiveSignaturePadRole(null);
+                                        setPadDraftSignature("");
+                                      } else {
+                                        setActiveSignaturePadRole(meta.key);
+                                        setPadDraftSignature("");
+                                      }
+                                    }}
+                                  >
+                                    <PenTool className="mr-1.5 h-3.5 w-3.5" />
+                                    {isPadOpen
+                                      ? "Close Pad"
+                                      : "Draw / Type Signature"}
+                                  </Button>
+                                  {entry.signatureData && (
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="sm"
+                                      className="text-red-600 hover:bg-red-50 hover:text-red-700"
+                                      onClick={() =>
+                                        updateOfficialField(meta.key, {
+                                          signatureData: null,
+                                        })
+                                      }
+                                    >
+                                      <X className="mr-1 h-3.5 w-3.5" />
+                                      Remove
+                                    </Button>
+                                  )}
+                                  <input
+                                    ref={(el) => {
+                                      officialFileInputRefs.current[meta.key] = el;
+                                    }}
+                                    type="file"
+                                    accept=".png,.jpg,.jpeg,image/png,image/jpeg"
+                                    className="hidden"
+                                    onChange={(e) => {
+                                      const file = e.target.files?.[0];
+                                      if (file) {
+                                        handleUploadOfficialSignature(
+                                          meta.key,
+                                          file,
+                                        );
+                                      }
+                                      e.target.value = "";
+                                    }}
+                                  />
+                                </div>
+                              </div>
+                            </div>
+
+                            {isPadOpen && (
+                              <div className="space-y-3 rounded-lg border border-gray-200 bg-gray-50/70 p-3">
+                                <ESignaturePad
+                                  value={padDraftSignature}
+                                  onChange={setPadDraftSignature}
+                                  allowTyped
+                                  readyText="Signature ready — click Apply Signature below."
+                                  requiredText="Draw or type the official's signature above."
+                                />
+                                <div className="flex flex-wrap justify-end gap-2">
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => {
+                                      setActiveSignaturePadRole(null);
+                                      setPadDraftSignature("");
+                                    }}
+                                  >
+                                    Cancel
+                                  </Button>
+                                  <Button
+                                    type="button"
+                                    size="sm"
+                                    disabled={!padDraftSignature}
+                                    onClick={() => {
+                                      updateOfficialField(meta.key, {
+                                        signatureData: padDraftSignature,
+                                      });
+                                      setActiveSignaturePadRole(null);
+                                      setPadDraftSignature("");
+                                    }}
+                                  >
+                                    Apply Signature
+                                  </Button>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+
+                      <div className="flex flex-wrap items-center justify-end gap-2 pt-2">
+                        {officialsDraft && (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            disabled={saveOfficialsMutation.isPending}
+                            onClick={() => {
+                              setOfficialsDraft(null);
+                              setActiveSignaturePadRole(null);
+                              setPadDraftSignature("");
+                            }}
+                          >
+                            Discard Changes
+                          </Button>
+                        )}
+                        <Button
+                          type="button"
+                          disabled={saveOfficialsMutation.isPending}
+                          onClick={() =>
+                            saveOfficialsMutation.mutate(effectiveOfficials)
+                          }
+                        >
+                          <Save className="mr-2 h-4 w-4" />
+                          {saveOfficialsMutation.isPending
+                            ? "Saving..."
+                            : "Save Institutional Officials"}
+                        </Button>
+                      </div>
+                    </>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
           {/* Audit Logs Tab */}
           {activeTab === "audit" && (
             <Card>
@@ -768,7 +1154,10 @@ export default function AdminSettingsPage() {
           )}
 
           {/* Other Tabs Placeholder */}
-          {activeTab !== "academic_year" && activeTab !== "audit" && activeTab !== "email" && (
+          {activeTab !== "academic_year" &&
+            activeTab !== "audit" &&
+            activeTab !== "email" &&
+            activeTab !== "officials" && (
             <Card>
               <CardContent className="py-12">
                 <div className="flex flex-col items-center text-center">

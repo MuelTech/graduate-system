@@ -413,6 +413,7 @@ export class ThesisRepository {
       conceptPaper: ManagedUploadInput;
       cor: ManagedUploadInput;
       receipt: ManagedUploadInput;
+      orNumber?: string;
     },
   ) {
     return prisma.$transaction(async (tx) => {
@@ -432,6 +433,8 @@ export class ThesisRepository {
         );
       }
 
+      const trimmedOrNumber = evidence.orNumber?.trim() || undefined;
+
       // 1. Create the base Thesis Record linked to the Adviser Assignment
       const thesis = await tx.thesisRecord.create({
         data: {
@@ -440,6 +443,13 @@ export class ThesisRepository {
           stage: "TITLE",
           status: "PENDING",
           titleApplicationSubmittedAt: new Date(),
+          ...(trimmedOrNumber
+            ? {
+                titleOrNumber: trimmedOrNumber,
+                orNumber: trimmedOrNumber,
+                amountPaid: 900,
+              }
+            : {}),
         },
       });
 
@@ -468,7 +478,7 @@ export class ThesisRepository {
 
   async updateThesisToProposal(
     thesisId: string,
-    evidence: { cor: ManagedUploadInput; receipt: ManagedUploadInput },
+    evidence: { cor: ManagedUploadInput; receipt: ManagedUploadInput; orNumber?: string },
   ) {
     return prisma.$transaction(async (tx) => {
       // DL-6 FIX1: serialize and re-check the exact pre-Proposal stage.
@@ -499,6 +509,8 @@ export class ThesisRepository {
         );
       }
 
+      const trimmedOrNumber = evidence.orNumber?.trim() || undefined;
+
       // New stage application starts a fresh review cycle; clear prior outcome
       // so Title PASSED cannot be mistaken for Proposal PASSED.
       const thesis = await tx.thesisRecord.update({
@@ -508,6 +520,13 @@ export class ThesisRepository {
           status: "PENDING",
           outcome: null,
           proposalApplicationSubmittedAt: new Date(),
+          ...(trimmedOrNumber
+            ? {
+                proposalOrNumber: trimmedOrNumber,
+                orNumber: trimmedOrNumber,
+                amountPaid: 900,
+              }
+            : {}),
         },
       });
 
@@ -526,7 +545,7 @@ export class ThesisRepository {
 
   async updateThesisToFinal(
     thesisId: string,
-    evidence: { cor: ManagedUploadInput; receipt: ManagedUploadInput },
+    evidence: { cor: ManagedUploadInput; receipt: ManagedUploadInput; orNumber?: string },
   ) {
     return prisma.$transaction(async (tx) => {
       // DL-6 FIX1: serialize and re-check the exact pre-Final stage.
@@ -557,6 +576,8 @@ export class ThesisRepository {
         );
       }
 
+      const trimmedOrNumber = evidence.orNumber?.trim() || undefined;
+
       const thesis = await tx.thesisRecord.update({
         where: { id: thesisId },
         data: {
@@ -564,6 +585,13 @@ export class ThesisRepository {
           status: "PENDING",
           outcome: null,
           finalApplicationSubmittedAt: new Date(),
+          ...(trimmedOrNumber
+            ? {
+                finalOrNumber: trimmedOrNumber,
+                orNumber: trimmedOrNumber,
+                amountPaid: 900,
+              }
+            : {}),
         },
       });
 
@@ -595,11 +623,12 @@ export class ThesisRepository {
       docType: DefenseEvidenceDocType;
       upload: ManagedUploadInput;
     }>;
+    orNumber?: string;
     audit: { actorId: string; description: string };
     /** DL-8: prior rejection reason, retained in the resubmit audit event. */
     previousRejectionReason?: string | null;
   }) {
-    const { thesisId, studentId, stage, replacements, audit, previousRejectionReason } = params;
+    const { thesisId, studentId, stage, replacements, orNumber, audit, previousRejectionReason } = params;
 
     return prisma.$transaction(async (tx) => {
       // Serialize competing resubmissions for this application.
@@ -704,12 +733,25 @@ export class ThesisRepository {
           : stage === "PROPOSAL"
             ? { proposalApplicationSubmittedAt: submittedAt }
             : { finalApplicationSubmittedAt: submittedAt };
+      const trimmedOrNumber = orNumber?.trim() || undefined;
+      const stageOrUpdate = trimmedOrNumber
+        ? {
+            ...(stage === "TITLE"
+              ? { titleOrNumber: trimmedOrNumber }
+              : stage === "PROPOSAL"
+                ? { proposalOrNumber: trimmedOrNumber }
+                : { finalOrNumber: trimmedOrNumber }),
+            orNumber: trimmedOrNumber,
+            amountPaid: 900,
+          }
+        : {};
       const claimed = await tx.thesisRecord.updateMany({
         where: { id: thesisId, studentId, status: "REJECTED", stage },
         data: {
           status: "PENDING",
           rejectionReason: null,
           ...stageSubmittedAt,
+          ...stageOrUpdate,
         },
       });
       if (claimed.count !== 1) {
@@ -730,6 +772,7 @@ export class ThesisRepository {
             stage,
             previousRejectionReason: previousRejectionReason ?? null,
             replacements: replacementDetail,
+            ...(trimmedOrNumber ? { orNumber: trimmedOrNumber } : {}),
             createdIds,
             supersededIds,
           }),

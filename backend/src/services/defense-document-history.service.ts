@@ -109,6 +109,8 @@ export interface DefenseHistoryApplicationState {
   status: string | null;
   /** Live rejection reason — null for a prior stage. */
   rejectionReason: string | null;
+  orNumber: string | null;
+  amountPaid: string | null;
 }
 
 export interface DefenseDocumentHistoryDto {
@@ -220,6 +222,18 @@ export class DefenseApplicationDocumentHistoryService {
     // Never reuse the current ThesisRecord status for a prior-stage request.
     const isCurrentStage = stage === thesis.stage;
     const currentThesisStage = thesis.stage as DefenseHistoryStage;
+    const thesisRecord = thesis as typeof thesis & {
+      orNumber?: string | null;
+      titleOrNumber?: string | null;
+      proposalOrNumber?: string | null;
+      finalOrNumber?: string | null;
+    };
+    const stageOrNumber =
+      stage === "TITLE"
+        ? thesisRecord.titleOrNumber ?? (isCurrentStage ? thesisRecord.orNumber ?? null : null)
+        : stage === "PROPOSAL"
+          ? thesisRecord.proposalOrNumber ?? (isCurrentStage ? thesisRecord.orNumber ?? null : null)
+          : thesisRecord.finalOrNumber ?? (isCurrentStage ? thesisRecord.orNumber ?? null : null);
 
     return {
       thesisId,
@@ -231,6 +245,8 @@ export class DefenseApplicationDocumentHistoryService {
         rejectionReason: isCurrentStage
           ? thesis.rejectionReason ?? null
           : null,
+        orNumber: stageOrNumber ?? null,
+        amountPaid: stageOrNumber ? "P 900.00" : null,
       },
       supportingEvidence,
       manuscriptReview,

@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { EXAM_CONFIGURATION_KEY } from "../../../src/services/exam-configuration.rules";
+import { INSTITUTIONAL_OFFICIALS_SETTING_KEY } from "../../../src/services/institutional-officials.service";
 
 const db = vi.hoisted(() => ({
   systemSetting: { findUnique: vi.fn(), findMany: vi.fn(), upsert: vi.fn(), update: vi.fn() },
@@ -74,7 +75,14 @@ describe("B1 persisted current document with bounded projection", () => {
 describe("B1 cannot be bypassed through generic System Settings", () => {
   it("excludes the reserved document from generic settings UI data", async () => {
     await new SettingsRepository().getAllSettings();
-    expect(db.systemSetting.findMany).toHaveBeenCalledWith({ where: { settingKey: { not: EXAM_CONFIGURATION_KEY } }, orderBy: { settingKey: "asc" } });
+    expect(db.systemSetting.findMany).toHaveBeenCalledWith({
+      where: {
+        settingKey: {
+          notIn: [EXAM_CONFIGURATION_KEY, INSTITUTIONAL_OFFICIALS_SETTING_KEY],
+        },
+      },
+      orderBy: { settingKey: "asc" },
+    });
   });
 
   it.each([EXAM_CONFIGURATION_KEY, EXAM_CONFIGURATION_KEY.toUpperCase(), "entrance_éxam_configuration"])("rejects generic updates, including DB collation aliases %s", async key => {
@@ -85,6 +93,16 @@ describe("B1 cannot be bypassed through generic System Settings", () => {
 
   it("retains unrelated generic setting updates with a DB-side reserved-key exclusion", async () => {
     await new SettingsRepository().updateSetting("unrelated", "next", "admin-1");
-    expect(db.systemSetting.update).toHaveBeenCalledWith({ where: { settingKey: "unrelated", NOT: { settingKey: EXAM_CONFIGURATION_KEY } }, data: { settingValue: "next", lastModifiedById: "admin-1" } });
+    expect(db.systemSetting.update).toHaveBeenCalledWith({
+      where: {
+        settingKey: "unrelated",
+        NOT: {
+          settingKey: {
+            in: [EXAM_CONFIGURATION_KEY, INSTITUTIONAL_OFFICIALS_SETTING_KEY],
+          },
+        },
+      },
+      data: { settingValue: "next", lastModifiedById: "admin-1" },
+    });
   });
 });

@@ -357,6 +357,10 @@ function mapApplicationRow(row: {
   status: string;
   outcome?: string | null;
   rejectionReason?: string | null;
+  orNumber?: string | null;
+  titleOrNumber?: string | null;
+  proposalOrNumber?: string | null;
+  finalOrNumber?: string | null;
   createdAt: Date;
   student: unknown;
   thesisTitles: unknown;
@@ -399,6 +403,12 @@ function mapApplicationRow(row: {
     applicationStatus: row.status,
     outcome: row.outcome ?? null,
   });
+  const stageOrNumber =
+    row.stage === "TITLE"
+      ? row.titleOrNumber ?? row.orNumber ?? null
+      : row.stage === "PROPOSAL"
+        ? row.proposalOrNumber ?? row.orNumber ?? null
+        : row.finalOrNumber ?? row.orNumber ?? null;
 
   return {
     id: row.id,
@@ -411,6 +421,8 @@ function mapApplicationRow(row: {
     rawApplicationStatus: row.status,
     outcome: row.outcome ?? null,
     rejectionReason: row.rejectionReason ?? null,
+    orNumber: stageOrNumber,
+    amountPaid: stageOrNumber ? "P 900.00" : null,
     createdAt: row.createdAt,
     student: publicStudentDto(row.student),
     thesisTitles: row.thesisTitles,

@@ -14,4 +14,7 @@ export interface AdviserRequestRenderInput {
   readonly programName: string;
   /** Explicit PNG/JPEG bytes; omission leaves the signature area blank. */
   readonly studentSignature?: PdfImageInput;
+  /** Optional Dean display name and e-signature configured under Institutional Officials. */
+  readonly printedDeanName?: string;
+  readonly printedDeanSignature?: PdfImageInput;
 }

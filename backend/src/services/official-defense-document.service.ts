@@ -25,6 +25,7 @@ import {
 } from "./official-defense-document-filename";
 import {
   OfficialDefenseRecordService,
+  OFFICIAL_DEFENSE_FEE_DISPLAY,
   type OfficialCriteriaDto,
 } from "./official-defense-record.service";
 import { loadOfficialFormLogos } from "./official-form-assets";
@@ -392,6 +393,8 @@ export function mapOfficialSummaryToRenderInput(
     );
   }
 
+  const deanSignatureData = nonEmpty(source.deanSignatureData);
+
   return {
     logos,
     stage,
@@ -407,7 +410,10 @@ export function mapOfficialSummaryToRenderInput(
       ),
     },
     adviserName: adviserName ?? "",
-    deanName: "",
+    deanName: nonEmpty(source.deanName) ?? "",
+    ...(deanSignatureData
+      ? { deanSignature: decodeEvaluatorSignature(deanSignatureData) }
+      : {}),
   };
 }
 
@@ -601,6 +607,14 @@ export function mapDefenseApplicationToRenderInput(
   const adviserName =
     advisers.length === 1 ? printableAssignmentName(advisers[0]) : "";
 
+  const officialReceiptNumber = nonEmpty(source.officialReceiptNumber) ?? "";
+  const amountPaid = officialReceiptNumber
+    ? (nonEmpty(source.amountPaid) ?? OFFICIAL_DEFENSE_FEE_DISPLAY)
+    : (nonEmpty(source.amountPaid) ?? "");
+  const deanSignatureData = nonEmpty(source.deanSignatureData);
+  const vicePresidentSignatureData = nonEmpty(source.vicePresidentSignatureData);
+  const presidentSignatureData = nonEmpty(source.presidentSignatureData);
+
   return {
     logos,
     variant,
@@ -613,9 +627,8 @@ export function mapDefenseApplicationToRenderInput(
     applicantDateAndTime: formatOfficialApplicationDateTime(
       source.applicationSubmittedAt,
     ),
-    // Client policy for payment/O.R. remains unconfirmed; keep these blank.
-    amountPaid: "",
-    officialReceiptNumber: "",
+    amountPaid,
+    officialReceiptNumber,
     dateOfApplication: formatOfficialApplicationDate(
       source.applicationSubmittedAt,
     ),
@@ -629,9 +642,18 @@ export function mapDefenseApplicationToRenderInput(
       facilitatorName: printableAssignmentName(facilitators[0]),
       rapporteurName: printableAssignmentName(rapporteurs[0]),
     },
-    deanName: "",
-    vicePresidentName: "",
-    presidentName: "",
+    deanName: nonEmpty(source.deanName) ?? "",
+    vicePresidentName: nonEmpty(source.vicePresidentName) ?? "",
+    presidentName: nonEmpty(source.presidentName) ?? "",
+    ...(deanSignatureData
+      ? { deanSignature: decodeEvaluatorSignature(deanSignatureData) }
+      : {}),
+    ...(vicePresidentSignatureData
+      ? { vicePresidentSignature: decodeEvaluatorSignature(vicePresidentSignatureData) }
+      : {}),
+    ...(presidentSignatureData
+      ? { presidentSignature: decodeEvaluatorSignature(presidentSignatureData) }
+      : {}),
   };
 }
 

@@ -134,7 +134,17 @@ export async function renderAdviserRequest(input: AdviserRequestRenderInput): Pr
   rule(page, 76, 638, 242);
   text("Adviser", 76, 642, 166, 14, 11, oblique, "center");
   text("Approved:", 76, 704, 180);
-  // No institutional-office-holder authority exists: leave name/signature blank.
+  if (input.printedDeanSignature) {
+    await drawContainedImage(doc, page, input.printedDeanSignature, {
+      x: 82,
+      top: 720,
+      width: 126,
+      height: 24,
+    });
+  }
+  if (input.printedDeanName?.trim()) {
+    field(input.printedDeanName, "Dean name", 76, 736, 138, 26);
+  }
   rule(page, 76, 764, 214);
   text("Dean, Graduate School", 76, 768, 138, 14, 10.5, regular, "center");
   text("EARIST-QSF-GS-020 Rev. 00 (06.20.25)", 76, 800, 450, 15, 10.5, boldOblique);

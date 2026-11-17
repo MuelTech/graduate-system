@@ -28,6 +28,8 @@ import {
 } from "@/components/student/thesis-journey-shell";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
@@ -67,6 +69,7 @@ export default function ProposalDefensePage() {
   const corInputRef = useRef<HTMLInputElement>(null);
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
   const receiptInputRef = useRef<HTMLInputElement>(null);
+  const [orNumber, setOrNumber] = useState("");
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitSuccess, setSubmitSuccess] = useState(false);
 
@@ -123,6 +126,7 @@ export default function ProposalDefensePage() {
     isAdviserCertified &&
     !!corFile &&
     !!receiptFile &&
+    orNumber.trim().length > 0 &&
     (state === "CURRENT" || state === "AVAILABLE") &&
     systemGaps.length === 0 &&
     !(eligibility?.missing ?? []).some((m) => m.code === "ADVISER_CERT");
@@ -132,6 +136,7 @@ export default function ProposalDefensePage() {
       const formData = new FormData();
       formData.append("cor", corFile!);
       formData.append("receipt", receiptFile!);
+      formData.append("orNumber", orNumber.trim());
       return apiClientRequest("/thesis/defense/proposal", {
         method: "POST",
         body: formData,
@@ -428,6 +433,39 @@ export default function ProposalDefensePage() {
                   setReceiptFile(null);
                   if (receiptInputRef.current) receiptInputRef.current.value = "";
                 }}
+              />
+            </div>
+
+            <div className="rounded-xl border border-gray-200 bg-gray-50/40 p-4">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <Label
+                    htmlFor="proposal-or-number"
+                    className="text-sm font-bold text-[#333333]"
+                  >
+                    Official Receipt (O.R.) Number <span className="text-[#e02b20]">*</span>
+                  </Label>
+                  <p className="mt-0.5 text-xs text-gray-500">
+                    Enter the exact O.R. No. shown on your Cashier proof of payment. It will reflect on your official Defense Application form.
+                  </p>
+                </div>
+                <Badge
+                  variant="outline"
+                  className="border-gray-200 bg-white font-semibold text-[#333333]"
+                >
+                  Defense Fee: P 900.00
+                </Badge>
+              </div>
+              <Input
+                id="proposal-or-number"
+                type="text"
+                maxLength={64}
+                value={orNumber}
+                disabled={submitProposal.isPending}
+                onChange={(e) => setOrNumber(e.target.value)}
+                placeholder="e.g., OR-2026-001234"
+                className="mt-3 max-w-md bg-white"
+                required
               />
             </div>
 

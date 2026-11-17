@@ -2,7 +2,7 @@ import {
   grayscale, PDFDocument, PDFFont, popGraphicsState, pushGraphicsState, StandardFonts, translate,
 } from "pdf-lib";
 import { institutionalHeader } from "../shared/institutional-header";
-import { A4, rule } from "../shared/pdf-layout";
+import { A4, drawContainedImage, rule } from "../shared/pdf-layout";
 import { fitText, textBox } from "../shared/pdf-text";
 import type { OralExamSummaryRenderInput } from "./oral-exam-summary.types";
 
@@ -155,6 +155,14 @@ export async function renderOralExamSummary(input: OralExamSummaryRenderInput): 
   // block in that freed region instead of leaving an accidental empty gap.
   const deanTop = input.stage === "title" ? 610 + bodyShift : 722;
   text("Attested:", 76, deanTop, 130, 16, 11);
+  if (input.deanSignature) {
+    await drawContainedImage(doc, page, input.deanSignature, {
+      x: 86,
+      top: deanTop + 14,
+      width: 120,
+      height: 24,
+    });
+  }
   signatoryName(input.deanName, 76, deanTop + 46, 140, "Dean name");
   text("Dean, Graduate School", 76, deanTop + 50, 160, 14, 10.5);
   return doc.save();

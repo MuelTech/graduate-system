@@ -1,4 +1,5 @@
 import type { InstitutionalLogos } from "../shared/institutional-header";
+import type { PdfImageInput } from "../shared/pdf-layout";
 
 export interface OralExamSummaryExaminerRow {
   readonly examinerName: string;
@@ -25,11 +26,12 @@ export interface OralExamSummaryRenderInput {
   readonly studentNumber: string;
   /** At most six rows, in caller-supplied order. Missing rows stay blank. */
   readonly examiners: readonly OralExamSummaryExaminerRow[];
-  /** Explicit display names, independent of the examiner list. No signature evidence. */
+  /** Explicit display names, independent of the examiner list. */
   readonly submittedBy: {
     readonly chairmanName: string;
     readonly memberNames: readonly string[];
   };
   readonly adviserName: string;
   readonly deanName: string;
+  readonly deanSignature?: PdfImageInput;
 }

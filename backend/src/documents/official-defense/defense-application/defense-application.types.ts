@@ -1,4 +1,5 @@
 import type { InstitutionalLogos } from "../shared/institutional-header";
+import type { PdfImageInput } from "../shared/pdf-layout";
 
 /** Explicit presentation selection only; null leaves all three printed options unmarked. */
 export type DefenseApplicationType = "title" | "proposal" | "final" | null;
@@ -20,10 +21,13 @@ interface DefenseApplicationCommonInput {
   readonly defenseDate: string;
   readonly defenseTime: string;
   readonly defenseLink: string;
-  /** Display names only. No approval state or signature evidence. */
+  /** Display names and optional explicit signature images only. */
   readonly deanName: string;
   readonly vicePresidentName: string;
   readonly presidentName: string;
+  readonly deanSignature?: PdfImageInput;
+  readonly vicePresidentSignature?: PdfImageInput;
+  readonly presidentSignature?: PdfImageInput;
 }
 interface CommitteeDisplayNames {
   /**
