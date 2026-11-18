@@ -37,7 +37,6 @@ import {
   AlertCircle,
   CalendarClock,
   CheckCircle2,
-  Eye,
   FileText,
   History,
   RefreshCw,
@@ -47,13 +46,13 @@ import {
 } from "lucide-react";
 
 const STATUS_BADGE_CLASS: Record<string, string> = {
-  PENDING: "text-(--earist-warning)",
-  APPROVED: "text-(--earist-success)",
-  SCHEDULED: "text-(--earist-secondary)",
-  PASSED: "text-(--earist-success)",
-  REJECTED: "text-destructive",
-  REVISION: "text-(--earist-warning)",
-  FAILED: "text-destructive",
+  PENDING: "border-amber-200 bg-amber-50 text-amber-800",
+  APPROVED: "border-emerald-200 bg-emerald-50 text-emerald-700",
+  SCHEDULED: "border-blue-200 bg-blue-50 text-blue-700",
+  PASSED: "border-emerald-200 bg-emerald-50 text-emerald-700",
+  REJECTED: "border-red-200 bg-red-50 text-red-700",
+  REVISION: "border-amber-200 bg-amber-50 text-amber-800",
+  FAILED: "border-red-200 bg-red-50 text-red-700",
 };
 
 type ApiErrorish = { statusCode?: number; missing?: MissingRequirement[] };
@@ -85,8 +84,8 @@ function formatDate(value: string): string {
 function SummaryRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-start justify-between gap-3">
-      <dt className="text-xs font-medium text-(--earist-body-text)">{label}</dt>
-      <dd className="text-right text-sm break-words text-foreground">
+      <dt className="text-xs font-medium text-gray-500">{label}</dt>
+      <dd className="text-right text-sm font-medium break-words text-[#333333]">
         {value}
       </dd>
     </div>
@@ -230,7 +229,7 @@ export default function DefenseApplicationDetailPage() {
 
   if (appQuery.isLoading) {
     return (
-      <div className="mx-auto w-full max-w-6xl space-y-6">
+      <div className="w-full space-y-6">
         {breadcrumb}
         <DetailSkeleton />
       </div>
@@ -241,21 +240,21 @@ export default function DefenseApplicationDetailPage() {
     const statusCode = (appQuery.error as ApiErrorish | null)?.statusCode;
     const notFound = statusCode === 404;
     return (
-      <div className="mx-auto w-full max-w-6xl space-y-6">
+      <div className="w-full space-y-6">
         {breadcrumb}
-        <div className="rounded-lg border border-(--earist-border-gray) bg-white">
+        <div className="rounded-xl border border-gray-100 bg-white shadow-sm">
           <div className="flex flex-col items-center justify-center gap-3 px-6 py-14 text-center">
             <AlertCircle
-              className="h-8 w-8 text-(--earist-secondary)"
+              className="h-8 w-8 text-[#e02b20]"
               aria-hidden="true"
             />
             <div className="space-y-1">
-              <p className="text-sm font-semibold text-(--earist-primary)">
+              <p className="text-sm font-semibold text-[#333333]">
                 {notFound
                   ? "Defense application not found"
                   : "Unable to load this defense application"}
               </p>
-              <p className="text-sm text-(--earist-body-text)">
+              <p className="text-sm text-gray-500">
                 {notFound
                   ? "This application may have been removed or the link is incorrect."
                   : "The application could not be loaded. Please try again."}
@@ -335,7 +334,7 @@ export default function DefenseApplicationDetailPage() {
   const requirements = historyQuery.data?.supportingEvidence ?? [];
 
   return (
-    <div className="mx-auto w-full max-w-6xl space-y-6">
+    <div className="w-full space-y-6">
       {breadcrumb}
 
       <PageHeader
@@ -346,9 +345,9 @@ export default function DefenseApplicationDetailPage() {
       {feedback && (
         <div
           role="status"
-          className="flex items-center justify-between gap-3 rounded-lg border border-(--earist-success)/30 bg-(--earist-surface-gray) px-4 py-2"
+          className="flex items-center justify-between gap-3 rounded-xl border border-emerald-200 bg-emerald-50/70 px-4 py-2.5"
         >
-          <p className="flex items-start gap-2 text-sm text-(--earist-success)">
+          <p className="flex items-start gap-2 text-sm font-medium text-emerald-800">
             <CheckCircle2
               className="mt-0.5 h-4 w-4 shrink-0"
               aria-hidden="true"
@@ -371,16 +370,16 @@ export default function DefenseApplicationDetailPage() {
         <div className="min-w-0 space-y-6">
           {/* Research Information (Proposal / Final only) */}
           {(isProposal || isFinal) && (
-            <section>
-              <h2 className="text-sm font-semibold text-(--earist-secondary)">
+            <section className="rounded-xl border border-gray-100 bg-white p-5 shadow-sm">
+              <h2 className="text-base font-bold text-[#333333]">
                 Research Information
               </h2>
-              <div className="mt-3 space-y-3">
-                <div>
-                  <p className="text-xs font-medium text-(--earist-secondary)">
+              <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                <div className="rounded-lg border border-gray-100 bg-gray-50/70 p-3.5">
+                  <p className="text-xs font-semibold tracking-wider text-gray-500 uppercase">
                     Thesis / Dissertation Title
                   </p>
-                  <p className="mt-0.5 text-sm break-words text-foreground">
+                  <p className="mt-1 text-sm font-semibold break-words text-[#333333]">
                     {historyQuery.isLoading
                       ? "Loading…"
                       : stageManuscriptTitle ||
@@ -388,14 +387,14 @@ export default function DefenseApplicationDetailPage() {
                   </p>
                 </div>
                 {adviser && (
-                  <div>
-                    <p className="text-xs font-medium text-(--earist-secondary)">
+                  <div className="rounded-lg border border-gray-100 bg-gray-50/70 p-3.5">
+                    <p className="text-xs font-semibold tracking-wider text-gray-500 uppercase">
                       Thesis / Dissertation Adviser
                     </p>
-                    <p className="mt-0.5 text-sm break-words text-foreground">
+                    <p className="mt-1 text-sm font-semibold break-words text-[#333333]">
                       {adviser.firstName} {adviser.lastName}
                     </p>
-                    <p className="mt-1 text-xs text-(--earist-body-text)">
+                    <p className="mt-1 text-xs text-gray-500">
                       Included automatically in the Proposal/Final defense
                       committee.
                     </p>
@@ -408,11 +407,11 @@ export default function DefenseApplicationDetailPage() {
           {/* Application Requirements — dominant review surface */}
           {(stage === "PROPOSAL" || stage === "FINAL") && <AdviserCertificationRecords thesisId={thesisId} stage={stage} />}
 
-          <section className="rounded-lg border border-(--earist-border-gray) bg-white p-4">
-            <h2 className="text-sm font-semibold text-(--earist-secondary)">
+          <section className="rounded-xl border border-gray-100 bg-white p-5 shadow-sm">
+            <h2 className="text-base font-bold text-[#333333]">
               Application Requirements
             </h2>
-            <div className="mt-3">
+            <div className="mt-4">
               {historyQuery.isLoading ? (
                 <div className="space-y-2" aria-hidden="true">
                   {Array.from({ length: 3 }).map((_, index) => (
@@ -421,7 +420,7 @@ export default function DefenseApplicationDetailPage() {
                 </div>
               ) : historyQuery.isError || !historyQuery.data ? (
                 <div className="flex flex-col items-start gap-2">
-                  <p className="text-sm text-(--earist-body-text)">
+                  <p className="text-sm text-gray-500">
                     Unable to load the application requirements.
                   </p>
                   <Button
@@ -441,70 +440,97 @@ export default function DefenseApplicationDetailPage() {
                   </Button>
                 </div>
               ) : requirements.length === 0 ? (
-                <p className="text-sm text-(--earist-body-text)">
+                <p className="text-sm text-gray-500">
                   No requirements are recorded for this stage.
                 </p>
               ) : (
-                <ul className="divide-y divide-(--earist-border-gray)">
+                <ul className="space-y-3">
                   {requirements.map((slot) => (
                     <li
                       key={slot.docType}
-                      className="flex flex-wrap items-center justify-between gap-2 py-2.5 first:pt-0 last:pb-0"
+                      className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-gray-200/80 bg-gray-50/50 p-3.5"
                     >
-                      <div className="min-w-0">
-                        <p className="text-sm font-medium text-foreground">
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-semibold text-[#333333]">
                           {requirementLabel(slot.docType)}
                         </p>
                         {slot.integrityState === "MISSING" && (
-                          <p className="mt-0.5 text-sm text-(--earist-warning)">
+                          <p className="mt-0.5 text-xs font-medium text-amber-700">
                             No current document recorded.
                           </p>
                         )}
                         {slot.integrityState === "AMBIGUOUS" && (
-                          <p className="mt-0.5 text-sm text-(--earist-warning)">
+                          <p className="mt-0.5 text-xs font-medium text-amber-700">
                             Multiple current versions recorded — review
                             required.
                           </p>
                         )}
                         {slot.current && (
-                          <p className="mt-0.5 text-xs break-words text-(--earist-body-text)">
+                          <p className="mt-0.5 text-xs break-words text-gray-500">
                             {slot.current.originalFilename ||
                               "Filename unavailable"}{" "}
                             · {formatDateTime(slot.current.uploadedAt)}
                           </p>
                         )}
                         {slot.docType === "RECEIPT" &&
-                          (historyQuery.data?.application.orNumber || app.orNumber) && (
-                            <p className="mt-1 text-xs font-medium text-[#333333]">
-                              O.R. No.:{" "}
-                              <span className="font-semibold">
-                                {historyQuery.data?.application.orNumber || app.orNumber}
-                              </span>{" "}
-                              · Amount Paid:{" "}
-                              <span className="font-semibold">
+                          (historyQuery.data?.application.orNumber ||
+                            app.orNumber) && (
+                            <div className="mt-1.5 flex flex-wrap gap-1.5">
+                              <Badge
+                                variant="outline"
+                                className="border-gray-200 bg-white text-[11px] text-[#333333]"
+                              >
+                                O.R. No.:{" "}
+                                {historyQuery.data?.application.orNumber ||
+                                  app.orNumber}
+                              </Badge>
+                              <Badge
+                                variant="outline"
+                                className="border-gray-200 bg-white text-[11px] text-[#333333]"
+                              >
+                                Amount Paid:{" "}
                                 {historyQuery.data?.application.amountPaid ||
                                   app.amountPaid ||
                                   "P 900.00"}
-                              </span>
-                            </p>
+                              </Badge>
+                            </div>
                           )}
                       </div>
-                      {slot.current && (
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() =>
-                            viewDocument(
-                              slot.current!.id,
-                              requirementLabel(slot.docType),
-                            )
-                          }
-                        >
-                          <Eye className="mr-1.5 h-4 w-4" aria-hidden="true" />
-                          View
-                        </Button>
-                      )}
+                      <div className="flex shrink-0 items-center gap-2">
+                        {slot.current ? (
+                          <Badge
+                            variant="outline"
+                            className="border-emerald-200 bg-emerald-50 text-emerald-700"
+                          >
+                            On file
+                          </Badge>
+                        ) : (
+                          <Badge
+                            variant="outline"
+                            className="border-amber-200 bg-amber-50 text-amber-800"
+                          >
+                            {slot.integrityState === "AMBIGUOUS"
+                              ? "Review required"
+                              : "Missing"}
+                          </Badge>
+                        )}
+                        {slot.current && (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="bg-white"
+                            onClick={() =>
+                              viewDocument(
+                                slot.current!.id,
+                                requirementLabel(slot.docType),
+                              )
+                            }
+                          >
+                            View
+                          </Button>
+                        )}
+                      </div>
                     </li>
                   ))}
                 </ul>
@@ -513,9 +539,9 @@ export default function DefenseApplicationDetailPage() {
           </section>
 
           {/* Document / Review History — secondary, collapsed */}
-          <details className="rounded-lg border border-(--earist-border-gray) bg-white px-4 py-3">
-            <summary className="flex cursor-pointer items-center gap-2 text-sm font-semibold text-(--earist-secondary)">
-              <History className="h-4 w-4" aria-hidden="true" />
+          <details className="rounded-xl border border-gray-100 bg-white px-5 py-3.5 shadow-sm">
+            <summary className="flex cursor-pointer items-center gap-2 text-sm font-semibold text-[#333333]">
+              <History className="h-4 w-4 text-gray-500" aria-hidden="true" />
               View document history
             </summary>
             <div className="mt-3 space-y-4">
@@ -624,10 +650,6 @@ export default function DefenseApplicationDetailPage() {
                                   )
                                 }
                               >
-                                <Eye
-                                  className="mr-1.5 h-4 w-4"
-                                  aria-hidden="true"
-                                />
                                 View
                               </Button>
                             </li>
@@ -645,11 +667,11 @@ export default function DefenseApplicationDetailPage() {
         {/* Context / action sidebar */}
         <aside className="space-y-4 lg:sticky lg:top-20 lg:self-start">
           {/* Application Summary */}
-          <div className="rounded-lg border border-(--earist-border-gray) bg-white p-4">
-            <h2 className="text-sm font-semibold text-(--earist-secondary)">
+          <div className="rounded-xl border border-gray-100 bg-white p-5 shadow-sm">
+            <h2 className="text-base font-bold text-[#333333]">
               Application Summary
             </h2>
-            <dl className="mt-3 space-y-2">
+            <dl className="mt-3 space-y-2.5">
               <SummaryRow
                 label="Student Number"
                 value={student.studentNumber || "Not recorded"}
@@ -683,8 +705,8 @@ export default function DefenseApplicationDetailPage() {
                 label="Submitted"
                 value={formatDate(app.createdAt)}
               />
-              <div className="flex items-center justify-between gap-3">
-                <dt className="text-xs font-medium text-(--earist-body-text)">
+              <div className="flex items-center justify-between gap-3 pt-1">
+                <dt className="text-xs font-medium text-gray-500">
                   Status
                 </dt>
                 <dd>
@@ -698,7 +720,7 @@ export default function DefenseApplicationDetailPage() {
               </div>
             </dl>
             {app.rejectionReason && app.rawApplicationStatus === "REJECTED" && (
-              <p className="mt-3 rounded-md bg-destructive/5 px-3 py-2 text-xs break-words text-destructive">
+              <p className="mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs break-words text-red-700">
                 Rejection reason: {app.rejectionReason}
               </p>
             )}
@@ -706,18 +728,18 @@ export default function DefenseApplicationDetailPage() {
 
           {/* Admin Decision (pending) */}
           {canDecide && (
-            <div className="rounded-lg border border-(--earist-border-gray) bg-white p-4">
-              <h2 className="text-sm font-semibold text-(--earist-secondary)">
+            <div className="rounded-xl border border-gray-100 bg-white p-5 shadow-sm">
+              <h2 className="text-base font-bold text-[#333333]">
                 Admin Decision
               </h2>
-              <p className="mt-2 text-xs text-(--earist-body-text)">
+              <p className="mt-1.5 text-xs text-gray-500">
                 Approve if all requirements are complete, or reject to return
                 the application for correction.
               </p>
-              <div className="mt-3 grid grid-cols-2 gap-2">
+              <div className="mt-4 grid grid-cols-2 gap-2">
                 <Button
                   variant="outline"
-                  className="text-destructive hover:bg-destructive/10"
+                  className="border-red-200 text-red-700 hover:bg-red-50"
                   onClick={() => {
                     setRejectError(null);
                     setShowReject(true);
@@ -727,7 +749,7 @@ export default function DefenseApplicationDetailPage() {
                   Reject
                 </Button>
                 <Button
-                  className="bg-(--earist-primary) text-white hover:bg-(--earist-primary)/90"
+                  className="bg-[#e02b20] text-white hover:bg-[#b71c1c]"
                   onClick={() => {
                     setApproveError(null);
                     setMissingRequirements([]);
@@ -743,11 +765,11 @@ export default function DefenseApplicationDetailPage() {
 
           {/* Next Step (ready) */}
           {isReady && (
-            <div className="rounded-lg border border-(--earist-border-gray) bg-white p-4">
-              <h2 className="text-sm font-semibold text-(--earist-secondary)">
+            <div className="rounded-xl border border-gray-100 bg-white p-5 shadow-sm">
+              <h2 className="text-base font-bold text-[#333333]">
                 Next Step
               </h2>
-              <p className="mt-2 text-sm text-(--earist-body-text)">
+              <p className="mt-1.5 text-sm text-gray-600">
                 Application requirements have been approved. Panel assignment
                 and defense scheduling are managed in Scheduling &amp; Panels.
               </p>
@@ -755,7 +777,7 @@ export default function DefenseApplicationDetailPage() {
                 href={schedulingHref}
                 className={cn(
                   buttonVariants(),
-                  "mt-3 w-full justify-center bg-(--earist-primary) text-white hover:bg-(--earist-primary)/90",
+                  "mt-4 w-full justify-center bg-[#e02b20] text-white hover:bg-[#b71c1c]",
                 )}
               >
                 <CalendarClock className="mr-2 h-4 w-4" aria-hidden="true" />
@@ -766,11 +788,11 @@ export default function DefenseApplicationDetailPage() {
 
           {/* Scheduled / Active */}
           {isActive && (
-            <div className="rounded-lg border border-(--earist-border-gray) bg-white p-4">
-              <h2 className="text-sm font-semibold text-(--earist-secondary)">
+            <div className="rounded-xl border border-gray-100 bg-white p-5 shadow-sm">
+              <h2 className="text-base font-bold text-[#333333]">
                 Scheduled / Active
               </h2>
-              <p className="mt-2 text-sm text-(--earist-body-text)">
+              <p className="mt-1.5 text-sm text-gray-600">
                 This application has proceeded to a scheduled defense. Committee
                 and schedule details are managed in Scheduling &amp; Panels.
               </p>
@@ -778,7 +800,7 @@ export default function DefenseApplicationDetailPage() {
                 href={scheduledSessionHref}
                 className={cn(
                   buttonVariants({ variant: "outline", size: "sm" }),
-                  "mt-3 w-full justify-center",
+                  "mt-4 w-full justify-center",
                 )}
               >
                 <CalendarClock className="mr-2 h-4 w-4" aria-hidden="true" />
@@ -789,18 +811,18 @@ export default function DefenseApplicationDetailPage() {
 
           {/* History */}
           {isHistory && (
-            <div className="rounded-lg border border-(--earist-border-gray) bg-white p-4">
-              <h2 className="text-sm font-semibold text-(--earist-secondary)">
+            <div className="rounded-xl border border-gray-100 bg-white p-5 shadow-sm">
+              <h2 className="text-base font-bold text-[#333333]">
                 History
               </h2>
-              <p className="mt-2 text-sm text-(--earist-body-text)">
+              <p className="mt-1.5 text-sm text-gray-600">
                 This application is part of the student&apos;s defense history.
               </p>
               {historyQuery.data?.officialRecord?.available && (
                 <Button
                   variant="outline"
                   size="sm"
-                  className="mt-3 w-full justify-center"
+                  className="mt-4 w-full justify-center"
                   onClick={() =>
                     router.push(
                       `/admin/thesis/defense-records/${historyQuery.data!.officialRecord!.scheduleId}`,

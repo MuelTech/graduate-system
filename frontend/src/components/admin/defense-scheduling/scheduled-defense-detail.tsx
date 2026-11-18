@@ -23,12 +23,12 @@ import { ScheduledDefenseCorrectionEditor } from "./scheduled-defense-correction
 import { ScheduledDefenseSubmission } from "./scheduled-defense-submission";
 
 const SESSION_BADGE_CLASS: Record<string, string> = {
-  SCHEDULED: "text-(--earist-secondary)",
-  RESCHEDULED: "text-(--earist-secondary)",
-  IN_PROGRESS: "text-(--earist-warning)",
-  AWAITING_CONCLUSION: "text-(--earist-warning)",
-  CONCLUDED: "text-(--earist-success)",
-  CANCELLED: "text-destructive",
+  SCHEDULED: "border-blue-200 bg-blue-50 text-blue-700",
+  RESCHEDULED: "border-blue-200 bg-blue-50 text-blue-700",
+  IN_PROGRESS: "border-amber-200 bg-amber-50 text-amber-800",
+  AWAITING_CONCLUSION: "border-amber-200 bg-amber-50 text-amber-800",
+  CONCLUDED: "border-emerald-200 bg-emerald-50 text-emerald-700",
+  CANCELLED: "border-red-200 bg-red-50 text-red-700",
 };
 
 /** Only a complete http/https URL becomes an openable meeting link (§16). */
@@ -47,8 +47,12 @@ function safeMeetingLink(value: string | null | undefined): string | null {
 function ContextItem({ label, value }: { label: string; value: string }) {
   return (
     <div className="min-w-0">
-      <p className="text-xs font-medium text-(--earist-body-text)">{label}</p>
-      <p className="text-sm break-words text-foreground">{value}</p>
+      <p className="text-[11px] font-semibold tracking-wider text-gray-500 uppercase">
+        {label}
+      </p>
+      <p className="mt-0.5 text-sm font-medium break-words text-[#333333]">
+        {value}
+      </p>
     </div>
   );
 }
@@ -254,14 +258,17 @@ export function ScheduledDefenseDetail({
         </div>
       )}
 
-      <Card>
+      <Card className="border-gray-100 bg-white shadow-sm">
         <CardHeader className="pb-2">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <CardTitle className="text-sm font-semibold text-(--earist-secondary)">
+            <CardTitle className="text-base font-bold text-[#333333]">
               Selected Defense
             </CardTitle>
             <div className="flex flex-wrap items-center gap-2">
-              <Badge variant="outline" className="text-(--earist-secondary)">
+              <Badge
+                variant="outline"
+                className="border-gray-200 bg-gray-50 text-[#333333]"
+              >
                 {defenseTypeLabel(stage)}
               </Badge>
               <Badge
@@ -293,7 +300,7 @@ export function ScheduledDefenseDetail({
                     }
                     setEditingScheduleId(refreshed.data.scheduleId);
                   }}
-                  className="bg-(--earist-primary) text-white hover:bg-(--earist-primary)/90"
+                  className="bg-[#e02b20] text-white hover:bg-[#b71c1c]"
                 >
                   <Settings2 className="mr-2 h-4 w-4" aria-hidden="true" />
                   Manage Schedule &amp; Committee
@@ -302,7 +309,7 @@ export function ScheduledDefenseDetail({
             </div>
           </div>
         </CardHeader>
-        <CardContent className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <CardContent className="grid grid-cols-2 gap-4 lg:grid-cols-4">
           <ContextItem label="Student" value={detail.studentName || "Not recorded"} />
           <ContextItem
             label="Student No."
@@ -335,65 +342,71 @@ export function ScheduledDefenseDetail({
         />
       ) : (
         <>
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-semibold text-(--earist-secondary)">
-                Defense Schedule
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-              <ContextItem
-                label="Date"
-                value={formatDefenseDate(detail.defenseDate)}
-              />
-              <ContextItem
-                label="Time"
-                value={formatDefenseTime(detail.defenseTime)}
-              />
-              <div className="min-w-0">
-                <p className="text-xs font-medium text-(--earist-body-text)">
-                  Venue / Meeting Details
-                </p>
-                {meetingLink ? (
-                  <a
-                    href={meetingLink}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1 text-sm break-words text-(--earist-primary) underline underline-offset-2 hover:text-(--earist-secondary)"
-                  >
-                    Open Meeting Link
-                    <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
-                  </a>
-                ) : (
-                  <p className="text-sm break-words text-foreground">
-                    {venueText || "Not recorded"}
-                  </p>
-                )}
-              </div>
-              <ContextItem
-                label="Session Status"
-                value={sessionStatusLabel(detail.sessionStatus)}
-              />
-            </CardContent>
-          </Card>
-
           <ScheduledDefenseSubmission scheduleId={detail.scheduleId} />
 
-          <ReadOnlyCommitteeRoster
-            committee={detail.committee}
-            defenseType={detail.defenseType}
-            defenseStageLabel={defenseTypeLabel(stage)}
-            programType={programType}
-            policy={policyQuery.data}
-          />
+          <div className="grid grid-cols-1 items-start gap-4 xl:grid-cols-12">
+            <div className="xl:col-span-7">
+              <ReadOnlyCommitteeRoster
+                committee={detail.committee}
+                defenseType={detail.defenseType}
+                defenseStageLabel={defenseTypeLabel(stage)}
+                programType={programType}
+                policy={policyQuery.data}
+              />
+            </div>
 
-          <div className="flex flex-wrap justify-end gap-2">
-            <Link
-              href={defenseRecordHref(detail.scheduleId)}
-              className={buttonVariants({ variant: "outline" })}
-            >
-              View Defense Record
-            </Link>
+            <div className="space-y-4 xl:col-span-5">
+              <Card className="border-gray-100 bg-white shadow-sm">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base font-bold text-[#333333]">
+                    Defense Schedule
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="grid grid-cols-2 gap-4">
+                  <ContextItem
+                    label="Date"
+                    value={formatDefenseDate(detail.defenseDate)}
+                  />
+                  <ContextItem
+                    label="Time"
+                    value={formatDefenseTime(detail.defenseTime)}
+                  />
+                  <div className="min-w-0">
+                    <p className="text-[11px] font-semibold tracking-wider text-gray-500 uppercase">
+                      Venue / Meeting Details
+                    </p>
+                    {meetingLink ? (
+                      <a
+                        href={meetingLink}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="mt-0.5 inline-flex items-center gap-1 text-sm font-medium break-words text-[#e02b20] underline underline-offset-2 hover:text-[#b71c1c]"
+                      >
+                        Open Meeting Link
+                        <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
+                      </a>
+                    ) : (
+                      <p className="mt-0.5 text-sm font-medium break-words text-[#333333]">
+                        {venueText || "Not recorded"}
+                      </p>
+                    )}
+                  </div>
+                  <ContextItem
+                    label="Session Status"
+                    value={sessionStatusLabel(detail.sessionStatus)}
+                  />
+                </CardContent>
+              </Card>
+
+              <div className="flex flex-wrap justify-end gap-2">
+                <Link
+                  href={defenseRecordHref(detail.scheduleId)}
+                  className={cn(buttonVariants({ variant: "outline" }), "w-full bg-white sm:w-auto")}
+                >
+                  View Defense Record
+                </Link>
+              </div>
+            </div>
           </div>
         </>
       )}

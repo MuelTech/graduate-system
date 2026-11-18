@@ -107,6 +107,19 @@ function Pagination({
   );
 }
 
+function stageBadgeClass(stage?: string | null): string {
+  switch (stage) {
+    case "TITLE":
+      return "border-amber-200 bg-amber-50 text-amber-800";
+    case "PROPOSAL":
+      return "border-blue-200 bg-blue-50 text-blue-700";
+    case "FINAL":
+      return "border-emerald-200 bg-emerald-50 text-emerald-700";
+    default:
+      return "border-gray-200 bg-gray-50 text-[#333333]";
+  }
+}
+
 function ReadyList({
   list,
   filtered,
@@ -128,7 +141,7 @@ function ReadyList({
   }
   if (items.length === 0) {
     return (
-      <p className="py-8 text-center text-sm text-(--earist-body-text)">
+      <p className="py-8 text-center text-sm text-gray-500">
         {filtered
           ? "No approved applications match the selected filters."
           : "No approved defense applications are ready for scheduling."}
@@ -148,34 +161,42 @@ function ReadyList({
               aria-current={selected ? "true" : undefined}
               onClick={() => onSelect(app)}
               className={cn(
-                "w-full rounded-lg border p-3 text-left transition-colors",
+                "w-full rounded-xl border p-3 text-left transition-all",
                 selected
-                  ? "border-(--earist-primary) bg-(--earist-primary)/5"
-                  : "border-(--earist-border-gray) hover:bg-(--earist-surface-gray)",
+                  ? "border-l-4 border-[#e02b20]/40 border-l-[#e02b20] bg-red-50/40 shadow-2xs"
+                  : "border-gray-200/80 bg-white hover:border-gray-300 hover:bg-gray-50/60",
               )}
             >
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
-                  <p className="truncate text-sm font-semibold text-(--earist-primary)">
+                  <p
+                    className={cn(
+                      "truncate text-sm font-semibold",
+                      selected ? "text-[#91060c]" : "text-[#333333]",
+                    )}
+                  >
                     {student.user.firstName} {student.user.lastName}
                   </p>
-                  <p className="truncate text-xs text-(--earist-body-text)">
+                  <p className="truncate text-xs text-gray-500">
                     {student.studentNumber || student.user.email}
                   </p>
-                  <p className="truncate text-xs text-(--earist-body-text)">
+                  <p className="truncate text-xs text-gray-500">
                     {student.program?.programName || "Program N/A"}
                   </p>
                 </div>
                 <div className="flex shrink-0 flex-col items-end gap-1">
-                  <Badge variant="outline" className="text-(--earist-secondary)">
+                  <Badge
+                    variant="outline"
+                    className={cn("text-[11px]", stageBadgeClass(app.stage))}
+                  >
                     {defenseTypeLabel(app.stage)}
                   </Badge>
-                  <span className="text-xs text-(--earist-body-text)">
+                  <span className="text-[11px] text-gray-500">
                     Approved {new Date(app.createdAt).toLocaleDateString()}
                   </span>
                   {selected && (
                     <CheckCircle2
-                      className="h-4 w-4 text-(--earist-primary)"
+                      className="h-4 w-4 text-[#e02b20]"
                       aria-label="Selected"
                     />
                   )}
@@ -211,7 +232,7 @@ function ScheduledList({
   }
   if (items.length === 0) {
     return (
-      <p className="py-8 text-center text-sm text-(--earist-body-text)">
+      <p className="py-8 text-center text-sm text-gray-500">
         {filtered
           ? "No scheduled defenses match the selected filters."
           : "No defenses are currently scheduled."}
@@ -241,39 +262,47 @@ function ScheduledList({
               disabled={!scheduleId}
               onClick={() => onSelect(app)}
               className={cn(
-                "w-full rounded-lg border p-3 text-left transition-colors",
+                "w-full rounded-xl border p-3 text-left transition-all",
                 selected
-                  ? "border-(--earist-primary) bg-(--earist-primary)/5"
-                  : "border-(--earist-border-gray) hover:bg-(--earist-surface-gray)",
+                  ? "border-l-4 border-[#e02b20]/40 border-l-[#e02b20] bg-red-50/40 shadow-2xs"
+                  : "border-gray-200/80 bg-white hover:border-gray-300 hover:bg-gray-50/60",
               )}
             >
               <div className="flex items-start justify-between gap-2">
-                <p className="min-w-0 truncate text-sm font-semibold text-(--earist-primary)">
+                <p
+                  className={cn(
+                    "min-w-0 truncate text-sm font-semibold",
+                    selected ? "text-[#91060c]" : "text-[#333333]",
+                  )}
+                >
                   {student.user.firstName} {student.user.lastName}
                 </p>
                 <Badge
                   variant="outline"
-                  className="shrink-0 text-(--earist-secondary)"
+                  className={cn("shrink-0 text-[11px]", stageBadgeClass(app.stage))}
                 >
                   {defenseTypeLabel(app.stage)}
                 </Badge>
               </div>
-              <p className="mt-0.5 truncate text-xs text-(--earist-body-text)">
+              <p className="mt-0.5 truncate text-xs text-gray-500">
                 {student.studentNumber || student.user.email}
               </p>
-              <p className="mt-1 text-xs tabular-nums text-foreground">
+              <p className="mt-1 text-xs font-medium tabular-nums text-[#333333]">
                 {schedule?.defenseDate
                   ? `${formatDefenseDate(schedule.defenseDate)} · ${formatDefenseTime(schedule.defenseTime)}`
                   : "Schedule not set"}
               </p>
               <div className="mt-1 flex items-center justify-between gap-2">
                 <p
-                  className="min-w-0 truncate text-xs text-(--earist-body-text)"
+                  className="min-w-0 truncate text-xs text-gray-500"
                   title={venueText}
                 >
                   {venueText}
                 </p>
-                <Badge variant="outline" className="shrink-0 font-medium">
+                <Badge
+                  variant="outline"
+                  className="shrink-0 border-blue-200 bg-blue-50 text-[11px] font-medium text-blue-700"
+                >
                   {sessionStatusLabel(schedule?.sessionStatus)}
                 </Badge>
               </div>
@@ -320,27 +349,27 @@ export function SchedulingQueuePanel({
 
   const tabClass = (isActive: boolean) =>
     cn(
-      "flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
+      "flex items-center justify-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold transition-all sm:text-sm",
       isActive
-        ? "bg-(--earist-primary) text-white"
-        : "text-(--earist-body-text) hover:bg-(--earist-surface-gray)",
+        ? "bg-[#e02b20] text-white shadow-xs"
+        : "text-gray-600 hover:bg-white hover:text-[#333333]",
     );
 
   const countClass = (isActive: boolean) =>
     cn(
-      "rounded-full px-1.5 text-xs font-semibold tabular-nums",
+      "rounded-full px-1.5 py-0.5 text-[11px] leading-none font-semibold tabular-nums",
       isActive
         ? "bg-white/20 text-white"
-        : "bg-(--earist-surface-gray) text-(--earist-body-text)",
+        : "bg-gray-200/80 text-gray-700",
     );
 
   return (
-    <Card className="h-full">
+    <Card className="h-full border-gray-100 bg-white shadow-sm">
       <CardHeader className="pb-3">
         <div
           role="group"
           aria-label="Scheduling views"
-          className="flex flex-wrap gap-1"
+          className="grid grid-cols-2 gap-1 rounded-xl border border-gray-200/80 bg-gray-100/90 p-1"
         >
           <button
             type="button"
@@ -363,7 +392,7 @@ export function SchedulingQueuePanel({
             </span>
           </button>
         </div>
-        <p className="mt-1 text-xs text-(--earist-body-text)">
+        <p className="mt-1.5 text-xs text-gray-500">
           {activeTab === "READY"
             ? `${readyCount} approved application${readyCount === 1 ? "" : "s"} awaiting panel assignment and a schedule.`
             : `${scheduledCount} scheduled defense${scheduledCount === 1 ? "" : "s"} to inspect.`}
@@ -372,7 +401,7 @@ export function SchedulingQueuePanel({
       <CardContent className="space-y-3">
         <div className="relative">
           <Search
-            className="absolute top-1/2 left-2.5 h-4 w-4 -translate-y-1/2 text-(--earist-body-text)/60"
+            className="absolute top-1/2 left-2.5 h-4 w-4 -translate-y-1/2 text-gray-400"
             aria-hidden="true"
           />
           <Input
@@ -380,20 +409,23 @@ export function SchedulingQueuePanel({
             value={searchDraft}
             onChange={(e) => setSearchDraft(e.target.value)}
             placeholder="Search student, student number, or email…"
-            className="pl-8"
+            className="border-gray-200 bg-gray-50/40 pl-8 focus:bg-white"
           />
         </div>
 
-        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-1">
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
           <div>
-            <Label className="text-xs" htmlFor="defense-type-filter">
+            <Label
+              className="text-[11px] font-semibold tracking-wider text-gray-500 uppercase"
+              htmlFor="defense-type-filter"
+            >
               Defense Stage
             </Label>
             <select
               id="defense-type-filter"
               value={defenseType}
               onChange={(e) => onDefenseTypeChange(e.target.value)}
-              className="mt-1 w-full rounded-lg border border-(--earist-border-gray) bg-white px-3 py-2 text-sm"
+              className="mt-1 w-full rounded-lg border border-gray-200 bg-gray-50/50 px-2.5 py-1.5 text-xs font-medium text-[#333333] focus:border-[#e02b20] focus:bg-white focus:outline-none"
             >
               <option value="ALL">All Stages</option>
               <option value="TITLE_DEFENSE">Title Defense</option>
@@ -402,14 +434,17 @@ export function SchedulingQueuePanel({
             </select>
           </div>
           <div>
-            <Label className="text-xs" htmlFor="program-filter">
+            <Label
+              className="text-[11px] font-semibold tracking-wider text-gray-500 uppercase"
+              htmlFor="program-filter"
+            >
               Program
             </Label>
             <select
               id="program-filter"
               value={programId}
               onChange={(e) => onProgramChange(e.target.value)}
-              className="mt-1 w-full rounded-lg border border-(--earist-border-gray) bg-white px-3 py-2 text-sm"
+              className="mt-1 w-full rounded-lg border border-gray-200 bg-gray-50/50 px-2.5 py-1.5 text-xs font-medium text-[#333333] focus:border-[#e02b20] focus:bg-white focus:outline-none"
             >
               <option value="ALL">All Programs</option>
               {programs.map((p) => (

@@ -315,7 +315,7 @@ export default function AdminDefenseApplicationsPage() {
       <div
         role="group"
         aria-label="Application workflow"
-        className="flex flex-wrap gap-2 border-b border-gray-200 pb-2"
+        className="inline-flex flex-wrap items-center gap-1.5 rounded-xl border border-gray-200/80 bg-gray-100/90 p-1.5"
       >
         {WORKFLOW_TABS.map((tab) => {
           const isActive = view === tab.id;
@@ -325,24 +325,28 @@ export default function AdminDefenseApplicationsPage() {
               key={tab.id}
               type="button"
               size="sm"
-              variant={isActive ? "default" : "outline"}
+              variant={isActive ? "default" : "ghost"}
               aria-pressed={isActive}
               onClick={() => {
                 setView(tab.id);
                 setPage(1);
               }}
               className={cn(
-                isActive &&
-                  "bg-[#e02b20] text-white hover:bg-[#c62828]",
+                "rounded-lg transition-all",
+                isActive
+                  ? "bg-[#e02b20] text-white shadow-xs hover:bg-[#c62828]"
+                  : "text-gray-600 hover:bg-white hover:text-[#333333]",
               )}
             >
               {tab.label}
               <span
                 className={cn(
-                  "ml-1.5 rounded-full px-1.5 text-xs font-semibold",
+                  "ml-1.5 rounded-full px-1.5 py-0.5 text-[11px] leading-none font-semibold tabular-nums",
                   isActive
                     ? "bg-white/20 text-white"
-                    : "bg-gray-100 text-gray-600",
+                    : tab.id === "NEEDS_REVIEW" && count > 0
+                      ? "bg-amber-100 text-amber-800"
+                      : "bg-gray-200/80 text-gray-700",
                 )}
               >
                 {count}

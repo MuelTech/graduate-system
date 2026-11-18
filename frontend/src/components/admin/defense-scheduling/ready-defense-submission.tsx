@@ -5,6 +5,8 @@ import { useSession } from "next-auth/react";
 import { useQuery } from "@tanstack/react-query";
 import { History } from "lucide-react";
 import { apiClientRequest } from "@/lib/api.client";
+import { cn } from "@/lib/utils";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DocumentViewer } from "@/components/ui/document-viewer";
@@ -80,18 +82,20 @@ function ReadySubmissionContext({
   }
 
   return (
-    <Card>
-      <CardHeader className="pb-2">
-        <CardTitle className="text-sm font-semibold text-(--earist-secondary)">
+    <Card className="border-gray-100 bg-white shadow-sm">
+      <CardHeader className="pb-3">
+        <CardTitle className="text-base font-bold text-[#333333]">
           Application Requirements
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4 text-sm break-words">
         {query.isLoading && (
-          <p aria-live="polite">Loading application requirements…</p>
+          <p className="text-gray-500" aria-live="polite">
+            Loading application requirements…
+          </p>
         )}
         {query.isError && (
-          <div role="alert">
+          <div role="alert" className="text-gray-600">
             Application requirements could not be loaded.{" "}
             <Button size="sm" variant="outline" onClick={() => query.refetch()}>
               Try again
@@ -113,22 +117,46 @@ function ReadySubmissionContext({
 
             <section className="space-y-3" aria-label="Application Requirements">
               {slots.length === 0 ? (
-                <p className="text-(--earist-body-text)">
+                <p className="text-gray-500">
                   No current documents recorded for this stage.
                 </p>
               ) : (
-                <ul className="divide-y divide-(--earist-border-gray)">
+                <ul
+                  className={cn(
+                    "grid grid-cols-1 gap-3 sm:grid-cols-2",
+                    slots.length >= 3 && "xl:grid-cols-3",
+                  )}
+                >
                   {slots.map((slot) => (
                     <li
                       key={slot.docType}
-                      className="flex flex-wrap items-center justify-between gap-2 py-2.5 first:pt-0 last:pb-0"
+                      className="flex flex-col justify-between gap-3 rounded-xl border border-gray-200/80 bg-gray-50/50 p-3.5"
                     >
-                      <div className="min-w-0">
-                        <p className="text-sm font-medium">
-                          {requirementLabel(slot.docType)}
-                        </p>
+                      <div className="space-y-2">
+                        <div className="flex items-start justify-between gap-2">
+                          <p className="text-sm font-semibold text-[#333333]">
+                            {requirementLabel(slot.docType)}
+                          </p>
+                          {slot.current ? (
+                            <Badge
+                              variant="outline"
+                              className="shrink-0 border-emerald-200 bg-emerald-50 text-[11px] text-emerald-700"
+                            >
+                              On file
+                            </Badge>
+                          ) : (
+                            <Badge
+                              variant="outline"
+                              className="shrink-0 border-amber-200 bg-amber-50 text-[11px] text-amber-800"
+                            >
+                              {slot.integrityState === "AMBIGUOUS"
+                                ? "Review required"
+                                : "Missing"}
+                            </Badge>
+                          )}
+                        </div>
                         {slot.current ? (
-                          <p className="mt-0.5 text-xs break-words text-(--earist-body-text)">
+                          <p className="text-xs break-words text-gray-500">
                             {slot.current.originalFilename ||
                               "Filename unavailable"}{" "}
                             · {formatDocumentDate(slot.current.uploadedAt)}
@@ -136,7 +164,7 @@ function ReadySubmissionContext({
                         ) : (
                           <p
                             role="status"
-                            className="mt-0.5 text-sm text-(--earist-warning)"
+                            className="text-xs text-amber-700"
                           >
                             {slot.integrityState === "AMBIGUOUS"
                               ? "Multiple current versions recorded — review required."
@@ -145,22 +173,28 @@ function ReadySubmissionContext({
                         )}
                         {slot.docType === "RECEIPT" &&
                           data.application.orNumber && (
-                            <p className="mt-1 text-xs font-medium text-[#333333]">
-                              O.R. No.:{" "}
-                              <span className="font-semibold">
-                                {data.application.orNumber}
-                              </span>{" "}
-                              · Amount Paid:{" "}
-                              <span className="font-semibold">
+                            <div className="flex flex-wrap gap-1.5 pt-0.5">
+                              <Badge
+                                variant="outline"
+                                className="border-gray-200 bg-white text-[11px] text-[#333333]"
+                              >
+                                O.R. No.: {data.application.orNumber}
+                              </Badge>
+                              <Badge
+                                variant="outline"
+                                className="border-gray-200 bg-white text-[11px] text-[#333333]"
+                              >
+                                Amount Paid:{" "}
                                 {data.application.amountPaid || "P 900.00"}
-                              </span>
-                            </p>
+                              </Badge>
+                            </div>
                           )}
                       </div>
                       {slot.current && (
                         <Button
                           size="sm"
                           variant="outline"
+                          className="w-full bg-white"
                           onClick={() =>
                             viewDocument(
                               slot.current!.id,
@@ -177,20 +211,20 @@ function ReadySubmissionContext({
               )}
 
               {hasDocumentHistory && (
-                <details className="rounded-lg border border-(--earist-border-gray) px-4 py-3">
-                  <summary className="flex cursor-pointer items-center gap-2 text-sm font-semibold text-(--earist-secondary)">
-                    <History className="h-4 w-4" aria-hidden="true" />
+                <details className="rounded-xl border border-gray-200/80 bg-gray-50/30 px-4 py-3">
+                  <summary className="flex cursor-pointer items-center gap-2 text-sm font-semibold text-[#333333]">
+                    <History className="h-4 w-4 text-gray-500" aria-hidden="true" />
                     View document history
                   </summary>
                   <div className="mt-3">
-                    <ul className="space-y-1">
+                    <ul className="space-y-1.5">
                       {slots.flatMap((slot) =>
                         slot.history.map((doc) => (
                           <li
                             key={doc.id}
-                            className="flex flex-wrap items-center justify-between gap-2 rounded-md bg-(--earist-surface-gray) px-3 py-2 text-sm"
+                            className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-gray-200/70 bg-white px-3 py-2 text-sm"
                           >
-                            <span className="min-w-0 break-words">
+                            <span className="min-w-0 break-words text-gray-600">
                               {requirementLabel(slot.docType)} · Previous:{" "}
                               {doc.originalFilename || "Filename unavailable"}
                             </span>
