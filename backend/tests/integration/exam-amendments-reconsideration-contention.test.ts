@@ -1773,7 +1773,6 @@ describe.skipIf(process.env.EXAM_B9_DB_TEST !== "1")(
       expect(hasAuthoritativePassedExam(detail!.examApplications)).toBe(true);
       expect(
         deriveAdmissionStage({
-          alignmentStatus: detail!.alignmentStatus,
           hasPassedExam: hasAuthoritativePassedExam(detail!.examApplications),
         }),
       ).toBe("COR");

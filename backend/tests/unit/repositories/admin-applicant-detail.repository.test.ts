@@ -24,7 +24,7 @@ describe("AdminApplicantRepository detail read model", () => {
     );
   });
 
-  it("fetches program type and correct academic prerequisite relations", async () => {
+  it("fetches program type without legacy alignment or waiver prerequisite relations", async () => {
     const repo = new AdminApplicantRepository();
 
     await repo.findStudentById("student-9");
@@ -35,14 +35,9 @@ describe("AdminApplicantRepository detail read model", () => {
       programName: true,
       programType: true,
     });
-    expect(include.undergraduateProgram.select).toEqual({
-      id: true,
-      programName: true,
-    });
-    expect(include.previousMastersProgram.select).toEqual({
-      id: true,
-      programName: true,
-    });
+    expect(include.undergraduateProgram).toBeUndefined();
+    expect(include.previousMastersProgram).toBeUndefined();
+    expect(include.bridgingWaiver).toBeUndefined();
   });
 
   it("selects related exam and COR rows deterministically (createdAt desc, id desc)", async () => {

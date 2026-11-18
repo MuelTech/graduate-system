@@ -50,12 +50,6 @@ export function validateBookingStatusBody(value: unknown): boolean {
   return data.isActive;
 }
 
-export function requireEligibleAlignment(status: unknown): void {
-  if (status !== "ALIGNED" && status !== "CLEARED") {
-    throw new AppError("Cannot schedule exam. Alignment must be ALIGNED or CLEARED.", 403);
-  }
-}
-
 export function requireConsistentCounter(slot: { slotsTaken: number }, actualCount: number): void {
   if (!Number.isInteger(slot.slotsTaken) || slot.slotsTaken < 0 || slot.slotsTaken !== actualCount) {
     throw new AppError("Schedule booking counter disagrees with assigned applications; owner reconciliation is required.", 409);

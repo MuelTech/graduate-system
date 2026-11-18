@@ -15,14 +15,12 @@ const botResponses: Record<string, string> = {
     "We offer 15+ graduate programs including Masters and Doctoral degrees in Education, Public Administration, Computer Science, Nursing, Industrial Engineering, and Mathematics. Visit our /programs page for the full list.",
   apply:
     "To apply to EARIST Graduate School: 1) Register in Pinnacle to get your Applicant ID, 2) Visit /register to complete your GS System registration, 3) Take the entrance examination, 4) Upload your Certificate of Registration after enrollment in Pinnacle.",
-  exam: "The entrance examination is scheduled through your Applicant Portal after registration. You must pass the Program Alignment Check first. The exam includes MCQ and Essay sections. Results are sent to your email.",
+  exam: "The entrance examination is scheduled through your Applicant Portal after registration. The exam includes MCQ and Essay sections. Results are sent to your email.",
   thesis:
     "The thesis pipeline has three stages: Title Defense → Proposal Defense → Final Defense. Each stage has specific requirements that must be completed before advancing. Visit /faq for detailed information.",
   cor: "After passing the entrance exam, complete your enrollment in Pinnacle, download your COR, and upload it through your Applicant Portal. The Admin will verify it and promote you to Student role.",
   schedule:
-    "You can schedule your entrance examination through the Exam Scheduling page in your Applicant Portal. Available slots are shown in real-time. Note: Exam scheduling is blocked if your alignment status is 'pending waiver'.",
-  alignment:
-    "The Program Alignment Check verifies if your undergraduate program matches your intended graduate program. If aligned, you proceed directly. If misaligned, you may need a Bridging Waiver from the GS Office.",
+    "You can schedule your entrance examination through the Exam Scheduling page in your Applicant Portal. Available slots are shown in real-time.",
   repository:
     "The Research Repository contains published thesis and dissertation research from graduate school students and alumni. You can browse it at /repository without logging in.",
   contact:
@@ -74,12 +72,6 @@ function getBotResponse(input: string): string {
     lower.includes("calendar")
   )
     return botResponses.schedule;
-  if (
-    lower.includes("align") ||
-    lower.includes("waiver") ||
-    lower.includes("bridging")
-  )
-    return botResponses.alignment;
   if (
     lower.includes("repository") ||
     lower.includes("research") ||

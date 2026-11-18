@@ -7,7 +7,6 @@ export class ApplicantRepository {
             include: {
                 user: true,
                 program: true,
-                bridgingWaiver: true,
                 examApplications: {
                     include: { slot: true, score: true, resultDecision: true },
                     where: { status: { notIn: ["RESCHEDULED","CANCELLED"] } },

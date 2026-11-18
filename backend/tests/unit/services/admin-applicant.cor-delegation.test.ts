@@ -17,16 +17,12 @@ vi.mock("../../../src/services/cor.service", () => ({
 const repo = vi.hoisted(() => ({
   findStudentById: vi.fn(),
   createAuditLog: vi.fn(),
-  updateAlignmentStatus: vi.fn(),
-  updateWaiverStatus: vi.fn(),
 }));
 
 vi.mock("../../../src/repositories/admin-applicant.repository", () => ({
   AdminApplicantRepository: class {
     findStudentById = repo.findStudentById;
     createAuditLog = repo.createAuditLog;
-    updateAlignmentStatus = repo.updateAlignmentStatus;
-    updateWaiverStatus = repo.updateWaiverStatus;
   },
 }));
 
@@ -39,12 +35,7 @@ function student(overrides: Record<string, unknown> = {}) {
     studentNumber: null,
     enrollmentDate: null,
     cellphone: null,
-    dateOfBirth: null,
     pinnacleApplicantId: "P-1",
-    alignmentStatus: "ALIGNED",
-    isProgramAligned: true,
-    undergraduateProgram: null,
-    bridgingWaiver: null,
     examApplications: [],
     corUploads: [],
     user: { firstName: "Ana", lastName: "Dela", email: "ana@example.com" },

@@ -25,7 +25,6 @@ export class AdminDashboardService {
     const [
       enrolledStudents,
       thesisRecords,
-      bridgingWaivers,
       adviserRequestsForDeanReview,
       defensesAwaitingConclusion,
       rapReportsAwaitingSignatures,
@@ -37,7 +36,6 @@ export class AdminDashboardService {
     ] = await Promise.all([
       this.dashboardRepo.getEnrolledStudents(),
       this.dashboardRepo.getThesisRecordsForPipeline(),
-      this.dashboardRepo.getBridgingWaiversToReviewCount(),
       this.dashboardRepo.getAdviserRequestsForDeanReviewCount(),
       this.dashboardRepo.getDefensesAwaitingConclusionCount(),
       this.dashboardRepo.getRapReportsAwaitingSignaturesCount(),
@@ -76,7 +74,6 @@ export class AdminDashboardService {
         defenseApplications: defenseApplicationsToReview,
         corSubmissions: corSubmissionsToReview,
         defensesReadyForScheduling,
-        bridgingWaivers,
         adviserRequestsForDeanReview,
       },
       enrollment,

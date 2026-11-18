@@ -223,30 +223,72 @@ Names, programs, signatures, payment metadata, and institutional approvals must 
 
 Current repository and institutional-reference facts:
 
-- `Program` already stores `programName`, `programType`, and a nullable `department` string.
-- The project-owner-supplied Graduate School program reference explicitly shows Graduate School programs and Major/Specialization groupings, but does not establish a separate Department layer.
-- The project-owner-supplied MAT-Math curriculum reference identifies **Master of Arts in Teaching Major in Mathematics (MAT-Math)** with effective date **S.Y. 2024-2025**.
-- That MAT-Math reference organizes the curriculum into Foundation, Major, Cognate, and Thesis groups totaling **30 units**, and separately lists graduation requirements including Comprehensive Examination, Thesis, and at least one publication.
-- Therefore the current normalized direction is **Graduate School → optional Department (only if later verified) → Program → Major/Specialization → Curriculum Version → Curriculum Courses**. Department must not be invented merely because the current `Program.department` string exists.
+- `Program` already stores `programName`, `programType`, `maxResidencyYears`, and a nullable `department` string.
+- The **EARIST Graduate School Manual of Operations** (§2.0, §4.0, §5.0) confirms the Graduate School was reunified under one Dean and Associate Dean (no separate undergraduate college department layer on `Program`), and lists the authoritative **16 active Graduate School programs** (4 Doctoral on Professional Track / PQF Level 8; 12 Master's on Academic Track / PQF Level 7).
+- The **EARIST Graduate School Manual of Operations** also establishes key academic policies referenced across this checklist:
+  - **Entrance Admission & Bridging (§7.1.1, §7.3.4):** Applicants take the EARIST Graduate Admission Test (EGAT); unrelated-specialization enrollees complete a 9-unit Bridging Program (or 18 Prof Ed units for non-education graduates in education programs).
+  - **Maximum Residence Rule (§7.11):** **4 years** for Master's programs and **6 years** for Doctoral programs from initial enrollment (replacing the legacy `5`/`7`-year seed assumptions).
+  - **Leave of Absence (§7.13):** Approved LOA up to 1 academic year is **not** counted toward the Maximum Residence Rule.
+  - **Change of Program (§7.14):** Requires a Graduate School Shifting Form and Dean approval; strictly prohibited once Title Proposal is completed.
+  - **Written Comprehensive Examination (§7.15):** Covers Foundation, Major, and Cognate courses; 75% passing mark; failed components may be retaken once; failure on the **3rd attempt** permanently disqualifies the student.
+  - **Adviser Qualification & Load (§6.0, §7.20):** Advisers are selected from the Title Defense panel, must hold a relevant doctoral degree, and are capped at **5 students per faculty per semester** (in- and off-campus).
+  - **Plan of Coursework & Graduation (§7.24, §7.25):** Students establish a Plan of Coursework (Foundation, Major, Cognate, Thesis/Dissertation, and Bridging if applicable) and must complete at least **one (1) publication** (refereed journal or juried creative work for Master's; nationally/internationally indexed journal or juried creative work for Doctoral) alongside WCE, Oral Defense, and clearances.
+- Official forms **`EARIST-QSF-GS-014 Rev. 01`** (*Dean's Endorsement to Enroll in the Bridging Program*) and **`EARIST-QSF-GS-023 Rev. 00`** (*Waiver to Shift in the New Curriculum*) establish that Bridging is a Dean endorsement for course enrollment (part of an enrolled student's Plan of Coursework) and Curriculum Shift Waiver applies to returning students moving to a new curriculum—**not** a pre-exam gate blocking Applicant Registration or Entrance Examination.
+- The project-owner-supplied MAT-Math curriculum reference identifies **Master of Arts in Teaching Major in Mathematics (MAT-Math)** with effective date **S.Y. 2024-2025**, organized into Foundation, Major, Cognate, and Thesis groups totaling **30 units**.
+- Therefore the normalized direction is **Graduate School → Program → Major/Specialization → Curriculum Version → Curriculum Courses**.
+
+## 3.1 Active Planned Package — Program Master Data & Pre-Exam Bridging Waiver Removal (`PROG-WAIVER-CLEANUP`)
+
+**Implementation plan:** `docs/superpowers/plans/2026-11-18-program-master-data-and-waiver-cleanup.md`
+
+**Scope boundary:** Explicitly excludes `/admin/analytics` (currently hardcoded mock data; tracked separately in §8 / §14).
+
+| Phase | Package | Target Scope |
+| --- | --- | --- |
+| ✅ **Phase 1** | `PROG-1` — Program Master Data & Admin CRUD (`/admin/settings`) | **Implemented** (`21a935f7`). Additive `degreeName`, `majorName`, `programCode`, and `isActive` on `Program`; reconcile/seed the **16 authoritative Graduate School programs** with Handbook §7.11 Max Residency defaults (**4 yrs Master's / 6 yrs Doctoral**) and clear obsolete `department` college strings; Admin CRUD under `Admin -> System Settings -> Programs` (`SYSTEM_SETTINGS`); expose `program.maxResidencyYears` fallback on Admin Student Detail alongside Student Profile; derive official PDF Course/Major from structured fields. |
+| ✅ **Phase 2** | `WAIVER-CLEANUP-1` — Backend Waiver & Alignment Gate Removal | **Implemented on `feat/program-master-data-and-waiver-cleanup`.** Removed `undergraduateProgramId` and `dateOfBirth` registration requirements, keyword `checkProgramAlignment()`, and `ApplicantBridgingWaiver` creation from Applicant registration (keeping `Student.dateOfBirth` and legacy tables/columns nullable/non-destructive); removed `requireEligibleAlignment()` blockers from Entrance Exam self-booking, Admin assignment, execution, and amendments; retired `/api/waivers`, `EXAMS_WAIVER` (`waivers.manage`), `bridgingWaivers` dashboard count, and `alignmentStatus` list filtering. |
+| ✅ **Phase 3** | `WAIVER-CLEANUP-2` — Frontend Registration & Portal Cleanup | **Implemented on `feat/program-master-data-and-waiver-cleanup`.** Removed `Date of Birth` and `Prerequisite Program` from `/register` and load active programs from `/api/programs`; removed `/applicant/alignment`, `/admin/exam/waiver`, and all alignment/waiver cards, filters, badges, and schedule locks across Applicant, Student, and Admin portals. |
+
+### Authoritative 16 Graduate School Programs (`PROG-1` Seed Target)
+
+- **Doctoral Programs (`DOCTORAL`, Professional Track, PQF Level 8, Default Max Residency: 6 years):**
+  1. Doctor of Education major in Educational Management (`Ed.D.-EM`)
+  2. Doctor of Philosophy in Industrial Psychology (`PhD-IP`)
+  3. Doctor of Public Administration (`DPA`)
+  4. Doctor of Business Administration (`DBA`)
+- **Master's Programs (`MASTERS`, Academic Track, PQF Level 7, Default Max Residency: 4 years):**
+  5. Master of Arts in Education major in Administration and Supervision (`MAEd`)
+  6. Master of Arts in Education major in Guidance and Counseling (`MAEd`)
+  7. Master of Arts in Education major in Special Education (`MAEd`)
+  8. Master of Arts in Industrial Education major in Hotel, Restaurant and Management (`MAIE`)
+  9. Master in Business Administration (`MBA`)
+  10. Master in Public Administration (`MPA`)
+  11. Master of Arts in Teaching major in Science (`MAT`)
+  12. Master of Arts in Teaching major in Mathematics (`MAT`)
+  13. Master of Arts in Teaching major in Electronics Technology (`MAT`)
+  14. Master of Arts in Teaching major in Electrical Technology (`MAT`)
+  15. Master of Arts in Industrial Psychology (`MAIP`)
+  16. Master of Science in Mathematics (`MSM`)
 
 | Status | Item | Current / target state |
 | --- | --- | --- |
-| 🟡 | Program data | Program model exists; current data still needs an Admin-managed master-data direction. |
-| ❓ | Department layer | Verify from an authoritative EARIST organizational/academic source before normalizing or requiring Department. The supplied Graduate School program reference does not establish a Department layer. |
-| ⏳ | Program management | Admin CRUD / active-state authority for Graduate School programs. |
-| ⏳ | Major / specialization management | Structured relationship where a program requires a major/specialization; the supplied Graduate School program reference confirms this concept for several programs. |
-| ⏳ | Graduate School → Program → Major/Specialization structure | Treat this as the currently evidenced academic hierarchy. Insert Department only if an authoritative institutional source later confirms it. |
-| ⏳ | Curriculum master / version | A Program + Major/Specialization may have one or more effective curriculum versions. The MAT-Math reference establishes an example effective version for S.Y. 2024-2025. |
-| ⏳ | Curriculum course groups | Support authoritative curriculum groupings such as Foundation, Major, Cognate, Thesis, and future institution-defined categories without hardcoding one program's structure globally. |
+| ✅ | Program data | **Implemented (`PROG-1`):** Reconciled/seeded the 16 authoritative programs with structured Degree/Major/Code fields, `isActive`, and Handbook §7.11 Max Residency defaults (`4` yrs Master's / `6` yrs Doctoral). |
+| ✅ | Department layer | **Resolved by Manual of Operations (§2.0, §4.0):** Graduate School is reunified under one Dean and Associate Dean; no separate college department layer is required on `Program`. |
+| ✅ | Program management | **Implemented (`PROG-1`):** `Programs` tab in `Admin -> System Settings` (`/admin/settings`) supports Admin CRUD, structured fields, Max Residency Years, and active/inactive toggling. |
+| ✅ | Major / specialization management | **Implemented (`PROG-1`):** Structured `degreeName` + `majorName` + `programCode` on `Program`, feeding Applicant Registration and official PDFs (`GS-006/007`, `GS-011`, `GS-020`). |
+| ✅ | Graduate School → Program → Major/Specialization structure | Confirmed academic hierarchy per Manual of Operations §5.0; Phase 1 (`PROG-1`) established the program/major master foundation. |
+| ✅ | Pre-exam Bridging Waiver & Alignment removal | **Implemented (`WAIVER-CLEANUP-1 & 2`):** Client-confirmed removal from registration, entrance exam, and portals; Bridging (`GS-014`) moves to enrolled student Plan of Coursework. |
+| ⏳ | Curriculum master / version | Follows Phases 1–3. A Program + Major/Specialization may have one or more effective curriculum versions (e.g., MAT-Math S.Y. 2024-2025). |
+| ⏳ | Curriculum course groups | Support authoritative curriculum groupings such as Foundation, Major, Cognate, Thesis, and optional enrolled-student Bridging (`GS-014`) without hardcoding one program's structure globally. |
 | ⏳ | Curriculum course/unit requirements | Store course code, title, units, group, ordering, required/optional status, and group/overall unit requirements from the authoritative curriculum version. |
 | ⏳ | Student curriculum assignment | Bind each Student academic career to the applicable curriculum version rather than deriving the degree checklist from the latest COR. |
-| ⏳ | Curriculum Checklist / Academic Progress UI | Show the full assigned degree curriculum with Completed / In Progress / Remaining status and earned-vs-required units. This is broader than the Student's current-semester COR. |
+| ⏳ | Curriculum Checklist / Academic Progress UI | Show the full assigned degree curriculum / Plan of Coursework (§7.24) with Completed / In Progress / Remaining status and earned-vs-required units. |
 | ⏳ | COR ↔ curriculum reconciliation | COR remains current enrollment evidence; enrolled subjects may be matched to curriculum courses, but the latest COR must not become the curriculum authority. |
-| ⏳ | Comprehensive Exam eligibility integration | Future eligibility should consume authoritative academic progress plus the accepted institutional exam rules, not merely current enrollment state. |
+| ⏳ | Comprehensive Exam eligibility integration | Future eligibility should consume authoritative academic progress plus the accepted institutional exam rules (Manual §7.15), not merely current enrollment state. |
 | ⏳ | Thesis / defense eligibility integration | Where institutional policy requires prerequisite course/unit completion, derive it from the assigned curriculum version and authoritative Student progress. |
-| ⏳ | Graduation requirement tracking | Track non-course requirements separately from course completion where applicable, including Comprehensive Examination, Thesis, publication, and future program-specific requirements. |
-| ⏳ | Curriculum history / version preservation | Existing Students remain bound to their applicable curriculum version when a newer curriculum is introduced; do not silently rewrite historical academic requirements. |
-| ⏳ | Defense form Course & Major display | Derive Course/Major from authoritative academic master data instead of renderer-specific string manipulation. |
+| ⏳ | Graduation requirement tracking | Track non-course requirements separately from course completion where applicable, including Comprehensive Examination, Thesis/Dissertation, required publication (Manual §7.25.2), and clearances. |
+| ⏳ | Curriculum history / version preservation | Existing Students remain bound to their applicable curriculum version when a newer curriculum is introduced (Manual §7.11.3 / `GS-023`); do not silently rewrite historical academic requirements. |
+| ✅ | Defense form Course & Major display | **Implemented (`PROG-1`):** Derives Course/Major on `GS-006/007`, `GS-011`, `GS-017`, and `GS-020` from structured `Program.degreeName` / `majorName`. |
 | ❓ | Historical academic labels | Decide whether renamed programs/majors require historical snapshots for previously generated records and completed academic careers. |
 
 ---
@@ -855,20 +897,22 @@ For each review, record:
 
 # 15. Immediate Priority Queue
 
-This list is intentionally orderable and may change. *(Completed items: Exam Phase A, Exam Phase B + Booking Visibility, Faculty/Admin Role Access, Adviser Eligibility under Faculty model, Portal UI/UX Design System Overhaul, and Public Landing Page Redesign V2 are now merged to `main`.)*
+This list is intentionally orderable and may change. *(Completed items: Exam Phase A, Exam Phase B + Booking Visibility, Faculty/Admin Role Access, Adviser Eligibility under Faculty model, Portal UI/UX Design System Overhaul, Public Landing Page Redesign V2, Institutional Officials + O.R. No. + E-Signature Vault, and Ready-for-Scheduling Requirement Visibility / Defense Scheduling UI Overhaul are now merged to `main`.)*
 
-1. Complete remaining academic master-data authority (Program / Major / Curriculum Checklist) needed by official forms and student academic progress *(Institutional Officials & Defense Application O.R. No. / Amount Paid now implemented on active branch `feat/institutional-officials-and-or-number`)*.
-2. Review collaborator work: email integration, notifications, announcement, memo, analytics & reports.
-3. Fix Admin scheduling-stage requirement/document visibility and Comprehensive Exam history/strike recording.
-4. Design Admin Student document/submission overview and fallback matrix.
+1. ✅ **Program Master Data & Pre-Exam Bridging Waiver Cleanup** (`docs/superpowers/plans/2026-11-18-program-master-data-and-waiver-cleanup.md`) — **Implemented on branch `feat/program-master-data-and-waiver-cleanup` (pending owner review):**
+   - ✅ **Phase 1 (`PROG-1`):** Seeded/reconciled the 16 authoritative Graduate School programs (`4` yrs Master's / `6` yrs Doctoral Max Residency), wired `Admin -> System Settings -> Programs` CRUD, exposed `maxResidencyYears` on Admin Student Detail, and connected structured Course/Major fields to official PDFs.
+   - ✅ **Phase 2 (`WAIVER-CLEANUP-1`):** Removed pre-exam Program Alignment & Bridging Waiver blockers, `dateOfBirth` / `undergraduateProgramId` registration requirements, `/api/waivers`, and `EXAMS_WAIVER` capability from backend registration, exam booking/assignment, and admin APIs.
+   - ✅ **Phase 3 (`WAIVER-CLEANUP-2`):** Cleaned up `/register` (*Date of Birth* and *Prerequisite Program* removal), Applicant Portal (`/applicant/alignment`, dashboard, schedule), Admin Portal (`/admin/exam/waiver`, dashboard, applicants, `AssignApplicantDialog`), and Student Profile/Admin Student alignment badges.
+   - *(Follow-on — Next Up)* Implement **Curriculum Checklist / Plan of Coursework** (§3 & Manual §7.24) on top of the clean program master data.
+2. Implement Comprehensive Exam per-component history (`Foundation`, `Major`, `Cognate`) and 3-strike disqualification tracking (§22 & Manual §7.15).
+3. Review collaborator work: email integration, notifications, announcement, memo, and analytics & reports (`/admin/analytics` stays excluded from Phase 1–3 until audited/replaced with live data).
+4. Design Admin Student document/submission overview and fallback matrix (plus remaining Handbook rules: 5-advisee faculty cap §7.20.3, post-Title Program Shifting block §7.14.3).
 5. Design and implement Continuing Student COR-based onboarding (`CONT-STUDENT-1`) and pre-GSIS legacy academic/thesis standing initialization (`CONT-STUDENT-2`).
-6. Define Student inactivity/return/reactivation policy and Admin recovery flow.
-7. *(Completed on `feat/reusable-esignature-profile`)* Reusable E-Signature Profile Vault (§6), Student Profile page enhancement, and retirement of redundant `/faculty/signatures`.
-8. Continue Chatbot/RAG implementation planning/audit and COR OCR fallback evaluation.
-9. *(Completed on `feat/institutional-officials-and-or-number`)* Defense Application Amount Paid (`P 900.00`) & Student-entered O.R. No. capture policy.
-10. Continue system-wide wording/terminology audit for any remaining unreviewed surfaces.
-11. Complete production-readiness/security/operations audit (password recovery, health readiness, worker startup, backups) and convert blockers into bounded packages.
-12. After core workflows stabilize, design returning-graduate / multiple-academic-career architecture.
+6. Define Student inactivity / Leave of Absence (`ON_LEAVE` excluded from MRR per Manual §7.13) and Admin return/reactivation flow (§19).
+7. Continue Chatbot/RAG implementation (ingesting the EARIST Graduate School Manual of Operations) and COR OCR fallback evaluation.
+8. Continue system-wide wording/terminology audit for any remaining unreviewed surfaces.
+9. Complete production-readiness/security/operations audit (password recovery, health readiness, worker startup, backups) and convert blockers into bounded packages.
+10. After core workflows stabilize, design returning-graduate / multiple-academic-career architecture.
 
 ---
 

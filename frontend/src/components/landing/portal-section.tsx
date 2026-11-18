@@ -12,7 +12,7 @@ const portals = [
     icon: UserCircle,
     title: "Applicant Portal",
     description:
-      "Register, check program alignment, schedule exams, and upload your Certificate of Registration.",
+      "Register, schedule entrance exams, and upload your Certificate of Registration.",
     href: "/register",
     color: "bg-(--earist-accent)",
   },
@@ -36,7 +36,7 @@ const portals = [
     icon: Settings,
     title: "Administrator Portal",
     description:
-      "Manage users, validate waivers, configure system settings, and view analytics.",
+      "Manage users, configure graduate programs and system settings, and view analytics.",
     href: "/login",
     color: "bg-(--earist-success)",
   },

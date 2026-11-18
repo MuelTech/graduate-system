@@ -11,7 +11,6 @@ import {
 import {
   BLOCKING_EXAM_STATUSES,
   requireConsistentCapacity,
-  requireEligibleAlignment,
   scheduleIdentifier,
 } from "../services/exam-schedule.rules";
 import { requireFutureSchedule } from "../services/exam-schedule-time";
@@ -238,7 +237,6 @@ export class ExamAmendmentRepository {
               "Applicant admission authority no longer permits a replacement appointment.",
               409,
             );
-          requireEligibleAlignment(app.student.alignmentStatus);
           requireFutureSchedule(target.examDate, target.examTime);
           await capacity(tx, target);
           if (target.slotsTaken >= target.maxSlots)

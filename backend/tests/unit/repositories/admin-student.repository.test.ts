@@ -164,7 +164,6 @@ function detailStudent(overrides: Record<string, unknown> = {}) {
     admissionStatus: "ENROLLED",
     enrollmentDate: new Date("2026-06-01T00:00:00.000Z"),
     curriculumType: "NEW",
-    alignmentStatus: "ALIGNED",
     residencyStartDate: null,
     userId: "u1",
     user: { firstName: "Juan", lastName: "Dela Cruz", email: "juan@example.com" },
@@ -198,7 +197,6 @@ describe("AdminStudentRepository.findStudentDetailById", () => {
       cellphone: "+639170000000",
       admissionStatus: "ENROLLED",
       curriculumType: "NEW",
-      alignmentStatus: "ALIGNED",
       program: { id: "prog-1", programName: "MSIT" },
       compExam: null,
       adviserAssignment: null,
@@ -252,6 +250,23 @@ describe("AdminStudentRepository.findStudentDetailById", () => {
       adviserId: "adv-1",
       adviserName: "Maria Santos",
       assignedDate: "2026-08-01T00:00:00.000Z",
+    });
+  });
+
+  it("falls back to program.maxResidencyYears when residencyTracking is absent", async () => {
+    prismaMock.student.findUnique.mockResolvedValue(
+      detailStudent({
+        residencyStartDate: new Date("2026-06-01T00:00:00.000Z"),
+        program: { id: "prog-1", programName: "MAT Math", maxResidencyYears: 4 },
+        residencyTracking: null,
+      }),
+    );
+
+    const detail = await new AdminStudentRepository().findStudentDetailById("s1");
+
+    expect(detail?.residency).toEqual({
+      startDate: "2026-06-01T00:00:00.000Z",
+      maxYears: 4,
     });
   });
 });

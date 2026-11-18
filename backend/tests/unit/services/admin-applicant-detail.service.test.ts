@@ -23,13 +23,8 @@ function detailStudent(overrides: Record<string, unknown> = {}) {
     studentNumber: null,
     enrollmentDate: null,
     cellphone: null,
-    dateOfBirth: null,
     pinnacleApplicantId: "PIN-1",
-    alignmentStatus: "ALIGNED",
     program: { id: "prog-1", programName: "MSIT", programType: "MASTERS" },
-    undergraduateProgram: { id: "ug-1", programName: "BSIT" },
-    previousMastersProgram: null,
-    bridgingWaiver: null,
     examApplications: [],
     corUploads: [],
     user: {
@@ -58,12 +53,10 @@ beforeEach(() => {
 });
 
 describe("AdminApplicantService academic background", () => {
-  it("exposes the Master's program type and the undergraduate prerequisite relation", async () => {
+  it("exposes the Master's program type without legacy prerequisite/waiver/DOB fields", async () => {
     repo.findStudentById.mockResolvedValue(
       detailStudent({
         program: { id: "prog-1", programName: "MSIT", programType: "MASTERS" },
-        undergraduateProgram: { id: "ug-1", programName: "BSIT" },
-        previousMastersProgram: null,
       }),
     );
 
@@ -74,63 +67,31 @@ describe("AdminApplicantService academic background", () => {
       programName: "MSIT",
       programType: "MASTERS",
     });
-    expect(detail.undergraduateProgram).toEqual({
-      id: "ug-1",
-      programName: "BSIT",
-    });
-    expect(detail.previousMastersProgram).toBeNull();
+    expect(detail).not.toHaveProperty("undergraduateProgram");
+    expect(detail).not.toHaveProperty("previousMastersProgram");
+    expect(detail).not.toHaveProperty("alignmentStatus");
+    expect(detail).not.toHaveProperty("bridgingWaiver");
+    expect(detail).not.toHaveProperty("dateOfBirth");
   });
 
-  it("exposes the Doctoral program type and the previous Master's relation, not an undergraduate one", async () => {
+  it("exposes the Doctoral program type", async () => {
     repo.findStudentById.mockResolvedValue(
       detailStudent({
         program: { id: "prog-2", programName: "DBA", programType: "DOCTORAL" },
-        undergraduateProgram: null,
-        previousMastersProgram: { id: "prog-1", programName: "MSIT" },
       }),
     );
 
     const detail = await new AdminApplicantService().getApplicantDetail("s1");
 
     expect(detail.program?.programType).toBe("DOCTORAL");
-    expect(detail.previousMastersProgram).toEqual({
-      id: "prog-1",
-      programName: "MSIT",
-    });
-    expect(detail.undergraduateProgram).toBeNull();
   });
 });
 
-describe("AdminApplicantService alignment + admission stage", () => {
-  it("keeps missing alignment authority as null/fail-closed instead of defaulting to ALIGNED", async () => {
-    repo.findStudentById.mockResolvedValue(
-      detailStudent({ alignmentStatus: null }),
-    );
-
-    const detail = await new AdminApplicantService().getApplicantDetail("s1");
-
-    expect(detail.alignmentStatus).toBeNull();
-    expect(detail.alignmentStatus).not.toBe("ALIGNED");
-  });
-
-  it("stays in Program Alignment when alignment is incomplete even with a historical PASSED exam", async () => {
+describe("AdminApplicantService admission stage", () => {
+  it("derives Entrance Examination when no authoritative PASSED exam exists (even if legacy alignmentStatus was PENDING_WAIVER)", async () => {
     repo.findStudentById.mockResolvedValue(
       detailStudent({
         alignmentStatus: "PENDING_WAIVER",
-        examApplications: [examApp({ status: "PASSED" })],
-      }),
-    );
-
-    const detail = await new AdminApplicantService().getApplicantDetail("s1");
-
-    expect(detail.admissionStage).toBe("ALIGNMENT");
-    expect(detail.hasPassedExam).toBe(true);
-  });
-
-  it("derives Entrance Examination when alignment is complete and no authoritative PASSED exam exists", async () => {
-    repo.findStudentById.mockResolvedValue(
-      detailStudent({
-        alignmentStatus: "ALIGNED",
         examApplications: [examApp({ status: "APPROVED" })],
       }),
     );
@@ -141,10 +102,9 @@ describe("AdminApplicantService alignment + admission stage", () => {
     expect(detail.hasPassedExam).toBe(false);
   });
 
-  it("derives COR / Enrollment when alignment is complete and an authoritative PASSED exam exists", async () => {
+  it("derives COR / Enrollment when an authoritative PASSED exam exists", async () => {
     repo.findStudentById.mockResolvedValue(
       detailStudent({
-        alignmentStatus: "CLEARED",
         examApplications: [examApp({ status: "PASSED" })],
       }),
     );

@@ -1,6 +1,7 @@
 import prisma from "../config/database";
 import type { Prisma } from "@prisma/client";
 import { AppError } from "../utils/AppError";
+import { formatOfficialProgramDisplay } from "../config/graduate-programs";
 import { isValidCertifiedFinalManuscript, isValidCertifiedProposalManuscript } from "./proposal-adviser-review.rules";
 
 export interface CertificationActor { userId: string; role: string }
@@ -13,7 +14,7 @@ const CERTIFICATION_SELECT = {
   adviser: { select: { id: true, firstName: true, lastName: true } },
   thesis: { select: { id: true, student: { select: {
     userId: true, user: { select: { firstName: true, lastName: true } },
-    program: { select: { programName: true } },
+    program: { select: { programName: true, degreeName: true, majorName: true, programCode: true } },
   } } } },
   reviewedDocument: { select: {
     id: true, thesisId: true, docType: true, defenseStage: true,
@@ -43,7 +44,12 @@ export function assertIssuedCertificationSource(row: AdviserCertificationSource)
   if (!row.signedAt || !Number.isFinite(new Date(row.signedAt).getTime())) {
     throw new AppError("The certification has no valid server-owned issue timestamp.", 409);
   }
-  if (!personName(row.thesis.student.user) || !row.thesis.student.program?.programName?.trim()) {
+  const studentProgram = row.thesis.student.program;
+  if (
+    !personName(row.thesis.student.user) ||
+    !studentProgram ||
+    !formatOfficialProgramDisplay(studentProgram)
+  ) {
     throw new AppError("The certification Student or program identity is incomplete.", 409);
   }
   return stage;

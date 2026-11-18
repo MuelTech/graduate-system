@@ -5,7 +5,6 @@ import {
   AdminApplicantListQuery,
   AdminApplicantListResponse,
   AdminApplicantDetail,
-  RejectWaiverInput,
   VerifyCorInput,
   RejectCorInput,
 } from "../interfaces/admin-applicant.interfaces";
@@ -50,7 +49,6 @@ export class AdminApplicantService {
     const corStatus = corUpload ? String(corUpload.status || "NONE") : "NONE";
     const hasPassedExam = hasAuthoritativePassedExam(student.examApplications);
     const admissionStage = deriveAdmissionStage({
-      alignmentStatus: student.alignmentStatus,
       hasPassedExam,
     });
 
@@ -61,7 +59,6 @@ export class AdminApplicantService {
       email: student.user.email,
       pinnacleApplicantId: student.pinnacleApplicantId || "",
       cellphone: student.cellphone ?? null,
-      dateOfBirth: student.dateOfBirth?.toISOString() ?? null,
       program: student.program
         ? {
             id: student.program.id,
@@ -69,37 +66,12 @@ export class AdminApplicantService {
             programType: student.program.programType,
           }
         : null,
-      undergraduateProgram: student.undergraduateProgram
-        ? {
-            id: student.undergraduateProgram.id,
-            programName: student.undergraduateProgram.programName,
-          }
-        : null,
-      previousMastersProgram: student.previousMastersProgram
-        ? {
-            id: student.previousMastersProgram.id,
-            programName: student.previousMastersProgram.programName,
-          }
-        : null,
-      alignmentStatus: student.alignmentStatus ?? null,
       admissionStage,
       examStatus,
       hasPassedExam,
       corStatus,
       admissionStatus: student.admissionStatus,
       enrollmentDate: student.enrollmentDate?.toISOString() || null,
-      bridgingWaiver: student.bridgingWaiver
-        ? {
-            id: student.bridgingWaiver.id,
-            status: student.bridgingWaiver.status,
-            waiverFormDownloadedAt:
-              student.bridgingWaiver.waiverFormDownloadedAt?.toISOString() || null,
-            validatedBy: student.bridgingWaiver.validatedBy,
-            validatedAt:
-              student.bridgingWaiver.validatedAt?.toISOString() || null,
-            adminNotes: student.bridgingWaiver.adminNotes,
-          }
-        : null,
       examApplications: student.examApplications.map((app) => ({
         id: app.id,
         status: app.status,
@@ -155,78 +127,6 @@ export class AdminApplicantService {
           : null,
       })),
       createdAt: student.createdAt.toISOString(),
-    };
-  }
-
-  async validateWaiver(
-    studentId: string,
-    adminId: string
-  ): Promise<{ message: string; alignmentStatus: string }> {
-    const student = await this.repository.findStudentById(studentId);
-    if (!student) {
-      throw new AppError("Applicant not found!", 404);
-    }
-
-    if (!student.bridgingWaiver) {
-      throw new AppError("No pending waiver found!", 400);
-    }
-
-    if (student.bridgingWaiver.status !== "PENDING") {
-      throw new AppError("Waiver is not in pending status!", 400);
-    }
-
-    await this.repository.updateWaiverStatus(
-      student.bridgingWaiver.id,
-      "VALIDATED",
-      adminId
-    );
-
-    await this.repository.updateAlignmentStatus(studentId, "CLEARED");
-
-    await this.repository.createAuditLog(
-      adminId,
-      "waiver_validated",
-      studentId,
-      "Bridging waiver validated"
-    );
-
-    return {
-      message: "Waiver validated. Exam scheduling unlocked.",
-      alignmentStatus: "CLEARED",
-    };
-  }
-
-  async rejectWaiver(
-    studentId: string,
-    adminId: string,
-    input: RejectWaiverInput
-  ): Promise<{ message: string; alignmentStatus: string }> {
-    const student = await this.repository.findStudentById(studentId);
-    if (!student) {
-      throw new AppError("Applicant not found!", 404);
-    }
-
-    if (!student.bridgingWaiver) {
-      throw new AppError("No pending waiver found!", 400);
-    }
-
-    await this.repository.updateWaiverStatus(
-      student.bridgingWaiver.id,
-      "REJECTED",
-      adminId,
-      input.adminNotes
-    );
-
-    await this.repository.createAuditLog(
-      adminId,
-      "waiver_rejected",
-      studentId,
-      `Waiver rejected: ${input.adminNotes}`
-    );
-
-    return {
-      message: "Waiver rejected.",
-      alignmentStatus: "PENDING_WAIVER",
     };
   }
 

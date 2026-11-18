@@ -1,5 +1,5 @@
 import prisma from '../config/database';
-import { Prisma, User, Student, Program, UndergraduateProgram } from '@prisma/client';
+import { Prisma, User, Student, Program } from '@prisma/client';
 
 export class AuthRepository {
     async findUserByEmail(email: string) {
@@ -42,42 +42,22 @@ export class AuthRepository {
         });
     }
 
-    async findUndergraduateProgramById(id: string): Promise<UndergraduateProgram | null> {
-        return prisma.undergraduateProgram.findUnique({
-            where: { id }
-        });
-    }
-
-    // Creates User, Student, and optionally BridgingWaiver atomically
+    // Creates User and Student atomically
     async registerApplicant(
-        userData: Prisma.UserCreateInput, 
-        studentData: Prisma.StudentCreateWithoutUserInput, 
-        waiverData: { intendedProgramId: string; undergraduateProgramId?: string } | null = null
+        userData: Prisma.UserCreateInput,
+        studentData: Prisma.StudentCreateWithoutUserInput
     ): Promise<User> {
         return prisma.$transaction(async (tx) => {
             const newUser = await tx.user.create({
                 data: userData
             });
 
-            const newStudent = await tx.student.create({
+            await tx.student.create({
                 data: {
                     ...studentData,
                     user: { connect: { id: newUser.id } },
                 }
             });
-
-            // If waiverData is provided, they are misaligned. Generate the waiver immediately!
-            if (waiverData) {
-                await tx.applicantBridgingWaiver.create({
-                    data: {
-                        student: { connect: { id: newStudent.id } },
-                        intendedProgram: { connect: { id: waiverData.intendedProgramId } },
-                        ...(waiverData.undergraduateProgramId && {
-                            undergraduateProgram: { connect: { id: waiverData.undergraduateProgramId } }
-                        })
-                    }
-                });
-            }
 
             return newUser;
         });

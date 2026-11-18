@@ -3,7 +3,6 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const prismaMock = vi.hoisted(() => ({
   student: { findMany: vi.fn() },
   thesisRecord: { findMany: vi.fn() },
-  applicantBridgingWaiver: { count: vi.fn() },
   adviserRequest: { count: vi.fn() },
   defenseSchedule: { count: vi.fn(), findMany: vi.fn() },
   rapReport: { count: vi.fn() },
@@ -19,16 +18,6 @@ beforeEach(() => {
 });
 
 describe("DashboardRepository authoritative metrics", () => {
-  it("counts bridging waivers awaiting Admin validation", async () => {
-    prismaMock.applicantBridgingWaiver.count.mockResolvedValue(3);
-    const repo = new DashboardRepository();
-
-    await expect(repo.getBridgingWaiversToReviewCount()).resolves.toBe(3);
-    expect(prismaMock.applicantBridgingWaiver.count).toHaveBeenCalledWith({
-      where: { status: "PENDING" },
-    });
-  });
-
   it("counts only adviser requests that reached the Dean-review stage", async () => {
     prismaMock.adviserRequest.count.mockResolvedValue(1);
     const repo = new DashboardRepository();

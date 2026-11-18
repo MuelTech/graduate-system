@@ -1,136 +1,15 @@
 import { Prisma } from "@prisma/client";
 import prisma from "../src/config/database";
 import bcrypt from "bcryptjs";
+import { reconcileAuthoritativeGraduatePrograms } from "../src/config/graduate-programs";
 
 async function main() {
   console.log("Seeding programs...");
 
-  // Graduate Programs
-  const programs = [
-    // DOCTORAL PROGRAMS
-    {
-      programName: "Doctor of Philosophy in Industrial Psychology",
-      programType: "DOCTORAL",
-      department: "College of Arts and Sciences",
-      maxResidencyYears: 7,
-    },
-    {
-      programName: "Doctor of Education Major in Educational Management",
-      programType: "DOCTORAL",
-      department: "College of Education",
-      maxResidencyYears: 7,
-    },
-    {
-      programName: "Doctor in Business Administration",
-      programType: "DOCTORAL",
-      department: "College of Business Administration",
-      maxResidencyYears: 7,
-    },
-    {
-      programName: "Doctor in Public Administration",
-      programType: "DOCTORAL",
-      department: "College of Public Administration",
-      maxResidencyYears: 7,
-    },
-
-    // MASTERS PROGRAMS
-    {
-      programName: "Master of Science in Mathematics",
-      programType: "MASTERS",
-      department: "College of Arts and Sciences",
-      maxResidencyYears: 5,
-    },
-    {
-      programName: "Master of Arts in Industrial Psychology",
-      programType: "MASTERS",
-      department: "College of Arts and Sciences",
-      maxResidencyYears: 5,
-    },
-    {
-      programName: "Master in Business Administration",
-      programType: "MASTERS",
-      department: "College of Business Administration",
-      maxResidencyYears: 5,
-    },
-    {
-      programName: "Master in Public Administration",
-      programType: "MASTERS",
-      department: "College of Public Administration",
-      maxResidencyYears: 5,
-    },
-    {
-      programName:
-        "Master of Arts in Industrial Education Major in: Hotel and Restaurant Management",
-      programType: "MASTERS",
-      department: "College of Education",
-      maxResidencyYears: 5,
-    },
-
-    // Master of Arts in Education
-    {
-      programName:
-        "Master of Arts in Education Major in: Administration and Supervision",
-      programType: "MASTERS",
-      department: "College of Education",
-      maxResidencyYears: 5,
-    },
-    {
-      programName:
-        "Master of Arts in Education Major in: Guidance and Counseling",
-      programType: "MASTERS",
-      department: "College of Education",
-      maxResidencyYears: 5,
-    },
-    {
-      programName: "Master of Arts in Education Major in: Special Education",
-      programType: "MASTERS",
-      department: "College of Education",
-      maxResidencyYears: 5,
-    },
-
-    // Master of Arts in Teaching (MAT)
-    {
-      programName:
-        "Master of Arts in Teaching (MAT) Major in: Electronics Technology",
-      programType: "MASTERS",
-      department: "College of Education",
-      maxResidencyYears: 5,
-    },
-    {
-      programName:
-        "Master of Arts in Teaching (MAT) Major in: Electrical Technology",
-      programType: "MASTERS",
-      department: "College of Education",
-      maxResidencyYears: 5,
-    },
-    {
-      programName: "Master of Arts in Teaching (MAT) Major in: Mathematics",
-      programType: "MASTERS",
-      department: "College of Education",
-      maxResidencyYears: 5,
-    },
-    {
-      programName: "Master of Arts in Teaching (MAT) Major in: Science",
-      programType: "MASTERS",
-      department: "College of Education",
-      maxResidencyYears: 5,
-    },
-  ];
-
-  for (const p of programs) {
-    const existing = await prisma.program.findFirst({
-      where: { programName: p.programName },
-    });
-
-    if (!existing) {
-      await prisma.program.create({
-        data: p as any,
-      });
-      console.log(`Created graduate program: ${p.programName}`);
-    } else {
-      console.log(`Graduate program already exists: ${p.programName}`);
-    }
-  }
+  const programSync = await reconcileAuthoritativeGraduatePrograms(prisma);
+  console.log(
+    `Reconciled 16 authoritative graduate programs (updated: ${programSync.updated}, created: ${programSync.created}).`,
+  );
 
   // Undergraduate Programs
   const ugPrograms = [
@@ -674,14 +553,14 @@ async function main() {
         console.log("Created Thesis record for Student 1 (Proposal Defense)");
       }
 
-      // Add residency tracking
+      // Add residency tracking (Master's MRR = 4 years)
       await prisma.residencyTracking.upsert({
         where: { studentId: student1Record.id },
         update: {},
         create: {
           studentId: student1Record.id,
           startDate: new Date("2026-06-01T00:00:00.000Z"),
-          maxYears: 5,
+          maxYears: 4,
         },
       });
       console.log("Ensured Residency Tracking for Student 1");
@@ -3025,7 +2904,8 @@ async function seedEssayGradingReviewFixture(passwordHash: string) {
         programName: FIXTURE_PROGRAM_NAME,
         programType: "MASTERS",
         department: "UIUX Fixture",
-        maxResidencyYears: 5,
+        maxResidencyYears: 4,
+        isActive: false,
         examMcqTotal: FIXTURE_MCQ_MAX,
         examEssayTotal: FIXTURE_ESSAY_MAX,
       },
@@ -3034,6 +2914,7 @@ async function seedEssayGradingReviewFixture(passwordHash: string) {
     program = await prisma.program.update({
       where: { id: program.id },
       data: {
+        isActive: false,
         examMcqTotal: FIXTURE_MCQ_MAX,
         examEssayTotal: FIXTURE_ESSAY_MAX,
       },

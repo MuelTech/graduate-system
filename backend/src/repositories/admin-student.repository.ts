@@ -195,7 +195,7 @@ export class AdminStudentRepository {
           select: { firstName: true, lastName: true, email: true },
         },
         program: {
-          select: { id: true, programName: true },
+          select: { id: true, programName: true, maxResidencyYears: true },
         },
         compExamRecords: {
           select: { status: true, createdAt: true },
@@ -224,7 +224,10 @@ export class AdminStudentRepository {
     const assignment = student.adviserAssignments[0] ?? null;
     const residencyStart =
       student.residencyTracking?.startDate ?? student.residencyStartDate ?? null;
-    const residencyMax = student.residencyTracking?.maxYears ?? null;
+    const residencyMax =
+      student.residencyTracking?.maxYears ??
+      student.program?.maxResidencyYears ??
+      null;
     const hasResidency = residencyStart !== null || residencyMax !== null;
 
     return {
@@ -241,7 +244,6 @@ export class AdminStudentRepository {
       admissionStatus: student.admissionStatus,
       enrollmentDate: student.enrollmentDate?.toISOString() ?? null,
       curriculumType: student.curriculumType ?? null,
-      alignmentStatus: student.alignmentStatus ?? null,
       residency: hasResidency
         ? {
             startDate: residencyStart ? residencyStart.toISOString() : null,

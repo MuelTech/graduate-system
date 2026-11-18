@@ -115,7 +115,7 @@ beforeEach(() => {
   searchResult = { data: { applicants: [{ id: "student-1", firstName: "Ada", lastName: "Fixture", email: "ada@example.invalid",
     pinnacleApplicantId: "PIN-1", program: { id: "program-1", programName: "Test Program" } }], total: 1 }, isLoading: false, refetch };
   optionsResult = { data: { applicant: { id: "student-1", firstName: "Ada", lastName: "Fixture", email: "ada@example.invalid",
-    pinnacleApplicantId: "PIN-1", program: { id: "program-1", programName: "Test Program" }, alignmentStatus: "CLEARED" },
+    pinnacleApplicantId: "PIN-1", program: { id: "program-1", programName: "Test Program" } },
     eligible: true, reason: null, date: "2026-11-02", timeZone: "Asia/Manila",
     slots: [{ id: "slot-1", examDate: "2026-11-02T00:00:00.000Z", examTime: "1970-01-01T09:00:00.000Z", slotsTaken: 1, maxSlots: 2, remainingSeats: 1 }] }, refetch };
 });
@@ -140,9 +140,9 @@ describe("Admin same-day assignment dialog", () => {
     chooseApplicant(); render(); expect(states[3]).toBe("student-1"); expect(queries[0].enabled).toBe(false);
     await queries[1].queryFn(); expect(request).toHaveBeenLastCalledWith("/exam/assignment-options/student-1");
   });
-  it("reviews authoritative identity, Program, clearance, original wall clock and capacity before confirmation", () => {
+  it("reviews authoritative identity, Program, original wall clock and capacity before confirmation", () => {
     chooseApplicant(); chooseSlot(); let tree = render();
-    for (const value of ["Ada Fixture", "PIN-1", "Test Program", "Cleared", "November 2, 2026", "1 / 2 booked", "1 seats remaining"]) expect(text(tree)).toContain(value);
+    for (const value of ["Ada Fixture", "PIN-1", "Test Program", "November 2, 2026", "1 / 2 booked", "1 seats remaining"]) expect(text(tree)).toContain(value);
     expect(text(tree)).toMatch(/9:00\s*AM/);
     button(tree, "Review Assignment").props.onClick(); tree = render();
     expect(text(tree)).toContain("Confirm Applicant Assignment");
@@ -209,7 +209,6 @@ describe("Admin same-day assignment dialog", () => {
     optionsResult.data.eligible = false;
     for (const [reason, expected] of [
       ["This Applicant already has an examination record that prevents another assignment.", "This Applicant already has an examination record."],
-      ["Program alignment or bridging waiver clearance is required before assignment.", "Program alignment or waiver clearance is required before assignment."],
     ]) {
       optionsResult.data.reason = reason;
       const tree = render();

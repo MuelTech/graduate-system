@@ -43,10 +43,8 @@ export default function RegisterPage() {
     lastName: "",
     email: "",
     cellphone: "",
-    dateOfBirth: "",
     programId: "",
     programType: "Masters",
-    undergraduateProgramId: "",
     password: "",
     confirmPassword: "",
   });
@@ -55,10 +53,6 @@ export default function RegisterPage() {
 
   const [graduateProgramsList, setGraduateProgramsList] = useState<
     { id: string; programName: string; programType: string }[]
-  >([]);
-
-  const [undergraduateProgramsList, setUndergraduateProgramsList] = useState<
-    { id: string; programName: string }[]
   >([]);
 
   useEffect(() => {
@@ -95,7 +89,6 @@ export default function RegisterPage() {
         if (res.ok) {
           const data = await res.json();
           setGraduateProgramsList(data.graduatePrograms);
-          setUndergraduateProgramsList(data.undergraduatePrograms);
         }
       } catch (err) {
         console.error("Failed to fetch programs", err);
@@ -148,18 +141,10 @@ export default function RegisterPage() {
           setError("Cellphone Number is required.");
           return false;
         }
-        if (!formData.dateOfBirth.trim()) {
-          setError("Date of Birth is required.");
-          return false;
-        }
         break;
       case 2:
         if (!formData.programId) {
           setError("Intended Program is required.");
-          return false;
-        }
-        if (!formData.undergraduateProgramId) {
-          setError("Prerequisite Program is required.");
           return false;
         }
         break;
@@ -431,19 +416,6 @@ export default function RegisterPage() {
                       required
                     />
                   </div>
-                  <div>
-                    <label className="mb-1.5 block text-sm font-semibold text-(--earist-secondary)">
-                      Date of Birth <span className="text-red-500">*</span>
-                    </label>
-                    <Input
-                      type="date"
-                      value={formData.dateOfBirth}
-                      onChange={(e) =>
-                        updateForm("dateOfBirth", e.target.value)
-                      }
-                      required
-                    />
-                  </div>
                 </div>
               )}
 
@@ -467,7 +439,6 @@ export default function RegisterPage() {
                           onClick={() => {
                             updateForm("programType", type);
                             updateForm("programId", "");
-                            updateForm("undergraduateProgramId", "");
                           }}
                           className={
                             formData.programType === type
@@ -482,7 +453,6 @@ export default function RegisterPage() {
                   </div>
 
                   {(() => {
-                    // Separate the graduate programs into their respective lists
                     const mastersPrograms = graduateProgramsList.filter(
                       (p) => p.programType === "MASTERS",
                     );
@@ -490,78 +460,37 @@ export default function RegisterPage() {
                       (p) => p.programType === "DOCTORAL",
                     );
 
-                    // Establish logic variables based on selected type
                     const isDoctoral = formData.programType === "Doctoral";
                     const intendedProgramList = isDoctoral
                       ? doctoralPrograms
                       : mastersPrograms;
-                    const prerequisiteProgramList = isDoctoral
-                      ? mastersPrograms
-                      : undergraduateProgramsList;
 
                     const intendedProgramLabel = isDoctoral
                       ? "Intended Doctorate Program"
                       : "Intended Masters Program";
-                    const prerequisiteProgramLabel = isDoctoral
-                      ? "Masters Program"
-                      : "Undergraduate Program";
-                    const prerequisitePlaceholder = isDoctoral
-                      ? "Select your masters course (or closest equivalent)"
-                      : "Select your undergraduate course";
 
                     return (
-                      <>
-                        <div>
-                          <label className="mb-1.5 block text-sm font-semibold text-(--earist-secondary)">
-                            {intendedProgramLabel}{" "}
-                            <span className="text-red-500">*</span>
-                          </label>
-                          <select
-                            value={formData.programId}
-                            onChange={(e) =>
-                              updateForm("programId", e.target.value)
-                            }
-                            required
-                            className="w-full rounded-lg border border-(--earist-border-gray) px-4 py-3 text-sm transition-colors focus:border-(--earist-primary) focus:ring-2 focus:ring-(--earist-primary)/20 focus:outline-none"
-                          >
-                            <option value="">Select a program</option>
-                            {intendedProgramList.map((p) => (
-                              <option key={p.id} value={p.id}>
-                                {p.programName}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-                        <div>
-                          <label className="mb-1.5 block text-sm font-semibold text-(--earist-secondary)">
-                            {prerequisiteProgramLabel}{" "}
-                            <span className="text-red-500">*</span>
-                          </label>
-                          <select
-                            value={formData.undergraduateProgramId}
-                            onChange={(e) =>
-                              updateForm(
-                                "undergraduateProgramId",
-                                e.target.value,
-                              )
-                            }
-                            required
-                            className="w-full rounded-lg border border-(--earist-border-gray) px-4 py-3 text-sm transition-colors focus:border-(--earist-primary) focus:ring-2 focus:ring-(--earist-primary)/20 focus:outline-none"
-                          >
-                            <option value="">{prerequisitePlaceholder}</option>
-                            {prerequisiteProgramList.map((c) => (
-                              <option key={c.id} value={c.id}>
-                                {c.programName}
-                              </option>
-                            ))}
-                          </select>
-                          <p className="mt-1.5 text-xs text-(--earist-body-text)">
-                            Used for Program Alignment Check.{" "}
-                            {isDoctoral &&
-                              "If you graduated from another school, select the closest equivalent program."}
-                          </p>
-                        </div>
-                      </>
+                      <div>
+                        <label className="mb-1.5 block text-sm font-semibold text-(--earist-secondary)">
+                          {intendedProgramLabel}{" "}
+                          <span className="text-red-500">*</span>
+                        </label>
+                        <select
+                          value={formData.programId}
+                          onChange={(e) =>
+                            updateForm("programId", e.target.value)
+                          }
+                          required
+                          className="w-full rounded-lg border border-(--earist-border-gray) px-4 py-3 text-sm transition-colors focus:border-(--earist-primary) focus:ring-2 focus:ring-(--earist-primary)/20 focus:outline-none"
+                        >
+                          <option value="">Select a program</option>
+                          {intendedProgramList.map((p) => (
+                            <option key={p.id} value={p.id}>
+                              {p.programName}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
                     );
                   })()}
                 </div>

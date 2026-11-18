@@ -16,6 +16,7 @@ import type { AdviserCertificationRenderInput } from "../documents/official-defe
 import { sanitizeOfficialNamePart, defenseStageFilenameLabel } from "./official-defense-document-filename";
 
 import { AppError } from "../utils/AppError";
+import { formatOfficialProgramDisplay } from "../config/graduate-programs";
 import {
   INSTITUTIONAL_MATRIX_V2,
 } from "./oral-evaluation.institutional.rules";
@@ -718,7 +719,8 @@ export class OfficialDefenseDocumentService {
     const input: AdviserCertificationRenderInput = {
       logos: await this.loadLogos(), stage: stage === "PROPOSAL" ? "proposal" : "final",
       manuscriptTitle: row.reviewedDocument!.manuscriptTitle!,
-      studentName: personName(row.thesis.student.user), programName: row.thesis.student.program!.programName,
+      studentName: personName(row.thesis.student.user),
+      programName: formatOfficialProgramDisplay(row.thesis.student.program!),
       issuedDay: date[0], issuedMonthYear: date.slice(1).join(" "),
       adviserPrintedName: personName(row.adviser), adviserSignature: await validateAdviserCertificationSignature(row.signatureData),
     };

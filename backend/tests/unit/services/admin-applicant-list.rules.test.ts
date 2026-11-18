@@ -44,38 +44,25 @@ describe("buildApplicantListWhere — program filter", () => {
 });
 
 describe("buildApplicantListWhere — admission stage", () => {
-  it("Program Alignment includes PENDING_WAIVER and missing/unknown alignment", () => {
-    const where = buildApplicantListWhere({ stage: "ALIGNMENT" });
-    expect(where.AND).toContainEqual({
-      OR: [
-        { alignmentStatus: null },
-        { alignmentStatus: { notIn: ["ALIGNED", "CLEARED"] } },
-      ],
-    });
-  });
-
-  it("Entrance Examination requires cleared alignment and no authoritative PASSED exam", () => {
+  it("Entrance Examination requires no authoritative PASSED exam", () => {
     const where = buildApplicantListWhere({ stage: "EXAM" });
-    expect(where.AND).toContainEqual({
-      alignmentStatus: { in: ["ALIGNED", "CLEARED"] },
-    });
     expect(where.AND).toContainEqual({
       examApplications: { none: { status: "PASSED" } },
     });
   });
 
-  it("COR / Enrollment requires cleared alignment AND an authoritative PASSED exam", () => {
+  it("COR / Enrollment requires an authoritative PASSED exam", () => {
     const where = buildApplicantListWhere({ stage: "COR" });
-    expect(where.AND).toContainEqual({
-      alignmentStatus: { in: ["ALIGNED", "CLEARED"] },
-    });
     expect(where.AND).toContainEqual({
       examApplications: { some: { status: "PASSED" } },
     });
   });
 
-  it("adds no stage clause for empty or unknown stage values", () => {
+  it("adds no stage clause for empty or unknown stage values (including legacy ALIGNMENT)", () => {
     expect(buildApplicantListWhere({ stage: "" })).toEqual({
+      AND: [{ admissionStatus: "APPLICANT", user: { role: "APPLICANT" } }],
+    });
+    expect(buildApplicantListWhere({ stage: "ALIGNMENT" })).toEqual({
       AND: [{ admissionStatus: "APPLICANT", user: { role: "APPLICANT" } }],
     });
     expect(buildApplicantListWhere({ stage: "SOMETHING" })).toEqual({
@@ -92,38 +79,21 @@ describe("buildApplicantListWhere — admission stage", () => {
 
 type StageCase = {
   label: string;
-  alignmentStatus: string | null;
   examStatuses: string[];
 };
 
 const STAGE_CASES: StageCase[] = [
-  { label: "null alignment, no exam", alignmentStatus: null, examStatuses: [] },
-  {
-    label: "null alignment + historical PASSED",
-    alignmentStatus: null,
-    examStatuses: ["PASSED"],
-  },
-  {
-    label: "PENDING_WAIVER + historical PASSED",
-    alignmentStatus: "PENDING_WAIVER",
-    examStatuses: ["PASSED"],
-  },
-  { label: "ALIGNED, no exam", alignmentStatus: "ALIGNED", examStatuses: [] },
-  { label: "CLEARED, no exam", alignmentStatus: "CLEARED", examStatuses: [] },
-  {
-    label: "ALIGNED, DISQUALIFIED only",
-    alignmentStatus: "ALIGNED",
-    examStatuses: ["DISQUALIFIED"],
-  },
-  { label: "ALIGNED + PASSED", alignmentStatus: "ALIGNED", examStatuses: ["PASSED"] },
-  { label: "CLEARED + PASSED", alignmentStatus: "CLEARED", examStatuses: ["PASSED"] },
+  { label: "no exam", examStatuses: [] },
+  { label: "PENDING only", examStatuses: ["PENDING"] },
+  { label: "DISQUALIFIED only", examStatuses: ["DISQUALIFIED"] },
+  { label: "PASSED", examStatuses: ["PASSED"] },
+  { label: "historical PASSED + newer DISQUALIFIED", examStatuses: ["DISQUALIFIED", "PASSED"] },
 ];
 
 function recordFor(testCase: StageCase) {
   return {
     admissionStatus: "APPLICANT",
     user: { role: "APPLICANT" },
-    alignmentStatus: testCase.alignmentStatus,
     examApplications: testCase.examStatuses.map((status) => ({ status })),
   };
 }
@@ -132,16 +102,6 @@ function recordFor(testCase: StageCase) {
 function matchesWhere(where: any, record: any): boolean {
   if (where.AND) return where.AND.every((w: any) => matchesWhere(w, record));
   if (where.OR) return where.OR.some((w: any) => matchesWhere(w, record));
-  if (Object.prototype.hasOwnProperty.call(where, "alignmentStatus")) {
-    const clause = where.alignmentStatus;
-    if (clause === null) return record.alignmentStatus === null;
-    if (clause && typeof clause === "object" && "in" in clause) {
-      return clause.in.includes(record.alignmentStatus);
-    }
-    if (clause && typeof clause === "object" && "notIn" in clause) {
-      return !clause.notIn.includes(record.alignmentStatus);
-    }
-  }
   if (Object.prototype.hasOwnProperty.call(where, "examApplications")) {
     const clause = where.examApplications;
     const apps = record.examApplications ?? [];
@@ -159,7 +119,7 @@ function matchesWhere(where: any, record: any): boolean {
 }
 
 describe("stage filter <-> derivation invariant", () => {
-  const stages: AdmissionStage[] = ["ALIGNMENT", "EXAM", "COR"];
+  const stages: AdmissionStage[] = ["EXAM", "COR"];
 
   it("every record matching a stage filter derives to that same stage", () => {
     for (const stage of stages) {
@@ -167,7 +127,6 @@ describe("stage filter <-> derivation invariant", () => {
       for (const testCase of STAGE_CASES) {
         const record = recordFor(testCase);
         const derived = deriveAdmissionStage({
-          alignmentStatus: testCase.alignmentStatus,
           hasPassedExam: testCase.examStatuses.includes("PASSED"),
         });
         expect(
@@ -177,58 +136,15 @@ describe("stage filter <-> derivation invariant", () => {
       }
     }
   });
-
-  it("ALIGNMENT filter matches historical-PASSED records with incomplete alignment and they derive ALIGNMENT", () => {
-    const where = buildApplicantListWhere({ stage: "ALIGNMENT" });
-    const cases = STAGE_CASES.filter((c) =>
-      [
-        "null alignment + historical PASSED",
-        "PENDING_WAIVER + historical PASSED",
-      ].includes(c.label),
-    );
-    expect(cases).toHaveLength(2);
-    for (const testCase of cases) {
-      expect(matchesWhere(where, recordFor(testCase))).toBe(true);
-      expect(
-        deriveAdmissionStage({
-          alignmentStatus: testCase.alignmentStatus,
-          hasPassedExam: testCase.examStatuses.includes("PASSED"),
-        }),
-      ).toBe("ALIGNMENT");
-    }
-  });
-
-  it("COR filter excludes PASSED records whose alignment is incomplete", () => {
-    const where = buildApplicantListWhere({ stage: "COR" });
-    const cases = STAGE_CASES.filter((c) =>
-      [
-        "null alignment + historical PASSED",
-        "PENDING_WAIVER + historical PASSED",
-      ].includes(c.label),
-    );
-    for (const testCase of cases) {
-      expect(matchesWhere(where, recordFor(testCase))).toBe(false);
-    }
-  });
 });
 
 describe("deriveAdmissionStage", () => {
-  it("treats missing alignment authority as Program Alignment (fail closed)", () => {
-    expect(deriveAdmissionStage({ alignmentStatus: null, hasPassedExam: false })).toBe("ALIGNMENT");
-    expect(deriveAdmissionStage({ alignmentStatus: undefined, hasPassedExam: true })).toBe("ALIGNMENT");
-  });
-
-  it("treats PENDING_WAIVER as Program Alignment", () => {
-    expect(deriveAdmissionStage({ alignmentStatus: "PENDING_WAIVER", hasPassedExam: false })).toBe("ALIGNMENT");
-  });
-
-  it("treats ALIGNED/CLEARED without a passed exam as Entrance Examination", () => {
-    expect(deriveAdmissionStage({ alignmentStatus: "ALIGNED", hasPassedExam: false })).toBe("EXAM");
-    expect(deriveAdmissionStage({ alignmentStatus: "CLEARED", hasPassedExam: false })).toBe("EXAM");
+  it("treats no passed exam as Entrance Examination", () => {
+    expect(deriveAdmissionStage({ hasPassedExam: false })).toBe("EXAM");
   });
 
   it("treats a passed exam as COR / Enrollment", () => {
-    expect(deriveAdmissionStage({ alignmentStatus: "ALIGNED", hasPassedExam: true })).toBe("COR");
+    expect(deriveAdmissionStage({ hasPassedExam: true })).toBe("COR");
   });
 });
 

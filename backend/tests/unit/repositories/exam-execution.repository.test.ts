@@ -89,9 +89,8 @@ describe("B4 exact server-owned execution", () => {
     db.examContentRevision.findUnique.mockResolvedValueOnce({ ...executionRevision(ids.revision, true), questions: [{ questionId: qid, content: { bad: true } }] }); await expect(repo.start(ids.user, ids.app)).rejects.toThrow();
     expect(app.actualStartedAt).toBeNull();
   });
-  it.each(["program", "alignment", "role", "inactive", "admission", "pinnacle", "slot", "copy", "counter", "capacity"])("retains the %s guard", async guard => {
+  it.each(["program", "role", "inactive", "admission", "pinnacle", "slot", "copy", "counter", "capacity"])("retains the %s guard", async guard => {
     if (guard === "program") app.student.programId = ids.admin;
-    if (guard === "alignment") app.student.alignmentStatus = "PENDING_WAIVER";
     if (guard === "role") app.student.user.role = "STUDENT";
     if (guard === "inactive") app.student.user.isActive = false;
     if (guard === "admission") app.student.admissionStatus = "ENROLLED";

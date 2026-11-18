@@ -6,11 +6,11 @@ export interface RegisterInput {
   lastName: string;
   email: string;
   cellphone: string;
-  dateOfBirth: string;
   programId: string;
-  programType: string;
-  undergraduateProgramId: string;
   password: string;
+  programType?: string;
+  dateOfBirth?: string;
+  undergraduateProgramId?: string;
 }
 
 export interface LoginInput {
