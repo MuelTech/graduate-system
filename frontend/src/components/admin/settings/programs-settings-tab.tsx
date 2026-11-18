@@ -362,7 +362,6 @@ export function ProgramsSettingsTab() {
                     <TableHead>Code</TableHead>
                     <TableHead>Level</TableHead>
                     <TableHead>Max Residency</TableHead>
-                    <TableHead>Records</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
@@ -370,10 +369,6 @@ export function ProgramsSettingsTab() {
                 <TableBody>
                   {filteredPrograms.map((program) => {
                     const active = program.isActive !== false;
-                    const linkedCount =
-                      (program._count?.students ?? 0) +
-                      (program._count?.examSlots ?? 0) +
-                      (program._count?.examApplications ?? 0);
                     const isDoctoral = program.programType === "DOCTORAL";
                     const fallbackYears = isDoctoral ? 6 : 4;
 
@@ -412,16 +407,6 @@ export function ProgramsSettingsTab() {
                         </TableCell>
                         <TableCell className="whitespace-nowrap text-sm text-[#333333]">
                           {program.maxResidencyYears ?? fallbackYears} years
-                        </TableCell>
-                        <TableCell className="text-xs text-gray-500">
-                          {linkedCount > 0 ? (
-                            <span>
-                              {program._count?.students ?? 0} students ·{" "}
-                              {program._count?.examSlots ?? 0} slots
-                            </span>
-                          ) : (
-                            <span className="text-gray-400">No linked records</span>
-                          )}
                         </TableCell>
                         <TableCell>
                           <Badge
