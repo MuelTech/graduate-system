@@ -20,7 +20,6 @@ export interface AdminStudentDetail {
   /** ISO string; null when not recorded. */
   enrollmentDate: string | null;
   curriculumType: string | null;
-  alignmentStatus: string | null;
   /** Residency context; null when neither start date nor max years is recorded. */
   residency: { startDate: string | null; maxYears: number | null } | null;
   /**

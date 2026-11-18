@@ -25,7 +25,6 @@ const DOCUMENT_ROUTE = "src/app/api/documents/[...path]/route.ts";
 const REGISTER = "src/app/(auth)/register/page.tsx";
 const APPLICANT_DASHBOARD = "src/app/(portal)/applicant/dashboard/page.tsx";
 const COR_UPLOAD = "src/app/(portal)/applicant/cor-upload/page.tsx";
-const ALIGNMENT = "src/app/(portal)/applicant/alignment/page.tsx";
 const MEMOS = "src/app/(portal)/admin/memos/page.tsx";
 const NEXT_CONFIG = "next.config.ts";
 const FRONTEND_ENV = ".env.example";
@@ -205,7 +204,7 @@ test("REST and realtime use the shared client resolver", () => {
 });
 
 test("direct browser fetches use the client resolver", () => {
-  for (const file of [REGISTER, COR_UPLOAD, ALIGNMENT, MEMOS]) {
+  for (const file of [REGISTER, COR_UPLOAD, MEMOS]) {
     const source = read(file);
     assert.match(source, /getClientBackendBaseUrl/, `${file} must use resolver`);
     assert.doesNotMatch(

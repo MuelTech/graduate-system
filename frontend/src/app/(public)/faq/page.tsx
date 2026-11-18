@@ -13,11 +13,6 @@ const faqCategories = [
           "To apply, you must first register in Pinnacle to obtain your Applicant ID. Then, visit our registration page to complete your GS System registration, including personal information, program selection, and account setup.",
       },
       {
-        question: "What is the Program Alignment Check?",
-        answer:
-          "The Program Alignment Check automatically verifies if your undergraduate program is aligned with your intended graduate program. If aligned, you can proceed immediately. If misaligned, you may need to submit a Bridging Waiver form.",
-      },
-      {
         question: "What documents do I need for application?",
         answer:
           "Document submission and payment are handled entirely through Pinnacle. You will need to register in Pinnacle first, obtain your Applicant ID, and complete all requirements there before returning to the GS System.",
@@ -25,7 +20,7 @@ const faqCategories = [
       {
         question: "How do I schedule my entrance examination?",
         answer:
-          "After completing registration and passing the Program Alignment Check, you can select an available exam slot through the Exam Scheduling page in your Applicant Portal. Note that exam scheduling is blocked if your alignment status is 'pending waiver'.",
+          "After completing registration, you can select an available exam slot through the Exam Scheduling page in your Applicant Portal.",
       },
     ],
   },
@@ -95,7 +90,7 @@ const faqCategories = [
       {
         question: "How do I access the AI Chatbot?",
         answer:
-          "The AI Chatbot is available as a floating button (bottom-right corner) on all pages for all authenticated users. It can help with navigation, thesis FAQs, exam scheduling guidance, and alignment check information.",
+          "The AI Chatbot is available as a floating button (bottom-right corner) on all pages for all authenticated users. It can help with navigation, thesis FAQs, and exam scheduling guidance.",
       },
     ],
   },

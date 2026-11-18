@@ -38,7 +38,6 @@ const DETAIL = {
   admissionStatus: "ENROLLED",
   enrollmentDate: null,
   curriculumType: null,
-  alignmentStatus: null,
   residency: null,
   compExam: null,
   adviserAssignment: null,

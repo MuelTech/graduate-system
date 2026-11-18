@@ -3,7 +3,6 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const repoMock = vi.hoisted(() => ({
   getEnrolledStudents: vi.fn(),
   getThesisRecordsForPipeline: vi.fn(),
-  getBridgingWaiversToReviewCount: vi.fn(),
   getAdviserRequestsForDeanReviewCount: vi.fn(),
   getDefensesAwaitingConclusionCount: vi.fn(),
   getRapReportsAwaitingSignaturesCount: vi.fn(),
@@ -50,7 +49,6 @@ function primeHappyPath() {
     { programName: "DIT", programType: "DOCTORAL" },
   ]);
   repoMock.getThesisRecordsForPipeline.mockResolvedValue([]);
-  repoMock.getBridgingWaiversToReviewCount.mockResolvedValue(3);
   repoMock.getAdviserRequestsForDeanReviewCount.mockResolvedValue(1);
   repoMock.getDefensesAwaitingConclusionCount.mockResolvedValue(5);
   repoMock.getRapReportsAwaitingSignaturesCount.mockResolvedValue(2);
@@ -101,7 +99,7 @@ describe("AdminDashboardService.getDashboardData", () => {
     expect(result.kpis.corSubmissionsToReview).toBe(2);
   });
 
-  it("assembles the grouped needs-attention queues including waiver and Dean-review counts", async () => {
+  it("assembles the grouped needs-attention queues without bridging waivers", async () => {
     const service = new AdminDashboardService();
     const result = await service.getDashboardData();
 
@@ -109,7 +107,6 @@ describe("AdminDashboardService.getDashboardData", () => {
       defenseApplications: 4,
       corSubmissions: 2,
       defensesReadyForScheduling: 2,
-      bridgingWaivers: 3,
       adviserRequestsForDeanReview: 1,
     });
   });

@@ -10,7 +10,6 @@ import { signOut, useSession } from "next-auth/react";
 import {
   LayoutDashboard,
   User,
-  ShieldCheck,
   CalendarClock,
   FileCheck2,
   BadgeCheck,
@@ -26,11 +25,6 @@ import {
 const navItems = [
   { href: "/applicant/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/applicant/profile", label: "Profile", icon: User },
-  {
-    href: "/applicant/alignment",
-    label: "Program Alignment",
-    icon: ShieldCheck,
-  },
   { href: "/applicant/schedule", label: "Exam Schedule", icon: CalendarClock },
   { href: "/applicant/exam", label: "Entrance Exam", icon: FileCheck2 },
   { href: "/applicant/results", label: "Exam Results", icon: BadgeCheck },

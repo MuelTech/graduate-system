@@ -67,7 +67,7 @@ export default async function ApplicantDashboard() {
           {/* Steps */}
           <div className="relative flex justify-between">
             {[
-              { label: "Register & Align", icon: ClipboardCheck },
+              { label: "Register", icon: ClipboardCheck },
               { label: "Schedule & Take Exam", icon: CalendarClock },
               { label: "Upload COR", icon: Upload },
             ].map((step, i) => {
@@ -105,80 +105,6 @@ export default async function ApplicantDashboard() {
 
       {/* Bento Grid */}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
-        {/* Program Alignment — spans 2 cols */}
-        <Card className="lg:col-span-2">
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-base font-bold text-[#333333]">
-                Program Alignment
-              </CardTitle>
-              <Badge
-                variant={
-                  applicant.alignmentStatus === "pending_waiver"
-                    ? "destructive"
-                    : "default"
-                }
-                className={
-                  applicant.alignmentStatus === "aligned"
-                    ? "bg-green-100 text-green-700"
-                    : applicant.alignmentStatus === "cleared"
-                      ? "bg-blue-100 text-blue-700"
-                      : ""
-                }
-              >
-                {applicant.alignmentStatus === "aligned" && (
-                  <CheckCircle2 className="mr-1 h-3 w-3" />
-                )}
-                {applicant.alignmentStatus === "pending_waiver" && (
-                  <AlertTriangle className="mr-1 h-3 w-3" />
-                )}
-                {applicant.alignmentStatus === "cleared" && (
-                  <CheckCircle2 className="mr-1 h-3 w-3" />
-                )}
-                {applicant.alignmentStatus === "aligned"
-                  ? "Aligned"
-                  : applicant.alignmentStatus === "pending_waiver"
-                    ? "Pending Waiver"
-                    : "Cleared"}
-              </Badge>
-            </div>
-          </CardHeader>
-          <CardContent>
-            {applicant.alignmentStatus === "pending_waiver" && (
-              <Alert className="mb-3 border-amber-200 bg-amber-50">
-                <AlertTriangle className="h-4 w-4 text-amber-600" />
-                <AlertDescription className="text-amber-700 font-semibold">
-                  Action Required: You have a pending Bridging Waiver.
-                </AlertDescription>
-              </Alert>
-            )}
-            <p className="mb-4 text-sm text-gray-600">
-              {applicant.alignmentStatus === "aligned"
-                ? "Your undergraduate program is aligned. You may proceed to schedule your exam."
-                : applicant.alignmentStatus === "cleared"
-                  ? "Your waiver has been cleared. You may schedule your exam."
-                  : "Exam scheduling is locked until your waiver is submitted and validated."}
-            </p>
-            {applicant.alignmentStatus === "aligned" ||
-            applicant.alignmentStatus === "cleared" ? (
-              <Link
-                href="/applicant/schedule"
-                className="inline-flex items-center gap-1 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-[#333333] shadow-xs transition-colors hover:bg-gray-50"
-              >
-                Proceed to Exam Schedule Page <ArrowRight className="h-4 w-4" />
-              </Link>
-            ) : (
-              <Link
-                href="/applicant/alignment"
-                className="inline-flex items-center gap-1 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-[#333333] shadow-xs transition-colors hover:bg-gray-50"
-              >
-                Proceed to Program Alignment Page{" "}
-                <ArrowRight className="h-4 w-4" />
-              </Link>
-            )}
-          </CardContent>
-        </Card>
-
         {/* Current Status — compact */}
         <Card className="lg:col-span-2">
           <CardHeader>
@@ -201,47 +127,31 @@ export default async function ApplicantDashboard() {
                   </p>
                 </div>
               </div>
-            ) : applicant.currentStep === 1 ? (
-              applicant.examDate ? (
-                <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#e02b20]/10">
-                    <Clock className="h-5 w-5 text-[#e02b20]" />
-                  </div>
-                  <div>
-                    <Badge className="bg-[#f9a825]/20 text-amber-900 hover:bg-[#f9a825]/20">
-                      Exam Scheduled
-                    </Badge>
-                    <p className="mt-1 text-xs text-gray-500">
-                      Your entrance exam is scheduled.
-                    </p>
-                  </div>
-                </div>
-              ) : (
-                <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-100">
-                    <CalendarClock className="h-5 w-5 text-blue-700" />
-                  </div>
-                  <div>
-                    <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-100">
-                      Ready to Schedule
-                    </Badge>
-                    <p className="mt-1 text-xs text-gray-500">
-                      You may now select your exam schedule.
-                    </p>
-                  </div>
-                </div>
-              )
-            ) : (
+            ) : applicant.examDate ? (
               <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-amber-100">
-                  <AlertTriangle className="h-5 w-5 text-amber-700" />
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#e02b20]/10">
+                  <Clock className="h-5 w-5 text-[#e02b20]" />
                 </div>
                 <div>
-                  <Badge className="bg-amber-100 text-amber-700 hover:bg-amber-100">
-                    Pending Alignment
+                  <Badge className="bg-[#f9a825]/20 text-amber-900 hover:bg-[#f9a825]/20">
+                    Exam Scheduled
                   </Badge>
                   <p className="mt-1 text-xs text-gray-500">
-                    Waiting for program alignment validation.
+                    Your entrance exam is scheduled.
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-100">
+                  <CalendarClock className="h-5 w-5 text-blue-700" />
+                </div>
+                <div>
+                  <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-100">
+                    Ready to Schedule
+                  </Badge>
+                  <p className="mt-1 text-xs text-gray-500">
+                    You may now select your exam schedule.
                   </p>
                 </div>
               </div>
@@ -282,11 +192,7 @@ export default async function ApplicantDashboard() {
             )}
             <Link
               href="/applicant/schedule"
-              className={`inline-flex items-center justify-center rounded-lg px-4 py-2 text-sm font-semibold transition-colors ${
-                applicant.alignmentStatus === "pending_waiver"
-                  ? "cursor-not-allowed bg-gray-200 text-gray-400"
-                  : "bg-[#e02b20] text-white hover:bg-[#c62828]"
-              }`}
+              className="inline-flex items-center justify-center rounded-lg bg-[#e02b20] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-[#c62828]"
             >
               Select Exam Schedule
             </Link>
@@ -352,8 +258,8 @@ export default async function ApplicantDashboard() {
           </CardContent>
         </Card>
 
-        {/* Notifications — spans 2 cols */}
-        <Card className="lg:col-span-2">
+        {/* Notifications — spans full width */}
+        <Card className="lg:col-span-4">
           <CardHeader>
             <div className="flex items-center justify-between">
               <CardTitle className="text-base font-bold text-[#333333]">
@@ -374,12 +280,6 @@ export default async function ApplicantDashboard() {
                   title: "Exam schedule confirmed",
                   desc: "Your entrance exam is scheduled for June 15, 2026 at 9:00 AM.",
                   time: "2 hours ago",
-                  unread: true,
-                },
-                {
-                  title: "Alignment check passed",
-                  desc: "Your undergraduate program is aligned with your intended graduate program.",
-                  time: "5 hours ago",
                   unread: true,
                 },
                 {

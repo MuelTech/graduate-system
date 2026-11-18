@@ -47,7 +47,7 @@ const exports: Record<string, any> = {};
 new Function("require", "exports", code)((name: string) => { if (!(name in modules)) throw new Error(`Unexpected schedule dependency: ${name}`); return modules[name]; }, exports);
 const render = () => renderToStaticMarkup(createElement(exports.default));
 
-beforeEach(() => { vi.clearAllMocks(); queries.length = 0; mutations.length = 0; applicant = { programId: "own-program", alignmentStatus: "ALIGNED", confirmedSlot: null }; });
+beforeEach(() => { vi.clearAllMocks(); queries.length = 0; mutations.length = 0; applicant = { programId: "own-program", canBookExam: true, confirmedSlot: null }; });
 describe("B3 Applicant schedule presentation and self-booking", () => {
   it("renders the exact booked Philippine wall-clock and retains automatic confirmation", () => {
     applicant.confirmedSlot = { id: "booked", programName: "Own Program", examDate: "2026-11-15T00:00:00.000Z", examTime: "1970-01-01T16:00:00.000Z" };
@@ -56,9 +56,13 @@ describe("B3 Applicant schedule presentation and self-booking", () => {
     expect(html).toContain("Own Program"); expect(queries[1].enabled).toBe(false);
     expect(source).not.toMatch(/toLocaleTimeString|toLocaleDateString|setHours/);
   });
-  it.each(["ALIGNED", "CLEARED", "PENDING_WAIVER", "UNKNOWN"])("keeps availability query gating for alignment %s", alignmentStatus => {
-    applicant.alignmentStatus = alignmentStatus; render();
-    expect(queries[1].enabled).toBe(alignmentStatus === "ALIGNED" || alignmentStatus === "CLEARED");
+  it("gates availability query solely on booking eligibility and absence of confirmed slot", () => {
+    render();
+    expect(queries[1].enabled).toBe(true);
+    queries.length = 0;
+    applicant.canBookExam = false;
+    render();
+    expect(queries[1].enabled).toBe(false);
   });
   it("retains slot-only booking, schedule-selection hierarchy and query refresh", async () => {
     const html = render(); expect(html).toContain("Exam Slot Selection"); expect(html).toContain("Exam Date"); expect(html).toContain("Exam Time");

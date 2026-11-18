@@ -4,21 +4,18 @@ import { EmailService } from "./email.service";
 import { AppError } from "../utils/AppError";
 import { ExamRecordDetail } from "../interfaces/exam.interfaces";
 import { manilaCalendarDate, parseScheduleDate, requireFutureSchedule, requireSameDaySchedule, scheduleStartInstant } from "./exam-schedule-time";
-import { BLOCKING_EXAM_STATUSES, requireConsistentCapacity, requireConsistentCounter, requireEligibleAlignment, scheduleIdentifier, validateSlotBody } from "./exam-schedule.rules";
+import { BLOCKING_EXAM_STATUSES, requireConsistentCapacity, requireConsistentCounter, scheduleIdentifier, validateSlotBody } from "./exam-schedule.rules";
 import { essayScoreValue } from "./exam-essay-evaluation.rules";
 import { completedResultStatus, resultProjection, validatedResultBasis } from "./exam-result.rules";
 import { canAmendAppointment, requireMissedDate } from "./exam-amendment.rules";
 import { institutionalProjection } from "./exam-effective-result.rules";
 
 function assignmentBlockReason(student: {
-  admissionStatus: string; pinnacleApplicantId: string | null; alignmentStatus: string | null;
+  admissionStatus: string; pinnacleApplicantId: string | null;
   user: { role: string };
 }, applications: { status: string }[]): string | null {
   if (student.admissionStatus !== "APPLICANT" || student.user.role !== "APPLICANT" || !student.pinnacleApplicantId?.trim()) {
     return "Select an existing registered Applicant with a Pinnacle Applicant ID.";
-  }
-  if (student.alignmentStatus !== "ALIGNED" && student.alignmentStatus !== "CLEARED") {
-    return "Program alignment or bridging waiver clearance is required before assignment.";
   }
   if (applications.some(app => BLOCKING_EXAM_STATUSES.some(status => status === app.status))) {
     return "This Applicant already has an examination record that prevents another assignment.";
@@ -39,7 +36,6 @@ export class ExamService {
   async getAvailableSlots(userId: string, requestedProgramId?: unknown) {
     const student = await this.examRepo.getSchedulingStudent(userId);
     if (!student) throw new AppError("Student not found.", 404);
-    requireEligibleAlignment(student.alignmentStatus);
     if (requestedProgramId !== undefined && scheduleIdentifier(requestedProgramId, "programId") !== student.programId.toLowerCase()) {
       throw new AppError("Requested Program does not match your Student Program.", 403);
     }
@@ -100,7 +96,7 @@ export class ExamService {
         applicant: {
           id: student.id, firstName: student.user.firstName, lastName: student.user.lastName,
           email: student.user.email, pinnacleApplicantId: student.pinnacleApplicantId,
-          program: student.program, alignmentStatus: student.alignmentStatus,
+          program: student.program,
         },
         eligible: reason === null, reason, date: manilaCalendarDate(now), timeZone: "Asia/Manila", slots,
       };
@@ -118,7 +114,6 @@ export class ExamService {
             return selected;
           })
         : await this.examRepo.lockSchedulingStudent(target.userId, tx);
-      requireEligibleAlignment(student.alignmentStatus);
       const slot = await this.examRepo.lockSlot(slotId, tx);
       if (slot.programId !== student.programId) throw new AppError(target.kind === "admin"
         ? "Choose a schedule for this Applicant's Program." : "Exam slot does not belong to your Program.", target.kind === "admin" ? 409 : 403);
@@ -183,12 +178,12 @@ export class ExamService {
       try { requireMissedDate(activeApp); canAppealMissedExam = student.user.role === "APPLICANT" && student.user.isActive; } catch { /* same-day and partial evidence stay closed */ }
     }
     return {
-      alignmentStatus: student.alignmentStatus, programId: student.programId,
+      programId: student.programId,
       applicationId: activeApp?.id ?? null,
       confirmedSlot: activeApp ? { id: activeApp.slot.id, examDate: activeApp.slot.examDate, examTime: activeApp.slot.examTime,
         programName: activeApp.slot.program?.programName || "Unknown Program" } : null,
       examStatus: activeApp ? activeApp.status.toLowerCase() : "none",
-      canBookExam: !activeApp && ["ALIGNED","CLEARED"].includes(student.alignmentStatus ?? ""),
+      canBookExam: !activeApp,
       canAppealMissedExam,
       amendment: activeApp?.scheduleAmendment ? {
         type: activeApp.scheduleAmendment.type, status: activeApp.scheduleAmendment.status,

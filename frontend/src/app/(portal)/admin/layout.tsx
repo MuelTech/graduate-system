@@ -76,7 +76,6 @@ const allNavItems = [
       { href: "/admin/exam/applications", label: "Examinee Records" },
       { href: "/admin/exam/questions", label: "Question Bank" },
       { href: "/admin/exam/cor", label: "COR Verification" },
-      { href: "/admin/exam/waiver", label: "Waiver Validation" },
     ],
   },
   {

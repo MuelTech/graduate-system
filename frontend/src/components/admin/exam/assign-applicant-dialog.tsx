@@ -30,7 +30,6 @@ interface AssignmentOptions {
     email: string;
     pinnacleApplicantId: string | null;
     program: { id: string; programName: string };
-    alignmentStatus: string | null;
   };
   eligible: boolean;
   reason: string | null;
@@ -51,8 +50,6 @@ function assignmentMessage(reason: string | null) {
   switch (reason) {
     case "This Applicant already has an examination record that prevents another assignment.":
       return "This Applicant already has an examination record.";
-    case "Program alignment or bridging waiver clearance is required before assignment.":
-      return "Program alignment or waiver clearance is required before assignment.";
     case "This slot is fully booked.":
       return "This schedule is full.";
     case "This schedule's booked-seat information needs review. Contact the schedule administrator.":
@@ -314,16 +311,6 @@ function AssignmentForm({
               <dt className="text-muted-foreground">Program</dt>
               <dd className="break-words">
                 {data.applicant.program.programName}
-              </dd>
-            </div>
-            <div>
-              <dt className="text-muted-foreground">Program alignment</dt>
-              <dd>
-                {data.applicant.alignmentStatus === "ALIGNED"
-                  ? "Aligned"
-                  : data.applicant.alignmentStatus === "CLEARED"
-                    ? "Cleared"
-                    : "Clearance required"}
               </dd>
             </div>
           </dl>

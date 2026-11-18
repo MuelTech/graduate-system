@@ -244,7 +244,6 @@ export class AdminStudentRepository {
       admissionStatus: student.admissionStatus,
       enrollmentDate: student.enrollmentDate?.toISOString() ?? null,
       curriculumType: student.curriculumType ?? null,
-      alignmentStatus: student.alignmentStatus ?? null,
       residency: hasResidency
         ? {
             startDate: residencyStart ? residencyStart.toISOString() : null,

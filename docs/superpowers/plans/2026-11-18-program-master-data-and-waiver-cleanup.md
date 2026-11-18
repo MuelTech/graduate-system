@@ -1,7 +1,7 @@
 # Graduate School Program Master Data & Pre-Exam Bridging Waiver Cleanup — Phased Implementation Plan
 
 - **Date:** 2026-11-18
-- **Status:** Planned (Pending owner review before implementation)
+- **Status:** Implemented (Phases 1–3 complete on branch `feat/program-master-data-and-waiver-cleanup`; ready for owner review)
 - **Master checklist:** `docs/superpowers/GSIS_IMPLEMENTATION_CHECKLIST.md` (§3 & §15)
 - **Policy & form authorities:**
 - *EARIST Graduate School Manual of Operations* (§2.0, §4.0, §5.0 Curricular Programs, §7.1.1 EGAT, §7.3.4 Bridging Program, §7.11 Length of Study / Maximum Residence Rule, §7.14 Change of Program, §7.24 Plan of Coursework)

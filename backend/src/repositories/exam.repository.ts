@@ -30,7 +30,7 @@ export class ExamRepository {
     }
 
     async getSchedulingStudent(userId: string) {
-        return prisma.student.findUnique({ where: { userId }, select: { id: true, programId: true, alignmentStatus: true } });
+        return prisma.student.findUnique({ where: { userId }, select: { id: true, programId: true } });
     }
 
     async requireProgram(programId: string, tx?: TransactionClient) {

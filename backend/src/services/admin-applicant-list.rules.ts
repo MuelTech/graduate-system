@@ -8,10 +8,7 @@
 import { Prisma } from "@prisma/client";
 import { hasEffectiveExamPass } from "./exam-effective-result.rules";
 
-export type AdmissionStage = "ALIGNMENT" | "EXAM" | "COR";
-
-/** Alignment is complete only for these authoritative values. */
-const ALIGNMENT_COMPLETE = ["ALIGNED", "CLEARED"] as const;
+export type AdmissionStage = "EXAM" | "COR";
 
 /**
  * Fail-closed active Applicant scope. Both authorities must agree; a promoted
@@ -27,29 +24,12 @@ const ACTIVE_APPLICANT_SCOPE: Prisma.StudentWhereInput = {
  * stay consistent with these clauses; the filter/derivation invariant test
  * enforces that agreement.
  */
-function alignmentCompleteClause(): Prisma.StudentWhereInput {
-  return { alignmentStatus: { in: [...ALIGNMENT_COMPLETE] } };
-}
-
-function alignmentIncompleteClause(): Prisma.StudentWhereInput {
-  return {
-    OR: [
-      { alignmentStatus: null },
-      { alignmentStatus: { notIn: [...ALIGNMENT_COMPLETE] } },
-    ],
-  };
-}
-
 function passedExamClause(decisionIds: string[]): Prisma.StudentWhereInput {
   return { examApplications: { some: decisionIds.length ? { OR: [{ status: "PASSED" },{ id: { in: decisionIds } }] } : { status: "PASSED" } } };
 }
 
 function noPassedExamClause(decisionIds: string[]): Prisma.StudentWhereInput {
   return { examApplications: { none: decisionIds.length ? { OR: [{ status: "PASSED" },{ id: { in: decisionIds } }] } : { status: "PASSED" } } };
-}
-
-export function alignmentIsComplete(status?: string | null): boolean {
-  return (ALIGNMENT_COMPLETE as readonly string[]).includes(String(status ?? ""));
 }
 
 /**
@@ -65,16 +45,13 @@ export function hasAuthoritativePassedExam(
 /**
  * Presentation stage derivation.
  *
- * - ALIGNMENT: alignment not cleared (incl. missing/unknown authority).
- * - EXAM: alignment cleared but no authoritative PASSED exam yet.
- * - COR: alignment cleared AND an authoritative PASSED exam exists
- *   (person still an Applicant). Historical PASSED alone is not sufficient.
+ * - EXAM: no authoritative PASSED exam yet.
+ * - COR: an authoritative PASSED exam exists (person still an Applicant).
+ *   Historical PASSED alone is not sufficient.
  */
 export function deriveAdmissionStage(input: {
-  alignmentStatus?: string | null;
   hasPassedExam: boolean;
 }): AdmissionStage {
-  if (!alignmentIsComplete(input.alignmentStatus)) return "ALIGNMENT";
   if (!input.hasPassedExam) return "EXAM";
   return "COR";
 }
@@ -107,13 +84,9 @@ export function buildApplicantListWhere(filters: {
   }
 
   const stage = String(filters.stage ?? "").toUpperCase();
-  if (stage === "ALIGNMENT") {
-    and.push(alignmentIncompleteClause());
-  } else if (stage === "EXAM") {
-    and.push(alignmentCompleteClause());
+  if (stage === "EXAM") {
     and.push(noPassedExamClause(decisionIds));
   } else if (stage === "COR") {
-    and.push(alignmentCompleteClause());
     and.push(passedExamClause(decisionIds));
   }
 

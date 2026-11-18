@@ -77,12 +77,6 @@ export class DashboardRepository {
     }));
   }
 
-  async getBridgingWaiversToReviewCount(): Promise<number> {
-    return prisma.applicantBridgingWaiver.count({
-      where: { status: "PENDING" },
-    });
-  }
-
   /**
    * Dean-review queue shares the exact semantics of the Adviser Request Review
    * page: request is pending, adviser has CONFORME, Dean decision still pending.

@@ -20,7 +20,6 @@ export const ADMIN_CAPABILITIES = {
   EXAMS_RECORDS: "exam.records.manage",
   EXAMS_QUESTIONS: "exam.questions.manage",
   EXAMS_COR: "cor.verify",
-  EXAMS_WAIVER: "waivers.manage",
 
   // 3. Thesis Management
   THESIS_APPLICATIONS: "defense.applications.manage",
@@ -48,7 +47,6 @@ const CAPABILITY_ALIASES: Record<string, AdminCapabilityKey> = {
   EXAMS_RECORDS: ADMIN_CAPABILITIES.EXAMS_RECORDS,
   EXAMS_QUESTIONS: ADMIN_CAPABILITIES.EXAMS_QUESTIONS,
   EXAMS_COR: ADMIN_CAPABILITIES.EXAMS_COR,
-  EXAMS_WAIVER: ADMIN_CAPABILITIES.EXAMS_WAIVER,
   THESIS_APPLICATIONS: ADMIN_CAPABILITIES.THESIS_APPLICATIONS,
   THESIS_SCHEDULING: ADMIN_CAPABILITIES.THESIS_SCHEDULING,
   THESIS_RECORDS: ADMIN_CAPABILITIES.THESIS_RECORDS,
@@ -128,7 +126,7 @@ export const ADMIN_CAPABILITY_GROUPS: AdminCapabilityGroup[] = [
   {
     groupTitle: "Exam Management",
     groupDescription:
-      "Manage entrance examination slots, applicant exam records, question bank, COR, and waivers.",
+      "Manage entrance examination slots, applicant exam records, question bank, and COR.",
     capabilities: [
       {
         key: ADMIN_CAPABILITIES.EXAMS_SCHEDULES,
@@ -153,12 +151,6 @@ export const ADMIN_CAPABILITY_GROUPS: AdminCapabilityGroup[] = [
         label: "COR Verification",
         description: "Review and verify uploaded Certificates of Registration",
         href: "/admin/exam/cor",
-      },
-      {
-        key: ADMIN_CAPABILITIES.EXAMS_WAIVER,
-        label: "Waiver Validation",
-        description: "Validate bridging course waivers for non-aligned applicants",
-        href: "/admin/exam/waiver",
       },
     ],
   },
@@ -288,9 +280,6 @@ export function getRequiredCapabilityForAdminPath(
   }
   if (pathname.startsWith("/admin/exam/cor")) {
     return ADMIN_CAPABILITIES.EXAMS_COR;
-  }
-  if (pathname.startsWith("/admin/exam/waiver")) {
-    return ADMIN_CAPABILITIES.EXAMS_WAIVER;
   }
 
   if (pathname.startsWith("/admin/thesis/applications")) {

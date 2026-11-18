@@ -5,7 +5,6 @@ export interface ApplicantStatus {
   examStatus?: string;
   canBookExam?: boolean;
   canAppealMissedExam?: boolean;
-  alignmentStatus: string;
   programId: string;
   confirmedSlot?: {
     id: string;
@@ -551,32 +550,6 @@ export interface NotificationItem {
 
 
 
-export interface Waiver {
-  id: string;
-  createdAt: string;
-  status: "PENDING" | "VALIDATED" | "REJECTED";
-  waiverFormDownloadedAt: string | null;
-  adminNotes: string | null;
-  validatedAt: string | null;
-  student: {
-    pinnacleApplicantId: string;
-    user: {
-      firstName: string;
-      lastName: string;
-      email: string;
-    };
-  };
-  undergraduateProgram: {
-    programName: string;
-  } | null;
-  intendedProgram: {
-    programName: string;
-  } | null;
-  validatedBy: {
-    firstName: string;
-    lastName: string;
-  } | null;
-};
 // ADMIN APPLICANT INTERFACES
 export interface AdminApplicantListItem {
   id: string;
@@ -585,7 +558,6 @@ export interface AdminApplicantListItem {
   email: string;
   pinnacleApplicantId: string;
   program: { id: string; programName: string };
-  alignmentStatus: string;
   examStatus: string;
   examScores: { mcq: number; essay: number; total: number } | null;
   corStatus: string;
@@ -593,7 +565,7 @@ export interface AdminApplicantListItem {
   createdAt: string;
 }
 
-export type AdminApplicantStage = "ALIGNMENT" | "EXAM" | "COR";
+export type AdminApplicantStage = "EXAM" | "COR";
 
 /**
  * Admin Applicants LIST row projection. `admissionStage` is a presentation/
@@ -606,8 +578,6 @@ export interface AdminApplicantListRow {
   email: string;
   pinnacleApplicantId: string;
   program: { id: string; programName: string };
-  /** Raw authoritative alignment authority; null = unavailable (fail closed). */
-  alignmentStatus: string | null;
   admissionStage: AdminApplicantStage;
   /** Latest Entrance Exam application status, or "NOT_SCHEDULED". */
   examStatus: string;
@@ -625,14 +595,7 @@ export interface AdminApplicantDetail {
   email: string;
   pinnacleApplicantId: string;
   cellphone: string | null;
-  dateOfBirth: string | null;
   program: { id: string; programName: string; programType: string } | null;
-  /** Undergraduate prerequisite relation (Master's applicants). */
-  undergraduateProgram: { id: string; programName: string } | null;
-  /** Previous Master's relation (Doctoral applicants). */
-  previousMastersProgram: { id: string; programName: string } | null;
-  /** Raw authoritative alignment authority; null = unavailable (fail closed). */
-  alignmentStatus: string | null;
   /** Presentation/read-model stage only — never persisted, never authority. */
   admissionStage: AdminApplicantStage;
   /** Latest Entrance Exam application status, or "NOT_SCHEDULED". */
@@ -641,21 +604,11 @@ export interface AdminApplicantDetail {
   hasPassedExam: boolean;
   /** Latest current COR upload status, or "NONE". */
   corStatus: string;
-  bridgingWaiver: BridgingWaiverDetail | null;
   examApplications: ExamApplicationDetail[];
   corUploads: CorUploadDetail[];
   admissionStatus: string;
   enrollmentDate: string | null;
   createdAt: string;
-}
-
-export interface BridgingWaiverDetail {
-  id: string;
-  status: string;
-  waiverFormDownloadedAt: string | null;
-  validatedBy: { firstName: string; lastName: string } | null;
-  validatedAt: string | null;
-  adminNotes: string | null;
 }
 
 export interface ExamApplicationDetail {
@@ -802,7 +755,6 @@ export interface AdminStudentDetail {
   admissionStatus: string;
   enrollmentDate: string | null;
   curriculumType: string | null;
-  alignmentStatus: string | null;
   residency: { startDate: string | null; maxYears: number | null } | null;
   /** Latest recorded Comprehensive Exam status; null when no record exists. */
   compExam: { status: string; recordedAt: string | null } | null;

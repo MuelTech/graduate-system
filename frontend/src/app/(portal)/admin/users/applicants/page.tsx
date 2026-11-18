@@ -55,7 +55,6 @@ type StageFilter = "ALL" | AdminApplicantStage;
 
 const STAGE_OPTIONS: { value: StageFilter; label: string }[] = [
   { value: "ALL", label: "All Stages" },
-  { value: "ALIGNMENT", label: "Program Alignment" },
   { value: "EXAM", label: "Entrance Examination" },
   { value: "COR", label: "COR / Enrollment" },
 ];
@@ -73,20 +72,10 @@ function useDebouncedValue<T>(value: T, delayMs: number): T {
   return debounced;
 }
 
-function alignmentIsComplete(status: string | null): boolean {
-  return status === "ALIGNED" || status === "CLEARED";
-}
-
 type StepState = "COMPLETE" | "CURRENT" | "WAITING";
 
 /** Concise, human-readable current admission condition (no raw enums). */
 function currentStateLabel(row: AdminApplicantListRow): string {
-  if (row.admissionStage === "ALIGNMENT") {
-    return row.alignmentStatus === "PENDING_WAIVER"
-      ? "Bridging waiver pending"
-      : "Alignment status unavailable";
-  }
-
   if (row.admissionStage === "EXAM") {
     switch (row.examStatus) {
       case "NOT_SCHEDULED":
@@ -166,21 +155,11 @@ const STEP_STATE_WORD: Record<StepState, string> = {
 };
 
 function AdmissionProgress({ row }: { row: AdminApplicantListRow }) {
-  const alignmentComplete = alignmentIsComplete(row.alignmentStatus);
   const steps: { key: string; label: string; state: StepState }[] = [
-    {
-      key: "alignment",
-      label: "Alignment",
-      state: alignmentComplete ? "COMPLETE" : "CURRENT",
-    },
     {
       key: "exam",
       label: "Exam",
-      state: !alignmentComplete
-        ? "WAITING"
-        : row.hasPassedExam
-          ? "COMPLETE"
-          : "CURRENT",
+      state: row.hasPassedExam ? "COMPLETE" : "CURRENT",
     },
     {
       key: "cor",
@@ -428,7 +407,7 @@ export default function AdminApplicantsPage() {
     <div className="space-y-6">
       <PageHeader
         title="Applicants"
-        description="Monitor active applicants and their progress from program alignment through entrance examination and COR verification."
+        description="Monitor active applicants and their progress through entrance examination and COR verification."
       />
 
       {/* Filters */}

@@ -65,12 +65,7 @@ function formatTime(iso: string | null | undefined): string {
   });
 }
 
-function alignmentIsComplete(status: string | null | undefined): boolean {
-  return status === "ALIGNED" || status === "CLEARED";
-}
-
 const STAGE_LABEL: Record<AdminApplicantStage, string> = {
-  ALIGNMENT: "Program Alignment",
   EXAM: "Entrance Examination",
   COR: "COR / Enrollment",
 };
@@ -80,32 +75,8 @@ const PROGRAM_TYPE_LABEL: Record<string, string> = {
   DOCTORAL: "Doctoral",
 };
 
-const WAIVER_STATUS_LABEL: Record<string, string> = {
-  PENDING: "Pending",
-  VALIDATED: "Validated",
-  REJECTED: "Rejected",
-};
-
-function alignmentLabel(status: string | null): string {
-  switch (status) {
-    case "ALIGNED":
-      return "Aligned";
-    case "CLEARED":
-      return "Cleared";
-    case "PENDING_WAIVER":
-      return "Bridging waiver pending";
-    default:
-      return "Alignment status unavailable";
-  }
-}
-
 /** Concise, human-readable current admission condition (no raw enums). */
 function currentStateLabel(a: AdminApplicantDetail): string {
-  if (a.admissionStage === "ALIGNMENT") {
-    return a.alignmentStatus === "PENDING_WAIVER"
-      ? "Bridging waiver pending"
-      : "Alignment status unavailable";
-  }
   if (a.admissionStage === "EXAM") {
     return examStateLabel(a.examStatus);
   }
@@ -146,16 +117,9 @@ function examStateLabel(status: string): string {
   }
 }
 
-/**
- * Entrance Examination section wording, gated by the canonical admission stage.
- * The exam is not actionable until alignment is complete (Playbook §7 semantics),
- * so an incomplete alignment must not read as "ready to schedule".
- */
+/** Entrance Examination section wording. */
 function examSectionState(a: AdminApplicantDetail): string {
   if (a.hasPassedExam) return "Entrance exam passed";
-  if (!alignmentIsComplete(a.alignmentStatus)) {
-    return "Waiting for program alignment";
-  }
   return examStateLabel(a.examStatus);
 }
 
@@ -230,21 +194,11 @@ function StepMarker({ state }: { state: StepState }) {
 }
 
 function AdmissionProgress({ applicant }: { applicant: AdminApplicantDetail }) {
-  const alignmentComplete = alignmentIsComplete(applicant.alignmentStatus);
   const steps: { key: string; label: string; state: StepState }[] = [
-    {
-      key: "alignment",
-      label: "Alignment",
-      state: alignmentComplete ? "COMPLETE" : "CURRENT",
-    },
     {
       key: "exam",
       label: "Entrance Exam",
-      state: !alignmentComplete
-        ? "WAITING"
-        : applicant.hasPassedExam
-          ? "COMPLETE"
-          : "CURRENT",
+      state: applicant.hasPassedExam ? "COMPLETE" : "CURRENT",
     },
     {
       key: "cor",
@@ -442,57 +396,6 @@ function ErrorState({
 
 /* --------------------------------------------------- journey sub-sections */
 
-function AlignmentSection({ applicant }: { applicant: AdminApplicantDetail }) {
-  const alignmentComplete = alignmentIsComplete(applicant.alignmentStatus);
-  const waiver = applicant.bridgingWaiver;
-
-  return (
-    <section className="space-y-3">
-      <div className="flex flex-wrap items-start justify-between gap-2">
-        <h3 className="text-base font-semibold text-(--earist-secondary)">
-          Program Alignment
-        </h3>
-        {!alignmentComplete && (
-          <ModuleLink
-            href="/admin/exam/waiver"
-            label="Open Waiver Validation"
-          />
-        )}
-      </div>
-
-      <dl className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <DataRow label="Current state">
-          {alignmentLabel(applicant.alignmentStatus)}
-        </DataRow>
-        {waiver ? (
-          <>
-            <DataRow label="Bridging waiver">
-              {labelFor(WAIVER_STATUS_LABEL, waiver.status, "Status unavailable")}
-            </DataRow>
-            {waiver.validatedAt ? (
-              <DataRow label="Validated on">
-                {formatDateTime(waiver.validatedAt)}
-              </DataRow>
-            ) : null}
-            {waiver.validatedBy ? (
-              <DataRow label="Validated by">
-                {`${waiver.validatedBy.firstName} ${waiver.validatedBy.lastName}`}
-              </DataRow>
-            ) : null}
-            {waiver.adminNotes ? (
-              <div className="sm:col-span-2">
-                <DataRow label="Administrative note">
-                  {waiver.adminNotes}
-                </DataRow>
-              </div>
-            ) : null}
-          </>
-        ) : null}
-      </dl>
-    </section>
-  );
-}
-
 function ExamSection({ applicant }: { applicant: AdminApplicantDetail }) {
   const latestExam: ExamApplicationDetail | undefined =
     applicant.examApplications[0];
@@ -608,7 +511,6 @@ export default function ApplicantDetailPage() {
   const fullName = `${applicant.firstName} ${applicant.lastName}`;
   const programName = applicant.program?.programName ?? MISSING;
   const programType = applicant.program?.programType ?? null;
-  const isDoctoral = programType === "DOCTORAL";
 
   return (
     <div className="space-y-6">
@@ -652,11 +554,9 @@ export default function ApplicantDetailPage() {
         <div className="space-y-6 lg:col-span-2">
           <SectionCard
             title="Admission Journey"
-            description="Where this applicant is across alignment, entrance examination, and COR."
+            description="Where this applicant is across entrance examination and COR."
           >
             <div className="space-y-6">
-              <AlignmentSection applicant={applicant} />
-              <Separator />
               <ExamSection applicant={applicant} />
               <Separator />
               <CorSection applicant={applicant} />
@@ -680,9 +580,6 @@ export default function ApplicantDetailPage() {
                   <DataRow label="Cellphone">
                     {applicant.cellphone || MISSING}
                   </DataRow>
-                  <DataRow label="Date of Birth">
-                    {formatDate(applicant.dateOfBirth)}
-                  </DataRow>
                   <DataRow label="Registered">
                     {formatDate(applicant.createdAt)}
                   </DataRow>
@@ -700,15 +597,6 @@ export default function ApplicantDetailPage() {
                   <DataRow label="Program level">
                     {labelFor(PROGRAM_TYPE_LABEL, programType, MISSING)}
                   </DataRow>
-                  {isDoctoral ? (
-                    <DataRow label="Previous Master's program">
-                      {applicant.previousMastersProgram?.programName ?? MISSING}
-                    </DataRow>
-                  ) : (
-                    <DataRow label="Previous academic program">
-                      {applicant.undergraduateProgram?.programName ?? MISSING}
-                    </DataRow>
-                  )}
                 </dl>
               </section>
             </div>

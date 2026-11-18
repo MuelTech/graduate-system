@@ -81,12 +81,6 @@ const COMP_EXAM_LABEL: Record<string, string> = {
   FAILED: "Failed",
 };
 
-const ALIGNMENT_LABEL: Record<string, string> = {
-  ALIGNED: "Aligned",
-  PENDING_WAIVER: "Bridging waiver pending",
-  CLEARED: "Cleared",
-};
-
 const JOURNEY_STATE_LABEL: Record<string, string> = {
   COMPLETED: "Completed",
   CURRENT: "Current",
@@ -703,12 +697,6 @@ export default function StudentDetailPage() {
               <DataRow label="Curriculum Type">
                 {student.curriculumType ?? MISSING}
               </DataRow>
-              {student.alignmentStatus ? (
-                <DataRow label="Alignment Status">
-                  {ALIGNMENT_LABEL[student.alignmentStatus] ??
-                    student.alignmentStatus}
-                </DataRow>
-              ) : null}
             </dl>
           </section>
 

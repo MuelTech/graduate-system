@@ -11,8 +11,6 @@ import { PageHeader } from "@/components/ui/page-header";
 import { Skeleton } from "@/components/ui/skeleton";
 import { SignatureVaultCard } from "@/components/profile/signature-vault-card";
 import {
-  BookOpen,
-  Calendar,
   CircleAlert,
   GraduationCap,
   Mail,
@@ -36,12 +34,10 @@ interface StudentProfileResponse {
   studentNumber?: string | null;
   pinnacleApplicantId?: string | null;
   cellphone?: string | null;
-  dateOfBirth?: string | null;
   admissionStatus?: string | null;
   curriculumType?: string | null;
   enrollmentDate?: string | null;
   residencyStartDate?: string | null;
-  alignmentStatus?: string | null;
   corExtractedYearLevel?: string | null;
   corExtractedScholarship?: string | null;
   user?: PersonSummary;
@@ -50,13 +46,6 @@ interface StudentProfileResponse {
     programType: "MASTERS" | "DOCTORAL" | string;
     department?: string | null;
     maxResidencyYears?: number | null;
-  } | null;
-  undergraduateProgram?: {
-    programName: string;
-    acronym?: string | null;
-  } | null;
-  previousMastersProgram?: {
-    programName: string;
   } | null;
   residencyTracking?: {
     startDate?: string | null;
@@ -125,28 +114,6 @@ function admissionStatusBadge(status?: string | null) {
   }
 }
 
-function alignmentStatusBadge(status?: string | null) {
-  switch (String(status ?? "").toUpperCase()) {
-    case "ALIGNED":
-      return {
-        label: "Program Aligned",
-        className: "border border-emerald-200 bg-emerald-50 text-emerald-700",
-      };
-    case "CLEARED":
-      return {
-        label: "Bridging Cleared",
-        className: "border border-blue-200 bg-blue-50 text-blue-700",
-      };
-    case "PENDING_WAIVER":
-      return {
-        label: "Pending Bridging Waiver",
-        className: "border border-amber-200 bg-amber-50 text-amber-700",
-      };
-    default:
-      return null;
-  }
-}
-
 export default function StudentProfilePage() {
   const {
     data: profile,
@@ -166,17 +133,7 @@ export default function StudentProfilePage() {
     null;
 
   const compExamStatus = profile?.compExamRecords?.[0]?.status ?? null;
-  const prerequisiteLabel =
-    profile?.program?.programType === "DOCTORAL"
-      ? "Previous Master's Program"
-      : "Undergraduate Program";
-  const prerequisiteName =
-    profile?.program?.programType === "DOCTORAL"
-      ? profile?.previousMastersProgram?.programName
-      : profile?.undergraduateProgram?.programName;
-
   const admissionBadge = admissionStatusBadge(profile?.admissionStatus);
-  const alignmentBadge = alignmentStatusBadge(profile?.alignmentStatus);
 
   const residencyStart =
     profile?.residencyTracking?.startDate ??
@@ -307,16 +264,6 @@ export default function StudentProfilePage() {
                   </p>
                 </div>
               </div>
-
-              <div>
-                <p className="flex items-center gap-1 text-xs font-medium text-gray-500">
-                  <Calendar className="h-3.5 w-3.5" aria-hidden="true" />
-                  Date of Birth
-                </p>
-                <p className="font-medium text-[#333333]">
-                  {formatDateValue(profile.dateOfBirth)}
-                </p>
-              </div>
             </CardContent>
           </Card>
 
@@ -389,23 +336,6 @@ export default function StudentProfilePage() {
                   )}
                 </div>
               )}
-
-              <div className="space-y-1">
-                <p className="flex items-center gap-1 text-xs font-medium text-gray-500">
-                  <BookOpen className="h-3.5 w-3.5" aria-hidden="true" />
-                  {prerequisiteLabel}
-                </p>
-                <div className="flex flex-wrap items-center gap-2">
-                  <p className="font-medium text-[#333333]">
-                    {prerequisiteName || "Not specified"}
-                  </p>
-                  {alignmentBadge && (
-                    <Badge className={alignmentBadge.className}>
-                      {alignmentBadge.label}
-                    </Badge>
-                  )}
-                </div>
-              </div>
 
               <div className="grid grid-cols-1 gap-3 rounded-xl border border-gray-100 bg-gray-50/70 p-3.5 sm:grid-cols-2">
                 <div>

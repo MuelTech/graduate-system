@@ -24,7 +24,6 @@ import {
   GraduationCap,
   Inbox,
   RefreshCw,
-  ShieldCheck,
   UserCheck,
 } from "lucide-react";
 
@@ -44,7 +43,6 @@ interface DashboardData {
     defenseApplications: number;
     corSubmissions: number;
     defensesReadyForScheduling: number;
-    bridgingWaivers: number;
     adviserRequestsForDeanReview: number;
   };
   enrollment: {
@@ -331,14 +329,6 @@ export default function AdminDashboard() {
       href: "/admin/thesis/scheduling",
       count: data.needsAttention.defensesReadyForScheduling,
       icon: CalendarClock,
-    },
-    {
-      key: "bridgingWaivers",
-      label: "Bridging Waivers to Review",
-      description: "Program-alignment waivers awaiting validation.",
-      href: "/admin/exam/waiver",
-      count: data.needsAttention.bridgingWaivers,
-      icon: ShieldCheck,
     },
     {
       key: "adviserRequestsForDeanReview",

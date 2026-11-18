@@ -27,24 +27,6 @@ router.get(
   controller.getApplicantDetail
 );
 
-// Validate waiver
-router.put(
-  "/:id/waiver/validate",
-  authenticateJWT,
-  requireRole(["ADMIN"]),
-  requireAdminCapability("waivers.manage"),
-  controller.validateWaiver
-);
-
-// Reject waiver
-router.put(
-  "/:id/waiver/reject",
-  authenticateJWT,
-  requireRole(["ADMIN"]),
-  requireAdminCapability("waivers.manage"),
-  controller.rejectWaiver
-);
-
 // Verify COR
 router.put(
   "/:id/cor/verify",

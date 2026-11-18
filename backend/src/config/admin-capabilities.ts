@@ -8,7 +8,6 @@ export const ADMIN_CAPABILITY_KEYS = [
   "exam.records.manage",
   "exam.questions.manage",
   "cor.verify",
-  "waivers.manage",
   // 3. Thesis Management
   "defense.applications.manage",
   "defense.schedules.manage",
@@ -31,7 +30,6 @@ const CAPABILITY_ALIASES: Record<string, AdminCapabilityKey> = {
   EXAMS_RECORDS: "exam.records.manage",
   EXAMS_QUESTIONS: "exam.questions.manage",
   EXAMS_COR: "cor.verify",
-  EXAMS_WAIVER: "waivers.manage",
   THESIS_APPLICATIONS: "defense.applications.manage",
   THESIS_SCHEDULING: "defense.schedules.manage",
   THESIS_RECORDS: "defense.records.view",

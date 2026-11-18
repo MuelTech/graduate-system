@@ -15,7 +15,6 @@ function studentRow(overrides: Record<string, unknown> = {}) {
     id: "s1",
     admissionStatus: "APPLICANT",
     pinnacleApplicantId: "PIN-1",
-    alignmentStatus: "ALIGNED",
     programId: "prog-1",
     createdAt: new Date("2026-01-02T00:00:00.000Z"),
     user: { firstName: "Ana", lastName: "Dela", email: "ana@example.com" },
@@ -78,10 +77,9 @@ describe("AdminApplicantRepository active scope + filtering", () => {
 });
 
 describe("AdminApplicantRepository list projection", () => {
-  it("maps a fail-closed row: missing alignment + historical PASSED + latest DISQUALIFIED", async () => {
+  it("maps an applicant row with historical PASSED + latest DISQUALIFIED without alignment projection", async () => {
     prismaMock.student.findMany.mockResolvedValue([
       studentRow({
-        alignmentStatus: null,
         examApplications: [
           { id: "e2", status: "DISQUALIFIED", createdAt: new Date("2026-02-01") },
           { id: "e1", status: "PASSED", createdAt: new Date("2026-01-15") },
@@ -101,8 +99,7 @@ describe("AdminApplicantRepository list projection", () => {
         email: "ana@example.com",
         pinnacleApplicantId: "PIN-1",
         program: { id: "prog-1", programName: "MSIT" },
-        alignmentStatus: null,
-        admissionStage: "ALIGNMENT",
+        admissionStage: "COR",
         examStatus: "DISQUALIFIED",
         hasPassedExam: true,
         corStatus: "PENDING",
@@ -114,7 +111,6 @@ describe("AdminApplicantRepository list projection", () => {
   it("keeps an unsuccessful exam in the Entrance Examination stage (DISQUALIFIED is an exam state, not COR)", async () => {
     prismaMock.student.findMany.mockResolvedValue([
       studentRow({
-        alignmentStatus: "ALIGNED",
         examApplications: [
           { id: "e1", status: "DISQUALIFIED", createdAt: new Date("2026-02-01") },
         ],
@@ -134,7 +130,6 @@ describe("AdminApplicantRepository list projection", () => {
   it("classifies a passed exam as COR / Enrollment and surfaces the current COR state", async () => {
     prismaMock.student.findMany.mockResolvedValue([
       studentRow({
-        alignmentStatus: "CLEARED",
         examApplications: [
           { id: "e1", status: "PASSED", createdAt: new Date("2026-02-01") },
         ],

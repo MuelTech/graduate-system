@@ -74,9 +74,7 @@ export class AdminApplicantRepository {
         email: student.user.email,
         pinnacleApplicantId: student.pinnacleApplicantId || "",
         program: student.program,
-        alignmentStatus: student.alignmentStatus ?? null,
         admissionStage: deriveAdmissionStage({
-          alignmentStatus: student.alignmentStatus,
           hasPassedExam,
         }),
         examStatus: latestExam ? latestExam.status : "NOT_SCHEDULED",
@@ -103,28 +101,6 @@ export class AdminApplicantRepository {
             id: true,
             programName: true,
             programType: true,
-          },
-        },
-        undergraduateProgram: {
-          select: {
-            id: true,
-            programName: true,
-          },
-        },
-        previousMastersProgram: {
-          select: {
-            id: true,
-            programName: true,
-          },
-        },
-        bridgingWaiver: {
-          include: {
-            validatedBy: {
-              select: {
-                firstName: true,
-                lastName: true,
-              },
-            },
           },
         },
         examApplications: {
@@ -163,30 +139,6 @@ export class AdminApplicantRepository {
           },
           orderBy: [{ createdAt: "desc" }, { id: "desc" }],
         },
-      },
-    });
-  }
-
-  async updateAlignmentStatus(studentId: string, status: string) {
-    return prisma.student.update({
-      where: { id: studentId },
-      data: { alignmentStatus: status as any },
-    });
-  }
-
-  async updateWaiverStatus(
-    waiverId: string,
-    status: string,
-    validatedById?: string,
-    adminNotes?: string
-  ) {
-    return prisma.applicantBridgingWaiver.update({
-      where: { id: waiverId },
-      data: {
-        status: status as any,
-        validatedById: validatedById || null,
-        validatedAt: status === "validated" ? new Date() : null,
-        adminNotes: adminNotes || null,
       },
     });
   }

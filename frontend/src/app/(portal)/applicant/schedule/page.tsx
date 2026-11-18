@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import Link from "next/link";
 import { PageHeader } from "@/components/ui/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -21,8 +20,6 @@ import {
   CalendarClock,
   AlertTriangle,
   CheckCircle2,
-  Lock,
-  ArrowLeft,
   Mail,
   X,
   LayoutGrid,
@@ -63,8 +60,8 @@ export default function ApplicantSchedulePage() {
     },
     enabled:
       !!applicant &&
-      (applicant.alignmentStatus === "ALIGNED" || applicant.alignmentStatus === "CLEARED") &&
-      !applicant.confirmedSlot && applicant.canBookExam !== false,
+      !applicant.confirmedSlot &&
+      applicant.canBookExam !== false,
   });
 
   const scheduleMutation = useMutation({
@@ -103,7 +100,6 @@ export default function ApplicantSchedulePage() {
   if (error)
     return <div className="p-4 text-center text-red-500">Error: {error}</div>;
 
-  const isLocked = applicant?.alignmentStatus === "PENDING_WAIVER";
   const isScheduled = !!applicant?.confirmedSlot;
 
   return (
@@ -113,38 +109,8 @@ export default function ApplicantSchedulePage() {
         description="Select your entrance examination schedule"
       />
 
-      {/* Alignment Gate — Locked State */}
-      {isLocked && (
-        <Card>
-          <CardContent className="py-8">
-            <div className="flex flex-col items-center text-center">
-              <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-amber-50">
-                <Lock className="h-8 w-8 text-amber-600" />
-              </div>
-              <h3 className="mb-2 text-lg font-bold text-(--earist-primary)">
-                Exam Scheduling Locked
-              </h3>
-              <Alert className="mb-4 max-w-md border-amber-200 bg-amber-50">
-                <AlertTriangle className="h-4 w-4 text-amber-600" />
-                <AlertDescription className="text-amber-700">
-                  Complete your Bridging Waiver validation with the GS Office to
-                  unlock scheduling.
-                </AlertDescription>
-              </Alert>
-              <Link
-                href="/applicant/alignment"
-                className="inline-flex items-center gap-1 text-sm font-semibold text-(--earist-secondary) transition-colors hover:text-(--earist-primary)"
-              >
-                View Alignment Details{" "}
-                <ArrowLeft className="h-3 w-3 rotate-180" />
-              </Link>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
       {/* Confirmed Schedule Display */}
-      {!isLocked && isScheduled && (
+      {isScheduled && (
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between">
@@ -190,7 +156,7 @@ export default function ApplicantSchedulePage() {
       )}
 
       {/* Available Slots — Active State */}
-      {!isLocked && !isScheduled && applicant?.canBookExam !== false && (
+      {!isScheduled && applicant?.canBookExam !== false && (
         <>
           {/* View Toggle & Info */}
           <div className="flex items-center justify-between">

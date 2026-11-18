@@ -21,7 +21,6 @@ export function validateExecutionIdentity(app: Application, requireActiveSlot = 
   if (app.seatReleasedAt != null) throw new AppError("This appointment's seat has been released. Reload the current examination record.",409);
   if (app.student.user.role !== "APPLICANT" || !app.student.user.isActive ||
       app.student.admissionStatus !== "APPLICANT" || !app.student.pinnacleApplicantId?.trim() ||
-      !["ALIGNED", "CLEARED"].includes(app.student.alignmentStatus ?? "") ||
       app.student.programId !== app.programId || app.slot.programId !== app.programId) {
     throw new AppError("Applicant eligibility or Program no longer permits examination access.", 409);
   }
