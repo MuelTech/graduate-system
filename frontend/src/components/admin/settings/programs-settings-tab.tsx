@@ -293,7 +293,7 @@ export function ProgramsSettingsTab() {
               Graduate School Programs
             </CardTitle>
             <p className="mt-0.5 text-sm text-gray-500">
-              Authoritative Graduate School degrees, majors, and Maximum Residence Rule defaults (4 yrs Master&apos;s / 6 yrs Doctoral per Manual §7.11).
+              Authoritative Graduate School degrees, majors, and Maximum Residence Rule defaults (4 yrs Master&apos;s / 6 yrs Doctoral).
             </p>
           </div>
           <Button

@@ -553,7 +553,7 @@ async function main() {
         console.log("Created Thesis record for Student 1 (Proposal Defense)");
       }
 
-      // Add residency tracking (Master's MRR = 4 years per Manual §7.11)
+      // Add residency tracking (Master's MRR = 4 years)
       await prisma.residencyTracking.upsert({
         where: { studentId: student1Record.id },
         update: {},
