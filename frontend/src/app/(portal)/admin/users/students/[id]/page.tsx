@@ -494,12 +494,12 @@ export default function StudentDetailPage() {
           <p className="text-xs font-semibold text-(--earist-body-text)">
             Current Academic State
           </p>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-            <div className="space-y-1">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <div className="space-y-1 rounded-xl border border-gray-100 bg-gray-50/60 p-3.5">
               <p className="text-xs text-(--earist-body-text)">Student Status</p>
               <AdmissionStatusBadge status={student.admissionStatus} />
             </div>
-            <div className="space-y-1">
+            <div className="space-y-1 rounded-xl border border-gray-100 bg-gray-50/60 p-3.5">
               <p className="text-xs text-(--earist-body-text)">
                 Comprehensive Exam
               </p>
@@ -509,7 +509,7 @@ export default function StudentDetailPage() {
                   : "Not recorded"}
               </p>
             </div>
-            <div className="space-y-1">
+            <div className="space-y-1 rounded-xl border border-gray-100 bg-gray-50/60 p-3.5">
               <p className="text-xs text-(--earist-body-text)">
                 Current Thesis Stage
               </p>
@@ -674,8 +674,8 @@ export default function StudentDetailPage() {
 
       {/* Student & Academic Details — full width, grouped for scanning */}
       <SectionCard title="Student & Academic Details">
-        <div className="grid grid-cols-1 gap-x-8 gap-y-6 md:grid-cols-2 lg:grid-cols-3">
-          <section className="space-y-3">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <section className="space-y-3 rounded-xl border border-gray-100 bg-gray-50/60 p-4">
             <h3 className="text-sm font-semibold text-(--earist-body-text)">
               Personal Information
             </h3>
@@ -691,7 +691,7 @@ export default function StudentDetailPage() {
             </dl>
           </section>
 
-          <section className="space-y-3">
+          <section className="space-y-3 rounded-xl border border-gray-100 bg-gray-50/60 p-4">
             <h3 className="text-sm font-semibold text-(--earist-body-text)">
               Academic Information
             </h3>
@@ -712,7 +712,7 @@ export default function StudentDetailPage() {
             </dl>
           </section>
 
-          <section className="space-y-3">
+          <section className="space-y-3 rounded-xl border border-gray-100 bg-gray-50/60 p-4">
             <h3 className="text-sm font-semibold text-(--earist-body-text)">
               Adviser & Residency
             </h3>

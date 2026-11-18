@@ -47,21 +47,25 @@ function RecordList({ viewerScope, audience }: { viewerScope: string; audience: 
       : audience === "adviser"
         ? "This is the official record of the student’s adviser request that you confirmed and that was approved by the Graduate School."
         : "Approved Adviser Request records"}</p>
-    {records.data.map(record => <div key={record.id} className="space-y-2 rounded-lg border border-(--earist-border-gray) p-3 text-sm break-words">
-      <p className="font-medium">{record.studentName}</p>
-      <p>Adviser: {record.requestedAdviserName}</p>
-      <p className="text-xs text-(--earist-body-text)">Requested {record.requestDate} · Approved {new Date(record.finalizedAt).toLocaleDateString("en-PH", { timeZone: "Asia/Manila" })}</p>
-      {!record.pdfAvailable && <p role="status">Adviser Request is unavailable for this record.</p>}
-      <div className="flex flex-wrap gap-2">
-        <Button size="sm" variant="outline" disabled={!record.pdfAvailable} onClick={() => setPreviewId(record.id)}>View Adviser Request</Button>
-        <Button size="sm" variant="outline" disabled={!record.pdfAvailable || busyId !== null} onClick={async () => {
-          setBusyId(record.id); setError(null);
-          try { await downloadOfficialDefensePdf(`/thesis/adviser/requests/${encodeURIComponent(record.id)}/pdf`, "Adviser-Request.pdf"); }
-          catch (failure) { setError(failure instanceof Error ? failure.message : "The Adviser Request could not be downloaded."); }
-          finally { setBusyId(null); }
-        }}>{busyId === record.id ? "Downloading…" : "Download Adviser Request"}</Button>
-      </div>
-    </div>)}
+    <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+      {records.data.map(record => <div key={record.id} className="flex flex-col justify-between gap-3 rounded-xl border border-gray-200/80 bg-white p-4 text-sm break-words shadow-2xs">
+        <div className="space-y-1">
+          <p className="font-semibold text-[#333333]">{record.studentName}</p>
+          <p className="text-[#333333]">Adviser: {record.requestedAdviserName}</p>
+          <p className="text-xs text-(--earist-body-text)">Requested {record.requestDate} · Approved {new Date(record.finalizedAt).toLocaleDateString("en-PH", { timeZone: "Asia/Manila" })}</p>
+          {!record.pdfAvailable && <p role="status">Adviser Request is unavailable for this record.</p>}
+        </div>
+        <div className="flex flex-wrap gap-2 pt-1">
+          <Button size="sm" variant="outline" disabled={!record.pdfAvailable} onClick={() => setPreviewId(record.id)}>View Adviser Request</Button>
+          <Button size="sm" variant="outline" disabled={!record.pdfAvailable || busyId !== null} onClick={async () => {
+            setBusyId(record.id); setError(null);
+            try { await downloadOfficialDefensePdf(`/thesis/adviser/requests/${encodeURIComponent(record.id)}/pdf`, "Adviser-Request.pdf"); }
+            catch (failure) { setError(failure instanceof Error ? failure.message : "The Adviser Request could not be downloaded."); }
+            finally { setBusyId(null); }
+          }}>{busyId === record.id ? "Downloading…" : "Download Adviser Request"}</Button>
+        </div>
+      </div>)}
+    </div>
     {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
     {previewId && <DocumentViewer key={previewId} open onOpenChange={open => { if (!open) setPreviewId(null); }}
       fetchUrl={`/api/adviser-requests/${encodeURIComponent(previewId)}/pdf`} title="Adviser Request" />}

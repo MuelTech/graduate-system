@@ -162,10 +162,10 @@ function SubmissionContext({
                 {data.supportingEvidence.map((slot) => (
                   <li
                     key={slot.docType}
-                    className="flex flex-col justify-between gap-3 rounded-xl border border-gray-200/80 bg-gray-50/50 p-3.5"
+                    className="flex items-center justify-between gap-3 rounded-xl border border-gray-200/80 bg-gray-50/50 p-3.5"
                   >
-                    <div className="space-y-2">
-                      <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0 flex-1 space-y-1.5">
+                      <div className="flex flex-wrap items-center gap-2">
                         <p className="text-sm font-semibold text-[#333333]">
                           {requirementLabel(slot.docType)}
                         </p>
@@ -205,7 +205,7 @@ function SubmissionContext({
                       <Button
                         size="sm"
                         variant="outline"
-                        className="w-full bg-white"
+                        className="shrink-0 bg-white"
                         onClick={() => viewDocument(slot.current!.id)}
                       >
                         View

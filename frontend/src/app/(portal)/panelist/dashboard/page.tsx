@@ -517,7 +517,7 @@ export default function PanelistDashboard() {
           <EmptyState message="Nothing currently requires your action." />
         ) : (
           <div className="space-y-3">
-            <ul className="space-y-2">
+            <ul className="grid grid-cols-1 gap-2.5 lg:grid-cols-2">
               {visibleTasks.map((task) => (
                 <TaskRow key={task.id} task={task} />
               ))}
@@ -547,7 +547,7 @@ export default function PanelistDashboard() {
           title="Active Defense"
           description="Sessions currently in progress."
         >
-          <ul className="space-y-2">
+          <ul className="grid grid-cols-1 gap-2.5 lg:grid-cols-2">
             {activeDefenses.map((item) => (
               <ActiveDefenseRow key={item.scheduleId} item={item} />
             ))}
@@ -623,7 +623,7 @@ export default function PanelistDashboard() {
             </div>
 
             {otherUpcoming.length > 0 ? (
-              <ul className="space-y-2">
+              <ul className="grid grid-cols-1 gap-2.5 lg:grid-cols-2">
                 {otherUpcoming.map((item) => (
                   <UpcomingDefenseSummary key={item.scheduleId} item={item} />
                 ))}
@@ -633,81 +633,82 @@ export default function PanelistDashboard() {
         )}
       </SectionCard>
 
-      {/* 5. Waiting on Others */}
-      <SectionCard
-        title="Waiting on Others"
-        description="Records that cannot progress until another authorized actor acts."
-      >
-        {visibleWaiting.length === 0 ? (
-          <EmptyState message="Nothing is currently waiting on another actor." />
-        ) : (
-          <ul className="space-y-2">
-            {visibleWaiting.map((item) => (
-              <WaitingRow key={item.id} item={item} />
-            ))}
-          </ul>
-        )}
-      </SectionCard>
+      {/* 5. Waiting on Others & 6. Recent Notifications */}
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
+        <SectionCard
+          title="Waiting on Others"
+          description="Records that cannot progress until another authorized actor acts."
+        >
+          {visibleWaiting.length === 0 ? (
+            <EmptyState message="Nothing is currently waiting on another actor." />
+          ) : (
+            <ul className="space-y-2">
+              {visibleWaiting.map((item) => (
+                <WaitingRow key={item.id} item={item} />
+              ))}
+            </ul>
+          )}
+        </SectionCard>
 
-      {/* 6. Recent Notifications */}
-      <SectionCard
-        title="Recent Notifications"
-        description="Your latest notification records."
-        action={
-          <Link
-            href="/faculty/notifications"
-            className="text-xs font-semibold text-[#e02b20] hover:underline"
-          >
-            View all notifications
-          </Link>
-        }
-      >
-        {notificationsLoading ? (
-          <div className="space-y-2" aria-busy="true">
-            {Array.from({ length: 3 }).map((_, i) => (
-              <Skeleton key={i} className="h-14 w-full rounded-lg" />
-            ))}
-          </div>
-        ) : notificationsError ? (
-          <LoadError
-            label="Unable to load notifications"
-            onRetry={() => void refetchNotifications()}
-            retrying={notificationsFetching}
-            compact
-          />
-        ) : recentNotifications.length === 0 ? (
-          <EmptyState message="No notifications to show." />
-        ) : (
-          <ul className="space-y-2">
-            {recentNotifications.map((n) => (
-              <li
-                key={n.id}
-                className="rounded-xl border border-gray-100 bg-gray-50/50 p-3.5"
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <p className="text-sm font-semibold text-[#333333]">
-                    {n.isRead === false ? (
-                      <span
-                        className="mr-2 inline-block h-2 w-2 rounded-full bg-[#e02b20] align-middle"
-                        aria-label="Unread"
-                      />
-                    ) : null}
-                    {n.title}
-                  </p>
-                  <span className="shrink-0 text-[11px] text-gray-500">
-                    {n.createdAt ? formatWallDate(n.createdAt.slice(0, 10)) : ""}
-                  </span>
-                </div>
-                {n.message ? (
-                  <p className="mt-1 text-xs text-gray-500">
-                    {n.message}
-                  </p>
-                ) : null}
-              </li>
-            ))}
-          </ul>
-        )}
-      </SectionCard>
+        <SectionCard
+          title="Recent Notifications"
+          description="Your latest notification records."
+          action={
+            <Link
+              href="/faculty/notifications"
+              className="text-xs font-semibold text-[#e02b20] hover:underline"
+            >
+              View all notifications
+            </Link>
+          }
+        >
+          {notificationsLoading ? (
+            <div className="space-y-2" aria-busy="true">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <Skeleton key={i} className="h-14 w-full rounded-lg" />
+              ))}
+            </div>
+          ) : notificationsError ? (
+            <LoadError
+              label="Unable to load notifications"
+              onRetry={() => void refetchNotifications()}
+              retrying={notificationsFetching}
+              compact
+            />
+          ) : recentNotifications.length === 0 ? (
+            <EmptyState message="No notifications to show." />
+          ) : (
+            <ul className="space-y-2">
+              {recentNotifications.map((n) => (
+                <li
+                  key={n.id}
+                  className="rounded-xl border border-gray-100 bg-gray-50/50 p-3.5"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <p className="text-sm font-semibold text-[#333333]">
+                      {n.isRead === false ? (
+                        <span
+                          className="mr-2 inline-block h-2 w-2 rounded-full bg-[#e02b20] align-middle"
+                          aria-label="Unread"
+                        />
+                      ) : null}
+                      {n.title}
+                    </p>
+                    <span className="shrink-0 text-[11px] text-gray-500">
+                      {n.createdAt ? formatWallDate(n.createdAt.slice(0, 10)) : ""}
+                    </span>
+                  </div>
+                  {n.message ? (
+                    <p className="mt-1 text-xs text-gray-500">
+                      {n.message}
+                    </p>
+                  ) : null}
+                </li>
+              ))}
+            </ul>
+          )}
+        </SectionCard>
+      </div>
 
     </div>
   );

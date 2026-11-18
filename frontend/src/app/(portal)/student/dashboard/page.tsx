@@ -272,9 +272,41 @@ export default function StudentDashboard() {
         </p>
       ) : null}
 
-      {/* B. Academic status summary */}
-      <section aria-label="Academic status summary">
-        <div className="grid gap-4 sm:grid-cols-2">
+      {/* B & C. Your Next Step + Academic status summary */}
+      <div className="grid grid-cols-1 items-stretch gap-4 lg:grid-cols-12">
+        <Card className="h-full lg:col-span-7">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <ClipboardList
+                className="h-4 w-4 text-(--earist-secondary)"
+                aria-hidden="true"
+              />
+              Your Next Step
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {journeyQuery.isLoading ? (
+              <div className="space-y-3" aria-busy="true">
+                <Skeleton className="h-6 w-64" />
+                <Skeleton className="h-4 w-full max-w-2xl" />
+                <Skeleton className="h-9 w-44" />
+              </div>
+            ) : journeyQuery.isError || !journey ? (
+              <SectionError
+                label="Unable to load your current thesis status."
+                onRetry={() => journeyQuery.refetch()}
+                retrying={journeyQuery.isRefetching}
+              />
+            ) : (
+              <NextStepContent journey={journey} />
+            )}
+          </CardContent>
+        </Card>
+
+        <section
+          aria-label="Academic status summary"
+          className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:col-span-5 lg:grid-cols-1"
+        >
           <Card>
             <CardContent className="space-y-1 p-5">
               <p className="flex items-center gap-2 text-xs font-semibold text-gray-500">
@@ -316,38 +348,8 @@ export default function StudentDashboard() {
               </p>
             </CardContent>
           </Card>
-        </div>
-      </section>
-
-      {/* C. Your Next Step — primary focus */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-base">
-            <ClipboardList
-              className="h-4 w-4 text-(--earist-secondary)"
-              aria-hidden="true"
-            />
-            Your Next Step
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {journeyQuery.isLoading ? (
-            <div className="space-y-3" aria-busy="true">
-              <Skeleton className="h-6 w-64" />
-              <Skeleton className="h-4 w-full max-w-2xl" />
-              <Skeleton className="h-9 w-44" />
-            </div>
-          ) : journeyQuery.isError || !journey ? (
-            <SectionError
-              label="Unable to load your current thesis status."
-              onRetry={() => journeyQuery.refetch()}
-              retrying={journeyQuery.isRefetching}
-            />
-          ) : (
-            <NextStepContent journey={journey} />
-          )}
-        </CardContent>
-      </Card>
+        </section>
+      </div>
 
       {/* D. Thesis Journey overview */}
       <Card>

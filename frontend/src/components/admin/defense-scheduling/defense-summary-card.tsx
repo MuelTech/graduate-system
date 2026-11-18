@@ -25,7 +25,7 @@ function stageBadgeClass(stage: string): string {
 
 function ContextItem({ label, value }: { label: string; value: string }) {
   return (
-    <div className="min-w-0">
+    <div className="min-w-0 rounded-lg border border-gray-100 bg-gray-50/60 px-3.5 py-2.5">
       <p className="text-[11px] font-semibold tracking-wider text-gray-500 uppercase">
         {label}
       </p>
@@ -40,8 +40,8 @@ export function DefenseSummaryCard({ application }: Props) {
   const student = application.student;
 
   return (
-    <Card className="border-gray-100 bg-white shadow-sm">
-      <CardHeader className="pb-2">
+    <Card className="gap-3 border-gray-100 bg-white py-4 shadow-sm">
+      <CardHeader className="pb-1">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <CardTitle className="text-base font-bold text-[#333333]">
             Selected Defense
@@ -54,7 +54,7 @@ export function DefenseSummaryCard({ application }: Props) {
           </Badge>
         </div>
       </CardHeader>
-      <CardContent className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+      <CardContent className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <ContextItem
           label="Student"
           value={`${student.user.firstName} ${student.user.lastName}`}

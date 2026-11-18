@@ -444,7 +444,7 @@ export default function DefenseApplicationDetailPage() {
                   No requirements are recorded for this stage.
                 </p>
               ) : (
-                <ul className="space-y-3">
+                <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   {requirements.map((slot) => (
                     <li
                       key={slot.docType}

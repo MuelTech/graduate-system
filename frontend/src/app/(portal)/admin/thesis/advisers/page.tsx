@@ -167,9 +167,9 @@ export default function AdminAdviserRequestReviewPage() {
         </Card>
       )}
 
-      <div className="space-y-3">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         {requests.map((row) => (
-          <Card key={row.id}>
+          <Card key={row.id} className="flex h-full flex-col">
             <CardHeader>
               <CardTitle className="flex flex-wrap items-center gap-2 text-base">
                 <span className="font-bold text-[#333333]">
@@ -183,56 +183,62 @@ export default function AdminAdviserRequestReviewPage() {
                 </Badge>
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-3 text-sm">
-              <div className="grid gap-2 sm:grid-cols-2">
-                <div>
-                  <p className="text-xs font-medium text-gray-500">Program</p>
-                  <p className="text-[#333333]">{row.student.program || "—"}</p>
+            <CardContent className="flex flex-1 flex-col justify-between gap-3 text-sm">
+              <div className="space-y-3">
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="rounded-lg border border-gray-100 bg-gray-50/60 p-3">
+                    <p className="text-xs font-medium text-gray-500">Program</p>
+                    <p className="mt-0.5 text-[#333333]">
+                      {row.student.program || "—"}
+                    </p>
+                  </div>
+                  <div className="rounded-lg border border-gray-100 bg-gray-50/60 p-3">
+                    <p className="text-xs font-medium text-gray-500">
+                      Request date
+                    </p>
+                    <p className="mt-0.5 text-[#333333]">
+                      {row.requestDate
+                        ? new Date(row.requestDate).toLocaleDateString()
+                        : "—"}
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-xs font-medium text-gray-500">
-                    Request date
-                  </p>
-                  <p className="text-[#333333]">
-                    {row.requestDate
-                      ? new Date(row.requestDate).toLocaleDateString()
-                      : "—"}
-                  </p>
-                </div>
-                <div className="sm:col-span-2">
-                  <p className="text-xs font-medium text-gray-500">
-                    Requested adviser
-                  </p>
-                  <p className="font-medium text-[#333333]">
-                    {row.requestedAdviser.name}
-                    <span className="ml-2 font-normal text-gray-500">
-                      {titleDefenseRoleLabel(row.titleDefenseRole)}
-                      {row.requestedAdviser.specialization
-                        ? ` · ${row.requestedAdviser.specialization}`
+                <div className="space-y-2 rounded-lg border border-gray-100 bg-gray-50/60 p-3">
+                  <div>
+                    <p className="text-xs font-medium text-gray-500">
+                      Requested adviser
+                    </p>
+                    <p className="mt-0.5 font-medium text-[#333333]">
+                      {row.requestedAdviser.name}
+                      <span className="ml-2 font-normal text-gray-500">
+                        {titleDefenseRoleLabel(row.titleDefenseRole)}
+                        {row.requestedAdviser.specialization
+                          ? ` · ${row.requestedAdviser.specialization}`
+                          : ""}
+                        {row.requestedAdviser.officeAffiliation
+                          ? ` · ${row.requestedAdviser.officeAffiliation}`
+                          : ""}
+                      </span>
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-medium text-gray-500">
+                      Student remarks
+                    </p>
+                    <p className="mt-0.5 text-gray-600">{row.reason || "—"}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-medium text-gray-500">
+                      Adviser response
+                    </p>
+                    <p className="mt-0.5 text-gray-600">
+                      CONFORME recorded
+                      {row.adviserRespondedAt
+                        ? ` · ${new Date(row.adviserRespondedAt).toLocaleDateString()}`
                         : ""}
-                      {row.requestedAdviser.officeAffiliation
-                        ? ` · ${row.requestedAdviser.officeAffiliation}`
-                        : ""}
-                    </span>
-                  </p>
-                </div>
-                <div className="sm:col-span-2">
-                  <p className="text-xs font-medium text-gray-500">
-                    Student remarks
-                  </p>
-                  <p className="text-gray-600">{row.reason || "—"}</p>
-                </div>
-                <div className="sm:col-span-2">
-                  <p className="text-xs font-medium text-gray-500">
-                    Adviser response
-                  </p>
-                  <p className="text-gray-600">
-                    CONFORME recorded
-                    {row.adviserRespondedAt
-                      ? ` · ${new Date(row.adviserRespondedAt).toLocaleDateString()}`
-                      : ""}
-                    {row.adviserRemarks ? ` — ${row.adviserRemarks}` : ""}
-                  </p>
+                      {row.adviserRemarks ? ` — ${row.adviserRemarks}` : ""}
+                    </p>
+                  </div>
                 </div>
               </div>
 

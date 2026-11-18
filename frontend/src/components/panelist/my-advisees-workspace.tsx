@@ -204,7 +204,7 @@ function IncomingRequestCard({
   const actionable = state === "ACTIONABLE";
 
   return (
-    <Card className={cn(highlighted && "ring-2 ring-[#e02b20]/30")}>
+    <Card className={cn("h-full", highlighted && "ring-2 ring-[#e02b20]/30")}>
       <CardHeader className="gap-2">
         <div className="flex flex-wrap items-start justify-between gap-2">
           <CardTitle className="text-base font-bold text-[#333333]">
@@ -274,7 +274,7 @@ function ReviewTaskCard({
   onReview: (task: AdviserWorkspaceReviewTaskDto) => void;
 }) {
   return (
-    <Card>
+    <Card className="h-full">
       <CardHeader className="gap-2">
         <div className="flex flex-wrap items-start justify-between gap-2">
           <CardTitle className="text-base font-bold text-[#333333]">
@@ -555,17 +555,19 @@ export function MyAdviseesWorkspace() {
             {incomingRequests.length === 0 ? (
               <EmptyState icon={Inbox} message={EMPTY_MESSAGES.requests} />
             ) : (
-              incomingRequests.map((request) => (
-                <IncomingRequestCard
-                  key={request.id}
-                  request={request}
-                  highlighted={
-                    request.id ===
-                    (requestAction?.request.id ?? deepLinkedRequest?.id)
-                  }
-                  onAction={openRequestAction}
-                />
-              ))
+              <div className="grid gap-4 lg:grid-cols-2">
+                {incomingRequests.map((request) => (
+                  <IncomingRequestCard
+                    key={request.id}
+                    request={request}
+                    highlighted={
+                      request.id ===
+                      (requestAction?.request.id ?? deepLinkedRequest?.id)
+                    }
+                    onAction={openRequestAction}
+                  />
+                ))}
+              </div>
             )}
           </TabsContent>
 
@@ -581,13 +583,15 @@ export function MyAdviseesWorkspace() {
             {data.reviewTasks.length === 0 ? (
               <EmptyState icon={FileText} message={EMPTY_MESSAGES.reviews} />
             ) : (
-              data.reviewTasks.map((task) => (
-                <ReviewTaskCard
-                  key={`${task.stage}-${task.thesisId}`}
-                  task={task}
-                  onReview={openReview}
-                />
-              ))
+              <div className="grid gap-4 lg:grid-cols-2">
+                {data.reviewTasks.map((task) => (
+                  <ReviewTaskCard
+                    key={`${task.stage}-${task.thesisId}`}
+                    task={task}
+                    onReview={openReview}
+                  />
+                ))}
+              </div>
             )}
             <AdviserCertificationRecords />
           </TabsContent>
