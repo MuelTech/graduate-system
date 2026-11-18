@@ -201,14 +201,6 @@ export default function AdminAdviserRequestReviewPage() {
                 </div>
                 <div className="sm:col-span-2">
                   <p className="text-xs font-medium text-gray-500">
-                    Official selected title
-                  </p>
-                  <p className="font-semibold text-[#333333]">
-                    {row.officialTitle || "—"}
-                  </p>
-                </div>
-                <div className="sm:col-span-2">
-                  <p className="text-xs font-medium text-gray-500">
                     Requested adviser
                   </p>
                   <p className="font-medium text-[#333333]">

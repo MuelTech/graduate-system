@@ -297,11 +297,22 @@ export default function DefenseApplicationDetailPage() {
   const stageLabel = STAGE_LABELS[app.stage] ?? app.stage;
   const statusKey = displayStatusKey(app);
   const statusLabel = displayStatusLabel(app);
-  const isTitle = app.stage === "TITLE";
   const isProposal = app.stage === "PROPOSAL";
   const isFinal = app.stage === "FINAL";
-  const selectedTitle = app.thesisTitles.find((t) => t.isSelected) ?? null;
   const adviser = app.activeAdviser;
+  const reviewedManuscriptVersion =
+    historyQuery.data?.manuscriptReview?.versions.find((v) => v.isCertified) ??
+    historyQuery.data?.manuscriptReview?.versions.find(
+      (v) => v.isReviewedByAdviser,
+    ) ??
+    historyQuery.data?.manuscriptReview?.versions.find(
+      (v) => v.isVersionHead,
+    ) ??
+    null;
+  const stageManuscriptTitle =
+    historyQuery.data?.manuscriptReview?.certifiedManuscriptTitle ??
+    reviewedManuscriptVersion?.manuscriptTitle ??
+    null;
   const canDecide =
     app.workflowBucket === "NEEDS_REVIEW" ||
     app.rawApplicationStatus === "PENDING";
@@ -358,68 +369,41 @@ export default function DefenseApplicationDetailPage() {
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
         {/* Main review column */}
         <div className="min-w-0 space-y-6">
-          {/* Research Information */}
-          <section>
-            <h2 className="text-sm font-semibold text-(--earist-secondary)">
-              Research Information
-            </h2>
-            <div className="mt-3">
-              {isTitle && (
+          {/* Research Information (Proposal / Final only) */}
+          {(isProposal || isFinal) && (
+            <section>
+              <h2 className="text-sm font-semibold text-(--earist-secondary)">
+                Research Information
+              </h2>
+              <div className="mt-3 space-y-3">
                 <div>
                   <p className="text-xs font-medium text-(--earist-secondary)">
-                    Proposed Research Titles
+                    Thesis / Dissertation Title
                   </p>
-                  {app.thesisTitles.length === 0 ? (
-                    <p className="mt-1 text-sm text-(--earist-body-text)">
-                      No proposed titles recorded.
-                    </p>
-                  ) : (
-                    <ol className="mt-1 list-decimal space-y-1 pl-5 text-sm">
-                      {app.thesisTitles.map((title) => (
-                        <li
-                          key={title.id}
-                          className="break-words text-foreground"
-                        >
-                          {title.titleText}
-                        </li>
-                      ))}
-                    </ol>
-                  )}
-                  <p className="mt-2 text-xs text-(--earist-body-text)">
-                    The final research title will be selected by the committee
-                    during the Title Defense.
+                  <p className="mt-0.5 text-sm break-words text-foreground">
+                    {historyQuery.isLoading
+                      ? "Loading…"
+                      : stageManuscriptTitle ||
+                        "Title not recorded for this manuscript."}
                   </p>
                 </div>
-              )}
-
-              {(isProposal || isFinal) && (
-                <div className="space-y-3">
+                {adviser && (
                   <div>
                     <p className="text-xs font-medium text-(--earist-secondary)">
-                      Official Research Title
+                      Thesis / Dissertation Adviser
                     </p>
                     <p className="mt-0.5 text-sm break-words text-foreground">
-                      {selectedTitle?.titleText || "Not selected yet"}
+                      {adviser.firstName} {adviser.lastName}
+                    </p>
+                    <p className="mt-1 text-xs text-(--earist-body-text)">
+                      Included automatically in the Proposal/Final defense
+                      committee.
                     </p>
                   </div>
-                  {adviser && (
-                    <div>
-                      <p className="text-xs font-medium text-(--earist-secondary)">
-                        Thesis / Dissertation Adviser
-                      </p>
-                      <p className="mt-0.5 text-sm break-words text-foreground">
-                        {adviser.firstName} {adviser.lastName}
-                      </p>
-                      <p className="mt-1 text-xs text-(--earist-body-text)">
-                        Included automatically in the Proposal/Final defense
-                        committee.
-                      </p>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          </section>
+                )}
+              </div>
+            </section>
+          )}
 
           {/* Application Requirements — dominant review surface */}
           {(stage === "PROPOSAL" || stage === "FINAL") && <AdviserCertificationRecords thesisId={thesisId} stage={stage} />}
