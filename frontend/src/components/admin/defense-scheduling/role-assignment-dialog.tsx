@@ -162,10 +162,10 @@ export function RoleAssignmentDialog({
           />
         </div>
 
-        <div className="min-h-[12rem] flex-1 overflow-y-auto rounded-lg border border-(--earist-border-gray)">
+        <div className="min-h-[12rem] flex-1 overflow-y-auto rounded-xl border border-gray-200 bg-white">
           {(isLoading || (isFetching && items.length === 0)) && (
-            <p className="flex items-center justify-center gap-2 py-8 text-sm text-(--earist-body-text)">
-              <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+            <p className="flex items-center justify-center gap-2 py-8 text-sm text-gray-500">
+              <Loader2 className="h-4 w-4 animate-spin text-[#e02b20]" aria-hidden="true" />
               Searching faculty…
             </p>
           )}
@@ -175,7 +175,7 @@ export function RoleAssignmentDialog({
             </p>
           )}
           {!isLoading && !isError && items.length === 0 && (
-            <p className="py-8 text-center text-sm text-(--earist-body-text)">
+            <p className="py-8 text-center text-sm text-gray-500">
               No eligible faculty match your search.
             </p>
           )}
@@ -190,35 +190,40 @@ export function RoleAssignmentDialog({
                 disabled={disabled}
                 aria-pressed={selected}
                 onClick={() => toggle(panelistToPerson(person))}
-                className={`flex w-full items-center justify-between gap-2 border-b border-(--earist-border-gray) px-3 py-2 text-left text-sm last:border-0 ${
+                className={`flex w-full items-center justify-between gap-3 border-b border-gray-100 px-3.5 py-2.5 text-left text-sm transition-colors last:border-0 ${
                   disabled
                     ? "cursor-not-allowed opacity-50"
                     : selected
-                      ? "bg-(--earist-primary)/10"
-                      : "hover:bg-(--earist-surface-gray)"
+                      ? "bg-red-50/50"
+                      : "hover:bg-gray-50/80"
                 }`}
               >
-                <span className="min-w-0">
-                  <span className="block font-medium">
-                    {person.firstName} {person.lastName}
+                <span className="min-w-0 flex-1">
+                  <span className="flex flex-wrap items-center gap-2">
+                    <span className="font-semibold text-[#333333]">
+                      {person.firstName} {person.lastName}
+                    </span>
+                    <Badge
+                      variant="outline"
+                      className="border-gray-200 bg-gray-50 px-1.5 py-0 text-[10px] font-medium text-gray-600"
+                    >
+                      {person.panelist?.isExternal
+                        ? "External Panelist"
+                        : person.panelist?.officeAffiliation || "Internal Faculty"}
+                    </Badge>
                   </span>
-                  <span className="block text-xs text-(--earist-body-text)">
+                  <span className="block truncate text-xs text-gray-500">
                     {person.email}
                   </span>
-                  <span className="block text-xs text-(--earist-body-text)">
-                    {person.panelist?.isExternal
-                      ? "External Panelist"
-                      : person.panelist?.officeAffiliation || "Internal Faculty"}
-                  </span>
                   {elsewhere && (
-                    <span className="block text-xs text-(--earist-warning)">
+                    <span className="mt-0.5 block text-xs font-medium text-amber-700">
                       Already assigned as {elsewhere}
                     </span>
                   )}
                 </span>
                 {selected && (
                   <Check
-                    className="h-4 w-4 shrink-0 text-(--earist-primary)"
+                    className="h-4 w-4 shrink-0 text-[#e02b20]"
                     aria-hidden="true"
                   />
                 )}
@@ -229,7 +234,7 @@ export function RoleAssignmentDialog({
             <button
               type="button"
               onClick={() => setPage((p) => p + 1)}
-              className="w-full border-t border-(--earist-border-gray) py-2 text-xs text-(--earist-primary) hover:bg-(--earist-surface-gray)"
+              className="w-full border-t border-gray-100 py-2 text-xs font-semibold text-[#e02b20] hover:bg-gray-50"
             >
               Load more
             </button>
@@ -246,7 +251,7 @@ export function RoleAssignmentDialog({
               onConfirm(selection);
               onOpenChange(false);
             }}
-            className="bg-(--earist-primary) text-white hover:bg-(--earist-primary)/90"
+            className="bg-[#e02b20] text-white hover:bg-[#b71c1c]"
           >
             {multi
               ? `Add ${selection.length} Panelist${selection.length === 1 ? "" : "s"}`

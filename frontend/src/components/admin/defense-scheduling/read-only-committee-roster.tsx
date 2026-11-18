@@ -19,10 +19,6 @@ type Props = {
   policy?: CommitteePolicyDto;
 };
 
-/** Same aligned four-column roster language as the editable builder, minus Action. */
-const ROSTER_GRID =
-  "sm:grid sm:grid-cols-[minmax(0,9rem)_minmax(0,1fr)_5.5rem] sm:items-center sm:gap-3";
-
 function compactNames(names: string[], max = 3): string {
   if (!names.length) return "—";
   if (names.length <= max) return names.join(" · ");
@@ -45,37 +41,38 @@ function RosterRow({
   empty?: boolean;
 }) {
   return (
-    <div className={cn("grid grid-cols-1 gap-1 py-3", ROSTER_GRID)}>
-      <div className="flex items-center justify-between gap-2 sm:block">
-        <span className="text-sm font-semibold text-(--earist-secondary)">
-          {role}
-        </span>
-        <span className="text-xs tabular-nums text-(--earist-body-text) sm:hidden">
-          {assigned}
-        </span>
-      </div>
-      <div className="min-w-0">
+    <div className="flex flex-col gap-2 rounded-xl border border-gray-200/80 bg-gray-50/40 px-3.5 py-2.5 sm:flex-row sm:items-center sm:justify-between">
+      <div className="min-w-0 flex-1 space-y-0.5">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-sm font-semibold text-[#333333]">
+            {role}
+          </span>
+          <Badge
+            variant="outline"
+            className={cn(
+              "px-2 py-0 text-[11px] font-medium tabular-nums",
+              empty
+                ? "border-gray-200 bg-white text-gray-600"
+                : "border-emerald-200 bg-emerald-50 text-emerald-700",
+            )}
+          >
+            {automatic && (
+              <Lock className="mr-1 h-3 w-3" aria-hidden="true" />
+            )}
+            {assigned}
+          </Badge>
+        </div>
         <p
           className={cn(
             "truncate text-sm",
-            empty ? "text-(--earist-body-text)" : "text-foreground",
+            empty ? "text-gray-400 italic" : "font-medium text-[#333333]",
           )}
           title={participants}
         >
           {participants}
         </p>
         {secondary && (
-          <p className="truncate text-xs text-(--earist-body-text)">{secondary}</p>
-        )}
-      </div>
-      <div className="hidden text-center text-xs tabular-nums text-(--earist-body-text) sm:block">
-        {automatic ? (
-          <span className="inline-flex items-center justify-center gap-1">
-            <Lock className="h-3.5 w-3.5" aria-hidden="true" />
-            {assigned}
-          </span>
-        ) : (
-          assigned
+          <p className="truncate text-xs text-gray-500">{secondary}</p>
         )}
       </div>
     </div>
@@ -102,35 +99,27 @@ export function ReadOnlyCommitteeRoster({
   const adviserMembers = of("ADVISER");
 
   return (
-    <Card>
+    <Card className="border-gray-100 bg-white shadow-sm">
       <CardHeader className="pb-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <CardTitle className="text-sm font-semibold text-(--earist-secondary)">
+          <CardTitle className="text-base font-bold text-[#333333]">
             Defense Committee
           </CardTitle>
-          <Badge variant="outline" className="text-xs">
+          <Badge
+            variant="outline"
+            className="border-gray-200 bg-gray-50 text-xs font-medium text-[#333333]"
+          >
             <Users className="mr-1 h-3 w-3" aria-hidden="true" />
             {total} participant{total === 1 ? "" : "s"}
           </Badge>
         </div>
-        <p className="text-xs text-(--earist-body-text)">
+        <p className="text-xs text-gray-500">
           {defenseStageLabel} · {programTypeLabel(programType)}
         </p>
       </CardHeader>
 
       <CardContent className="pt-0">
-        <div className="divide-y divide-(--earist-border-gray)">
-          <div
-            className={cn(
-              "hidden pb-1 text-xs font-medium tracking-wide text-(--earist-body-text) uppercase",
-              ROSTER_GRID,
-            )}
-          >
-            <span>Role</span>
-            <span>Assigned participant(s)</span>
-            <span className="text-center">Assigned</span>
-          </div>
-
+        <div className="space-y-2">
           {adviserRow && (
             <RosterRow
               role="Adviser"

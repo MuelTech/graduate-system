@@ -51,7 +51,7 @@ import {
   formatDefenseDate,
   formatDefenseTime,
 } from "@/components/admin/defense-applications/labels";
-import { AlertCircle, CheckCircle2, X } from "lucide-react";
+import { AlertCircle, CalendarClock, CheckCircle2, X } from "lucide-react";
 
 const EMPTY_SCHEDULE: ScheduleFormState = {
   defenseDate: "",
@@ -504,9 +504,19 @@ function AdminSchedulingPageInner() {
           {activeTab === "READY" ? (
             <>
               {!selected && (
-                <div className="rounded-lg border border-dashed border-(--earist-border-gray) p-12 text-center text-sm text-(--earist-body-text)">
-                  Select an approved application to assign the committee and
-                  schedule the defense.
+                <div className="flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-gray-200 bg-white/80 p-12 text-center shadow-sm">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-red-50 text-[#e02b20]">
+                    <CalendarClock className="h-6 w-6" aria-hidden="true" />
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-sm font-semibold text-[#333333]">
+                      No application selected
+                    </p>
+                    <p className="text-sm text-gray-500">
+                      Select an approved application to assign the committee and
+                      schedule the defense.
+                    </p>
+                  </div>
                 </div>
               )}
               {selected && (
@@ -517,40 +527,56 @@ function AdminSchedulingPageInner() {
                     thesisId={selected.thesisId ?? selected.id}
                     stage={selected.stage}
                   />
-                  <DefenseCommitteeBuilder
-                    key={selected.id}
-                    policy={policy}
-                    policyLoading={policyLoading}
-                    policyError={policyError}
-                    showAdviser={selected.stage !== "TITLE"}
-                    defenseStageLabel={defenseTypeLabel(selected.stage)}
-                    programTypeLabel={programTypeLabel(programType)}
-                    members={committee}
-                    adviser={adviser}
-                    adviserConflict={selected.activeAdviserConflict === true}
-                    onAssignRole={handleAssignRole}
-                  />
-                  <DefenseScheduleForm
-                    value={schedule}
-                    onChange={setSchedule}
-                    errors={scheduleErrors}
-                  />
-                  <DefenseReviewSummary
-                    readiness={readiness}
-                    showAdviser={selected.stage !== "TITLE"}
-                    schedule={schedule}
-                    isValid={isValid}
-                    isSubmitting={scheduleMutation.isPending}
-                    onPreviewEmail={() => setShowEmailPreview(true)}
-                    onSubmit={() => setShowConfirm(true)}
-                  />
+                  <div className="grid grid-cols-1 items-start gap-4 xl:grid-cols-12">
+                    <div className="xl:col-span-7">
+                      <DefenseCommitteeBuilder
+                        key={selected.id}
+                        policy={policy}
+                        policyLoading={policyLoading}
+                        policyError={policyError}
+                        showAdviser={selected.stage !== "TITLE"}
+                        defenseStageLabel={defenseTypeLabel(selected.stage)}
+                        programTypeLabel={programTypeLabel(programType)}
+                        members={committee}
+                        adviser={adviser}
+                        adviserConflict={selected.activeAdviserConflict === true}
+                        onAssignRole={handleAssignRole}
+                      />
+                    </div>
+                    <div className="space-y-4 xl:sticky xl:top-20 xl:col-span-5">
+                      <DefenseScheduleForm
+                        value={schedule}
+                        onChange={setSchedule}
+                        errors={scheduleErrors}
+                      />
+                      <DefenseReviewSummary
+                        readiness={readiness}
+                        showAdviser={selected.stage !== "TITLE"}
+                        schedule={schedule}
+                        isValid={isValid}
+                        isSubmitting={scheduleMutation.isPending}
+                        onPreviewEmail={() => setShowEmailPreview(true)}
+                        onSubmit={() => setShowConfirm(true)}
+                      />
+                    </div>
+                  </div>
                 </>
               )}
             </>
           ) : !selectedScheduleId ? (
-            <div className="rounded-lg border border-dashed border-(--earist-border-gray) p-12 text-center text-sm text-(--earist-body-text)">
-              Select a scheduled defense to view its schedule and confirmed
-              committee.
+            <div className="flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-gray-200 bg-white/80 p-12 text-center shadow-sm">
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-red-50 text-[#e02b20]">
+                <CalendarClock className="h-6 w-6" aria-hidden="true" />
+              </div>
+              <div className="space-y-1">
+                <p className="text-sm font-semibold text-[#333333]">
+                  No scheduled defense selected
+                </p>
+                <p className="text-sm text-gray-500">
+                  Select a scheduled defense to view its schedule and confirmed
+                  committee.
+                </p>
+              </div>
             </div>
           ) : (
             <ScheduledDefenseDetail

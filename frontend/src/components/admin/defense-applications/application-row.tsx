@@ -31,23 +31,23 @@ export type DefenseApplicationDto = ApprovedApplicationDto & {
 
 /** Workflow-bucket display projection, never raw ThesisRecord.status alone. */
 const STATUS_BADGE_CLASS: Record<string, string> = {
-  PENDING: "text-(--earist-warning)",
-  APPROVED: "text-(--earist-success)",
-  SCHEDULED: "text-(--earist-secondary)",
-  PASSED: "text-(--earist-success)",
-  REJECTED: "text-destructive",
-  REVISION: "text-(--earist-warning)",
-  FAILED: "text-destructive",
+  PENDING: "border-amber-200 bg-amber-50 text-amber-800",
+  APPROVED: "border-emerald-200 bg-emerald-50 text-emerald-700",
+  SCHEDULED: "border-blue-200 bg-blue-50 text-blue-700",
+  PASSED: "border-emerald-200 bg-emerald-50 text-emerald-700",
+  REJECTED: "border-red-200 bg-red-50 text-red-700",
+  REVISION: "border-amber-200 bg-amber-50 text-amber-800",
+  FAILED: "border-red-200 bg-red-50 text-red-700",
 };
 
 /** Session-status projection — text label always rendered, color is secondary. */
 const SESSION_BADGE_CLASS: Record<string, string> = {
-  SCHEDULED: "text-(--earist-secondary)",
-  RESCHEDULED: "text-(--earist-secondary)",
-  IN_PROGRESS: "text-(--earist-warning)",
-  AWAITING_CONCLUSION: "text-(--earist-warning)",
-  CONCLUDED: "text-(--earist-success)",
-  CANCELLED: "text-destructive",
+  SCHEDULED: "border-blue-200 bg-blue-50 text-blue-700",
+  RESCHEDULED: "border-blue-200 bg-blue-50 text-blue-700",
+  IN_PROGRESS: "border-amber-200 bg-amber-50 text-amber-800",
+  AWAITING_CONCLUSION: "border-amber-200 bg-amber-50 text-amber-800",
+  CONCLUDED: "border-emerald-200 bg-emerald-50 text-emerald-700",
+  CANCELLED: "border-red-200 bg-red-50 text-red-700",
 };
 
 /** Owner of the row-detail navigation for the application-oriented columns. */
@@ -144,17 +144,17 @@ export function DefenseApplicationRow({
     return (
       <TableRow>
         <TableCell>
-          <p className="text-sm font-semibold break-words text-foreground">
+          <p className="text-sm font-semibold break-words text-[#333333]">
             {studentName}
           </p>
-          <p className="mt-0.5 text-xs break-words text-(--earist-body-text)">
+          <p className="mt-0.5 text-xs break-words text-gray-500">
             {identitySecondary}
           </p>
         </TableCell>
         <TableCell>
-          <p className="text-sm break-words text-(--earist-body-text)">
+          <span className="inline-flex items-center rounded-md border border-gray-200 bg-gray-50 px-2.5 py-0.5 text-xs font-medium text-[#333333]">
             {STAGE_LABELS[app.stage] ?? app.stage}
-          </p>
+          </span>
         </TableCell>
         <TableCell>
           {schedule?.defenseDate ? (
@@ -234,25 +234,25 @@ export function DefenseApplicationRow({
   return (
     <TableRow>
       <TableCell>
-        <p className="text-sm font-semibold break-words text-foreground">
+        <p className="text-sm font-semibold break-words text-[#333333]">
           {studentName}
         </p>
-        <p className="mt-0.5 text-xs break-words text-(--earist-body-text)">
+        <p className="mt-0.5 text-xs break-words text-gray-500">
           {identitySecondary}
         </p>
       </TableCell>
       <TableCell>
-        <p className="text-sm break-words text-(--earist-body-text)">
+        <span className="inline-flex items-center rounded-md border border-gray-200 bg-gray-50 px-2.5 py-0.5 text-xs font-medium text-[#333333]">
           {STAGE_LABELS[app.stage] ?? app.stage}
-        </p>
+        </span>
       </TableCell>
       <TableCell>
-        <p className="text-sm break-words text-(--earist-body-text)">
+        <p className="text-sm break-words text-gray-600">
           {formatSubmitted(app.createdAt)}
         </p>
       </TableCell>
       <TableCell>
-        <p className="text-sm break-words text-(--earist-body-text)">
+        <p className="text-sm break-words text-gray-600">
           {docCount} document{docCount === 1 ? "" : "s"} submitted
         </p>
       </TableCell>

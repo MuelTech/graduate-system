@@ -31,10 +31,6 @@ type Props = {
   onAssignRole: (role: DefensePanelRole, people: PickerPerson[]) => void;
 };
 
-/** One consistent four-column grid for the header and every roster row. */
-const ROSTER_GRID =
-  "sm:grid sm:grid-cols-[minmax(0,9rem)_minmax(0,1fr)_5.5rem_6rem] sm:items-center sm:gap-3";
-
 function roleQuota(
   policy: CommitteePolicyDto | undefined,
   role: DefensePanelRole,
@@ -78,6 +74,7 @@ function RosterRow({
   participants,
   secondary,
   assigned,
+  complete = false,
   empty = false,
   action,
 }: {
@@ -85,37 +82,45 @@ function RosterRow({
   participants: string;
   secondary?: string;
   assigned: string;
+  complete?: boolean;
   empty?: boolean;
   action: React.ReactNode;
 }) {
   return (
-    <div className={cn("grid grid-cols-1 gap-1 py-3", ROSTER_GRID)}>
-      <div className="flex items-center justify-between gap-2 sm:block">
-        <span className="text-sm font-semibold text-(--earist-secondary)">
-          {role}
-        </span>
-        <span className="text-xs tabular-nums text-(--earist-body-text) sm:hidden">
-          {assigned}
-        </span>
-      </div>
-      <div className="min-w-0">
+    <div className="flex flex-col gap-2.5 rounded-xl border border-gray-200/80 bg-gray-50/40 px-3.5 py-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="min-w-0 flex-1 space-y-0.5">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-sm font-semibold text-[#333333]">
+            {role}
+          </span>
+          <Badge
+            variant="outline"
+            className={cn(
+              "px-2 py-0 text-[11px] font-medium tabular-nums",
+              complete
+                ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                : empty
+                  ? "border-gray-200 bg-white text-gray-600"
+                  : "border-amber-200 bg-amber-50 text-amber-800",
+            )}
+          >
+            {assigned}
+          </Badge>
+        </div>
         <p
           className={cn(
             "truncate text-sm",
-            empty ? "text-(--earist-body-text)" : "text-foreground",
+            empty ? "text-gray-400 italic" : "font-medium text-[#333333]",
           )}
           title={participants}
         >
           {participants}
         </p>
         {secondary && (
-          <p className="truncate text-xs text-(--earist-body-text)">{secondary}</p>
+          <p className="truncate text-xs text-gray-500">{secondary}</p>
         )}
       </div>
-      <div className="hidden text-center text-xs tabular-nums text-(--earist-body-text) sm:block">
-        {assigned}
-      </div>
-      <div className="sm:justify-self-end">{action}</div>
+      <div className="shrink-0">{action}</div>
     </div>
   );
 }
@@ -152,23 +157,29 @@ export function DefenseCommitteeBuilder({
   const actionsDisabled = !policy || policyLoading;
 
   return (
-    <Card>
+    <Card className="border-gray-100 bg-white shadow-sm">
       <CardHeader className="pb-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <CardTitle className="text-sm font-semibold text-(--earist-secondary)">
+          <CardTitle className="text-base font-bold text-[#333333]">
             Defense Committee
           </CardTitle>
-          <Badge variant="outline" className="text-xs">
+          <Badge
+            variant="outline"
+            className={cn(
+              "text-xs font-medium",
+              readiness?.complete
+                ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                : "border-gray-200 bg-gray-50 text-[#333333]",
+            )}
+          >
             <Users className="mr-1 h-3 w-3" aria-hidden="true" />
             {sessionTotal
               ? `${totalAssigned} / ${sessionTotal} assigned`
               : `${totalAssigned} assigned`}
           </Badge>
         </div>
-        <p className="text-xs text-(--earist-body-text)">
-          {defenseStageLabel} · {programTypeLabel}
-        </p>
-        <p className="text-xs text-(--earist-body-text)">
+        <p className="text-xs text-gray-500">
+          {defenseStageLabel} · {programTypeLabel} —{" "}
           {showAdviser
             ? "The active adviser is included automatically; assign the remaining roles."
             : "Assign all participants required for this session."}
@@ -176,20 +187,7 @@ export function DefenseCommitteeBuilder({
       </CardHeader>
 
       <CardContent className="pt-0">
-        <div className="divide-y divide-(--earist-border-gray)">
-          {/* Column headers — restrained, desktop only */}
-          <div
-            className={cn(
-              "hidden pb-1 text-xs font-medium tracking-wide text-(--earist-body-text) uppercase",
-              ROSTER_GRID,
-            )}
-          >
-            <span>Role</span>
-            <span>Assigned participant(s)</span>
-            <span className="text-center">Assigned</span>
-            <span className="text-right">Action</span>
-          </div>
-
+        <div className="space-y-2">
           {showAdviser && (
             <RosterRow
               role="Adviser"
@@ -201,13 +199,17 @@ export function DefenseCommitteeBuilder({
                     : "Active thesis adviser not found"
               }
               secondary="Active thesis adviser"
+              complete={!!adviser}
               empty={!adviser}
               assigned={adviser ? "1 / 1" : "0 / 1"}
               action={
-                <span className="inline-flex items-center gap-1 text-xs text-(--earist-body-text)">
-                  <Lock className="h-3.5 w-3.5" aria-hidden="true" />
+                <Badge
+                  variant="outline"
+                  className="inline-flex items-center gap-1 border-gray-200 bg-white text-xs text-gray-600"
+                >
+                  <Lock className="h-3 w-3" aria-hidden="true" />
                   Automatic
-                </span>
+                </Badge>
               }
             />
           )}
@@ -217,14 +219,18 @@ export function DefenseCommitteeBuilder({
             const quota = roleQuota(policy, role);
             const isPanelist = role === "PANELIST";
             const participants = isPanelist
-              ? compactNames(roleMembers.map((m) => m.name))
+              ? roleMembers.length > 0
+                ? compactNames(roleMembers.map((m) => m.name))
+                : "Not assigned"
               : (roleMembers[0]?.name ?? "Not assigned");
             const empty = roleMembers.length === 0;
+            const complete = quota !== undefined && roleMembers.length >= quota;
             return (
               <RosterRow
                 key={role}
                 role={isPanelist ? "Panelists" : ROLE_LABELS[role]}
                 participants={participants}
+                complete={complete}
                 empty={empty}
                 assigned={
                   quota === undefined ? "Loading…" : `${roleMembers.length} / ${quota}`
@@ -235,7 +241,7 @@ export function DefenseCommitteeBuilder({
                     variant="outline"
                     size="sm"
                     disabled={actionsDisabled}
-                    className="w-20 justify-center"
+                    className="w-20 justify-center bg-white"
                     onClick={() => setActiveRole(role)}
                   >
                     {empty ? "Assign" : "Edit"}
@@ -247,23 +253,23 @@ export function DefenseCommitteeBuilder({
         </div>
 
         {/* Committee-only readiness strip */}
-        <div className="mt-3 border-t border-(--earist-border-gray) pt-3 text-xs">
+        <div className="mt-3 border-t border-gray-100 pt-3 text-xs">
           {policyError ? (
             <span className="text-destructive">
               Committee requirements could not be loaded.
             </span>
           ) : !readiness ? (
-            <span className="text-(--earist-body-text)">
+            <span className="text-gray-500">
               Loading committee requirements…
             </span>
           ) : readiness.complete ? (
-            <span className="inline-flex items-center gap-1.5 text-(--earist-success)">
+            <span className="inline-flex items-center gap-1.5 font-medium text-emerald-700">
               <Check className="h-3.5 w-3.5" aria-hidden="true" />
               Committee complete · {readiness.totalCount} of{" "}
               {readiness.sessionTotal} participants assigned
             </span>
           ) : (
-            <span className="text-(--earist-warning)">
+            <span className="font-medium text-amber-700">
               {missingSentence(readiness, showAdviser)}
             </span>
           )}

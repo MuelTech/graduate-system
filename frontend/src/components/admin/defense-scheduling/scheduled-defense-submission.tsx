@@ -5,6 +5,8 @@ import { useSession } from "next-auth/react";
 import { useQuery } from "@tanstack/react-query";
 import { History } from "lucide-react";
 import { apiClientRequest } from "@/lib/api.client";
+import { cn } from "@/lib/utils";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { DocumentViewer } from "@/components/ui/document-viewer";
@@ -64,16 +66,20 @@ function SubmissionContext({
     setPreview(`/api/documents/thesis-document/${encodeURIComponent(id)}/file`);
   }
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-sm">Application Requirements</CardTitle>
+    <Card className="border-gray-100 bg-white shadow-sm">
+      <CardHeader className="pb-3">
+        <CardTitle className="text-base font-bold text-[#333333]">
+          Application Requirements
+        </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4 text-sm break-words">
         {query.isLoading && (
-          <p aria-live="polite">Loading application requirements…</p>
+          <p className="text-gray-500" aria-live="polite">
+            Loading application requirements…
+          </p>
         )}
         {query.isError && (
-          <div role="alert">
+          <div role="alert" className="text-gray-600">
             Application requirements could not be loaded.{" "}
             <Button size="sm" variant="outline" onClick={() => query.refetch()}>
               Try again
@@ -82,8 +88,11 @@ function SubmissionContext({
         )}
         {data && (
           <>
-            <section className="space-y-2" aria-label="Manuscript">
-              <h3 className="font-semibold">
+            <section
+              className="space-y-3 rounded-xl border border-gray-200/80 bg-gray-50/50 p-4"
+              aria-label="Manuscript"
+            >
+              <h3 className="font-semibold text-[#333333]">
                 {data.stage === "TITLE"
                   ? "Title Defense Proposal Package"
                   : "Manuscript"}
@@ -95,27 +104,32 @@ function SubmissionContext({
                 </p>
               )}
               {data.manuscript && (
-                <>
-                  {(data.stage === "PROPOSAL" || data.stage === "FINAL") && (
-                    <p>
-                      <span className="font-medium">
-                        Thesis/Dissertation Title:{" "}
-                      </span>
-                      {data.manuscript.manuscriptTitle ||
-                        "Title not recorded for this manuscript."}
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="min-w-0 space-y-1">
+                    {(data.stage === "PROPOSAL" || data.stage === "FINAL") && (
+                      <p className="text-[#333333]">
+                        <span className="font-medium text-gray-600">
+                          Thesis/Dissertation Title:{" "}
+                        </span>
+                        <span className="font-semibold">
+                          {data.manuscript.manuscriptTitle ||
+                            "Title not recorded for this manuscript."}
+                        </span>
+                      </p>
+                    )}
+                    <p className="text-xs break-words text-gray-500">
+                      {data.manuscript.originalFilename || "Filename unavailable"}
                     </p>
-                  )}
-                  <p className="text-xs break-words text-(--earist-body-text)">
-                    {data.manuscript.originalFilename || "Filename unavailable"}
-                  </p>
+                  </div>
                   <Button
                     variant="outline"
                     size="sm"
+                    className="shrink-0 bg-white"
                     onClick={() => viewDocument(data.manuscript!.id)}
                   >
                     View Manuscript
                   </Button>
-                </>
+                </div>
               )}
             </section>
             {(data.stage === "PROPOSAL" || data.stage === "FINAL") &&
@@ -126,32 +140,61 @@ function SubmissionContext({
                   exactRecords={[data.certification.record]}
                 />
               ) : (
-                <section className="space-y-2" aria-label="Adviser Certification">
-                  <h3 className="font-semibold">Adviser Certification</h3>
-                  <p role="status">
+                <section
+                  className="space-y-2 rounded-xl border border-gray-200/80 bg-gray-50/50 p-4"
+                  aria-label="Adviser Certification"
+                >
+                  <h3 className="font-semibold text-[#333333]">
+                    Adviser Certification
+                  </h3>
+                  <p role="status" className="text-xs text-gray-500">
                     Adviser Certification is not available for this defense.
                   </p>
                 </section>
               ))}
             <section className="space-y-3" aria-label="Application Requirements">
-              <ul className="divide-y divide-(--earist-border-gray)">
+              <ul
+                className={cn(
+                  "grid grid-cols-1 gap-3 sm:grid-cols-2",
+                  data.supportingEvidence.length >= 3 && "xl:grid-cols-3",
+                )}
+              >
                 {data.supportingEvidence.map((slot) => (
                   <li
                     key={slot.docType}
-                    className="flex flex-wrap items-center justify-between gap-2 py-2.5 first:pt-0 last:pb-0"
+                    className="flex flex-col justify-between gap-3 rounded-xl border border-gray-200/80 bg-gray-50/50 p-3.5"
                   >
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium">
-                        {requirementLabel(slot.docType)}
-                      </p>
+                    <div className="space-y-2">
+                      <div className="flex items-start justify-between gap-2">
+                        <p className="text-sm font-semibold text-[#333333]">
+                          {requirementLabel(slot.docType)}
+                        </p>
+                        {slot.current ? (
+                          <Badge
+                            variant="outline"
+                            className="shrink-0 border-emerald-200 bg-emerald-50 text-[11px] text-emerald-700"
+                          >
+                            On file
+                          </Badge>
+                        ) : (
+                          <Badge
+                            variant="outline"
+                            className="shrink-0 border-amber-200 bg-amber-50 text-[11px] text-amber-800"
+                          >
+                            {slot.integrityState === "AMBIGUOUS"
+                              ? "Review required"
+                              : "Missing"}
+                          </Badge>
+                        )}
+                      </div>
                       {slot.current ? (
-                        <p className="mt-0.5 text-xs break-words text-(--earist-body-text)">
+                        <p className="text-xs break-words text-gray-500">
                           {slot.current.originalFilename ||
                             "Filename unavailable"}{" "}
                           · {formatDocumentDate(slot.current.uploadedAt)}
                         </p>
                       ) : (
-                        <p role="status" className="mt-0.5 text-sm text-(--earist-warning)">
+                        <p role="status" className="text-xs text-amber-700">
                           {slot.integrityState === "AMBIGUOUS"
                             ? "Multiple current versions recorded — review required."
                             : "No current document recorded."}
@@ -162,6 +205,7 @@ function SubmissionContext({
                       <Button
                         size="sm"
                         variant="outline"
+                        className="w-full bg-white"
                         onClick={() => viewDocument(slot.current!.id)}
                       >
                         View
@@ -171,20 +215,20 @@ function SubmissionContext({
                 ))}
               </ul>
               {hasDocumentHistory && (
-                <details className="rounded-lg border border-(--earist-border-gray) px-4 py-3">
-                  <summary className="flex cursor-pointer items-center gap-2 text-sm font-semibold text-(--earist-secondary)">
-                    <History className="h-4 w-4" aria-hidden="true" />
+                <details className="rounded-xl border border-gray-200/80 bg-gray-50/30 px-4 py-3">
+                  <summary className="flex cursor-pointer items-center gap-2 text-sm font-semibold text-[#333333]">
+                    <History className="h-4 w-4 text-gray-500" aria-hidden="true" />
                     View document history
                   </summary>
                   <div className="mt-3">
-                    <ul className="space-y-1">
+                    <ul className="space-y-1.5">
                       {data.supportingEvidence.flatMap((slot) =>
                         slot.history.map((doc) => (
                           <li
                             key={doc.id}
-                            className="flex flex-wrap items-center justify-between gap-2 rounded-md bg-(--earist-surface-gray) px-3 py-2 text-sm"
+                            className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-gray-200/70 bg-white px-3 py-2 text-sm"
                           >
-                            <span className="min-w-0 break-words">
+                            <span className="min-w-0 break-words text-gray-600">
                               {requirementLabel(slot.docType)} · Previous:{" "}
                               {doc.originalFilename || "Filename unavailable"}
                             </span>

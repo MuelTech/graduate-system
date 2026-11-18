@@ -64,19 +64,19 @@ export function DefenseApplicationFilters({
   const isFiltered = search !== "" || stage !== ALL || programId !== ALL;
 
   return (
-    <Card>
+    <Card className="border-gray-100 bg-white shadow-sm">
       <CardContent className="p-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
           <div className="w-full sm:min-w-[220px] sm:flex-1">
             <label
               htmlFor="defense-app-search"
-              className="mb-1 block text-sm font-medium text-(--earist-body-text)"
+              className="mb-1.5 block text-xs font-semibold tracking-wider text-gray-500 uppercase"
             >
               Search
             </label>
             <div className="relative">
               <Search
-                className="absolute top-1/2 left-2.5 h-4 w-4 -translate-y-1/2 text-(--earist-body-text)/60"
+                className="absolute top-1/2 left-2.5 h-4 w-4 -translate-y-1/2 text-gray-400"
                 aria-hidden="true"
               />
               <Input
@@ -84,7 +84,7 @@ export function DefenseApplicationFilters({
                 value={search}
                 onChange={(event) => onSearchChange(event.target.value)}
                 placeholder="Search student name, student number, or email…"
-                className="pl-9"
+                className="border-gray-200 bg-gray-50/40 pl-9 focus:bg-white"
               />
             </div>
           </div>
@@ -92,7 +92,7 @@ export function DefenseApplicationFilters({
           <div className="w-full sm:w-56">
             <label
               htmlFor="defense-app-stage"
-              className="mb-1 block text-sm font-medium text-(--earist-body-text)"
+              className="mb-1.5 block text-xs font-semibold tracking-wider text-gray-500 uppercase"
             >
               Defense Stage
             </label>
@@ -100,7 +100,10 @@ export function DefenseApplicationFilters({
               value={stage}
               onValueChange={(value) => onStageChange(value ?? ALL)}
             >
-              <SelectTrigger id="defense-app-stage" className="w-full">
+              <SelectTrigger
+                id="defense-app-stage"
+                className="w-full border-gray-200 bg-gray-50/40 focus:bg-white"
+              >
                 <span className="flex-1 truncate text-left" title={stageLabel}>
                   {stageLabel}
                 </span>
@@ -118,7 +121,7 @@ export function DefenseApplicationFilters({
           <div className="w-full sm:w-72">
             <label
               htmlFor="defense-app-program"
-              className="mb-1 block text-sm font-medium text-(--earist-body-text)"
+              className="mb-1.5 block text-xs font-semibold tracking-wider text-gray-500 uppercase"
             >
               Program
             </label>
@@ -127,7 +130,10 @@ export function DefenseApplicationFilters({
               onValueChange={(value) => onProgramChange(value ?? ALL)}
               disabled={programsLoading || programsError}
             >
-              <SelectTrigger id="defense-app-program" className="w-full">
+              <SelectTrigger
+                id="defense-app-program"
+                className="w-full border-gray-200 bg-gray-50/40 focus:bg-white"
+              >
                 <span
                   className="flex-1 truncate text-left"
                   title={programLabel}

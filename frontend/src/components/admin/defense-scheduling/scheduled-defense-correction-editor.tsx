@@ -223,42 +223,48 @@ export function ScheduledDefenseCorrectionEditor({
         </div>
       )}
 
-      <DefenseScheduleForm
-        value={schedule}
-        onChange={setSchedule}
-        errors={scheduleErrors}
-      />
+      <div className="grid grid-cols-1 items-start gap-4 xl:grid-cols-12">
+        <div className="xl:col-span-7">
+          <DefenseCommitteeBuilder
+            policy={policy}
+            policyLoading={policyLoading}
+            policyError={policyError}
+            showAdviser={showAdviser}
+            defenseStageLabel={defenseTypeLabel(
+              stageFromDefenseType(detail.defenseType),
+            )}
+            programTypeLabel={programTypeLabel(detail.programType)}
+            members={committee}
+            adviser={adviser}
+            onAssignRole={assignRole}
+          />
+        </div>
 
-      <DefenseCommitteeBuilder
-        policy={policy}
-        policyLoading={policyLoading}
-        policyError={policyError}
-        showAdviser={showAdviser}
-        defenseStageLabel={defenseTypeLabel(
-          stageFromDefenseType(detail.defenseType),
-        )}
-        programTypeLabel={programTypeLabel(detail.programType)}
-        members={committee}
-        adviser={adviser}
-        onAssignRole={assignRole}
-      />
+        <div className="space-y-4 xl:sticky xl:top-20 xl:col-span-5">
+          <DefenseScheduleForm
+            value={schedule}
+            onChange={setSchedule}
+            errors={scheduleErrors}
+          />
 
-      <DefenseReviewSummary
-        title="Review Changes"
-        readiness={readiness}
-        showAdviser={showAdviser}
-        schedule={schedule}
-        isValid={canSave}
-        isSubmitting={mutation.isPending}
-        onSubmit={() => {
-          setError(null);
-          setShowConfirm(true);
-        }}
-        onCancel={onCancel}
-        submitLabel="Save Changes"
-        submittingLabel="Saving…"
-        submitIcon={<Save className="mr-2 h-4 w-4" aria-hidden="true" />}
-      />
+          <DefenseReviewSummary
+            title="Review Changes"
+            readiness={readiness}
+            showAdviser={showAdviser}
+            schedule={schedule}
+            isValid={canSave}
+            isSubmitting={mutation.isPending}
+            onSubmit={() => {
+              setError(null);
+              setShowConfirm(true);
+            }}
+            onCancel={onCancel}
+            submitLabel="Save Changes"
+            submittingLabel="Saving…"
+            submitIcon={<Save className="mr-2 h-4 w-4" aria-hidden="true" />}
+          />
+        </div>
+      </div>
 
       <Dialog open={showConfirm} onOpenChange={setShowConfirm}>
         <DialogContent className="sm:max-w-md">
