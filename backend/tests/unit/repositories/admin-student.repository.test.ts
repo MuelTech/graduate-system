@@ -254,6 +254,23 @@ describe("AdminStudentRepository.findStudentDetailById", () => {
       assignedDate: "2026-08-01T00:00:00.000Z",
     });
   });
+
+  it("falls back to program.maxResidencyYears when residencyTracking is absent", async () => {
+    prismaMock.student.findUnique.mockResolvedValue(
+      detailStudent({
+        residencyStartDate: new Date("2026-06-01T00:00:00.000Z"),
+        program: { id: "prog-1", programName: "MAT Math", maxResidencyYears: 4 },
+        residencyTracking: null,
+      }),
+    );
+
+    const detail = await new AdminStudentRepository().findStudentDetailById("s1");
+
+    expect(detail?.residency).toEqual({
+      startDate: "2026-06-01T00:00:00.000Z",
+      maxYears: 4,
+    });
+  });
 });
 
 describe("AdminStudentRepository.findStudentUserId", () => {

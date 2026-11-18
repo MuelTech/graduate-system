@@ -55,10 +55,11 @@ Read these in this order for work that touches Thesis/Defense, Examinations, Acc
 
 ### Tier 2 — current technical design & plans
 
-7. `docs/superpowers/plans/2026-11-11-faculty-admin-access-implementation.md`
-8. `docs/superpowers/plans/2026-11-11-ui-design-system-overhaul.md`
-9. `docs/superpowers/specs/2026-09-26-defense-session-workflow-design.md`
-10. `docs/superpowers/specs/2026-10-02-document-lifecycle-storage-design.md`
+7. `docs/superpowers/plans/2026-11-18-program-master-data-and-waiver-cleanup.md`
+8. `docs/superpowers/plans/2026-11-11-faculty-admin-access-implementation.md`
+9. `docs/superpowers/plans/2026-11-11-ui-design-system-overhaul.md`
+10. `docs/superpowers/specs/2026-09-26-defense-session-workflow-design.md`
+11. `docs/superpowers/specs/2026-10-02-document-lifecycle-storage-design.md`
 
 ### Tier 3 — implementation reference/history
 

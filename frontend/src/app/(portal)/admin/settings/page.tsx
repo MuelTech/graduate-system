@@ -17,6 +17,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { ESignaturePad } from "@/components/defense-workspace/e-signature-pad";
+import { ProgramsSettingsTab } from "@/components/admin/settings/programs-settings-tab";
 import { normalizeUploadedSignatureImage } from "@/lib/user-signature";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiClientRequest } from "@/lib/api.client";
@@ -974,6 +975,9 @@ export default function AdminSettingsPage() {
                     <option value="cor_rejected">COR Rejected</option>
                     <option value="role_assigned">Role Assigned</option>
                     <option value="strikes_reset">Strikes Reset</option>
+                    <option value="program_created">Program Created</option>
+                    <option value="program_updated">Program Updated</option>
+                    <option value="program_status_changed">Program Status Changed</option>
                   </select>
                   <Input
                     type="date"
@@ -1147,8 +1151,12 @@ export default function AdminSettingsPage() {
             </Card>
           )}
 
+          {/* Programs Tab */}
+          {activeTab === "programs" && <ProgramsSettingsTab />}
+
           {/* Other Tabs Placeholder */}
-          {activeTab !== "academic_year" &&
+          {activeTab !== "programs" &&
+            activeTab !== "academic_year" &&
             activeTab !== "audit" &&
             activeTab !== "email" &&
             activeTab !== "officials" && (

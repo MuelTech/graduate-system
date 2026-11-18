@@ -35,14 +35,28 @@ import { loadInstitutionalOfficials } from "./institutional-officials.service";
 import { formatOfficialApplicationDate } from "./official-form-display";
 import { loadOfficialFormLogos } from "./official-form-assets";
 import { renderAdviserRequest } from "../documents/official-defense/adviser-request/adviser-request.renderer";
+import { formatOfficialProgramDisplay } from "../config/graduate-programs";
 
-function signingStudent(student: { id: string; studentNumber: string | null; user: { firstName: string; lastName: string }; program: { programName: string } | null }) {
-  if (!student.studentNumber?.trim() || !student.program?.programName?.trim()
+function signingStudent(student: {
+  id: string;
+  studentNumber: string | null;
+  user: { firstName: string; lastName: string };
+  program: {
+    programName: string;
+    degreeName?: string | null;
+    majorName?: string | null;
+    programCode?: string | null;
+  } | null;
+}) {
+  const formattedProgram = student.program
+    ? formatOfficialProgramDisplay(student.program)
+    : "";
+  if (!student.studentNumber?.trim() || !formattedProgram
     || !`${student.user.firstName} ${student.user.lastName}`.trim()) {
     throw new AppError("Your Student name, Student Number, and Program must be complete before signing an adviser request.", 409);
   }
   return { studentId: student.id, studentName: `${student.user.firstName} ${student.user.lastName}`.trim(),
-    studentNumber: student.studentNumber, programName: student.program.programName };
+    studentNumber: student.studentNumber, programName: formattedProgram };
 }
 
 export interface OdpCandidateDto {

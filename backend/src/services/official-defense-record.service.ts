@@ -25,6 +25,7 @@ import {
   roundAcademicValue,
 } from "./academic-number.rules";
 import { loadInstitutionalOfficials } from "./institutional-officials.service";
+import { formatOfficialProgramDisplay } from "../config/graduate-programs";
 
 export const OFFICIAL_DEFENSE_FEE_DISPLAY = "P 900.00";
 
@@ -279,7 +280,13 @@ export class OfficialDefenseRecordService {
                   select: { firstName: true, lastName: true },
                 },
                 program: {
-                  select: { programName: true, programType: true },
+                  select: {
+                    programName: true,
+                    degreeName: true,
+                    majorName: true,
+                    programCode: true,
+                    programType: true,
+                  },
                 },
               },
             },
@@ -468,7 +475,9 @@ export class OfficialDefenseRecordService {
         ? `${schedule.thesis.student.user.firstName} ${schedule.thesis.student.user.lastName}`
         : null,
       studentNumber: schedule.thesis?.student?.studentNumber ?? null,
-      program: schedule.thesis?.student?.program?.programName ?? null,
+      program: schedule.thesis?.student?.program
+        ? formatOfficialProgramDisplay(schedule.thesis.student.program)
+        : null,
       defenseDate: schedule.defenseDate
         ? schedule.defenseDate.toISOString()
         : null,
@@ -608,7 +617,9 @@ export class OfficialDefenseRecordService {
         ? `${schedule.thesis.student.user.firstName} ${schedule.thesis.student.user.lastName}`
         : null,
       studentNumber: schedule.thesis?.student?.studentNumber ?? null,
-      program: schedule.thesis?.student?.program?.programName ?? null,
+      program: schedule.thesis?.student?.program
+        ? formatOfficialProgramDisplay(schedule.thesis.student.program)
+        : null,
       defenseDate: schedule.defenseDate
         ? schedule.defenseDate.toISOString()
         : null,
@@ -738,7 +749,13 @@ export class OfficialDefenseRecordService {
                   select: { firstName: true, lastName: true, email: true },
                 },
                 program: {
-                  select: { programName: true, programType: true },
+                  select: {
+                    programName: true,
+                    degreeName: true,
+                    majorName: true,
+                    programCode: true,
+                    programType: true,
+                  },
                 },
               },
             },
@@ -802,7 +819,9 @@ export class OfficialDefenseRecordService {
       studentNumber: student?.studentNumber ?? null,
       cellphone: student?.cellphone ?? null,
       studentEmail: student?.user.email ?? null,
-      programName: student?.program?.programName ?? null,
+      programName: student?.program
+        ? formatOfficialProgramDisplay(student.program)
+        : null,
       applicationSubmittedAt: applicationSubmittedAt
         ? applicationSubmittedAt.toISOString()
         : null,
@@ -1076,7 +1095,9 @@ export class OfficialDefenseRecordService {
         ? `${schedule.thesis.student.user.firstName} ${schedule.thesis.student.user.lastName}`
         : null,
       studentNumber: schedule.thesis?.student?.studentNumber ?? null,
-      program: schedule.thesis?.student?.program?.programName ?? null,
+      program: schedule.thesis?.student?.program
+        ? formatOfficialProgramDisplay(schedule.thesis.student.program)
+        : null,
       defenseDate: schedule.defenseDate
         ? schedule.defenseDate.toISOString()
         : null,
@@ -1220,7 +1241,9 @@ export class OfficialDefenseRecordService {
         ? `${schedule.thesis.student.user.firstName} ${schedule.thesis.student.user.lastName}`
         : null,
       studentNumber: schedule.thesis?.student?.studentNumber ?? null,
-      program: schedule.thesis?.student?.program?.programName ?? null,
+      program: schedule.thesis?.student?.program
+        ? formatOfficialProgramDisplay(schedule.thesis.student.program)
+        : null,
       defenseDate: schedule.defenseDate
         ? schedule.defenseDate.toISOString()
         : null,

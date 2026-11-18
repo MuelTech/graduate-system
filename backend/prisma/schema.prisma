@@ -139,9 +139,13 @@ model Panelist {
 model Program {
   id                        String                    @id @default(uuid()) @map("program_id")
   programName               String                    @map("program_name")
+  degreeName                String?                   @map("degree_name")
+  majorName                 String?                   @map("major_name")
+  programCode               String?                   @map("program_code")
   programType               ProgramType               @map("program_type")
   department                String?
   maxResidencyYears         Int?                      @map("max_residency_years")
+  isActive                  Boolean                   @default(true) @map("is_active")
   createdAt                 DateTime                  @default(now()) @map("created_at")
   bridgingWaivers           ApplicantBridgingWaiver[] @relation("BridgingIntendedProgram")
   examApplications          EntranceExamApplication[]

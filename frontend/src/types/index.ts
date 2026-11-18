@@ -30,6 +30,17 @@ export interface ExamSlot {
 export interface Program {
   id: string;
   programName: string;
+  degreeName?: string | null;
+  majorName?: string | null;
+  programCode?: string | null;
+  programType?: "MASTERS" | "DOCTORAL";
+  maxResidencyYears?: number | null;
+  isActive?: boolean;
+  _count?: {
+    students: number;
+    examSlots: number;
+    examApplications: number;
+  };
 }
 
 /** ADMIN-only current seat-holder projection; no scoring/authorization evidence. */
