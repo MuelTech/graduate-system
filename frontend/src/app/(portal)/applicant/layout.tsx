@@ -184,7 +184,9 @@ export default function ApplicantLayout({
         </header>
 
         {/* Page Content */}
-        <main className="flex-1 p-4 sm:p-6 lg:p-8">{children}</main>
+        <main className="flex-1 p-4 sm:p-6 lg:p-8">
+          <div className="mx-auto w-full max-w-[1440px]">{children}</div>
+        </main>
       </div>
 
       {/* AI Chatbot Widget */}

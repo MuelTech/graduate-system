@@ -545,66 +545,86 @@ export default function AdminDefenseRecordDetailPage() {
             </div>
           </div>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            <MetaItem label="Student">
-              {o.studentName ?? "—"}
-            </MetaItem>
-            <MetaItem label="Student No.">
-              {o.studentNumber ?? "—"}
-            </MetaItem>
-            <MetaItem label="Program">{o.program ?? "—"}</MetaItem>
-            <MetaItem label="Defense Stage">{defenseTypeLabel(stage)}</MetaItem>
-            <MetaItem label="Defense Date">
-              {formatDefenseDate(o.defenseDate)}
-              {o.defenseTime ? (
-                <span className="block text-xs tabular-nums text-(--earist-body-text)">
-                  {formatDefenseTime(o.defenseTime)}
-                </span>
-              ) : null}
-            </MetaItem>
-            <MetaItem label="Venue / Meeting Details">
-              {venue.kind === "url" ? (
-                <a
-                  href={venue.href}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1 text-(--earist-primary) underline underline-offset-2 hover:text-(--earist-secondary)"
-                >
-                  Open Meeting Link
-                  <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
-                </a>
-              ) : venue.kind === "text" ? (
-                venue.text
-              ) : (
-                "—"
-              )}
-            </MetaItem>
-            <MetaItem label="Formal Result">
-              {o.formalResult ? (
-                <Badge
-                  variant="outline"
-                  className={cn(
-                    "font-medium",
-                    RESULT_BADGE_CLASS[o.formalResult],
+        <CardContent>
+          <div className="grid grid-cols-1 gap-5 lg:grid-cols-12">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:col-span-7">
+              <div className="rounded-lg border border-gray-100 bg-gray-50/60 p-3">
+                <MetaItem label="Student">
+                  {o.studentName ?? "—"}
+                </MetaItem>
+              </div>
+              <div className="rounded-lg border border-gray-100 bg-gray-50/60 p-3">
+                <MetaItem label="Student No.">
+                  {o.studentNumber ?? "—"}
+                </MetaItem>
+              </div>
+              <div className="rounded-lg border border-gray-100 bg-gray-50/60 p-3 sm:col-span-2">
+                <MetaItem label="Program">{o.program ?? "—"}</MetaItem>
+              </div>
+              <div className="rounded-lg border border-gray-100 bg-gray-50/60 p-3">
+                <MetaItem label="Defense Stage">{defenseTypeLabel(stage)}</MetaItem>
+              </div>
+              <div className="rounded-lg border border-gray-100 bg-gray-50/60 p-3">
+                <MetaItem label="Defense Date">
+                  {formatDefenseDate(o.defenseDate)}
+                  {o.defenseTime ? (
+                    <span className="block text-xs tabular-nums text-(--earist-body-text)">
+                      {formatDefenseTime(o.defenseTime)}
+                    </span>
+                  ) : null}
+                </MetaItem>
+              </div>
+              <div className="rounded-lg border border-gray-100 bg-gray-50/60 p-3">
+                <MetaItem label="Venue / Meeting Details">
+                  {venue.kind === "url" ? (
+                    <a
+                      href={venue.href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 text-(--earist-primary) underline underline-offset-2 hover:text-(--earist-secondary)"
+                    >
+                      Open Meeting Link
+                      <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
+                    </a>
+                  ) : venue.kind === "text" ? (
+                    venue.text
+                  ) : (
+                    "—"
                   )}
-                >
-                  {resultLabel(o.formalResult)}
-                </Badge>
-              ) : (
-                <span className="text-(--earist-body-text)">—</span>
-              )}
-            </MetaItem>
-            {recordedTitle ? (
-              <MetaItem label="Approved Research Title">{recordedTitle}</MetaItem>
-            ) : null}
-          </div>
+                </MetaItem>
+              </div>
+              <div className="rounded-lg border border-gray-100 bg-gray-50/60 p-3">
+                <MetaItem label="Formal Result">
+                  {o.formalResult ? (
+                    <Badge
+                      variant="outline"
+                      className={cn(
+                        "font-medium",
+                        RESULT_BADGE_CLASS[o.formalResult],
+                      )}
+                    >
+                      {resultLabel(o.formalResult)}
+                    </Badge>
+                  ) : (
+                    <span className="text-(--earist-body-text)">—</span>
+                  )}
+                </MetaItem>
+              </div>
+              {recordedTitle ? (
+                <div className="rounded-lg border border-gray-100 bg-gray-50/60 p-3 sm:col-span-2">
+                  <MetaItem label="Approved Research Title">
+                    {recordedTitle}
+                  </MetaItem>
+                </div>
+              ) : null}
+            </div>
 
-          <div className="border-t border-(--earist-border-gray) pt-3">
-            <h3 className="mb-1 text-sm font-semibold text-(--earist-secondary)">
-              Defense Committee
-            </h3>
-            <CommitteeRoster committee={o.committee} />
+            <div className="rounded-xl border border-gray-100 bg-gray-50/60 p-4 lg:col-span-5">
+              <h3 className="mb-2 text-sm font-semibold text-(--earist-secondary)">
+                Defense Committee
+              </h3>
+              <CommitteeRoster committee={o.committee} />
+            </div>
           </div>
         </CardContent>
       </Card>

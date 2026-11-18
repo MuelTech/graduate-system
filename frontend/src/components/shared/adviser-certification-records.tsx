@@ -80,78 +80,80 @@ function CertificationRecordList({ thesisId, stage, viewerScope, exactRecords }:
               {record.manuscriptTitle || "Title not recorded for this manuscript."}
             </p>
           </div>
-          <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-gray-600">
-            <span className="font-medium text-[#333333]">
-              {record.originalFilename || "Filename unavailable"}
-            </span>
-            <span>
-              Certified by {record.adviserName}
-              {record.issuedAt
-                ? ` on ${new Date(record.issuedAt).toLocaleDateString("en-PH", { timeZone: "Asia/Manila" })}`
-                : ""}
-            </span>
-          </div>
-          {!record.pdfAvailable && (
-            <p role="status" className="text-xs text-amber-700">
-              Adviser Certification is not available for this record.
-            </p>
-          )}
-          <div className="flex flex-wrap gap-2">
-            {record.manuscriptDocumentId && (
+          <div className="mt-3 flex flex-col gap-3 border-t border-emerald-200/60 pt-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="min-w-0 space-y-1 text-xs text-gray-600">
+              <p className="font-medium break-words text-[#333333]">
+                {record.originalFilename || "Filename unavailable"}
+              </p>
+              <p>
+                Certified by {record.adviserName}
+                {record.issuedAt
+                  ? ` on ${new Date(record.issuedAt).toLocaleDateString("en-PH", { timeZone: "Asia/Manila" })}`
+                  : ""}
+              </p>
+              {!record.pdfAvailable && (
+                <p role="status" className="text-amber-700">
+                  Adviser Certification is not available for this record.
+                </p>
+              )}
+            </div>
+            <div className="flex shrink-0 flex-wrap gap-2">
+              {record.manuscriptDocumentId && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="bg-white"
+                  onClick={() =>
+                    setPreview({
+                      url: `/api/documents/thesis-document/${record.manuscriptDocumentId}/file`,
+                      title: "Manuscript",
+                    })
+                  }
+                >
+                  View Manuscript
+                </Button>
+              )}
               <Button
                 size="sm"
                 variant="outline"
                 className="bg-white"
+                disabled={!record.pdfAvailable}
                 onClick={() =>
                   setPreview({
-                    url: `/api/documents/thesis-document/${record.manuscriptDocumentId}/file`,
-                    title: "Manuscript",
+                    url: `/api/adviser-certifications/${record.id}/pdf`,
+                    title: "Adviser Certification",
                   })
                 }
               >
-                View Manuscript
+                View Certification
               </Button>
-            )}
-            <Button
-              size="sm"
-              variant="outline"
-              className="bg-white"
-              disabled={!record.pdfAvailable}
-              onClick={() =>
-                setPreview({
-                  url: `/api/adviser-certifications/${record.id}/pdf`,
-                  title: "Adviser Certification",
-                })
-              }
-            >
-              View Certification
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              className="bg-white"
-              disabled={!record.pdfAvailable || busyId !== null}
-              onClick={async () => {
-                setBusyId(record.id);
-                setError(null);
-                try {
-                  await downloadOfficialDefensePdf(
-                    `/thesis/adviser-certifications/${record.id}/pdf`,
-                    "Adviser-Certification.pdf",
-                  );
-                } catch (failure) {
-                  setError(
-                    failure instanceof Error
-                      ? failure.message
-                      : "The certification could not be downloaded.",
-                  );
-                } finally {
-                  setBusyId(null);
-                }
-              }}
-            >
-              {busyId === record.id ? "Downloading…" : "Download Certification"}
-            </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                className="bg-white"
+                disabled={!record.pdfAvailable || busyId !== null}
+                onClick={async () => {
+                  setBusyId(record.id);
+                  setError(null);
+                  try {
+                    await downloadOfficialDefensePdf(
+                      `/thesis/adviser-certifications/${record.id}/pdf`,
+                      "Adviser-Certification.pdf",
+                    );
+                  } catch (failure) {
+                    setError(
+                      failure instanceof Error
+                        ? failure.message
+                        : "The certification could not be downloaded.",
+                    );
+                  } finally {
+                    setBusyId(null);
+                  }
+                }}
+              >
+                {busyId === record.id ? "Downloading…" : "Download Certification"}
+              </Button>
+            </div>
           </div>
         </div>
       ))}

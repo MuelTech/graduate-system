@@ -383,7 +383,9 @@ export default function AdminLayout({
 
         {/* Page Content */}
         <main className="flex-1 p-4 sm:p-6 lg:p-8">
-          {!authMeLoaded || isPathAllowed ? children : null}
+          <div className="mx-auto w-full max-w-[1440px]">
+            {!authMeLoaded || isPathAllowed ? children : null}
+          </div>
         </main>
       </div>
 

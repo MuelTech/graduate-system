@@ -375,11 +375,11 @@ export default function TitleDefensePage() {
           <h2 className="text-base font-bold text-[#333333]">
             Required Documents
           </h2>
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             {DOCUMENTS.map((config) => (
               <div
                 key={config.key}
-                className={config.key === "package" ? "lg:col-span-3" : "lg:col-span-1"}
+                className={config.key === "package" ? "md:col-span-2" : "md:col-span-1"}
               >
                 <DocumentUploadSlot
                   label={config.label}
