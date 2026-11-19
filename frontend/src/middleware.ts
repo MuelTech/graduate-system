@@ -26,20 +26,13 @@ export default auth((req: NextRequest & { auth: Session | null }) => {
   const role = token.user?.role;
   const mustChangePassword = token.user?.mustChangePassword;
 
-  // Force faculty and administrators to change default password on first login
-  if (
-    (isFacultyRole(role) || role === "admin") &&
-    mustChangePassword &&
-    path !== "/change-password"
-  ) {
+  // Force users with temporary/reset passwords to set a new password before portal access
+  if (mustChangePassword && path !== "/change-password") {
     return NextResponse.redirect(new URL("/change-password", req.url));
   }
 
-  // Allow change-password page access for faculty and administrators
-  if (
-    path === "/change-password" &&
-    (isFacultyRole(role) || role === "admin")
-  ) {
+  // Allow change-password page access for authenticated users
+  if (path === "/change-password") {
     return NextResponse.next();
   }
 

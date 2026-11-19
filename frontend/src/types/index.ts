@@ -609,6 +609,11 @@ export interface AdminApplicantDetail {
   admissionStatus: string;
   enrollmentDate: string | null;
   createdAt: string;
+  isActive?: boolean;
+  mustChangePassword?: boolean;
+  canChangeProgram?: boolean;
+  canDelete?: boolean;
+  deleteBlockedReason?: string | null;
 }
 
 export interface ExamApplicationDetail {
@@ -745,13 +750,18 @@ export interface AdminStudentDetail {
   id: string;
   firstName: string;
   lastName: string;
+  suffix?: string | null;
   email: string;
   studentNumber: string | null;
+  pinnacleApplicantId?: string | null;
   cellphone: string | null;
   program: { id: string; programName: string } | null;
   admissionStatus: string;
   enrollmentDate: string | null;
   curriculumType: string | null;
+  isActive?: boolean;
+  mustChangePassword?: boolean;
+  canChangeProgram?: boolean;
   residency: { startDate: string | null; maxYears: number | null } | null;
   /** Latest recorded Comprehensive Exam status; null when no record exists. */
   compExam: { status: string; recordedAt: string | null } | null;

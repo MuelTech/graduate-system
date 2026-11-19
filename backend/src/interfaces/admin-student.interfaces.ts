@@ -10,14 +10,19 @@ export interface AdminStudentDetail {
   id: string;
   firstName: string;
   lastName: string;
+  suffix?: string | null;
   email: string;
   studentNumber: string | null;
+  pinnacleApplicantId?: string | null;
   cellphone: string | null;
   program: { id: string; programName: string } | null;
   admissionStatus: string;
   /** ISO string; null when not recorded. */
   enrollmentDate: string | null;
   curriculumType: string | null;
+  isActive?: boolean;
+  mustChangePassword?: boolean;
+  canChangeProgram?: boolean;
   /** Residency context; null when neither start date nor max years is recorded. */
   residency: { startDate: string | null; maxYears: number | null } | null;
   /**
@@ -31,4 +36,19 @@ export interface AdminStudentDetail {
     adviserName: string;
     assignedDate: string | null;
   } | null;
+}
+
+export interface UpdateAdminStudentInput {
+  firstName?: string;
+  lastName?: string;
+  suffix?: string | null;
+  studentNumber?: string;
+  email?: string;
+  cellphone?: string;
+  programId?: string;
+  curriculumType?: "NEW" | "OLD" | null;
+  enrollmentDate?: string | null;
+  residencyStartDate?: string | null;
+  isActive?: boolean;
+  reason?: string;
 }

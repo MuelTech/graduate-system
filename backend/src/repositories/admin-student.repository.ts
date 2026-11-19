@@ -182,6 +182,26 @@ export class AdminStudentRepository {
   }
 
   /**
+   * Manual of Operations §7.14.3: Program shifting/correction is prohibited once
+   * Title Defense has been completed or the student is no longer actively enrolled.
+   */
+  static canChangeProgram(
+    admissionStatus: string,
+    thesisRecords: Array<{ stage: string; status: string }>,
+  ): boolean {
+    if (admissionStatus !== "ENROLLED") return false;
+    return !thesisRecords.some(
+      (rec) =>
+        rec.stage === "PROPOSAL" ||
+        rec.stage === "FINAL" ||
+        (rec.stage === "TITLE" &&
+          (rec.status === "PASSED" ||
+            rec.status === "APPROVED" ||
+            rec.status === "COMPLETED")),
+    );
+  }
+
+  /**
    * Explicit, bounded detail projection for the Admin Student Profile.
    * Missing records are represented as null — never fabricated.
    */
@@ -192,7 +212,15 @@ export class AdminStudentRepository {
       where: { id: studentId },
       include: {
         user: {
-          select: { firstName: true, lastName: true, email: true },
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            suffix: true,
+            email: true,
+            isActive: true,
+            mustChangePassword: true,
+          },
         },
         program: {
           select: { id: true, programName: true, maxResidencyYears: true },
@@ -200,6 +228,9 @@ export class AdminStudentRepository {
         compExamRecords: {
           select: { status: true, createdAt: true },
           orderBy: { createdAt: "desc" },
+        },
+        thesisRecords: {
+          select: { stage: true, status: true },
         },
         adviserAssignments: {
           where: { isActive: true },
@@ -229,13 +260,25 @@ export class AdminStudentRepository {
       student.program?.maxResidencyYears ??
       null;
     const hasResidency = residencyStart !== null || residencyMax !== null;
+    const userExtras = student.user as {
+      suffix?: string | null;
+      isActive?: boolean;
+      mustChangePassword?: boolean;
+    };
+    const thesisRecords =
+      (student as { thesisRecords?: Array<{ stage: string; status: string }> })
+        .thesisRecords ?? [];
 
     return {
       id: student.id,
       firstName: student.user.firstName,
       lastName: student.user.lastName,
+      suffix: userExtras.suffix ?? null,
       email: student.user.email,
       studentNumber: student.studentNumber ?? null,
+      pinnacleApplicantId:
+        (student as { pinnacleApplicantId?: string | null })
+          .pinnacleApplicantId ?? null,
       cellphone: student.cellphone ?? null,
       program: student.program
         ? { id: student.program.id, programName: student.program.programName }
@@ -243,6 +286,12 @@ export class AdminStudentRepository {
       admissionStatus: student.admissionStatus,
       enrollmentDate: student.enrollmentDate?.toISOString() ?? null,
       curriculumType: student.curriculumType ?? null,
+      isActive: userExtras.isActive ?? true,
+      mustChangePassword: userExtras.mustChangePassword ?? false,
+      canChangeProgram: AdminStudentRepository.canChangeProgram(
+        student.admissionStatus,
+        thesisRecords,
+      ),
       residency: hasResidency
         ? {
             startDate: residencyStart ? residencyStart.toISOString() : null,
@@ -293,6 +342,191 @@ export class AdminStudentRepository {
         },
       });
     }
+  }
+
+  async findStudentForEdit(studentId: string) {
+    return prisma.student.findUnique({
+      where: { id: studentId },
+      include: {
+        user: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            suffix: true,
+            email: true,
+            role: true,
+            isActive: true,
+            mustChangePassword: true,
+          },
+        },
+        program: {
+          select: { id: true, programName: true, maxResidencyYears: true },
+        },
+        thesisRecords: {
+          select: { stage: true, status: true },
+        },
+        residencyTracking: {
+          select: { id: true, startDate: true, maxYears: true },
+        },
+      },
+    });
+  }
+
+  async findUserByEmailExcluding(email: string, excludeUserId: string) {
+    return prisma.user.findFirst({
+      where: { email, id: { not: excludeUserId } },
+      select: { id: true },
+    });
+  }
+
+  async findStudentByNumberExcluding(
+    studentNumber: string,
+    excludeStudentId: string,
+  ) {
+    return prisma.student.findFirst({
+      where: { studentNumber, id: { not: excludeStudentId } },
+      select: { id: true },
+    });
+  }
+
+  async findProgramById(programId: string) {
+    return prisma.program.findUnique({
+      where: { id: programId },
+      select: {
+        id: true,
+        programName: true,
+        maxResidencyYears: true,
+        isActive: true,
+      },
+    });
+  }
+
+  async updateStudentProfile(params: {
+    studentId: string;
+    userId: string;
+    adminId: string;
+    userData: {
+      firstName?: string;
+      lastName?: string;
+      suffix?: string | null;
+      email?: string;
+      isActive?: boolean;
+    };
+    studentData: {
+      studentNumber?: string;
+      cellphone?: string;
+      programId?: string;
+      curriculumType?: "NEW" | "OLD" | null;
+      enrollmentDate?: Date | null;
+      residencyStartDate?: Date | null;
+    };
+    syncStudentNumberOnCor?: string;
+    syncResidencyTracking?: {
+      startDate?: Date;
+      maxYears?: number;
+    };
+    oldSnapshot: Record<string, unknown>;
+    newSnapshot: Record<string, unknown>;
+    reason: string;
+  }) {
+    return prisma.$transaction(async (tx) => {
+      if (Object.keys(params.userData).length > 0) {
+        await tx.user.update({
+          where: { id: params.userId },
+          data: {
+            ...params.userData,
+            updatedById: params.adminId,
+          },
+        });
+      }
+
+      if (Object.keys(params.studentData).length > 0) {
+        await tx.student.update({
+          where: { id: params.studentId },
+          data: params.studentData,
+        });
+      }
+
+      if (params.syncStudentNumberOnCor) {
+        const latestVerifiedCor = await tx.corRecord.findFirst({
+          where: { studentId: params.studentId, isAdminVerified: true },
+          orderBy: [{ verifiedAt: "desc" }, { createdAt: "desc" }],
+          select: { id: true },
+        });
+        if (latestVerifiedCor) {
+          await tx.corRecord.update({
+            where: { id: latestVerifiedCor.id },
+            data: { registrationNumber: params.syncStudentNumberOnCor },
+          });
+        }
+      }
+
+      if (
+        params.syncResidencyTracking &&
+        Object.keys(params.syncResidencyTracking).length > 0
+      ) {
+        const existingResidency = await tx.residencyTracking.findUnique({
+          where: { studentId: params.studentId },
+          select: { id: true },
+        });
+        if (existingResidency) {
+          await tx.residencyTracking.update({
+            where: { id: existingResidency.id },
+            data: params.syncResidencyTracking,
+          });
+        }
+      }
+
+      await tx.auditLog.create({
+        data: {
+          actorId: params.adminId,
+          actionType: "STUDENT_PROFILE_UPDATED",
+          targetTable: "students",
+          targetId: params.studentId,
+          oldValue: JSON.stringify(params.oldSnapshot),
+          newValue: JSON.stringify(params.newSnapshot),
+          description: params.reason,
+        },
+      });
+    });
+  }
+
+  async resetStudentPassword(params: {
+    studentId: string;
+    userId: string;
+    adminId: string;
+    passwordHash: string;
+    email: string;
+    studentNumber: string | null;
+  }) {
+    return prisma.$transaction(async (tx) => {
+      await tx.user.update({
+        where: { id: params.userId },
+        data: {
+          passwordHash: params.passwordHash,
+          mustChangePassword: true,
+          updatedById: params.adminId,
+        },
+      });
+      await tx.auditLog.create({
+        data: {
+          actorId: params.adminId,
+          actionType: "STUDENT_PASSWORD_RESET",
+          targetTable: "users",
+          targetId: params.userId,
+          newValue: JSON.stringify({
+            studentId: params.studentId,
+            studentNumber: params.studentNumber,
+            email: params.email,
+            mustChangePassword: true,
+            emailDispatched: false,
+          }),
+          description:
+            "Admin reset student password to temporary default password (email dispatch deferred).",
+        },
+      });
+    });
   }
 
   private buildWhereClause(filters: AdminStudentListQuery): Prisma.StudentWhereInput {

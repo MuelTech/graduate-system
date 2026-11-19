@@ -784,6 +784,7 @@ These areas include collaborator-owned/currently evolving work. Do not mark them
 | Status | Item | Current / target state |
 | --- | --- | --- |
 | 🔍 | Email integration | **Explicitly deferred from Exam Phase B/B10 core acceptance.** Collaborator-owned email integration is not yet functional/accepted. Complete current-actor authorization, worker/queue startup, delivery/retry/failure behavior and end-to-end recipient/template verification in the dedicated Email Integration feature. The B10 stale-ADMIN-token finding remains open here and is not considered fixed. |
+| ⏳ | Password-reset email dispatch | Connect Admin-assisted Applicant/Student password resets (`POST /api/admin/applicants/:id/reset-password`, `POST /api/admin/students/:id/reset-password`) to `EmailService` once Email Integration is functional. Backend foundation (`LAST NAME in ALL CAPS` temporary password + `mustChangePassword = true` + `AuditLog`) is implemented on `feat/user-management-applicant-student-info` with email sending deferred. |
 | 🔍 | Email templates / triggers | Verify authoritative events, recipients, retries/failure behavior, and auditability. |
 | 🔍 | Notifications | Review collaborator implementation and role/audience correctness. |
 | 🔍 | Announcements | Review collaborator implementation and target audiences. |
@@ -917,9 +918,10 @@ This list is intentionally orderable and may change. *(Completed items: Exam Pha
    - ✅ **Phase 3 (`WAIVER-CLEANUP-2`):** Cleaned up `/register` (*Date of Birth* and *Prerequisite Program* removal), Applicant Portal (`/applicant/alignment`, dashboard, schedule), Admin Portal (`/admin/exam/waiver`, dashboard, applicants, `AssignApplicantDialog`), and Student Profile/Admin Student alignment badges.
    - ✅ **Merged (`SCHEMA-SEED-CLEANUP`, PR #60 at `cd3aaaf5`, `fd9b6e66`):** Dropped obsolete waiver/alignment/undergraduate/curriculum-waiver/DOB schema models & columns, overhauled `seed.ts` & `journey-fixtures.ts` with synthetic `pdf-lib` PDFs and balanced 16-program distribution, reset & re-seeded local DB, re-imported the verified 72-question OLSAT exam bank, and cleaned orphan files in private storage — see §3.2.
    - ✅ **Merged (`AUTH-EXAM-UX-ALIGNMENT`, PR #61 at `be27cb79`, `55e8093e`):** Aligned `/login`, `/register`, `/change-password`, public website/FAQ links (`https://ap.earist.edu.ph/login_applicant`), and Chatbot copy to the online Entrance Examination + Applicant ID model; added official EARIST seal branding, custom `<Select>` dropdowns, `+63` Philippine mobile validation (frontend + `AuthService.register`), and removed redundant `Notifications` sidebar links in Student/Applicant portals — see §17.
+   - 🚧 **On branch `feat/user-management-applicant-student-info` (pending owner review/merge):** Admin Applicant & Student Information Management (`Edit Details` with `+63` validation, Manual §7.14.3 Program lock, & `AuditLog`), Guarded Applicant Delete (with automatic unstarted seat release), Admin Applicant/Student Password Reset Foundation (`LAST NAME ALL CAPS` + `mustChangePassword = true` across all roles in middleware; email dispatch deferred to §8), low-icon Admin/Applicant detail & profile redesign, and functional `/applicant/profile` self-service contact & password updates.
    - *(Follow-on — Next Up)* Implement **Curriculum Checklist / Plan of Coursework** (§3 & Manual §7.24) on top of the clean program master data.
 2. Implement Comprehensive Exam per-component history (`Foundation`, `Major`, `Cognate`) and 3-strike disqualification tracking (§22 & Manual §7.15).
-3. Review collaborator work: email integration, notifications, announcement, memo, and analytics & reports (`/admin/analytics` stays excluded from Phase 1–3 until audited/replaced with live data).
+3. Review collaborator work: email integration (including Admin-assisted password reset emails & B10 result-email fix), notifications, announcement, memo, and analytics & reports (`/admin/analytics` stays excluded from Phase 1–3 until audited/replaced with live data).
 4. Design Admin Student document/submission overview and fallback matrix (plus remaining Handbook rules: 5-advisee faculty cap §7.20.3, post-Title Program Shifting block §7.14.3).
 5. Design and implement Continuing Student COR-based onboarding (`CONT-STUDENT-1`) and pre-GSIS legacy academic/thesis standing initialization (`CONT-STUDENT-2`).
 6. Define Student inactivity / Leave of Absence (`ON_LEAVE` excluded from MRR per Manual §7.13) and Admin return/reactivation flow (§19).
@@ -965,8 +967,8 @@ Current repository facts:
 - Applicant authenticates with Applicant ID + password;
 - Student authenticates with Student Number + existing password;
 - Faculty and Administrator use email + password;
-- middleware forces first-login password change (`/change-password`) for both Faculty (`faculty`/`panelist`) and Administrator (`admin`) accounts when `mustChangePassword === true`;
-- Applicant registration (`/register`) is strictly for exam-account creation (`Online Entrance Examination Registration`) using an existing Applicant ID, validated `+63` Philippine mobile number (`/^(?:\+639|09)\d{9}$/` client & server), `@gmail.com` email, and custom multi-line `<Select>` program selector (PR #61); Faculty/Admin account creation remains Admin-provisioned with default password = `LAST NAME in ALL CAPS` and `mustChangePassword = true`;
+- middleware forces password change (`/change-password`) for all authenticated roles (`Applicant`, `Student`, `Faculty`/`Panelist`, `Administrator`) when `mustChangePassword === true` (updated from Faculty/Admin-only on `feat/user-management-applicant-student-info`);
+- Applicant registration (`/register`) is strictly for exam-account creation (`Online Entrance Examination Registration`) using an existing Applicant ID, validated `+63` Philippine mobile number (`/^(?:\+639|09)\d{9}$/` client & server), `@gmail.com` email, and custom multi-line `<Select>` program selector (PR #61); Faculty/Admin provisioning and Admin-assisted Applicant/Student password resets use temporary default password = `LAST NAME in ALL CAPS` with `mustChangePassword = true` (email notification deferred to §8 Email Integration);
 - COR promotion preserves the Applicant's existing password when the account becomes a Student;
 - Student and Applicant portals match Admin and Faculty portals by accessing notifications exclusively through the header `NotificationBell` (`View All Notifications` -> `/{portal}/notifications`), without redundant `Notifications` sidebar links (PR #61).
 
@@ -979,11 +981,12 @@ Current repository facts:
 | ✅ | Portal header-only Notification navigation | Completed in PR #61 (`be27cb79` / `55e8093e`): removed redundant `Notifications` sidebar entries from Student (`student/layout.tsx`) and Applicant (`applicant/layout.tsx`) layouts so all portals route notifications through the header `NotificationBell` (`View All Notifications`). |
 | ✅ | Future login entry model | Resolved by `FACULTY_ADMIN_ACCESS_SOURCE_OF_TRUTH.md` and implemented in PR #49: `Applicant / Student / Faculty / Administrator` are distinct login choices with no second post-login chooser. |
 | ✅ | Permission-aware post-login routing | Implemented in PR #49: Faculty routes to `/faculty/dashboard` with capability-aware sidebar (`canEvaluateEssays`, `!isExternal`), and Restricted Administrators route with capability-filtered navigation and route guards. |
-| ✅ | Role-specific forced password gate | Fixed in PR #49: `middleware.ts` enforces `/change-password` when `mustChangePassword === true` for both Faculty and Administrator accounts. |
-| 🟡 | Credential-state-based forced password change | Enforced for Faculty and Admin accounts (`mustChangePassword === true`); extend to Student/Applicant accounts when Admin-issued temporary/reset passwords (§21.1) are implemented. |
+| ✅ | Universal credential-state forced password gate | Fixed in PR #49 for Faculty/Admin and extended to all roles (`Applicant`, `Student`, `Faculty`, `Admin`) on `feat/user-management-applicant-student-info`: `middleware.ts` enforces `/change-password` when `mustChangePassword === true`. |
+| ✅ | Credential-state-based forced password change | `mustChangePassword === true` redirects across all authenticated portal roles and clears back to `false` upon password change. |
 | ✅ | Applicant-created password → Student promotion | Current Student promotion keeps the Applicant's existing self-created password with `mustChangePassword = false`. |
-| ✅ | Temporary/generated password policy | Implemented in PR #49 for Faculty and Admin provisioning: default password is `LAST NAME in ALL CAPS` with `mustChangePassword = true` forced on first login. |
-| ⏳ | Student temporary/reset credential behavior | When Admin-assisted Student password reset (§21.1) is implemented, apply the same `mustChangePassword = true` gate to Student accounts. |
+| ✅ | Temporary/generated password policy | Implemented in PR #49 for Faculty and Admin provisioning and extended to Admin-assisted Applicant/Student password resets on `feat/user-management-applicant-student-info`: default password is `LAST NAME in ALL CAPS` with `mustChangePassword = true` forced on next login. |
+| 🟡 | Applicant / Student Admin password reset & email dispatch | Backend endpoints (`POST /api/admin/applicants/:id/reset-password`, `POST /api/admin/students/:id/reset-password`), `mustChangePassword = true` gate, and Admin UI dialogs implemented on `feat/user-management-applicant-student-info`; automatic email sending remains deferred to §8 Email Integration. |
+| 🚧 | Admin Applicant & Student Information Management + Applicant Profile | On `feat/user-management-applicant-student-info`: low-icon redesign for `/admin/users/applicants/[id]` and `/admin/users/students/[id]`, audited `Edit Details` / `Edit Information` (with `+63` validation and program-change lock guards), `User.isActive` toggles, Guarded Applicant Delete (pre-exam/pre-COR only with automatic slot release; Student deletion prohibited), and complete `/applicant/profile` self-service contact & password page. |
 | ✅ | Change-password UX redesign | Implemented and merged via PR #50 (`64cca804`) and PR #61 (`be27cb79`), aligned with `/login` and `/register` (campus backdrop, crimson top accent, and official EARIST seal). |
 | ✅ | Auth regression coverage | Updated in PR #49 (`71d7fb9d`) and PR #61 (`55e8093e`) covering login, middleware, Faculty/Admin role access, `+63` PH mobile validation, and UI contract tests. |
 
@@ -1185,14 +1188,13 @@ These items are not all end-user features, but they are required before the syst
 Current repository facts:
 
 - JWT/session lifetime is currently 24 hours;
-- the `mustChangePassword` first-login gate is implemented for Faculty and Administrator accounts (PR #49); extending it to Admin-assisted Student password resets remains pending below;
-- no accepted self-service forgot-password/reset-token flow was found;
-- the canonical UI/UX documentation explicitly leaves Admin-assisted Student password recovery as unimplemented.
+- the `mustChangePassword` gate is now enforced across all roles (`Applicant`, `Student`, `Faculty`, `Admin`) on `feat/user-management-applicant-student-info`, alongside Admin-assisted temporary password resets (`LAST NAME in ALL CAPS` + `AuditLog`, with email sending deferred to §8);
+- no accepted self-service forgot-password/reset-token flow exists yet (random temporary password generation + Email Integration dispatch remain pending below).
 
 | Status | Item | Current / target state |
 | --- | --- | --- |
-| ⏳ | Secure account recovery | Implement a controlled password-recovery/reset flow. Separate self-service recovery policy from Admin-assisted recovery. |
-| ⏳ | Admin-assisted temporary password | Authorized Admin issues a secure random temporary password, sets `mustChangePassword = true`, records audit evidence, and does not expose/reuse a permanent default password. |
+| ⏳ | Secure account recovery | Implement a controlled self-service forgot-password/reset-token flow alongside Admin-assisted recovery. |
+| 🟡 | Admin-assisted temporary password & email | Foundation implemented on `feat/user-management-applicant-student-info` (`POST /api/admin/applicants/:id/reset-password` and `POST /api/admin/students/:id/reset-password` set `LAST NAME in ALL CAPS`, `mustChangePassword = true`, and record `AuditLog`). Remaining production hardening: wire email dispatch in §8 Email Integration and consider secure random temporary password generation. |
 | ⏳ | Password-reset session safeguards | Password reset/change should invalidate or otherwise protect against stale authenticated sessions/tokens according to the final auth architecture. |
 | ⏳ | Login abuse protection | Add server-side rate limiting/throttling and define lockout/backoff behavior for repeated failed authentication attempts without enabling trivial denial-of-service against legitimate users. |
 | ⏳ | Sensitive-action reauthentication | Decide whether high-impact actions such as permission grants, account recovery, or institutional signature changes require recent authentication. |
@@ -1296,7 +1298,7 @@ Current repository facts:
 | Status | Item | Current / target state |
 | --- | --- | --- |
 | 🐞 / 🔍 | Comprehensive Exam history/strike behavior | Canonical UI/UX documentation records that Comprehensive Exam recording can overwrite the latest record, making full attempt history/strike counts unreliable; controls/eligibility also need server-side review. This requires a separate functional package. |
-| ⏳ | Account disable/reactivate policy | Define operational behavior when an Applicant/Student/Faculty account is disabled, including active sessions, assignments, scheduled defenses, and later reactivation. |
+| 🟡 | Account disable/reactivate policy | Admin `User.isActive` toggles are implemented across Faculty, Administrators, and (on `feat/user-management-applicant-student-info`) Applicants and Students. Define remaining operational behavior when disabled, including immediate invalidation of already-issued active JWT sessions and defense/assignment handoff rules. |
 | ⏳ | Operator/system configuration inventory | Identify which production values must be Admin-configurable versus environment-only: adviser caps, academic master data, institutional officials, schedules/windows, email settings, and other confirmed policy values. Avoid hardcoding institutional policy. |
 
 ---

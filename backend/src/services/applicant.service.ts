@@ -1,5 +1,7 @@
 import { hasAuthoritativePassedExam } from "./admin-applicant-list.rules";
 import { ApplicantRepository } from '../repositories/applicant.repository';
+import { AppError } from "../utils/AppError";
+import { validatePhilippineMobile } from "../utils/phone";
 
 export class ApplicantService {
     private applicantRepo = new ApplicantRepository();
@@ -8,19 +10,40 @@ export class ApplicantService {
         const student = await this.applicantRepo.getProfileWithRelations(userId);
 
         if (!student) {
-            throw new Error("Applicant profile not found");
+            throw new AppError("Applicant profile not found", 404);
         }
 
-        const calculatedStep = hasAuthoritativePassedExam(student.examApplications) ? 2 : 1;
+        const hasPassed = hasAuthoritativePassedExam(student.examApplications);
+        const calculatedStep = hasPassed ? 2 : 1;
+        const latestExam = student.examApplications[0];
 
         return {
             firstName: student.user.firstName,
             lastName: student.user.lastName,
+            email: student.user.email,
+            cellphone: student.cellphone ?? null,
             applicantId: student.pinnacleApplicantId,
             program: student.program.programName,
+            programType: student.program.programType,
+            programCode: student.program.programCode ?? null,
             currentStep: calculatedStep,
-            examDate: student.examApplications[0]?.slot?.examDate || null,
-            examTime: student.examApplications[0]?.slot?.examTime || null
+            examStatus: hasPassed ? "PASSED" : (latestExam?.status ?? "NOT_SCHEDULED"),
+            hasPassedExam: hasPassed,
+            examDate: latestExam?.slot?.examDate || null,
+            examTime: latestExam?.slot?.examTime || null,
+            registeredAt: student.createdAt.toISOString(),
+        };
+    }
+
+    async updateProfile(userId: string, input: { cellphone?: unknown }) {
+        const cellphone = validatePhilippineMobile(input?.cellphone);
+        const updated = await this.applicantRepo.updateContactCellphone(userId, cellphone);
+        if (!updated) {
+            throw new AppError("Applicant profile not found", 404);
+        }
+        return {
+            message: "Contact number updated.",
+            cellphone: updated.cellphone,
         };
     }
 }

@@ -6,11 +6,23 @@ vi.mock("../../../src/services/cor.service", () => ({
 
 const repo = vi.hoisted(() => ({
   findStudentById: vi.fn(),
+  findUserByEmailExcluding: vi.fn(),
+  findStudentByApplicantIdExcluding: vi.fn(),
+  findProgramById: vi.fn(),
+  updateApplicantProfile: vi.fn(),
+  resetApplicantPassword: vi.fn(),
+  deleteApplicantAccount: vi.fn(),
 }));
 
 vi.mock("../../../src/repositories/admin-applicant.repository", () => ({
   AdminApplicantRepository: class {
     findStudentById = repo.findStudentById;
+    findUserByEmailExcluding = repo.findUserByEmailExcluding;
+    findStudentByApplicantIdExcluding = repo.findStudentByApplicantIdExcluding;
+    findProgramById = repo.findProgramById;
+    updateApplicantProfile = repo.updateApplicantProfile;
+    resetApplicantPassword = repo.resetApplicantPassword;
+    deleteApplicantAccount = repo.deleteApplicantAccount;
   },
 }));
 
@@ -153,5 +165,119 @@ describe("AdminApplicantService exam schedule contract", () => {
       examTime: "1970-01-01T09:00:00.000Z",
     });
     expect(JSON.stringify(detail)).not.toContain("venueOrLink");
+  });
+});
+
+describe("AdminApplicantService management mutations", () => {
+  it("updates applicant identity, PH mobile, and intended program before any exam booking", async () => {
+    repo.findStudentById.mockResolvedValue(
+      detailStudent({
+        userId: "u1",
+        programId: "prog-1",
+        user: {
+          id: "u1",
+          firstName: "Ana",
+          lastName: "Dela",
+          email: "ana@gmail.com",
+          isActive: true,
+          mustChangePassword: false,
+        },
+      }),
+    );
+    repo.findUserByEmailExcluding.mockResolvedValue(null);
+    repo.findStudentByApplicantIdExcluding.mockResolvedValue(null);
+    repo.findProgramById.mockResolvedValue({
+      id: "prog-2",
+      programName: "MBA",
+      isActive: true,
+    });
+    repo.updateApplicantProfile.mockResolvedValue(undefined);
+
+    await new AdminApplicantService().updateApplicant("s1", "admin-1", {
+      firstName: "Ana Maria",
+      cellphone: "+639171234567",
+      programId: "prog-2",
+    });
+
+    expect(repo.updateApplicantProfile).toHaveBeenCalledTimes(1);
+    const call = repo.updateApplicantProfile.mock.calls[0][0];
+    expect(call.userData).toEqual({ firstName: "Ana Maria" });
+    expect(call.studentData).toEqual({
+      cellphone: "+639171234567",
+      programId: "prog-2",
+    });
+  });
+
+  it("blocks program changes once an entrance exam booking or result exists", async () => {
+    repo.findStudentById.mockResolvedValue(
+      detailStudent({
+        programId: "prog-1",
+        examApplications: [examApp({ status: "PENDING" })],
+      }),
+    );
+
+    await expect(
+      new AdminApplicantService().updateApplicant("s1", "admin-1", {
+        programId: "prog-2",
+      }),
+    ).rejects.toMatchObject({ statusCode: 409 });
+    expect(repo.updateApplicantProfile).not.toHaveBeenCalled();
+  });
+
+  it("resets applicant password with mustChangePassword = true and deferred email dispatch", async () => {
+    repo.findStudentById.mockResolvedValue(
+      detailStudent({
+        userId: "u1",
+        user: {
+          id: "u1",
+          firstName: "Ana",
+          lastName: "Santos",
+          email: "ana@gmail.com",
+        },
+      }),
+    );
+    repo.resetApplicantPassword.mockResolvedValue(undefined);
+
+    const res = await new AdminApplicantService().resetApplicantPassword(
+      "s1",
+      "admin-1",
+    );
+
+    expect(res.mustChangePassword).toBe(true);
+    expect(res.emailDispatched).toBe(false);
+    expect(repo.resetApplicantPassword).toHaveBeenCalledWith(
+      expect.objectContaining({
+        studentId: "s1",
+        userId: "u1",
+        adminId: "admin-1",
+      }),
+    );
+  });
+
+  it("allows guarded applicant deletion only when no exam attempt or COR verification exists", async () => {
+    repo.findStudentById.mockResolvedValue(
+      detailStudent({
+        userId: "u1",
+        programId: "prog-1",
+        examApplications: [examApp({ status: "PENDING" })],
+      }),
+    );
+    repo.deleteApplicantAccount.mockResolvedValue(undefined);
+
+    await new AdminApplicantService().deleteApplicant("s1", "admin-1");
+    expect(repo.deleteApplicantAccount).toHaveBeenCalledTimes(1);
+
+    repo.deleteApplicantAccount.mockClear();
+    repo.findStudentById.mockResolvedValue(
+      detailStudent({
+        userId: "u1",
+        examApplications: [examApp({ status: "PASSED" })],
+      }),
+    );
+
+    await expect(
+      new AdminApplicantService().deleteApplicant("s1", "admin-1"),
+    ).rejects.toMatchObject({ statusCode: 409 });
+    expect(repo.deleteApplicantAccount).not.toHaveBeenCalled();
   });
 });

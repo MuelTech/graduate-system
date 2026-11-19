@@ -47,4 +47,22 @@ router.put(
   controller.updateCompExamStatus,
 );
 
+// Update student profile / academic record with audit reason
+router.patch(
+  "/:id",
+  authenticateJWT,
+  requireRole(["ADMIN"]),
+  requireAdminCapability("students.manage"),
+  controller.updateStudent,
+);
+
+// Reset student password (default LAST NAME ALL CAPS + mustChangePassword)
+router.post(
+  "/:id/reset-password",
+  authenticateJWT,
+  requireRole(["ADMIN"]),
+  requireAdminCapability("students.manage"),
+  controller.resetStudentPassword,
+);
+
 export default router;

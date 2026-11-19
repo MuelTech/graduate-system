@@ -72,6 +72,21 @@ export interface AdminApplicantDetail {
   admissionStatus: string;
   enrollmentDate: string | null;
   createdAt: string;
+  isActive?: boolean;
+  mustChangePassword?: boolean;
+  canChangeProgram?: boolean;
+  canDelete?: boolean;
+  deleteBlockedReason?: string | null;
+}
+
+export interface UpdateAdminApplicantInput {
+  firstName?: string;
+  lastName?: string;
+  pinnacleApplicantId?: string;
+  email?: string;
+  cellphone?: string;
+  programId?: string;
+  isActive?: boolean;
 }
 
 export interface ExamApplicationDetail {
