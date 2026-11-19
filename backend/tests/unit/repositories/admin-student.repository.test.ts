@@ -160,7 +160,6 @@ function detailStudent(overrides: Record<string, unknown> = {}) {
     id: "s1",
     studentNumber: "2026-00123",
     cellphone: "+639170000000",
-    dateOfBirth: new Date("1998-01-15T00:00:00.000Z"),
     admissionStatus: "ENROLLED",
     enrollmentDate: new Date("2026-06-01T00:00:00.000Z"),
     curriculumType: "NEW",
@@ -202,7 +201,6 @@ describe("AdminStudentRepository.findStudentDetailById", () => {
       adviserAssignment: null,
       residency: null,
     });
-    expect(detail?.dateOfBirth).toBe("1998-01-15T00:00:00.000Z");
     expect(detail?.enrollmentDate).toBe("2026-06-01T00:00:00.000Z");
   });
 

@@ -114,14 +114,10 @@ export class ProgramService {
   constructor(private readonly programRepository = new ProgramRepository()) {}
 
   async getAllPrograms() {
-    const [graduate, undergraduate] = await Promise.all([
-      this.programRepository.getAllGraduatePrograms(),
-      this.programRepository.getAllUndergraduatePrograms(),
-    ]);
+    const graduate = await this.programRepository.getAllGraduatePrograms();
 
     return {
       graduatePrograms: graduate,
-      undergraduatePrograms: undergraduate,
     };
   }
 

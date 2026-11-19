@@ -33,7 +33,6 @@ const DETAIL = {
   email: "juan@example.com",
   studentNumber: "2026-00123",
   cellphone: null,
-  dateOfBirth: null,
   program: { id: "prog-1", programName: "MSIT" },
   admissionStatus: "ENROLLED",
   enrollmentDate: null,

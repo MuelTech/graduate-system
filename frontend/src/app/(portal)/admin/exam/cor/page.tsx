@@ -234,7 +234,6 @@ export default function AdminCorVerificationPage() {
 
   const programsQuery = useQuery<{
     graduatePrograms: Program[];
-    undergraduatePrograms: Program[];
   }>({
     queryKey: ["programs"],
     queryFn: async () =>

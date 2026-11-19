@@ -74,7 +74,7 @@ describe.skipIf(process.env.EXAM_B3_DB_TEST !== "1")("B3 real MariaDB booking ad
     await observer.program.createMany({ data: [ids.program, ids.otherProgram].map((id, i) => ({ id, programName: `B3 synthetic ${id}`, programType: "MASTERS" as const })) });
     for (let i = 0; i < ids.users.length; i++) {
       await observer.user.create({ data: { id: ids.users[i], email: `b3-${ids.users[i]}@example.invalid`, passwordHash: "unusable-synthetic", firstName: "B3", lastName: "Fixture", role: "APPLICANT" } });
-      await observer.student.create({ data: { id: ids.students[i], userId: ids.users[i], programId: ids.program, alignmentStatus: "ALIGNED", pinnacleApplicantId: `B3-${ids.students[i]}` } });
+      await observer.student.create({ data: { id: ids.students[i], userId: ids.users[i], programId: ids.program, pinnacleApplicantId: `B3-${ids.students[i]}` } });
     }
     await observer.examSlot.createMany({ data: ids.slots.map(id => ({ id, programId: ids.program, examDate: date, examTime: time, maxSlots: 2 })) });
     gateway.student.findUnique.mockImplementation(args => observer.student.findUnique(args));

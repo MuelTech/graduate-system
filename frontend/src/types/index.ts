@@ -661,7 +661,6 @@ export interface ExamApplication {
   pinnacleId: string;
   program: string;
   scheduledSlot: string;
-  alignmentStatus: string;
   status: string;
 }
 
@@ -678,7 +677,6 @@ export interface ApiExamApplication {
       email: string;
     };
     pinnacleApplicantId?: string;
-    alignmentStatus?: string;
   };
   program: {
     programName: string;
@@ -750,7 +748,6 @@ export interface AdminStudentDetail {
   email: string;
   studentNumber: string | null;
   cellphone: string | null;
-  dateOfBirth: string | null;
   program: { id: string; programName: string } | null;
   admissionStatus: string;
   enrollmentDate: string | null;

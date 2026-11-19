@@ -237,7 +237,6 @@ export class AdminStudentRepository {
       email: student.user.email,
       studentNumber: student.studentNumber ?? null,
       cellphone: student.cellphone ?? null,
-      dateOfBirth: student.dateOfBirth?.toISOString() ?? null,
       program: student.program
         ? { id: student.program.id, programName: student.program.programName }
         : null,

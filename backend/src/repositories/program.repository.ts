@@ -69,15 +69,6 @@ export class ProgramRepository {
     });
   }
 
-  async getAllUndergraduatePrograms() {
-    return prisma.undergraduateProgram.findMany({
-      where: { isActive: true },
-      orderBy: {
-        programName: "asc",
-      },
-    });
-  }
-
   async findProgramById(id: string): Promise<ProgramWithCounts | null> {
     return prisma.program.findUnique({
       where: { id },

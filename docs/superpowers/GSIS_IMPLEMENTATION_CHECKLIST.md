@@ -198,7 +198,7 @@ DEF-CORR-1 is accepted for its documented scope on the feature branch. Acceptanc
 | ✅ | GS-011 stage-aware Adviser layout | Accepted after implementation, independent remote source review, and project-owner visual QA: explicit `stage` contract; Title omits the entire `Concurred In` / Adviser signature rule / `Thesis/Dissertation Adviser` block and moves Dean `Attested` into the freed lower-page region; Proposal/Final keep the block and require exactly one ADVISER `PanelAssignment` on the exact defense schedule. Missing/ambiguous Adviser seats fail closed; no current/live Adviser fallback. |
 | ✅ | Adviser Certification PDF (GS-017) + Adviser certification guardrail | PREDEF-1A renderer, PREDEF-1B0 exact manuscript-title authority, and PREDEF-1B/1C live certification/visibility integration are accepted and merged through PR #41. GS-017 is generated from the exact issued `reviewedDocumentId`, the Adviser sees the exact title/file before Certify & Sign, and Adviser/Student/Admin receive the accepted bounded read-only record visibility. GS-017 remains system-owned and is never a Student upload requirement. |
 | ✅ | Adviser Request PDF (GS-020) | Completed and merged through PR #43, with Institutional Dean integration added in `feat/institutional-officials-and-or-number`. The official EARIST-QSF-GS-020 Rev. 00 renderer, exact-request Student e-signature, immutable finalized snapshot after Adviser `CONFORMED` + Dean `APPROVED`, and on-demand read-only View/Download for Student/requested Adviser/Admin are implemented. Configured Institutional Officials (`dean` name & e-signature) populate newly finalized snapshots and PDFs without mutating older records. |
-| ⏳ | Course & Major authoritative formatting | Replace dependence on one static/freeform program string with future academic master-data authority where applicable. |
+| ✅ | Course & Major authoritative formatting | **Implemented (`PROG-1`, PR #59):** `GS-006/007`, `GS-011`, `GS-017`, and `GS-020` derive structured Course and Major from `Program.degreeName` and `Program.majorName`. |
 | 🚫 | GS Form No. 22 / Committee Report official PDF | Deferred document renderer/integration package. |
 | 🚫 | Generated official-document persistence/versioning | Current accepted forms are primarily on-demand; immutable generated-copy/version lifecycle remains separate work. |
 
@@ -223,7 +223,7 @@ Names, programs, signatures, payment metadata, and institutional approvals must 
 
 Current repository and institutional-reference facts:
 
-- `Program` already stores `programName`, `programType`, `maxResidencyYears`, and a nullable `department` string.
+- `Program` stores structured `degreeName`, `majorName`, `programCode`, `isActive`, `programName`, `programType`, `maxResidencyYears` (`4` yrs Master's / `6` yrs Doctoral), and a cleared nullable `department` field (implemented via `PROG-1` and merged to `main` in PR #59 at `94aa8a4a`).
 - The **EARIST Graduate School Manual of Operations** (§2.0, §4.0, §5.0) confirms the Graduate School was reunified under one Dean and Associate Dean (no separate undergraduate college department layer on `Program`), and lists the authoritative **16 active Graduate School programs** (4 Doctoral on Professional Track / PQF Level 8; 12 Master's on Academic Track / PQF Level 7).
 - The **EARIST Graduate School Manual of Operations** also establishes key academic policies referenced across this checklist:
   - **Entrance Admission & Bridging (§7.1.1, §7.3.4):** Applicants take the EARIST Graduate Admission Test (EGAT); unrelated-specialization enrollees complete a 9-unit Bridging Program (or 18 Prof Ed units for non-education graduates in education programs).
@@ -237,17 +237,29 @@ Current repository and institutional-reference facts:
 - The project-owner-supplied MAT-Math curriculum reference identifies **Master of Arts in Teaching Major in Mathematics (MAT-Math)** with effective date **S.Y. 2024-2025**, organized into Foundation, Major, Cognate, and Thesis groups totaling **30 units**.
 - Therefore the normalized direction is **Graduate School → Program → Major/Specialization → Curriculum Version → Curriculum Courses**.
 
-## 3.1 Active Planned Package — Program Master Data & Pre-Exam Bridging Waiver Removal (`PROG-WAIVER-CLEANUP`)
+## 3.1 Completed Package — Program Master Data & Pre-Exam Bridging Waiver Removal (`PROG-WAIVER-CLEANUP`)
 
+**Status:** ✅ **ACCEPTED / MERGED to `main` via PR #59 (`94aa8a4a`)** (implementation commits `21a935f7`, `f6c5beec`, `187fe8b1`, `2ffc7f44`).
 **Implementation plan:** `docs/superpowers/plans/2026-11-18-program-master-data-and-waiver-cleanup.md`
 
 **Scope boundary:** Explicitly excludes `/admin/analytics` (currently hardcoded mock data; tracked separately in §8 / §14).
 
 | Phase | Package | Target Scope |
 | --- | --- | --- |
-| ✅ **Phase 1** | `PROG-1` — Program Master Data & Admin CRUD (`/admin/settings`) | **Implemented** (`21a935f7`). Additive `degreeName`, `majorName`, `programCode`, and `isActive` on `Program`; reconcile/seed the **16 authoritative Graduate School programs** with Handbook §7.11 Max Residency defaults (**4 yrs Master's / 6 yrs Doctoral**) and clear obsolete `department` college strings; Admin CRUD under `Admin -> System Settings -> Programs` (`SYSTEM_SETTINGS`); expose `program.maxResidencyYears` fallback on Admin Student Detail alongside Student Profile; derive official PDF Course/Major from structured fields. |
-| ✅ **Phase 2** | `WAIVER-CLEANUP-1` — Backend Waiver & Alignment Gate Removal | **Implemented on `feat/program-master-data-and-waiver-cleanup`.** Removed `undergraduateProgramId` and `dateOfBirth` registration requirements, keyword `checkProgramAlignment()`, and `ApplicantBridgingWaiver` creation from Applicant registration (keeping `Student.dateOfBirth` and legacy tables/columns nullable/non-destructive); removed `requireEligibleAlignment()` blockers from Entrance Exam self-booking, Admin assignment, execution, and amendments; retired `/api/waivers`, `EXAMS_WAIVER` (`waivers.manage`), `bridgingWaivers` dashboard count, and `alignmentStatus` list filtering. |
-| ✅ **Phase 3** | `WAIVER-CLEANUP-2` — Frontend Registration & Portal Cleanup | **Implemented on `feat/program-master-data-and-waiver-cleanup`.** Removed `Date of Birth` and `Prerequisite Program` from `/register` and load active programs from `/api/programs`; removed `/applicant/alignment`, `/admin/exam/waiver`, and all alignment/waiver cards, filters, badges, and schedule locks across Applicant, Student, and Admin portals. |
+| ✅ **Phase 1** | `PROG-1` — Program Master Data & Admin CRUD (`/admin/settings`) | **Accepted & merged (`21a935f7`, `187fe8b1`).** Additive `degreeName`, `majorName`, `programCode`, and `isActive` on `Program`; reconciled/seeded the **16 authoritative Graduate School programs** with Handbook §7.11 Max Residency defaults (**4 yrs Master's / 6 yrs Doctoral**) and cleared obsolete `department` college strings; wired Admin CRUD under `Admin -> System Settings -> Programs` (`SYSTEM_SETTINGS`) and removed the redundant `Records` column; exposed `program.maxResidencyYears` fallback on Admin Student Detail alongside Student Profile; derived official PDF Course/Major from structured fields. |
+| ✅ **Phase 2** | `WAIVER-CLEANUP-1` — Backend Waiver & Alignment Gate Removal | **Accepted & merged (`f6c5beec`).** Removed `undergraduateProgramId` and `dateOfBirth` registration requirements, keyword `checkProgramAlignment()`, and `ApplicantBridgingWaiver` creation from Applicant registration; removed `requireEligibleAlignment()` blockers from Entrance Exam self-booking, Admin assignment, execution, and amendments; retired `/api/waivers`, `EXAMS_WAIVER` (`waivers.manage`), `bridgingWaivers` dashboard count, and `alignmentStatus` list filtering. |
+| ✅ **Phase 3** | `WAIVER-CLEANUP-2` — Frontend Registration & Portal Cleanup | **Accepted & merged (`f6c5beec`).** Removed `Date of Birth` and `Prerequisite Program` from `/register` and loaded active programs from `/api/programs`; removed `/applicant/alignment`, `/admin/exam/waiver`, and all alignment/waiver cards, filters, badges, and schedule locks across Applicant, Student, and Admin portals. |
+
+## 3.2 Completed Package — Prisma Schema Cleanup, Database Reset & Seed Alignment (`SCHEMA-SEED-CLEANUP`)
+
+**Status:** ✅ **ACCEPTED on branch `feat/schema-and-seed-cleanup` (2026-11-19)** — ready for PR merge to `main` (from `94aa8a4a`). Also includes [prisma/tsconfig.json](../../backend/prisma/tsconfig.json), `dotenv/config` initialization on [storage-readiness.ts](../../backend/src/cli/storage-readiness.ts) & [storage-backfill.ts](../../backend/src/cli/storage-backfill.ts), and private storage orphan cleanup (`0` issues, `212` active files).
+
+| Phase | Package | Target Scope |
+| --- | --- | --- |
+| ✅ **Phase 1** | `SCHEMA-CLEANUP-1` — Drop Obsolete Waiver/Alignment/DOB Schema | Dropped obsolete pre-exam waiver, alignment, undergraduate, curriculum waiver, and DOB schema artifacts (`ApplicantBridgingWaiver`, `BridgingWaiverStatus`, `CurriculumWaiver`, `WaiverStatus`, `UndergraduateProgram`, `AlignmentStatus`, and `Student` columns `undergraduateProgramId`, `previousMastersProgramId`, `dateOfBirth`, `isProgramAligned`, `alignmentStatus`) via migration `20261119000000_drop_waiver_alignment_undergrad_and_dob`, and cleaned remaining backend/frontend/test references and 4 unused waiver/alignment email templates. |
+| ✅ **Phase 2** | `SEED-ALIGN-1` — Seed Overhaul & Realistic Program Distribution | Overhauled [seed.ts](../../backend/prisma/seed.ts), [journey-fixtures.ts](../../backend/prisma/journey-fixtures.ts), and added [seed-pdf-helper.ts](../../backend/prisma/seed-pdf-helper.ts): removed `ugPrograms`, `"waivers.manage"`, obsolete alignment/waiver/DOB fields, 4 unused email templates, and the deprecated 17th fake `"UIUX Fixture"` program; aligned Faculty affiliations & Institutional Officials; updated Applicants to the 2-stage (`EXAM` -> `COR`) flow; distributed enrolled students (`30` across all `16` authoritative programs); added future-dated `Upcoming Defenses` & `PARTIALLY_SIGNED` RAP; generated valid synthetic `pdf-lib` PDFs (`CorUpload`, `ThesisDocument`, `PlagiarismResult`) in managed private storage. |
+| ✅ **Phase 3** | `DB-RESET-1` — Clean Local Database Reset & Exam Bank Re-Import | With explicit project-owner consent, reset local MySQL `graduate_system`, applied all 58 migrations cleanly, seeded aligned data (`16` programs, `101` managed PDFs, `0` exam slot drift), and re-imported the verified `72`-question OLSAT bank (`360` options, `108` media assets, EC7 emphasis map) alongside `1` canonical Essay question (`73` total `ExamQuestion`s). |
+| ✅ **Phase 4** | `VERIFY-1` — Automated & Runtime Verification | Verified `verify-journey-fixtures.ts` (`12/12` + `2 POLICY_ON` PASS), `storage-readiness` with `.env` (`ok: true`, `0` missing/checksum errors), `prisma validate`, backend `tsc --noEmit` & `vitest run`, frontend `tsc --noEmit` & Next.js build (`68/68` routes), and `git diff --check`. |
 
 ### Authoritative 16 Graduate School Programs (`PROG-1` Seed Target)
 
@@ -654,8 +666,8 @@ today may be prefilled where policy allows, and the Admin must still choose the
 schedule time and capacity before creation. The created Exam Schedule remains a
 shared institutional schedule that may accept additional eligible Applicants;
 it must not become an Applicant-owned/private schedule. Silent automatic schedule
-creation is not approved. Existing Program/alignment/waiver, capacity,
-transaction/locking, blocking-record and same-day rules must remain authoritative.
+creation is not approved. Existing Program, capacity,
+transaction/locking, blocking-record and same-day rules must remain authoritative (pre-exam alignment/waiver gates retired in PR #59).
 This deferred package is separate from EXAM-SCHEDULE-BOOKINGS-1 and requires
 explicit owner authorization before implementation.
 
@@ -897,12 +909,13 @@ For each review, record:
 
 # 15. Immediate Priority Queue
 
-This list is intentionally orderable and may change. *(Completed items: Exam Phase A, Exam Phase B + Booking Visibility, Faculty/Admin Role Access, Adviser Eligibility under Faculty model, Portal UI/UX Design System Overhaul, Public Landing Page Redesign V2, Institutional Officials + O.R. No. + E-Signature Vault, and Ready-for-Scheduling Requirement Visibility / Defense Scheduling UI Overhaul are now merged to `main`.)*
+This list is intentionally orderable and may change. *(Completed items: Exam Phase A, Exam Phase B + Booking Visibility, Faculty/Admin Role Access, Adviser Eligibility under Faculty model, Portal UI/UX Design System Overhaul, Public Landing Page Redesign V2, Institutional Officials + O.R. No. + E-Signature Vault, Ready-for-Scheduling Requirement Visibility / Defense Scheduling UI Overhaul, and Program Master Data & Pre-Exam Bridging Waiver Cleanup (PR #59 at `94aa8a4a`) are now merged to `main`.)*
 
-1. ✅ **Program Master Data & Pre-Exam Bridging Waiver Cleanup** (`docs/superpowers/plans/2026-11-18-program-master-data-and-waiver-cleanup.md`) — **Implemented on branch `feat/program-master-data-and-waiver-cleanup` (pending owner review):**
-   - ✅ **Phase 1 (`PROG-1`):** Seeded/reconciled the 16 authoritative Graduate School programs (`4` yrs Master's / `6` yrs Doctoral Max Residency), wired `Admin -> System Settings -> Programs` CRUD, exposed `maxResidencyYears` on Admin Student Detail, and connected structured Course/Major fields to official PDFs.
+1. ✅ **Program Master Data & Pre-Exam Bridging Waiver Cleanup (`PROG-WAIVER-CLEANUP`)** (`docs/superpowers/plans/2026-11-18-program-master-data-and-waiver-cleanup.md`) — **Merged to `main` via PR #59 (`94aa8a4a`):**
+   - ✅ **Phase 1 (`PROG-1`):** Seeded/reconciled the 16 authoritative Graduate School programs (`4` yrs Master's / `6` yrs Doctoral Max Residency), wired `Admin -> System Settings -> Programs` CRUD (without redundant `Records` column), exposed `maxResidencyYears` on Admin Student Detail, and connected structured Course/Major fields to official PDFs.
    - ✅ **Phase 2 (`WAIVER-CLEANUP-1`):** Removed pre-exam Program Alignment & Bridging Waiver blockers, `dateOfBirth` / `undergraduateProgramId` registration requirements, `/api/waivers`, and `EXAMS_WAIVER` capability from backend registration, exam booking/assignment, and admin APIs.
    - ✅ **Phase 3 (`WAIVER-CLEANUP-2`):** Cleaned up `/register` (*Date of Birth* and *Prerequisite Program* removal), Applicant Portal (`/applicant/alignment`, dashboard, schedule), Admin Portal (`/admin/exam/waiver`, dashboard, applicants, `AssignApplicantDialog`), and Student Profile/Admin Student alignment badges.
+   - ✅ **ACCEPTED (`SCHEMA-SEED-CLEANUP` on `feat/schema-and-seed-cleanup`, 2026-11-19):** Dropped obsolete waiver/alignment/undergraduate/curriculum-waiver/DOB schema models & columns, overhauled `seed.ts` & `journey-fixtures.ts` with synthetic `pdf-lib` PDFs and balanced 16-program distribution, reset & re-seeded local DB, re-imported the verified 72-question OLSAT exam bank, and cleaned orphan files in private storage — see §3.2.
    - *(Follow-on — Next Up)* Implement **Curriculum Checklist / Plan of Coursework** (§3 & Manual §7.24) on top of the clean program master data.
 2. Implement Comprehensive Exam per-component history (`Foundation`, `Major`, `Cognate`) and 3-strike disqualification tracking (§22 & Manual §7.15).
 3. Review collaborator work: email integration, notifications, announcement, memo, and analytics & reports (`/admin/analytics` stays excluded from Phase 1–3 until audited/replaced with live data).
@@ -1169,7 +1182,7 @@ These items are not all end-user features, but they are required before the syst
 Current repository facts:
 
 - JWT/session lifetime is currently 24 hours;
-- the redesigned generic `mustChangePassword` rule is still pending;
+- the `mustChangePassword` first-login gate is implemented for Faculty and Administrator accounts (PR #49); extending it to Admin-assisted Student password resets remains pending below;
 - no accepted self-service forgot-password/reset-token flow was found;
 - the canonical UI/UX documentation explicitly leaves Admin-assisted Student password recovery as unimplemented.
 
@@ -1294,7 +1307,7 @@ Canonical wording guidance is governed by [USER_FACING_COPY_SOURCE_OF_TRUTH.md](
 | Status | Item | Current / target state |
 | --- | --- | --- |
 | ⏳ | System terminology audit | Review visible labels, statuses, buttons, helper text, dialogs, empty states, errors, and navigation across Applicant, Student, Faculty, and Admin surfaces. |
-| ⏳ | Panelist → Faculty wording migration | Replace outdated account-level `Panelist` wording where it means the broader future Faculty identity, while preserving defense-specific `Panelist` when it refers to an actual committee assignment. |
+| ✅ | Panelist → Faculty wording migration | Completed in PR #49 (`4abbf3b8`) across login, routes, sidebar, and portals while preserving defense-committee `Panelist` assignment terminology. |
 | ⏳ | User-facing vs implementation language | Keep API/model/internal lifecycle terms out of ordinary UI unless they serve a real administrative/audit need. |
 | ⏳ | Consistent action verbs | Use one accepted phrase for the same action across pages, dialogs, notifications, and emails. |
 | ⏳ | Consistent status labels | Map raw enums/internal states to clear user-facing wording without changing domain meaning. |

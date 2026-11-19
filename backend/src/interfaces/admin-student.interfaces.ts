@@ -13,8 +13,6 @@ export interface AdminStudentDetail {
   email: string;
   studentNumber: string | null;
   cellphone: string | null;
-  /** ISO string; null when not recorded. */
-  dateOfBirth: string | null;
   program: { id: string; programName: string } | null;
   admissionStatus: string;
   /** ISO string; null when not recorded. */

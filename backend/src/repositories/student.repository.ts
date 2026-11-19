@@ -20,16 +20,7 @@ export class StudentRepository {
           },
         },
         program: true,
-        undergraduateProgram: true,
-        previousMastersProgram: true,
         residencyTracking: true,
-        curriculumWaivers: true,
-        bridgingWaiver: {
-          include: {
-            intendedProgram: true,
-            undergraduateProgram: true,
-          },
-        },
         compExamRecords: {
           orderBy: { createdAt: "desc" },
           take: 1,

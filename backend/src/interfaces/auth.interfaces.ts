@@ -9,8 +9,6 @@ export interface RegisterInput {
   programId: string;
   password: string;
   programType?: string;
-  dateOfBirth?: string;
-  undergraduateProgramId?: string;
 }
 
 export interface LoginInput {

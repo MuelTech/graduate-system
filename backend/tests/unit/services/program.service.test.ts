@@ -9,9 +9,6 @@ const prismaMock = vi.hoisted(() => ({
     update: vi.fn(),
     updateMany: vi.fn(),
   },
-  undergraduateProgram: {
-    findMany: vi.fn(),
-  },
   auditLog: {
     create: vi.fn(),
   },
