@@ -103,4 +103,55 @@ export class AdminApplicantController {
       }
     }
   };
+
+  updateApplicant = async (req: Request, res: Response): Promise<void> => {
+    try {
+      const id = req.params.id as string;
+      const adminId = (req as any).user.userId;
+      const result = await this.service.updateApplicant(id, adminId, req.body);
+      res.status(200).json(result);
+    } catch (error: unknown) {
+      if (error instanceof AppError) {
+        res.status(error.statusCode).json({ error: error.message });
+      } else if (error instanceof Error) {
+        res.status(400).json({ error: error.message });
+      } else {
+        res.status(500).json({ error: "An unexpected error occurred." });
+      }
+    }
+  };
+
+  resetApplicantPassword = async (req: Request, res: Response): Promise<void> => {
+    try {
+      const id = req.params.id as string;
+      const adminId = (req as any).user.userId;
+      const result = await this.service.resetApplicantPassword(id, adminId);
+      res.status(200).json(result);
+    } catch (error: unknown) {
+      if (error instanceof AppError) {
+        res.status(error.statusCode).json({ error: error.message });
+      } else if (error instanceof Error) {
+        res.status(400).json({ error: error.message });
+      } else {
+        res.status(500).json({ error: "An unexpected error occurred." });
+      }
+    }
+  };
+
+  deleteApplicant = async (req: Request, res: Response): Promise<void> => {
+    try {
+      const id = req.params.id as string;
+      const adminId = (req as any).user.userId;
+      const result = await this.service.deleteApplicant(id, adminId);
+      res.status(200).json(result);
+    } catch (error: unknown) {
+      if (error instanceof AppError) {
+        res.status(error.statusCode).json({ error: error.message });
+      } else if (error instanceof Error) {
+        res.status(400).json({ error: error.message });
+      } else {
+        res.status(500).json({ error: "An unexpected error occurred." });
+      }
+    }
+  };
 }

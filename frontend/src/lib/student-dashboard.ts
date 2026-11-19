@@ -41,6 +41,121 @@ export function compExamStatusLabel(status: string | null | undefined): string {
   }
 }
 
+export interface StudentCompExamRecordLike {
+  id?: string;
+  attemptNumber?: number | null;
+  status?: string | null;
+  examDate?: string | null;
+  remarks?: string | null;
+  certificateNumber?: string | null;
+  certificateIssuedAt?: string | null;
+  createdAt?: string | null;
+}
+
+export interface StudentCompExamAttemptProjection {
+  standingLabel: string;
+  detailLine: string;
+  certificateNumber: string | null;
+  attemptsUsed: number;
+  failedAttempts: number;
+  attemptsRemaining: number;
+  maxAttempts: number;
+  isPassed: boolean;
+  isDismissed: boolean;
+}
+
+export function compExamAttemptSummary(
+  records: readonly StudentCompExamRecordLike[] | null | undefined,
+): StudentCompExamAttemptProjection {
+  const MAX_ATTEMPTS = 3;
+  const list = Array.isArray(records) ? records : [];
+  const passed = list.find(
+    (r) => String(r.status ?? "").toUpperCase() === "PASSED",
+  );
+  const failedCount = list.filter(
+    (r) => String(r.status ?? "").toUpperCase() === "FAILED",
+  ).length;
+  const gradedCount = list.filter((r) => {
+    const upper = String(r.status ?? "").toUpperCase();
+    return upper === "PASSED" || upper === "FAILED";
+  }).length;
+  const hasPendingOnly =
+    gradedCount === 0 &&
+    list.some((r) => String(r.status ?? "").toUpperCase() === "PENDING");
+
+  if (passed) {
+    const attemptNum =
+      typeof passed.attemptNumber === "number" ? passed.attemptNumber : gradedCount || 1;
+    return {
+      standingLabel: "Passed",
+      detailLine: `Passed on Attempt ${attemptNum} of ${MAX_ATTEMPTS}. Title Defense is unlocked.`,
+      certificateNumber: passed.certificateNumber ?? null,
+      attemptsUsed: gradedCount,
+      failedAttempts: failedCount,
+      attemptsRemaining: 0,
+      maxAttempts: MAX_ATTEMPTS,
+      isPassed: true,
+      isDismissed: false,
+    };
+  }
+
+  if (failedCount >= MAX_ATTEMPTS) {
+    return {
+      standingLabel: "Disqualified (3/3)",
+      detailLine:
+        "All 3 examination attempts failed. Permanently disqualified under Graduate School Manual §7.15.4.",
+      certificateNumber: null,
+      attemptsUsed: gradedCount,
+      failedAttempts: failedCount,
+      attemptsRemaining: 0,
+      maxAttempts: MAX_ATTEMPTS,
+      isPassed: false,
+      isDismissed: true,
+    };
+  }
+
+  if (failedCount > 0) {
+    const remaining = Math.max(0, MAX_ATTEMPTS - failedCount);
+    return {
+      standingLabel: `Retake Required (${failedCount}/${MAX_ATTEMPTS})`,
+      detailLine: `Attempt ${failedCount} of ${MAX_ATTEMPTS} failed (${remaining} remaining attempt${remaining === 1 ? "" : "s"}).`,
+      certificateNumber: null,
+      attemptsUsed: gradedCount,
+      failedAttempts: failedCount,
+      attemptsRemaining: remaining,
+      maxAttempts: MAX_ATTEMPTS,
+      isPassed: false,
+      isDismissed: false,
+    };
+  }
+
+  if (hasPendingOnly) {
+    return {
+      standingLabel: "Pending",
+      detailLine: "Awaiting recorded examination result (0 of 3 attempts used).",
+      certificateNumber: null,
+      attemptsUsed: 0,
+      failedAttempts: 0,
+      attemptsRemaining: MAX_ATTEMPTS,
+      maxAttempts: MAX_ATTEMPTS,
+      isPassed: false,
+      isDismissed: false,
+    };
+  }
+
+  return {
+    standingLabel: "Not recorded",
+    detailLine: "Required before Title Defense (up to 3 attempts per Manual §7.15.4).",
+    certificateNumber: null,
+    attemptsUsed: 0,
+    failedAttempts: 0,
+    attemptsRemaining: MAX_ATTEMPTS,
+    maxAttempts: MAX_ATTEMPTS,
+    isPassed: false,
+    isDismissed: false,
+  };
+}
+
 const STEP_HEADINGS: Record<JourneyStepKey, string> = {
   TITLE_DEFENSE: "Prepare your Title Defense",
   ADVISER_REQUEST: "Request your Thesis Adviser",

@@ -62,17 +62,106 @@ export class AdminStudentController {
     }
   };
 
-  updateCompExamStatus = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  recordCompExamAttempt = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
       const id = req.params.id as string;
-      const { status } = req.body;
-
-      if (!status || !["PENDING", "PASSED", "FAILED"].includes(status)) {
-        throw new AppError("Invalid status. Must be PENDING, PASSED, or FAILED.", 400);
+      const adminId = req.user?.userId;
+      if (!adminId) {
+        res.status(401).json({ error: "Unauthorized" });
+        return;
       }
+      const { status, examDate, remarks } = req.body ?? {};
+      const result = await this.service.recordCompExamAttempt(id, adminId, {
+        status,
+        examDate,
+        remarks,
+      });
+      res.status(200).json(result);
+    } catch (error: unknown) {
+      if (error instanceof AppError) {
+        res.status(error.statusCode).json({ error: error.message });
+      } else if (error instanceof Error) {
+        res.status(400).json({ error: error.message });
+      } else {
+        res.status(500).json({ error: "An unexpected error occurred." });
+      }
+    }
+  };
 
-      const result = await this.service.updateCompExamStatus(id, status);
-      res.status(200).json({ message: "Comprehensive exam status updated.", result });
+  correctLatestCompExamAttempt = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+    try {
+      const id = req.params.id as string;
+      const adminId = req.user?.userId;
+      if (!adminId) {
+        res.status(401).json({ error: "Unauthorized" });
+        return;
+      }
+      const { status, examDate, remarks, reason } = req.body ?? {};
+      const result = await this.service.correctLatestCompExamAttempt(id, adminId, {
+        status,
+        examDate,
+        remarks,
+        reason,
+      });
+      res.status(200).json(result);
+    } catch (error: unknown) {
+      if (error instanceof AppError) {
+        res.status(error.statusCode).json({ error: error.message });
+      } else if (error instanceof Error) {
+        res.status(400).json({ error: error.message });
+      } else {
+        res.status(500).json({ error: "An unexpected error occurred." });
+      }
+    }
+  };
+
+  getCompExamCertificateFoundation = async (req: Request, res: Response): Promise<void> => {
+    try {
+      const id = req.params.id as string;
+      const result = await this.service.getCompExamCertificateFoundation(id);
+      res.status(200).json(result);
+    } catch (error: unknown) {
+      if (error instanceof AppError) {
+        res.status(error.statusCode).json({ error: error.message });
+      } else if (error instanceof Error) {
+        res.status(400).json({ error: error.message });
+      } else {
+        res.status(500).json({ error: "An unexpected error occurred." });
+      }
+    }
+  };
+
+  updateStudent = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+    try {
+      const id = req.params.id as string;
+      const adminId = req.user?.userId;
+      if (!adminId) {
+        res.status(401).json({ error: "Unauthorized" });
+        return;
+      }
+      const result = await this.service.updateStudent(id, adminId, req.body);
+      res.status(200).json(result);
+    } catch (error: unknown) {
+      if (error instanceof AppError) {
+        res.status(error.statusCode).json({ error: error.message });
+      } else if (error instanceof Error) {
+        res.status(400).json({ error: error.message });
+      } else {
+        res.status(500).json({ error: "An unexpected error occurred." });
+      }
+    }
+  };
+
+  resetStudentPassword = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+    try {
+      const id = req.params.id as string;
+      const adminId = req.user?.userId;
+      if (!adminId) {
+        res.status(401).json({ error: "Unauthorized" });
+        return;
+      }
+      const result = await this.service.resetStudentPassword(id, adminId);
+      res.status(200).json(result);
     } catch (error: unknown) {
       if (error instanceof AppError) {
         res.status(error.statusCode).json({ error: error.message });

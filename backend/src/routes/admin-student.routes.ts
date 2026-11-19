@@ -38,13 +38,49 @@ router.get(
   controller.getStudentJourney,
 );
 
-// Update comprehensive exam status
+// Record a comprehensive exam attempt (Manual §7.15.4 3-attempt rule)
 router.put(
   "/:id/comprehensive-exam",
   authenticateJWT,
   requireRole(["ADMIN"]),
   requireAdminCapability("students.manage"),
-  controller.updateCompExamStatus,
+  controller.recordCompExamAttempt,
+);
+
+// Audited correction of the latest graded comprehensive exam attempt
+router.patch(
+  "/:id/comprehensive-exam/latest",
+  authenticateJWT,
+  requireRole(["ADMIN"]),
+  requireAdminCapability("students.manage"),
+  controller.correctLatestCompExamAttempt,
+);
+
+// Comprehensive exam certification foundation metadata
+router.get(
+  "/:id/comprehensive-exam/certificate",
+  authenticateJWT,
+  requireRole(["ADMIN"]),
+  requireAdminCapability("students.manage"),
+  controller.getCompExamCertificateFoundation,
+);
+
+// Update student profile / academic record with audit reason
+router.patch(
+  "/:id",
+  authenticateJWT,
+  requireRole(["ADMIN"]),
+  requireAdminCapability("students.manage"),
+  controller.updateStudent,
+);
+
+// Reset student password (default LAST NAME ALL CAPS + mustChangePassword)
+router.post(
+  "/:id/reset-password",
+  authenticateJWT,
+  requireRole(["ADMIN"]),
+  requireAdminCapability("students.manage"),
+  controller.resetStudentPassword,
 );
 
 export default router;

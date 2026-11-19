@@ -15,4 +15,11 @@ router.get(
   applicantController.getProfile,
 );
 
+router.patch(
+  "/profile",
+  authenticateJWT,
+  requireRole(["APPLICANT"]),
+  applicantController.updateProfile,
+);
+
 export default router;

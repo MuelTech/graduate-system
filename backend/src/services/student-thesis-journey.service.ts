@@ -10,6 +10,7 @@ import prisma from "../config/database";
 import { AppError } from "../utils/AppError";
 import { isRapStatusComplete } from "./stage-completion";
 import { resolveStrikePolicy } from "./strike-policy";
+import { evaluateCompExamSummary } from "./comp-exam.rules";
 import {
   evaluateStudentThesisJourney,
   toWallClockDate,
@@ -258,8 +259,11 @@ export class StudentThesisJourneyService {
       return toSessionSummary(chosen, defenseType);
     };
 
+    const compExamEval = evaluateCompExamSummary(student.compExamRecords);
+
     const snapshot: JourneySnapshot = {
-      compExamPassed: student.compExamRecords.some((c) => c.status === "PASSED"),
+      compExamPassed: compExamEval.isPassed,
+      compExamDismissed: compExamEval.isDismissed,
       titlePassed: Boolean(titleConclusion),
       selectedTitleId: selectedTitle?.id ?? null,
       selectedTitleText: selectedTitle?.titleText ?? null,

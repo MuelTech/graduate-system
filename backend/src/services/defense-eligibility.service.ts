@@ -66,7 +66,7 @@ export class DefenseEligibilityService {
       missing.push(
         miss(
           "COMP_EXAM_DISMISSED",
-          "Student is dismissed after two Comprehensive Exam failures.",
+          "Student is dismissed after three Comprehensive Exam failures (Manual §7.15.4).",
           stage,
         ),
       );
@@ -145,7 +145,7 @@ export class DefenseEligibilityService {
       missing.push(
         miss(
           "COMP_EXAM_DISMISSED",
-          "Student is dismissed (two exam failures).",
+          "Student is dismissed (three exam failures, Manual §7.15.4).",
           stage,
         ),
       );
@@ -244,7 +244,7 @@ export class DefenseEligibilityService {
       missing.push(
         miss(
           "COMP_EXAM_DISMISSED",
-          "Student is dismissed (two exam failures).",
+          "Student is dismissed (three exam failures, Manual §7.15.4).",
           stage,
         ),
       );
@@ -386,7 +386,7 @@ export class DefenseEligibilityService {
       missing.push(
         miss(
           "COMP_EXAM_DISMISSED",
-          "Student is dismissed (two exam failures).",
+          "Student is dismissed (three exam failures, Manual §7.15.4).",
           stage,
         ),
       );

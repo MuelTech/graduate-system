@@ -128,8 +128,20 @@ function StudentStatusBadge({ status }: { status: string }) {
   );
 }
 
-function CompExamCell({ status }: { status: string }) {
-  const label = compExamLabel(status);
+function CompExamCell({
+  status,
+  strikes = 0,
+}: {
+  status: string;
+  strikes?: number;
+}) {
+  let label = compExamLabel(status);
+  if (status === "FAILED") {
+    label =
+      strikes >= 3
+        ? "Disqualified (3/3)"
+        : `Failed (${Math.max(1, strikes)}/3)`;
+  }
   const tone =
     !status || status === "NOT_RECORDED"
       ? "text-(--earist-body-text)/70"
@@ -566,7 +578,10 @@ export default function AdminStudentsPage() {
                     </p>
                   </TableCell>
                   <TableCell>
-                    <CompExamCell status={student.compExamStatus} />
+                    <CompExamCell
+                      status={student.compExamStatus}
+                      strikes={student.compExamStrikes}
+                    />
                   </TableCell>
                   <TableCell>
                     <ThesisProgressCell

@@ -54,4 +54,31 @@ router.put(
   controller.promoteToStudent
 );
 
+// Update applicant details
+router.patch(
+  "/:id",
+  authenticateJWT,
+  requireRole(["ADMIN"]),
+  requireAdminCapability("applicants.manage"),
+  controller.updateApplicant
+);
+
+// Reset applicant password (default LAST NAME ALL CAPS + mustChangePassword)
+router.post(
+  "/:id/reset-password",
+  authenticateJWT,
+  requireRole(["ADMIN"]),
+  requireAdminCapability("applicants.manage"),
+  controller.resetApplicantPassword
+);
+
+// Guarded delete applicant (only when no exam attempt / COR verification exists)
+router.delete(
+  "/:id",
+  authenticateJWT,
+  requireRole(["ADMIN"]),
+  requireAdminCapability("applicants.manage"),
+  controller.deleteApplicant
+);
+
 export default router;

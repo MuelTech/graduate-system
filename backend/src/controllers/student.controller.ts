@@ -1,6 +1,7 @@
-import { Request, Response } from 'express';
-import { StudentService } from '../services/student.service';
-import { AuthenticatedRequest } from '../middlewares/auth.middleware';
+import { Response } from "express";
+import { StudentService } from "../services/student.service";
+import { AuthenticatedRequest } from "../middlewares/auth.middleware";
+import { AppError } from "../utils/AppError";
 
 export class StudentController {
   private studentService = new StudentService();
@@ -8,23 +9,68 @@ export class StudentController {
   // For Student Role
   getJourney = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
-      if (!req.user) throw new Error('Unauthorized');
-      
+      if (!req.user) {
+        res.status(401).json({ error: "Unauthorized" });
+        return;
+      }
+
       const journey = await this.studentService.getStudentJourney(req.user.userId);
       res.status(200).json(journey);
-    } catch (error: any) {
-      res.status(404).json({ error: error.message });
+    } catch (error: unknown) {
+      if (error instanceof AppError) {
+        res.status(error.statusCode).json({ error: error.message });
+      } else if (error instanceof Error) {
+        res.status(404).json({ error: error.message });
+      } else {
+        res.status(500).json({ error: "An unexpected error occurred." });
+      }
     }
   };
 
-  // For Admin Role
-  updateCompExam = async (req: Request, res: Response): Promise<void> => {
+  // For Student Role — Comprehensive Exam certification foundation
+  getCompExamCertificateFoundation = async (
+    req: AuthenticatedRequest,
+    res: Response,
+  ): Promise<void> => {
+    try {
+      if (!req.user) {
+        res.status(401).json({ error: "Unauthorized" });
+        return;
+      }
+      const result = await this.studentService.getCompExamCertificateFoundation(
+        req.user.userId,
+      );
+      res.status(200).json(result);
+    } catch (error: unknown) {
+      if (error instanceof AppError) {
+        res.status(error.statusCode).json({ error: error.message });
+      } else if (error instanceof Error) {
+        res.status(400).json({ error: error.message });
+      } else {
+        res.status(500).json({ error: "An unexpected error occurred." });
+      }
+    }
+  };
+
+  // For Admin Role — delegates to AdminStudentService 3-attempt logic
+  updateCompExam = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
       const id = req.params.id as string; // studentId
-      const result = await this.studentService.updateCompExam(id, req.body);
-      res.status(200).json({ message: 'Comprehensive Exam updated successfully', result });
-    } catch (error: any) {
-      res.status(400).json({ error: error.message });
+      const adminId = req.user?.userId;
+      if (!adminId) {
+        res.status(401).json({ error: "Unauthorized" });
+        return;
+      }
+      const result = await this.studentService.updateCompExam(id, adminId, req.body);
+      res.status(200).json(result);
+    } catch (error: unknown) {
+      if (error instanceof AppError) {
+        res.status(error.statusCode).json({ error: error.message });
+      } else if (error instanceof Error) {
+        res.status(400).json({ error: error.message });
+      } else {
+        res.status(500).json({ error: "An unexpected error occurred." });
+      }
     }
   };
 }

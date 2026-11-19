@@ -1,5 +1,4 @@
 import prisma from "../config/database";
-import { CompExamStatus } from "@prisma/client";
 
 export class StudentRepository {
   async getStudentJourney(userId: string) {
@@ -22,8 +21,7 @@ export class StudentRepository {
         program: true,
         residencyTracking: true,
         compExamRecords: {
-          orderBy: { createdAt: "desc" },
-          take: 1,
+          orderBy: [{ attemptNumber: "desc" }, { createdAt: "desc" }],
         },
         thesisRecords: {
           include: {
@@ -78,31 +76,6 @@ export class StudentRepository {
         },
       },
     });
-  }
-
-  async updateComprehensiveExamStatus(
-    studentId: string,
-    status: CompExamStatus,
-  ) {
-    // Check if an existing record exists; if so, update. If not, create.
-    const existingRecord = await prisma.compExamRecord.findFirst({
-      where: { studentId },
-      orderBy: { createdAt: "desc" },
-    });
-
-    if (existingRecord) {
-      return prisma.compExamRecord.update({
-        where: { id: existingRecord.id },
-        data: { status },
-      });
-    } else {
-      return prisma.compExamRecord.create({
-        data: {
-          studentId,
-          status,
-        },
-      });
-    }
   }
 
   async getStudentById(studentId: string) {

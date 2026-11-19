@@ -41,6 +41,16 @@ function stateOf(
 }
 
 describe("evaluateStudentThesisJourney — Title / Comp Exam", () => {
+  it("explains permanent disqualification on Title Defense when compExamDismissed is true (Manual §7.15.4)", () => {
+    const dto = evaluateStudentThesisJourney(
+      baseSnap({ compExamPassed: false, compExamDismissed: true }),
+    );
+    expect(dto.steps[0].state).toBe("LOCKED");
+    expect(dto.steps[0].lockReason).toContain(
+      "three failed Comprehensive Examination attempts",
+    );
+  });
+
   it("CP2: application PENDING + no schedule → under review", () => {
     const dto = evaluateStudentThesisJourney(
       baseSnap({

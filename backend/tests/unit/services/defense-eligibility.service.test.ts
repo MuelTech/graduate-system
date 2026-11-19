@@ -110,11 +110,12 @@ describe("evaluateApplyTitle", () => {
     expect(codes(result.missing)).toContain("COMP_EXAM_PASSED");
   });
 
-  it("blocks dismissed students (2 strikes)", () => {
+  it("blocks dismissed students (3 failed attempts, Manual §7.15.4)", () => {
     const result = svc.evaluateApplyTitle(
       titleInput({ compExamDismissed: true }),
     );
     expect(codes(result.missing)).toContain("COMP_EXAM_DISMISSED");
+    expect(result.missing[0]?.message).toContain("three");
   });
 });
 

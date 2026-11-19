@@ -609,6 +609,11 @@ export interface AdminApplicantDetail {
   admissionStatus: string;
   enrollmentDate: string | null;
   createdAt: string;
+  isActive?: boolean;
+  mustChangePassword?: boolean;
+  canChangeProgram?: boolean;
+  canDelete?: boolean;
+  deleteBlockedReason?: string | null;
 }
 
 export interface ExamApplicationDetail {
@@ -741,20 +746,66 @@ export interface AdminStudentListItem {
   enrollmentDate: string | null;
 }
 
+export type CompExamStanding =
+  | "NOT_RECORDED"
+  | "PENDING"
+  | "PASSED"
+  | "RETAKE_REQUIRED"
+  | "DISMISSED";
+
+export interface CompExamAttemptDto {
+  id: string;
+  attemptNumber: number;
+  status: string;
+  examDate: string | null;
+  remarks: string | null;
+  recordedAt: string;
+  recordedByName: string | null;
+  certificateNumber: string | null;
+  certificateIssuedAt: string | null;
+}
+
+export interface CompExamSummaryDto {
+  standing: CompExamStanding;
+  isPassed: boolean;
+  isDismissed: boolean;
+  attemptsUsed: number;
+  failedAttempts: number;
+  attemptsRemaining: number;
+  maxAttempts: number;
+  nextAttemptNumber: number | null;
+  canRecordAttempt: boolean;
+  canCorrectLatest: boolean;
+  certificate: {
+    eligible: boolean;
+    templateStatus: "TEMPLATE_PENDING";
+    certificateNumber: string | null;
+    issuedAt: string | null;
+  };
+  attempts: CompExamAttemptDto[];
+}
+
 export interface AdminStudentDetail {
   id: string;
   firstName: string;
   lastName: string;
+  suffix?: string | null;
   email: string;
   studentNumber: string | null;
+  pinnacleApplicantId?: string | null;
   cellphone: string | null;
   program: { id: string; programName: string } | null;
   admissionStatus: string;
   enrollmentDate: string | null;
   curriculumType: string | null;
+  isActive?: boolean;
+  mustChangePassword?: boolean;
+  canChangeProgram?: boolean;
   residency: { startDate: string | null; maxYears: number | null } | null;
   /** Latest recorded Comprehensive Exam status; null when no record exists. */
   compExam: { status: string; recordedAt: string | null } | null;
+  /** Authoritative 3-attempt Comprehensive Examination summary and certificate foundation. */
+  compExamSummary?: CompExamSummaryDto;
   adviserAssignment: {
     adviserId: string;
     adviserName: string;
