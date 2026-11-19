@@ -47,7 +47,7 @@ describe.skipIf(process.env.EXAM_B0A_DB_TEST !== "1")("B0A real InnoDB contentio
     expect(engines.every(row => row.ENGINE === "InnoDB")).toBe(true);
     await observer.program.create({ data: { id: ids.program, programName: "B0A isolated contention fixture", programType: "MASTERS" } });
     await observer.user.create({ data: { id: ids.user, email: `b0a-${ids.user}@example.invalid`, passwordHash: "unusable-test-fixture", firstName: "B0A", lastName: "Fixture", role: "APPLICANT" } });
-    await observer.student.create({ data: { id: ids.student, userId: ids.user, programId: ids.program, alignmentStatus: "ALIGNED", pinnacleApplicantId: "B0A-SYNTHETIC" } });
+    await observer.student.create({ data: { id: ids.student, userId: ids.user, programId: ids.program, pinnacleApplicantId: "B0A-SYNTHETIC" } });
     await observer.examSlot.create({ data: { id: ids.slot, programId: ids.program, examDate: new Date("2026-11-02T00:00:00Z"), examTime: new Date("1970-01-01T09:00:00Z"), maxSlots: 1, slotsTaken: 1 } });
     for (const [questionId, optionId] of [[ids.q, ids.option], [ids.otherQ, ids.foreignOption]]) {
       await observer.examQuestion.create({ data: { id: questionId, questionText: "Synthetic choice", type: "MULTIPLE_CHOICE", options: { create: [{ id: optionId, optionText: "Synthetic correct option", isCorrect: true }, { optionText: "Other synthetic option", isCorrect: false, order: 1 }] } } });

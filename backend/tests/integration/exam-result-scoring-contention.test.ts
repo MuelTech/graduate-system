@@ -371,7 +371,7 @@ describe.skipIf(process.env.EXAM_B8_DB_TEST !== "1")("B8 real MariaDB execution/
       const sets = new ExamQuestionSetRepository();
       try {
         await observer.user.create({ data: { id: userId, email: `${userId}@example.invalid`, passwordHash: "unusable", firstName: "B10", lastName: "Journey", role: "APPLICANT" } });
-        await observer.student.create({ data: { id: studentId, userId, programId: ids.program, pinnacleApplicantId: `B10-${studentId}`, alignmentStatus: "ALIGNED" } });
+        await observer.student.create({ data: { id: studentId, userId, programId: ids.program, pinnacleApplicantId: `B10-${studentId}` } });
         await new ExamConfigurationService().replaceCurrent({ examDurationMinutes: 60, mcqPointsPerCorrectItem: 0.125, essayMaximumScore: 0.375, passingThreshold: 75 }, ids.admin);
         // Attach exact synthetic private media, then publish through actual B2.
         await observer.examQuestion.update({ where: { id: ids.q }, data: { stimulusType: "IMAGE", stimulusMediaId: ids.media } });

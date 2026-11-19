@@ -13,7 +13,7 @@ export function executionApplication() {
   return { seatReleasedAt: null, scheduleAmendment: null, resultDecision: null, id: ids.app, studentId: ids.student, programId: ids.program, slotId: ids.slot, status: "PENDING",
     examDate: date, examTime: time, actualStartedAt: null, deadlineAt: null, executionConfiguration: null, contentRevisionId: null,
     startAuthorizedAt: null, startAuthorizedById: null, startAuthorizedBy: null,
-    student: { id: ids.student, userId: ids.user, programId: ids.program, admissionStatus: "APPLICANT", alignmentStatus: "ALIGNED", pinnacleApplicantId: "B4-SYNTHETIC", user: { role: "APPLICANT", isActive: true } },
+    student: { id: ids.student, userId: ids.user, programId: ids.program, admissionStatus: "APPLICANT", pinnacleApplicantId: "B4-SYNTHETIC", user: { role: "APPLICANT", isActive: true } },
     slot: { id: ids.slot, programId: ids.program, examDate: date, examTime: time, isActive: true, maxSlots: 1, slotsTaken: 1 },
     program: { programName: "Synthetic Graduate Program" }, score: null, _count: { answers: 0 },
   };

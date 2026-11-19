@@ -33,13 +33,10 @@ model User {
   adviserRequestsApproved            AdviserRequest[]          @relation("AdviserRequestApprovedBy")
   adviserRequestsAsRequestedPanelist AdviserRequest[]          @relation("AdviserRequestedPanelist")
   adviserRequestsDeansReviewed       AdviserRequest[]          @relation("AdviserRequestDean")
-  bridgingWaiversValidated           ApplicantBridgingWaiver[] @relation("BridgingWaiverValidatedBy")
   auditLogsAsActor                   AuditLog[]                @relation("AuditLogActor")
   chatbotFaqsCreated                 ChatbotFaq[]              @relation("FaqCreatedBy")
   corRecordsVerified                 CorRecord[]               @relation("CorRecordVerifiedBy")
   corUploadsReviewed                 CorUpload[]               @relation("CorUploadReviewedBy")
-  curriculumWaiversApproved          CurriculumWaiver[]        @relation("WaiverApprovedBy")
-  curriculumWaiversRecommended       CurriculumWaiver[]        @relation("WaiverRecommendedBy")
   customRolesCreated                 CustomRole[]              @relation("CustomRoleCreatedBy")
   defenseSchedulesSet                DefenseSchedule[]         @relation("ScheduleSetBy")
   defenseNotesFinalized              DefenseSchedule[]         @relation("RapporteurNotesFinalizedBy")
@@ -86,11 +83,6 @@ model Student {
   residencyStartDate       DateTime?                 @map("residency_start_date") @db.Date
   curriculumType           CurriculumType?           @map("curriculum_type")
   pinnacleApplicantId      String?                   @map("pinnacle_applicant_id")
-  undergraduateProgramId   String?                   @map("undergraduate_program_id")
-  dateOfBirth              DateTime?                 @map("date_of_birth") @db.Date
-  isProgramAligned         Boolean?                  @map("is_program_aligned")
-  alignmentStatus          AlignmentStatus?          @map("alignment_status")
-  previousMastersProgramId String?                   @map("previous_masters_program_id")
   corExtractedYearLevel    String?                   @map("cor_extracted_year_level")
   corExtractedScholarship  String?                   @map("cor_extracted_scholarship")
   lastCorSyncAt            DateTime?                 @map("last_cor_sync_at")
@@ -98,25 +90,19 @@ model Student {
   acknowledgementReceipts  AcknowledgementReceipt[]
   adviserAssignments       AdviserAssignment[]       @relation("AdviserAssignmentStudent")
   adviserRequests          AdviserRequest[]
-  bridgingWaiver           ApplicantBridgingWaiver?
   compExamRecords          CompExamRecord[]
   corRecords               CorRecord[]
   corUploads               CorUpload[]
-  curriculumWaivers        CurriculumWaiver[]
   examApplications         EntranceExamApplication[]
   residencyTracking        ResidencyTracking?
   studentCalendars         StudentCalendar[]
   studentFiles             StudentFile[]
   studentRequirements      StudentRequirement[]
-  previousMastersProgram   Program?                  @relation("PreviousMastersProgram", fields: [previousMastersProgramId], references: [id])
   program                  Program                   @relation(fields: [programId], references: [id])
-  undergraduateProgram     UndergraduateProgram?     @relation(fields: [undergraduateProgramId], references: [id])
   user                     User                      @relation(fields: [userId], references: [id])
   thesisRecords            ThesisRecord[]
 
-  @@index([previousMastersProgramId], map: "students_previous_masters_program_id_fkey")
   @@index([programId], map: "students_program_id_fkey")
-  @@index([undergraduateProgramId], map: "students_undergraduate_program_id_fkey")
   @@map("students")
 }
 
@@ -147,32 +133,16 @@ model Program {
   maxResidencyYears         Int?                      @map("max_residency_years")
   isActive                  Boolean                   @default(true) @map("is_active")
   createdAt                 DateTime                  @default(now()) @map("created_at")
-  bridgingWaivers           ApplicantBridgingWaiver[] @relation("BridgingIntendedProgram")
   examApplications          EntranceExamApplication[]
   examSlots                 ExamSlot[]
   memos                     Memo[]
   requirementsChecklist     RequirementsChecklist[]
-  studentsAsPreviousMasters Student[]                 @relation("PreviousMastersProgram")
   students                  Student[]
   examMcqTotal              Int?                      @map("exam_mcq_total")
   examEssayTotal            Int?                      @map("exam_essay_total")
   examPassingScore          Int?                      @map("exam_passing_score")
 
   @@map("programs")
-}
-
-model UndergraduateProgram {
-  id              String                    @id @default(uuid()) @map("ug_program_id")
-  programName     String                    @unique @map("program_name")
-  acronym         String?
-  college         String?
-  isActive        Boolean                   @default(true) @map("is_active")
-  createdAt       DateTime                  @default(now()) @map("created_at")
-  updatedAt       DateTime                  @updatedAt @map("updated_at")
-  bridgingWaivers ApplicantBridgingWaiver[] @relation("BridgingUndergradProgram")
-  students        Student[]
-
-  @@map("undergraduate_programs")
 }
 
 model CustomRole {
@@ -217,24 +187,6 @@ model ResidencyTracking {
   @@map("residency_tracking")
 }
 
-model CurriculumWaiver {
-  id              String       @id @default(uuid()) @map("waiver_id")
-  studentId       String       @map("student_id")
-  waiverDate      DateTime     @map("waiver_date") @db.Date
-  recommendedById String       @map("recommended_by")
-  approvedById    String       @map("approved_by")
-  status          WaiverStatus @default(PENDING)
-  createdAt       DateTime     @default(now()) @map("created_at")
-  approvedBy      User         @relation("WaiverApprovedBy", fields: [approvedById], references: [id])
-  recommendedBy   User         @relation("WaiverRecommendedBy", fields: [recommendedById], references: [id])
-  student         Student      @relation(fields: [studentId], references: [id])
-
-  @@index([approvedById], map: "curriculum_waivers_approved_by_fkey")
-  @@index([recommendedById], map: "curriculum_waivers_recommended_by_fkey")
-  @@index([studentId], map: "curriculum_waivers_student_id_fkey")
-  @@map("curriculum_waivers")
-}
-
 model ExamSlot {
   id               String                    @id @default(uuid()) @map("slot_id")
   programId        String                    @map("program_id")
@@ -250,29 +202,6 @@ model ExamSlot {
 
   @@index([programId], map: "exam_slots_program_id_fkey")
   @@map("exam_slots")
-}
-
-model ApplicantBridgingWaiver {
-  id                     String                @id @default(uuid()) @map("waiver_id")
-  studentId              String                @unique @map("student_id")
-  undergraduateProgramId String?               @map("undergraduate_program_id")
-  intendedProgramId      String                @map("intended_program_id")
-  waiverFormDownloadedAt DateTime?             @map("waiver_form_downloaded_at")
-  status                 BridgingWaiverStatus  @default(PENDING)
-  validatedById          String?               @map("validated_by")
-  validatedAt            DateTime?             @map("validated_at")
-  adminNotes             String?               @map("admin_notes")
-  createdAt              DateTime              @default(now()) @map("created_at")
-  updatedAt              DateTime              @updatedAt @map("updated_at")
-  intendedProgram        Program               @relation("BridgingIntendedProgram", fields: [intendedProgramId], references: [id])
-  student                Student               @relation(fields: [studentId], references: [id])
-  undergraduateProgram   UndergraduateProgram? @relation("BridgingUndergradProgram", fields: [undergraduateProgramId], references: [id])
-  validatedBy            User?                 @relation("BridgingWaiverValidatedBy", fields: [validatedById], references: [id])
-
-  @@index([intendedProgramId], map: "applicant_bridging_waivers_intended_program_id_fkey")
-  @@index([undergraduateProgramId], map: "applicant_bridging_waivers_undergraduate_program_id_fkey")
-  @@index([validatedById], map: "applicant_bridging_waivers_validated_by_fkey")
-  @@map("applicant_bridging_waivers")
 }
 
 model EntranceExamApplication {
@@ -1471,35 +1400,11 @@ enum CurriculumType {
   @@map("curriculum_type")
 }
 
-enum AlignmentStatus {
-  ALIGNED
-  PENDING_WAIVER
-  CLEARED
-
-  @@map("alignment_status")
-}
-
 enum ProgramType {
   MASTERS
   DOCTORAL
 
   @@map("program_type")
-}
-
-enum WaiverStatus {
-  PENDING
-  APPROVED
-  REJECTED
-
-  @@map("waiver_status")
-}
-
-enum BridgingWaiverStatus {
-  PENDING
-  VALIDATED
-  REJECTED
-
-  @@map("bridging_waiver_status")
 }
 
 enum ExamFinalizationReason {

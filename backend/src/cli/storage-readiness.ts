@@ -1,3 +1,4 @@
+import "dotenv/config";
 import { storageProvider } from "../storage";
 import { LocalStorageDiagnostics } from "../storage/local-storage.diagnostics";
 import { StorageHealthRepository } from "../repositories/storage-health.repository";
