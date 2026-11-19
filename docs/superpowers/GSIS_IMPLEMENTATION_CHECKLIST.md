@@ -252,7 +252,7 @@ Current repository and institutional-reference facts:
 
 ## 3.2 Completed Package — Prisma Schema Cleanup, Database Reset & Seed Alignment (`SCHEMA-SEED-CLEANUP`)
 
-**Status:** ✅ **ACCEPTED on branch `feat/schema-and-seed-cleanup` (2026-11-19)** — ready for PR merge to `main` (from `94aa8a4a`). Also includes [prisma/tsconfig.json](../../backend/prisma/tsconfig.json), `dotenv/config` initialization on [storage-readiness.ts](../../backend/src/cli/storage-readiness.ts) & [storage-backfill.ts](../../backend/src/cli/storage-backfill.ts), and private storage orphan cleanup (`0` issues, `212` active files).
+**Status:** ✅ **ACCEPTED / MERGED to `main` via PR #60 (`cd3aaaf5`)** (implementation commit `fd9b6e66`). Also includes [prisma/tsconfig.json](../../backend/prisma/tsconfig.json), `dotenv/config` initialization on [storage-readiness.ts](../../backend/src/cli/storage-readiness.ts) & [storage-backfill.ts](../../backend/src/cli/storage-backfill.ts), and private storage orphan cleanup (`0` issues, `212` active files).
 
 | Phase | Package | Target Scope |
 | --- | --- | --- |
@@ -909,13 +909,14 @@ For each review, record:
 
 # 15. Immediate Priority Queue
 
-This list is intentionally orderable and may change. *(Completed items: Exam Phase A, Exam Phase B + Booking Visibility, Faculty/Admin Role Access, Adviser Eligibility under Faculty model, Portal UI/UX Design System Overhaul, Public Landing Page Redesign V2, Institutional Officials + O.R. No. + E-Signature Vault, Ready-for-Scheduling Requirement Visibility / Defense Scheduling UI Overhaul, and Program Master Data & Pre-Exam Bridging Waiver Cleanup (PR #59 at `94aa8a4a`) are now merged to `main`.)*
+This list is intentionally orderable and may change. *(Completed items: Exam Phase A, Exam Phase B + Booking Visibility, Faculty/Admin Role Access, Adviser Eligibility under Faculty model, Portal UI/UX Design System Overhaul, Public Landing Page Redesign V2, Institutional Officials + O.R. No. + E-Signature Vault, Ready-for-Scheduling Requirement Visibility / Defense Scheduling UI Overhaul, Program Master Data & Pre-Exam Bridging Waiver Cleanup (PR #59 at `94aa8a4a`), Schema Cleanup & Seed Alignment (PR #60 at `cd3aaaf5`), and Auth & Public Exam UX Alignment (PR #61 at `be27cb79`) are now merged to `main`.)*
 
 1. ✅ **Program Master Data & Pre-Exam Bridging Waiver Cleanup (`PROG-WAIVER-CLEANUP`)** (`docs/superpowers/plans/2026-11-18-program-master-data-and-waiver-cleanup.md`) — **Merged to `main` via PR #59 (`94aa8a4a`):**
    - ✅ **Phase 1 (`PROG-1`):** Seeded/reconciled the 16 authoritative Graduate School programs (`4` yrs Master's / `6` yrs Doctoral Max Residency), wired `Admin -> System Settings -> Programs` CRUD (without redundant `Records` column), exposed `maxResidencyYears` on Admin Student Detail, and connected structured Course/Major fields to official PDFs.
    - ✅ **Phase 2 (`WAIVER-CLEANUP-1`):** Removed pre-exam Program Alignment & Bridging Waiver blockers, `dateOfBirth` / `undergraduateProgramId` registration requirements, `/api/waivers`, and `EXAMS_WAIVER` capability from backend registration, exam booking/assignment, and admin APIs.
    - ✅ **Phase 3 (`WAIVER-CLEANUP-2`):** Cleaned up `/register` (*Date of Birth* and *Prerequisite Program* removal), Applicant Portal (`/applicant/alignment`, dashboard, schedule), Admin Portal (`/admin/exam/waiver`, dashboard, applicants, `AssignApplicantDialog`), and Student Profile/Admin Student alignment badges.
-   - ✅ **ACCEPTED (`SCHEMA-SEED-CLEANUP` on `feat/schema-and-seed-cleanup`, 2026-11-19):** Dropped obsolete waiver/alignment/undergraduate/curriculum-waiver/DOB schema models & columns, overhauled `seed.ts` & `journey-fixtures.ts` with synthetic `pdf-lib` PDFs and balanced 16-program distribution, reset & re-seeded local DB, re-imported the verified 72-question OLSAT exam bank, and cleaned orphan files in private storage — see §3.2.
+   - ✅ **Merged (`SCHEMA-SEED-CLEANUP`, PR #60 at `cd3aaaf5`, `fd9b6e66`):** Dropped obsolete waiver/alignment/undergraduate/curriculum-waiver/DOB schema models & columns, overhauled `seed.ts` & `journey-fixtures.ts` with synthetic `pdf-lib` PDFs and balanced 16-program distribution, reset & re-seeded local DB, re-imported the verified 72-question OLSAT exam bank, and cleaned orphan files in private storage — see §3.2.
+   - ✅ **Merged (`AUTH-EXAM-UX-ALIGNMENT`, PR #61 at `be27cb79`, `55e8093e`):** Aligned `/login`, `/register`, `/change-password`, public website/FAQ links (`https://ap.earist.edu.ph/login_applicant`), and Chatbot copy to the online Entrance Examination + Applicant ID model; added official EARIST seal branding, custom `<Select>` dropdowns, `+63` Philippine mobile validation (frontend + `AuthService.register`), and removed redundant `Notifications` sidebar links in Student/Applicant portals — see §17.
    - *(Follow-on — Next Up)* Implement **Curriculum Checklist / Plan of Coursework** (§3 & Manual §7.24) on top of the clean program master data.
 2. Implement Comprehensive Exam per-component history (`Foundation`, `Major`, `Cognate`) and 3-strike disqualification tracking (§22 & Manual §7.15).
 3. Review collaborator work: email integration, notifications, announcement, memo, and analytics & reports (`/admin/analytics` stays excluded from Phase 1–3 until audited/replaced with live data).
@@ -959,21 +960,23 @@ Do not mark a feature accepted because a page, model, or route merely exists. Ac
 
 Current repository facts:
 
-- the public Graduate School website (Home, Programs, About, News, Repository) has been redesigned and merged via PR #51 (`c1066b0e`) and PR #52 (`939afc0e`);
-- the Login page presents `Applicant`, `Student`, `Faculty`, and `Administrator` choices (merged via PR #49 and styled in PR #50);
+- the public Graduate School website (Home, Programs, About, News, Repository) has been redesigned and merged via PR #51 (`c1066b0e`) and PR #52 (`939afc0e`), and aligned via PR #61 (`be27cb79`) to direct prospective applicants to the official EARIST Admissions Portal (`https://ap.earist.edu.ph/login_applicant`) for Applicant ID issuance before using GS-IS for online Entrance Examination scheduling/taking;
+- the Login page presents `Applicant`, `Student`, `Faculty`, and `Administrator` choices via a custom `<Select>` dropdown (PR #49, PR #50, refined in PR #61 with official EARIST seal branding, removal of the `"Information System"` subtitle, and conditional `Applicant`-only registration & Admissions Portal guidance);
 - Applicant authenticates with Applicant ID + password;
 - Student authenticates with Student Number + existing password;
 - Faculty and Administrator use email + password;
 - middleware forces first-login password change (`/change-password`) for both Faculty (`faculty`/`panelist`) and Administrator (`admin`) accounts when `mustChangePassword === true`;
-- Applicant registration is the public sign-up flow and creates an Applicant account; Faculty/Admin account creation remains Admin-provisioned with default password = `LAST NAME in ALL CAPS` and `mustChangePassword = true`;
-- COR promotion preserves the Applicant's existing password when the account becomes a Student.
+- Applicant registration (`/register`) is strictly for exam-account creation (`Online Entrance Examination Registration`) using an existing Applicant ID, validated `+63` Philippine mobile number (`/^(?:\+639|09)\d{9}$/` client & server), `@gmail.com` email, and custom multi-line `<Select>` program selector (PR #61); Faculty/Admin account creation remains Admin-provisioned with default password = `LAST NAME in ALL CAPS` and `mustChangePassword = true`;
+- COR promotion preserves the Applicant's existing password when the account becomes a Student;
+- Student and Applicant portals match Admin and Faculty portals by accessing notifications exclusively through the header `NotificationBell` (`View All Notifications` -> `/{portal}/notifications`), without redundant `Notifications` sidebar links (PR #61).
 
 | Status | Item | Current / target state |
 | --- | --- | --- |
-| ✅ | Graduate School landing-page redesign | Implemented and merged via PR #51 (`c1066b0e`) and PR #52 (`939afc0e`). Includes V2 institutional masthead, full-viewport widescreen hero carousel, official EARIST Graduate School programs directory, news section, About page, and Repository framing. |
-| ✅ | Login-page redesign | Implemented and merged via PR #49 (`4abbf3b8`) and PR #50 (`64cca804`) with updated visual hierarchy, role selector (`Applicant / Student / Faculty / Administrator`), and credential guidance. |
-| ✅ | Sign-up / Applicant registration redesign | Implemented and merged via PR #50 (`64cca804`), preserving verified registration rules and program-selection authority. |
-| ✅ | Panelist → Faculty terminology migration in auth UX | Implemented and merged via PR #49 (`4abbf3b8`). Login labels, `/faculty/*` canonical routes, middleware redirects/rewrites, session typing, guards, and tests are updated. |
+| ✅ | Graduate School landing-page redesign & Admissions alignment | Implemented and merged via PR #51 (`c1066b0e`), PR #52 (`939afc0e`), and PR #61 (`be27cb79`). Includes V2 institutional masthead, full-viewport widescreen hero carousel, official EARIST Graduate School programs directory, news section, About page, Repository framing, Chatbot guidance, and `https://ap.earist.edu.ph/login_applicant` external Admissions links. |
+| ✅ | Login-page redesign | Implemented and merged via PR #49 (`4abbf3b8`), PR #50 (`64cca804`), and PR #61 (`be27cb79`) with official EARIST seal branding, `<Select>` role selector (`Applicant / Student / Faculty / Administrator`), and Applicant-scoped exam registration + EARIST Admissions Portal links. |
+| ✅ | Sign-up / Applicant exam-account registration redesign | Implemented and merged via PR #50 (`64cca804`) and refined in PR #61 (`be27cb79` / `55e8093e`): exam-focused copy (`Online Entrance Examination Registration`), EARIST seal, `+63` PH mobile input & client/server validation, constrained multi-line Program `<Select>` dropdown, and preserved `AuthService.register` / active-program rules. |
+| ✅ | Panelist → Faculty terminology migration in auth UX | Implemented and merged via PR #49 (`4abbf3b8`) and PR #61 (`be27cb79`). Login labels, `/faculty/*` canonical routes, landing `PortalSection`, middleware redirects/rewrites, session typing, guards, and tests are updated. |
+| ✅ | Portal header-only Notification navigation | Completed in PR #61 (`be27cb79` / `55e8093e`): removed redundant `Notifications` sidebar entries from Student (`student/layout.tsx`) and Applicant (`applicant/layout.tsx`) layouts so all portals route notifications through the header `NotificationBell` (`View All Notifications`). |
 | ✅ | Future login entry model | Resolved by `FACULTY_ADMIN_ACCESS_SOURCE_OF_TRUTH.md` and implemented in PR #49: `Applicant / Student / Faculty / Administrator` are distinct login choices with no second post-login chooser. |
 | ✅ | Permission-aware post-login routing | Implemented in PR #49: Faculty routes to `/faculty/dashboard` with capability-aware sidebar (`canEvaluateEssays`, `!isExternal`), and Restricted Administrators route with capability-filtered navigation and route guards. |
 | ✅ | Role-specific forced password gate | Fixed in PR #49: `middleware.ts` enforces `/change-password` when `mustChangePassword === true` for both Faculty and Administrator accounts. |
@@ -981,8 +984,8 @@ Current repository facts:
 | ✅ | Applicant-created password → Student promotion | Current Student promotion keeps the Applicant's existing self-created password with `mustChangePassword = false`. |
 | ✅ | Temporary/generated password policy | Implemented in PR #49 for Faculty and Admin provisioning: default password is `LAST NAME in ALL CAPS` with `mustChangePassword = true` forced on first login. |
 | ⏳ | Student temporary/reset credential behavior | When Admin-assisted Student password reset (§21.1) is implemented, apply the same `mustChangePassword = true` gate to Student accounts. |
-| ✅ | Change-password UX redesign | Implemented and merged via PR #50 (`64cca804`), aligned with the redesigned auth surfaces. |
-| ✅ | Auth regression coverage | Updated in PR #49 (`71d7fb9d`) covering login, middleware, Faculty/Admin role access, and UI contract tests. |
+| ✅ | Change-password UX redesign | Implemented and merged via PR #50 (`64cca804`) and PR #61 (`be27cb79`), aligned with `/login` and `/register` (campus backdrop, crimson top accent, and official EARIST seal). |
+| ✅ | Auth regression coverage | Updated in PR #49 (`71d7fb9d`) and PR #61 (`55e8093e`) covering login, middleware, Faculty/Admin role access, `+63` PH mobile validation, and UI contract tests. |
 
 ### Credential rule to preserve
 
