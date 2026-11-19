@@ -10,16 +10,15 @@ export function CTASection() {
             Ready to Begin Your Graduate Journey?
           </h2>
           <p className="mb-8 text-lg text-white/80">
-            Register using your Pinnacle Applicant ID to access the Graduate
-            School Information System for entrance examination and academic
-            tracking.
+            Already have an EARIST Applicant ID? Create your GS-IS exam account
+            to schedule and take your online Entrance Examination.
           </p>
           <div className="flex flex-col items-center justify-center gap-4 sm:flex-row">
             <Link
               href="/register"
               className="inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-(--earist-accent) px-8 text-sm font-medium text-(--earist-body-text) transition-colors hover:bg-(--earist-accent)/90"
             >
-              Start Your Application
+              Create Exam Account
               <ArrowRight className="h-4 w-4" />
             </Link>
             <Link

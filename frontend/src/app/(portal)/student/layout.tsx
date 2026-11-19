@@ -14,7 +14,6 @@ import {
   BookOpen,
   Milestone,
   FileText,
-  Bell,
   GraduationCap,
   Menu,
   X,
@@ -51,7 +50,6 @@ const topNavItems = [
 const bottomNavItems = [
   { href: "/student/repository", label: "Repository", icon: Library },
   { href: "/student/announcements", label: "Announcements", icon: Megaphone },
-  { href: "/student/notifications", label: "Notifications", icon: Bell },
 ];
 
 function statusIcon(state: JourneyStepState | "LOADING" | "ERROR") {

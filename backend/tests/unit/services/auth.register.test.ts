@@ -112,4 +112,24 @@ describe("AuthService.register (WAIVER-CLEANUP-1)", () => {
       new AuthService().register({ ...BASE_INPUT, applicantId: "   " }),
     ).rejects.toMatchObject({ statusCode: 400 });
   });
+
+  it("accepts +63 Philippine mobile numbers and rejects invalid phone formats", async () => {
+    await new AuthService().register({
+      ...BASE_INPUT,
+      cellphone: " +639171234567 ",
+    });
+    const [, studentData] = repo.registerApplicant.mock.calls[0];
+    expect(studentData.cellphone).toBe("+639171234567");
+
+    await expect(
+      new AuthService().register({ ...BASE_INPUT, cellphone: "0917666869054" }),
+    ).rejects.toMatchObject({
+      statusCode: 400,
+      message:
+        "Invalid cellphone number. Please provide a valid Philippine mobile number (e.g., +639171234567).",
+    });
+    await expect(
+      new AuthService().register({ ...BASE_INPUT, cellphone: "+638171234567" }),
+    ).rejects.toMatchObject({ statusCode: 400 });
+  });
 });

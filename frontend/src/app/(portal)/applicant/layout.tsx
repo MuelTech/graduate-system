@@ -14,7 +14,6 @@ import {
   FileCheck2,
   BadgeCheck,
   Upload,
-  Bell,
   GraduationCap,
   Menu,
   X,
@@ -29,7 +28,6 @@ const navItems = [
   { href: "/applicant/exam", label: "Entrance Exam", icon: FileCheck2 },
   { href: "/applicant/results", label: "Exam Results", icon: BadgeCheck },
   { href: "/applicant/cor-upload", label: "COR Upload", icon: Upload },
-  { href: "/applicant/notifications", label: "Notifications", icon: Bell },
 ];
 
 export default function ApplicantLayout({

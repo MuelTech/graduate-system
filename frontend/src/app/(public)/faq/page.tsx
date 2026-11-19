@@ -5,22 +5,22 @@ import { ChevronDown, ChevronUp, Search, HelpCircle } from "lucide-react";
 
 const faqCategories = [
   {
-    title: "Admissions & Application",
+    title: "Admissions & Entrance Examination",
     faqs: [
       {
         question: "How do I apply to the EARIST Graduate School?",
         answer:
-          "To apply, you must first register in Pinnacle to obtain your Applicant ID. Then, visit our registration page to complete your GS System registration, including personal information, program selection, and account setup.",
+          "Initial Graduate School applications are submitted through the official EARIST Admissions Portal (https://ap.earist.edu.ph/login_applicant), where your Applicant ID is issued. Once you have your Applicant ID, go to /register on this system to create your GS-IS exam account.",
       },
       {
-        question: "What documents do I need for application?",
+        question: "What documents do I need for initial admission application?",
         answer:
-          "Document submission and payment are handled entirely through Pinnacle. You will need to register in Pinnacle first, obtain your Applicant ID, and complete all requirements there before returning to the GS System.",
+          "Admission requirements and initial application processing are handled through the EARIST Admissions Portal (https://ap.earist.edu.ph/login_applicant). After you receive your Applicant ID there, use GS-IS to schedule and take your online Entrance Examination.",
       },
       {
-        question: "How do I schedule my entrance examination?",
+        question: "How do I schedule and take my entrance examination?",
         answer:
-          "After completing registration, you can select an available exam slot through the Exam Scheduling page in your Applicant Portal.",
+          "Create your exam account at /register using your EARIST Applicant ID, sign in to the Applicant Portal, choose an available examination schedule for your program, and take the online Entrance Examination on your scheduled date.",
       },
     ],
   },

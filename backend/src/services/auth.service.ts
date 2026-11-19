@@ -35,6 +35,11 @@ export class AuthService {
             throw new AppError("Invalid email domain. Only @gmail.com account are permitted for applicants.", 400);
         }
 
+        const normalizedCellphone = data.cellphone.trim();
+        if (!/^(?:\+639|09)\d{9}$/.test(normalizedCellphone)) {
+            throw new AppError("Invalid cellphone number. Please provide a valid Philippine mobile number (e.g., +639171234567).", 400);
+        }
+
         // 1. Check existing records
         const existingUser = await this.authRepository.findUserByEmail(data.email);
         if (existingUser) {
@@ -68,7 +73,7 @@ export class AuthService {
         };
 
         const studentData: Prisma.StudentCreateWithoutUserInput = {
-            cellphone: data.cellphone,
+            cellphone: normalizedCellphone,
             pinnacleApplicantId: data.applicantId,
             program: { connect: { id: intendedProgram.id } },
             admissionStatus: AdmissionStatus.APPLICANT,

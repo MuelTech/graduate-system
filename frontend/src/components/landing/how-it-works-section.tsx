@@ -4,16 +4,16 @@ const steps = [
   {
     number: 1,
     icon: FileEdit,
-    title: "Apply",
+    title: "Entrance Exam",
     description:
-      "Submit your application and take the entrance examination online.",
+      "Apply at the EARIST Admissions Portal for an Applicant ID, then create your GS-IS account to take the online entrance examination.",
   },
   {
     number: 2,
     icon: GraduationCap,
     title: "Enroll",
     description:
-      "Complete enrollment via Pinnacle and upload your Certificate of Registration.",
+      "After passing the entrance examination, complete your official enrollment to access Graduate School student services.",
   },
   {
     number: 3,
