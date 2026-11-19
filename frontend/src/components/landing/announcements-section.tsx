@@ -27,13 +27,14 @@ const slides = [
     secondary: { label: "Entrance Examination", href: "/login" },
   },
   {
-    title: "Registered in Pinnacle?",
+    title: "Taking the Entrance Examination?",
     summary:
-      "Sign in or create an account to view entrance examination schedules and access applicant services.",
-    category: "Entrance Examination & Applicant Access",
+      "Use your EARIST Applicant ID to create an account or sign in, schedule your slot, and take the online Graduate School Entrance Examination.",
+    category: "Online Entrance Examination",
     image: publicSiteContent.hero.examImage,
     treatment: "photograph",
-    prerequisite: "A Pinnacle Applicant ID is required to create an account.",
+    prerequisite:
+      "An Applicant ID from the EARIST Admissions Portal is required to create an exam account.",
     primary: { label: "Entrance Examination", href: "/login" },
     secondary: { label: "Create Account", href: "/register" },
   },

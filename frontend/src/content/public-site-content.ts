@@ -11,7 +11,8 @@ export const publicSiteContent = {
     description:
       "Advance your professional practice, scholarship, and leadership through master's and doctoral studies at EARIST.",
     programsHref: "/#programs",
-    registrationGuidance: "A Pinnacle Applicant ID is required.",
+    registrationGuidance:
+      "An Applicant ID from the EARIST Admissions Portal is required.",
     image: {
       src: "/images/landing/v2/hero-campus-preview.webp",
       width: 1536,
@@ -257,9 +258,10 @@ Excellence. Innovation. Service. Since 1945.`,
         description: "Official institutional website.",
       },
       {
-        label: "Applicant Portal",
-        href: "https://earistweb.pinnacle.com.ph/aims/applicants/",
-        description: "Pinnacle Applicants Access Module.",
+        label: "EARIST Admissions Portal",
+        href: "https://ap.earist.edu.ph/login_applicant",
+        description:
+          "Official EARIST portal for initial admission applications and Applicant ID issuance.",
       },
       {
         label: "Applicant’s Inquiry (Facebook)",
@@ -272,11 +274,11 @@ Excellence. Innovation. Service. Since 1945.`,
     faqs: [
       {
         id: "registration",
-        question: "What do I need to register for GS-IS?",
+        question: "What do I need to take the online Entrance Examination?",
         answer:
-          "You need a Pinnacle Applicant ID before registering for GS-IS.",
+          "First, apply through the EARIST Admissions Portal to obtain your Applicant ID. Then create your GS-IS exam account to schedule and take the online Entrance Examination.",
         href: "/register",
-        action: "Register for GS-IS",
+        action: "Create Exam Account",
       },
       {
         id: "account-access",

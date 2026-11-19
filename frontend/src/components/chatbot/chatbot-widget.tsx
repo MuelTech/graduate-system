@@ -14,11 +14,11 @@ const botResponses: Record<string, string> = {
   programs:
     "We offer 15+ graduate programs including Masters and Doctoral degrees in Education, Public Administration, Computer Science, Nursing, Industrial Engineering, and Mathematics. Visit our /programs page for the full list.",
   apply:
-    "To apply to EARIST Graduate School: 1) Register in Pinnacle to get your Applicant ID, 2) Visit /register to complete your GS System registration, 3) Take the entrance examination, 4) Upload your Certificate of Registration after enrollment in Pinnacle.",
-  exam: "The entrance examination is scheduled through your Applicant Portal after registration. The exam includes MCQ and Essay sections. Results are sent to your email.",
+    "Initial Graduate School applications are submitted through the EARIST Admissions Portal (https://ap.earist.edu.ph/login_applicant) to obtain your Applicant ID. Once you have an Applicant ID, visit /register here in GS-IS to create your exam account and take the online Entrance Examination.",
+  exam: "The online entrance examination is scheduled and taken through your Applicant Portal after creating your account at /register using your EARIST Applicant ID. The exam includes MCQ and Essay sections.",
   thesis:
     "The thesis pipeline has three stages: Title Defense → Proposal Defense → Final Defense. Each stage has specific requirements that must be completed before advancing. Visit /faq for detailed information.",
-  cor: "After passing the entrance exam, complete your enrollment in Pinnacle, download your COR, and upload it through your Applicant Portal. The Admin will verify it and promote you to Student role.",
+  cor: "After passing the entrance exam and completing official enrollment, upload your Certificate of Registration (COR) in the portal when prompted for Student activation.",
   schedule:
     "You can schedule your entrance examination through the Exam Scheduling page in your Applicant Portal. Available slots are shown in real-time.",
   repository:
@@ -26,9 +26,9 @@ const botResponses: Record<string, string> = {
   contact:
     "You can reach the Graduate School Office at: Email: gs@earist.edu.ph | Phone: (02) 8534-8267 | Address: EARIST Main Campus, Manila, Philippines",
   login:
-    "You can sign in to your portal at /login. Use your registered email and password. If you forgot your password, click 'Forgot your password?' on the login page.",
+    "You can sign in to your portal at /login. Applicants use their Applicant ID, Students use their Student Number, and Faculty/Administrators use their institutional email.",
   register:
-    "To register, visit /register. You'll need your Pinnacle Applicant ID first. Then complete the 4-step registration: Pinnacle ID, Personal Info, Program Selection, and Account Setup.",
+    "To create your exam account, visit /register with the Applicant ID issued from the EARIST Admissions Portal (https://ap.earist.edu.ph/login_applicant), then complete the 4-step setup: Applicant ID, Personal Info, Program Selection, and Password.",
   faq: "Visit our FAQ page at /faq for answers to common questions about admissions, enrollment, thesis defense, and system access.",
 };
 

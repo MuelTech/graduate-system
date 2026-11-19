@@ -30,7 +30,7 @@ const footerGroups = [
         href: publicSiteContent.contact.platforms[0].href,
       },
       {
-        label: "Apply through Pinnacle ↗",
+        label: "EARIST Admissions Portal ↗",
         href: publicSiteContent.contact.platforms[1].href,
       },
     ],

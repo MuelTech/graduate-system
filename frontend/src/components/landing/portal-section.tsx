@@ -12,7 +12,7 @@ const portals = [
     icon: UserCircle,
     title: "Applicant Portal",
     description:
-      "Register, schedule entrance exams, and upload your Certificate of Registration.",
+      "Create your exam account using your EARIST Applicant ID, schedule your slot, and take the online Entrance Examination.",
     href: "/register",
     color: "bg-(--earist-accent)",
   },
@@ -26,9 +26,9 @@ const portals = [
   },
   {
     icon: Presentation,
-    title: "Panelist Portal",
+    title: "Faculty Portal",
     description:
-      "Review defense materials, submit scores, and manage e-signatures for RAP reports.",
+      "Review defense materials, submit evaluations, and manage e-signatures for committee reports.",
     href: "/login",
     color: "bg-(--earist-secondary)",
   },
