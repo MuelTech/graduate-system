@@ -66,6 +66,7 @@ model User {
   examAmendmentsDecided              ExamScheduleAmendment[] @relation("ExamAmendmentDecidedBy")
   examResultDecisions                ExamResultDecision[]
   savedSignature                     UserSignature?
+  compExamRecordsRecorded            CompExamRecord[]          @relation("CompExamRecordedBy")
   customRole                         CustomRole?               @relation("UserCustomRole", fields: [customRoleId], references: [id])
 
   @@index([customRoleId], map: "users_custom_role_id_fkey")
@@ -327,13 +328,23 @@ enum ExamInstitutionalDecision {
 }
 
 model CompExamRecord {
-  id        String         @id @default(uuid()) @map("comp_exam_id")
-  studentId String         @map("student_id")
-  status    CompExamStatus @default(PENDING)
-  createdAt DateTime       @default(now()) @map("created_at")
-  student   Student        @relation(fields: [studentId], references: [id])
+  id                  String         @id @default(uuid()) @map("comp_exam_id")
+  studentId           String         @map("student_id")
+  attemptNumber       Int            @default(1) @map("attempt_number")
+  status              CompExamStatus @default(PENDING)
+  examDate            DateTime?      @map("exam_date") @db.Date
+  remarks             String?        @db.Text
+  recordedById        String?        @map("recorded_by_id")
+  certificateNumber   String?        @unique @map("certificate_number")
+  certificateIssuedAt DateTime?      @map("certificate_issued_at")
+  createdAt           DateTime       @default(now()) @map("created_at")
+  updatedAt           DateTime       @default(now()) @updatedAt @map("updated_at")
+  student             Student        @relation(fields: [studentId], references: [id])
+  recordedBy          User?          @relation("CompExamRecordedBy", fields: [recordedById], references: [id], onDelete: SetNull)
 
+  @@unique([studentId, attemptNumber], map: "comp_exam_records_student_attempt_key")
   @@index([studentId], map: "comp_exam_records_student_id_fkey")
+  @@index([recordedById], map: "comp_exam_records_recorded_by_id_fkey")
   @@map("comp_exam_records")
 }
 

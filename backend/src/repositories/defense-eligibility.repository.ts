@@ -5,6 +5,7 @@ import type {
   StageEvidenceFlags,
 } from "../interfaces/defense-eligibility.interfaces";
 import { isValidCertifiedFinalManuscript, isValidCertifiedProposalManuscript } from "../services/proposal-adviser-review.rules";
+import { evaluateCompExamSummary } from "../services/comp-exam.rules";
 
 export type { EligibilitySnapshot };
 
@@ -91,17 +92,16 @@ export class DefenseEligibilityRepository {
     const student = await prisma.student.findUnique({
       where: { id: studentId },
       include: {
-        compExamRecords: { orderBy: { createdAt: "desc" } },
+        compExamRecords: {
+          orderBy: [{ attemptNumber: "desc" }, { createdAt: "desc" }],
+        },
         adviserAssignments: { where: { isActive: true }, take: 1 },
       },
     });
 
-    const failedStrikes = (student?.compExamRecords ?? []).filter(
-      (r) => r.status === "FAILED",
-    ).length;
-    const compExamPassed = (student?.compExamRecords ?? []).some(
-      (r) => r.status === "PASSED",
-    );
+    const compExamEval = evaluateCompExamSummary(student?.compExamRecords ?? []);
+    const compExamPassed = compExamEval.isPassed;
+    const compExamDismissed = compExamEval.isDismissed;
 
     let thesis: {
       id: string;
@@ -298,7 +298,7 @@ export class DefenseEligibilityRepository {
       proposalOutcome,
       redefenseRequiredForStage,
       compExamPassed,
-      compExamDismissed: failedStrikes >= 2,
+      compExamDismissed,
       activeAdviser: (student?.adviserAssignments ?? []).length > 0,
       titleCount: thesis?.thesisTitles.length ?? 0,
       evidence: buildEvidence(docs, currentStage),

@@ -1,8 +1,15 @@
 // backend/src/repositories/admin-student.repository.ts
 
 import prisma from "../config/database";
-import { Prisma } from "@prisma/client";
-import { AdminStudentDetail } from "../interfaces/admin-student.interfaces";
+import { NotificationType, Prisma } from "@prisma/client";
+import {
+  AdminStudentDetail,
+  CompExamSummaryDto,
+} from "../interfaces/admin-student.interfaces";
+import {
+  evaluateCompExamSummary,
+  generateCompExamCertificateNumber,
+} from "../services/comp-exam.rules";
 
 export interface AdminStudentListQuery {
   page?: number;
@@ -71,8 +78,10 @@ export class AdminStudentRepository {
         compExamRecords: {
           select: {
             status: true,
+            attemptNumber: true,
+            createdAt: true,
           },
-          orderBy: { createdAt: "desc" },
+          orderBy: [{ attemptNumber: "desc" }, { createdAt: "desc" }],
         },
         adviserAssignments: {
           where: { isActive: true },
@@ -94,7 +103,8 @@ export class AdminStudentRepository {
 
     return students.map((student) => {
       const thesis = student.thesisRecords[0];
-      const compExam = student.compExamRecords[0];
+      const compExamEval = evaluateCompExamSummary(student.compExamRecords);
+      const compExam = compExamEval.latestAttempt;
       const adviser = student.adviserAssignments[0]?.adviser;
 
       return {
@@ -107,7 +117,7 @@ export class AdminStudentRepository {
         thesisStage: thesis?.stage || "NONE",
         thesisStatus: thesis?.status || "NONE",
         compExamStatus: compExam ? compExam.status : "NOT_RECORDED",
-        compExamStrikes: student.compExamRecords.filter((r) => r.status === "FAILED").length,
+        compExamStrikes: compExamEval.failedCount,
         adviser: adviser ? `${adviser.firstName} ${adviser.lastName}` : "None",
         admissionStatus: student.admissionStatus,
         enrollmentDate: student.enrollmentDate?.toISOString() || null,
@@ -121,6 +131,7 @@ export class AdminStudentRepository {
       include: {
         user: {
           select: {
+            id: true,
             firstName: true,
             lastName: true,
             email: true,
@@ -134,19 +145,25 @@ export class AdminStudentRepository {
         },
         thesisRecords: {
           select: {
+            id: true,
             stage: true,
             status: true,
             createdAt: true,
           },
           orderBy: { createdAt: "desc" },
-          take: 1,
         },
         compExamRecords: {
           select: {
+            id: true,
+            attemptNumber: true,
             status: true,
+            examDate: true,
+            remarks: true,
+            certificateNumber: true,
+            certificateIssuedAt: true,
             createdAt: true,
           },
-          orderBy: { createdAt: "desc" },
+          orderBy: [{ attemptNumber: "desc" }, { createdAt: "desc" }],
         },
         adviserAssignments: {
           where: { isActive: true },
@@ -226,8 +243,23 @@ export class AdminStudentRepository {
           select: { id: true, programName: true, maxResidencyYears: true },
         },
         compExamRecords: {
-          select: { status: true, createdAt: true },
-          orderBy: { createdAt: "desc" },
+          select: {
+            id: true,
+            attemptNumber: true,
+            status: true,
+            examDate: true,
+            remarks: true,
+            certificateNumber: true,
+            certificateIssuedAt: true,
+            createdAt: true,
+            recordedBy: {
+              select: {
+                firstName: true,
+                lastName: true,
+              },
+            },
+          },
+          orderBy: [{ attemptNumber: "desc" }, { createdAt: "desc" }],
         },
         thesisRecords: {
           select: { stage: true, status: true },
@@ -251,7 +283,65 @@ export class AdminStudentRepository {
 
     if (!student) return null;
 
-    const compExam = student.compExamRecords[0] ?? null;
+    const compExamRecords = student.compExamRecords as Array<{
+      id?: string;
+      attemptNumber?: number | null;
+      status: string;
+      examDate?: Date | null;
+      remarks?: string | null;
+      certificateNumber?: string | null;
+      certificateIssuedAt?: Date | null;
+      createdAt: Date;
+      recordedBy?: { firstName: string; lastName: string } | null;
+    }>;
+    const compExamEval = evaluateCompExamSummary(compExamRecords);
+    const compExam = compExamEval.latestAttempt;
+    const gradedAttempts = compExamEval.orderedRecords.filter((r) => {
+      const upper = String(r.status).toUpperCase();
+      return upper === "PASSED" || upper === "FAILED";
+    });
+    const compExamSummary: CompExamSummaryDto = {
+      standing: compExamEval.standing,
+      isPassed: compExamEval.isPassed,
+      isDismissed: compExamEval.isDismissed,
+      attemptsUsed: compExamEval.attemptsUsed,
+      failedAttempts: compExamEval.failedCount,
+      attemptsRemaining: compExamEval.attemptsRemaining,
+      maxAttempts: compExamEval.maxAttempts,
+      nextAttemptNumber: compExamEval.nextAttemptNumber,
+      canRecordAttempt:
+        student.admissionStatus === "ENROLLED" &&
+        !compExamEval.isPassed &&
+        !compExamEval.isDismissed,
+      canCorrectLatest:
+        gradedAttempts.length > 0 && student.admissionStatus !== "GRADUATED",
+      certificate: {
+        eligible: compExamEval.isPassed,
+        templateStatus: "TEMPLATE_PENDING",
+        certificateNumber: compExamEval.passedAttempt?.certificateNumber ?? null,
+        issuedAt: compExamEval.passedAttempt?.certificateIssuedAt
+          ? compExamEval.passedAttempt.certificateIssuedAt.toISOString()
+          : null,
+      },
+      attempts: compExamEval.orderedRecords.map((r, index) => ({
+        id: r.id ?? `legacy-${index}`,
+        attemptNumber:
+          typeof r.attemptNumber === "number"
+            ? r.attemptNumber
+            : compExamEval.orderedRecords.length - index,
+        status: r.status,
+        examDate: r.examDate ? r.examDate.toISOString() : null,
+        remarks: r.remarks ?? null,
+        recordedAt: r.createdAt.toISOString(),
+        recordedByName: r.recordedBy
+          ? `${r.recordedBy.firstName} ${r.recordedBy.lastName}`.trim()
+          : null,
+        certificateNumber: r.certificateNumber ?? null,
+        certificateIssuedAt: r.certificateIssuedAt
+          ? r.certificateIssuedAt.toISOString()
+          : null,
+      })),
+    };
     const assignment = student.adviserAssignments[0] ?? null;
     const residencyStart =
       student.residencyTracking?.startDate ?? student.residencyStartDate ?? null;
@@ -304,6 +394,7 @@ export class AdminStudentRepository {
             recordedAt: compExam.createdAt.toISOString(),
           }
         : null,
+      compExamSummary,
       adviserAssignment: assignment
         ? {
             adviserId: assignment.adviser.id,
@@ -323,25 +414,188 @@ export class AdminStudentRepository {
     return student?.userId ?? null;
   }
 
-  async updateCompExamStatus(studentId: string, status: "PENDING" | "PASSED" | "FAILED") {
-    const latestRecord = await prisma.compExamRecord.findFirst({
-      where: { studentId },
-      orderBy: { createdAt: "desc" },
-    });
+  async recordCompExamAttempt(params: {
+    studentId: string;
+    userId: string;
+    adminId: string;
+    attemptNumber: number;
+    pendingRecordId: string | null;
+    status: "PASSED" | "FAILED";
+    examDate: Date | null;
+    remarks: string | null;
+    shouldDismiss: boolean;
+    notification: {
+      title: string;
+      message: string;
+      type: NotificationType;
+    };
+    emailFoundation: Record<string, unknown>;
+  }) {
+    const now = new Date();
+    return prisma.$transaction(async (tx) => {
+      let record = params.pendingRecordId
+        ? await tx.compExamRecord.update({
+            where: { id: params.pendingRecordId },
+            data: {
+              attemptNumber: params.attemptNumber,
+              status: params.status,
+              examDate: params.examDate,
+              remarks: params.remarks,
+              recordedById: params.adminId,
+            },
+          })
+        : await tx.compExamRecord.create({
+            data: {
+              studentId: params.studentId,
+              attemptNumber: params.attemptNumber,
+              status: params.status,
+              examDate: params.examDate,
+              remarks: params.remarks,
+              recordedById: params.adminId,
+            },
+          });
 
-    if (latestRecord) {
-      return prisma.compExamRecord.update({
-        where: { id: latestRecord.id },
-        data: { status },
-      });
-    } else {
-      return prisma.compExamRecord.create({
+      if (params.status === "PASSED") {
+        const certificateNumber = generateCompExamCertificateNumber(now, record.id);
+        record = await tx.compExamRecord.update({
+          where: { id: record.id },
+          data: {
+            certificateNumber,
+            certificateIssuedAt: now,
+          },
+        });
+      }
+
+      if (params.shouldDismiss) {
+        await tx.student.update({
+          where: { id: params.studentId },
+          data: { admissionStatus: "DISMISSED" },
+        });
+      }
+
+      await tx.auditLog.create({
         data: {
-          studentId,
-          status,
+          actorId: params.adminId,
+          actionType: "COMP_EXAM_ATTEMPT_RECORDED",
+          targetTable: "comp_exam_records",
+          targetId: record.id,
+          newValue: JSON.stringify({
+            studentId: params.studentId,
+            attemptNumber: record.attemptNumber,
+            status: record.status,
+            examDate: record.examDate ? record.examDate.toISOString() : null,
+            remarks: record.remarks,
+            certificateNumber: record.certificateNumber,
+            dismissed: params.shouldDismiss,
+            emailFoundation: params.emailFoundation,
+          }),
+          description: `Recorded Written Comprehensive Examination Attempt ${record.attemptNumber} (${record.status})${params.shouldDismiss ? " — student dismissed per Manual §7.15.4" : ""}.`,
         },
       });
-    }
+
+      await tx.notification.create({
+        data: {
+          userId: params.userId,
+          title: params.notification.title,
+          message: params.notification.message,
+          type: params.notification.type,
+          relatedRecordType: "CompExamRecord",
+          relatedRecordId: record.id,
+        },
+      });
+
+      return record;
+    });
+  }
+
+  async correctLatestCompExamAttempt(params: {
+    studentId: string;
+    userId: string;
+    adminId: string;
+    attemptId: string;
+    attemptNumber: number;
+    existingCertificateNumber: string | null;
+    existingCertificateIssuedAt: Date | null;
+    status: "PASSED" | "FAILED";
+    examDate: Date | null;
+    remarks: string | null;
+    reason: string;
+    nextAdmissionStatus: "ENROLLED" | "DISMISSED" | null;
+    oldSnapshot: Record<string, unknown>;
+    notification: {
+      title: string;
+      message: string;
+      type: NotificationType;
+    } | null;
+    emailFoundation: Record<string, unknown> | null;
+  }) {
+    const now = new Date();
+    return prisma.$transaction(async (tx) => {
+      const nextCertificateNumber =
+        params.status === "PASSED"
+          ? (params.existingCertificateNumber ??
+            generateCompExamCertificateNumber(now, params.attemptId))
+          : null;
+      const nextCertificateIssuedAt =
+        params.status === "PASSED"
+          ? (params.existingCertificateIssuedAt ?? now)
+          : null;
+
+      const updated = await tx.compExamRecord.update({
+        where: { id: params.attemptId },
+        data: {
+          status: params.status,
+          examDate: params.examDate,
+          remarks: params.remarks,
+          recordedById: params.adminId,
+          certificateNumber: nextCertificateNumber,
+          certificateIssuedAt: nextCertificateIssuedAt,
+        },
+      });
+
+      if (params.nextAdmissionStatus) {
+        await tx.student.update({
+          where: { id: params.studentId },
+          data: { admissionStatus: params.nextAdmissionStatus },
+        });
+      }
+
+      await tx.auditLog.create({
+        data: {
+          actorId: params.adminId,
+          actionType: "COMP_EXAM_ATTEMPT_CORRECTED",
+          targetTable: "comp_exam_records",
+          targetId: updated.id,
+          oldValue: JSON.stringify(params.oldSnapshot),
+          newValue: JSON.stringify({
+            studentId: params.studentId,
+            attemptNumber: updated.attemptNumber,
+            status: updated.status,
+            examDate: updated.examDate ? updated.examDate.toISOString() : null,
+            remarks: updated.remarks,
+            certificateNumber: updated.certificateNumber,
+            nextAdmissionStatus: params.nextAdmissionStatus,
+            emailFoundation: params.emailFoundation,
+          }),
+          description: params.reason,
+        },
+      });
+
+      if (params.notification) {
+        await tx.notification.create({
+          data: {
+            userId: params.userId,
+            title: params.notification.title,
+            message: params.notification.message,
+            type: params.notification.type,
+            relatedRecordType: "CompExamRecord",
+            relatedRecordId: updated.id,
+          },
+        });
+      }
+
+      return updated;
+    });
   }
 
   async findStudentForEdit(studentId: string) {

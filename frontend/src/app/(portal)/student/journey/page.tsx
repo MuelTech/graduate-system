@@ -9,6 +9,10 @@ import {
 } from "@/components/ui/card";
 import { buttonVariants } from "@/components/ui/button";
 import {
+  compExamAttemptSummary,
+  type StudentCompExamRecordLike,
+} from "@/lib/student-dashboard";
+import {
   BookOpen,
   ClipboardList,
   FileCheck2,
@@ -60,25 +64,20 @@ const PHASES = [
   },
 ];
 
-function compExamLabel(status?: string): string {
-  const s = (status || "").toLowerCase();
-  if (s === "passed") return "Passed";
-  if (s === "failed") return "Failed";
-  if (s === "pending") return "Pending";
-  return "Not taken";
-}
-
 export default async function StudentAcademicJourneyPage() {
-  let compExamStatus: string | undefined;
+  let compExamRecords: StudentCompExamRecordLike[] = [];
   let loadFailed = false;
   try {
     const data = await apiServerRequest("/student/journey");
-    compExamStatus = data?.compExamRecords?.[0]?.status as string | undefined;
+    compExamRecords = Array.isArray(data?.compExamRecords)
+      ? (data.compExamRecords as StudentCompExamRecordLike[])
+      : [];
   } catch (error) {
     // Preserve Next.js redirect/navigation exceptions (e.g. 401 → /login).
     unstable_rethrow(error);
     loadFailed = true;
   }
+  const compExamSummary = compExamAttemptSummary(compExamRecords);
 
   return (
     <div className="space-y-6">
@@ -122,12 +121,21 @@ export default async function StudentAcademicJourneyPage() {
                     {phase.blurb}
                   </p>
                   {phase.label === "Comprehensive Examination" && (
-                    <p className="mt-1.5 text-xs font-medium text-[#333333]">
-                      Status:{" "}
-                      <span className="text-gray-600">
-                        {loadFailed ? "Unavailable" : compExamLabel(compExamStatus)}
-                      </span>
-                    </p>
+                    <div className="mt-1.5 space-y-0.5 text-xs">
+                      <p className="font-medium text-[#333333]">
+                        Status:{" "}
+                        <span className="text-gray-700">
+                          {loadFailed
+                            ? "Unavailable"
+                            : compExamSummary.standingLabel}
+                        </span>
+                      </p>
+                      {!loadFailed && (
+                        <p className="text-gray-500">
+                          {compExamSummary.detailLine}
+                        </p>
+                      )}
+                    </div>
                   )}
                   {phase.label === "Thesis / Dissertation Phase" && (
                     <Link

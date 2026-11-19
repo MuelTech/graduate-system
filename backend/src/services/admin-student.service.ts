@@ -7,9 +7,18 @@ import { validatePhilippineMobile } from "../utils/phone";
 import { StudentThesisJourneyService } from "./student-thesis-journey.service";
 import {
   AdminStudentDetail,
+  CorrectCompExamAttemptInput,
+  RecordCompExamAttemptInput,
   UpdateAdminStudentInput,
 } from "../interfaces/admin-student.interfaces";
 import { StudentThesisJourneyDto } from "./student-thesis-journey.rules";
+import {
+  MAX_COMP_EXAM_ATTEMPTS,
+  buildCompExamEmailFoundationPayload,
+  buildCompExamNotificationCopy,
+  evaluateCompExamSummary,
+} from "./comp-exam.rules";
+import { CompExamCertificateService } from "./comp-exam-certificate.service";
 
 const EMAIL_FORMAT_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -31,6 +40,7 @@ export class AdminStudentService {
   private repository = new AdminStudentRepository();
   /** UIUX-2G: reuse the authoritative journey read model (no duplicated rules). */
   private journeyService = new StudentThesisJourneyService();
+  private compExamCertService = new CompExamCertificateService();
 
   async listStudents(query: AdminStudentListQuery) {
     const page = query.page || 1;
@@ -66,19 +76,298 @@ export class AdminStudentService {
     return this.journeyService.getJourney(userId);
   }
 
-  async updateCompExamStatus(studentId: string, status: "PENDING" | "PASSED" | "FAILED") {
+  async recordCompExamAttempt(
+    studentId: string,
+    adminId: string,
+    input: RecordCompExamAttemptInput,
+  ) {
+    if (!adminId) {
+      throw new AppError("Authenticated Admin identity is required.", 401);
+    }
+    if (input.status !== "PASSED" && input.status !== "FAILED") {
+      throw new AppError("Invalid status. Must be PASSED or FAILED.", 400);
+    }
+
+    const examDate = parseNullableDateInput(
+      input.examDate ?? null,
+      "examination date",
+    );
+    const trimmedRemarks =
+      typeof input.remarks === "string" ? input.remarks.trim() : "";
+    if (trimmedRemarks.length > 500) {
+      throw new AppError(
+        "Remarks must not exceed 500 characters.",
+        400,
+      );
+    }
+    const remarks = trimmedRemarks.length > 0 ? trimmedRemarks : null;
+
     const student = await this.repository.findStudentById(studentId);
     if (!student) {
       throw new AppError("Student not found!", 404);
     }
-
-    // Check if student is already dismissed (2 strikes)
-    const strikeCount = student.compExamRecords.filter((r) => r.status === "FAILED").length;
-    if (strikeCount >= 2 && status === "FAILED") {
-      throw new AppError("Student has reached maximum attempts (2 strikes). Cannot record another failure.", 400);
+    if (student.admissionStatus !== "ENROLLED") {
+      throw new AppError(
+        "Comprehensive examination attempts can only be recorded for enrolled students.",
+        400,
+      );
     }
 
-    return this.repository.updateCompExamStatus(studentId, status);
+    const evalSummary = evaluateCompExamSummary(student.compExamRecords);
+    if (evalSummary.isPassed) {
+      throw new AppError(
+        "Student has already passed the Written Comprehensive Examination.",
+        400,
+      );
+    }
+    if (evalSummary.isDismissed || evalSummary.nextAttemptNumber === null) {
+      throw new AppError(
+        `Student has reached maximum attempts (${MAX_COMP_EXAM_ATTEMPTS}). Student is permanently disqualified under Manual §7.15.4.`,
+        400,
+      );
+    }
+
+    const solePending =
+      evalSummary.orderedRecords.length === 1 &&
+      String(evalSummary.orderedRecords[0].status).toUpperCase() === "PENDING" &&
+      evalSummary.orderedRecords[0].id
+        ? evalSummary.orderedRecords[0].id
+        : null;
+
+    const attemptNumber = solePending ? 1 : evalSummary.nextAttemptNumber;
+    const shouldDismiss =
+      input.status === "FAILED" && attemptNumber >= MAX_COMP_EXAM_ATTEMPTS;
+
+    const notification = buildCompExamNotificationCopy({
+      status: input.status,
+      attemptNumber,
+      maxAttempts: MAX_COMP_EXAM_ATTEMPTS,
+      isDismissed: shouldDismiss,
+      isCorrection: false,
+    });
+
+    const studentName = `${student.user.firstName} ${student.user.lastName}`.trim();
+    const emailFoundation = buildCompExamEmailFoundationPayload({
+      recipientEmail: student.user.email,
+      studentName,
+      status: input.status,
+      attemptNumber,
+      maxAttempts: MAX_COMP_EXAM_ATTEMPTS,
+      isDismissed: shouldDismiss,
+    });
+
+    const record = await this.repository.recordCompExamAttempt({
+      studentId,
+      userId: student.userId,
+      adminId,
+      attemptNumber,
+      pendingRecordId: solePending,
+      status: input.status,
+      examDate,
+      remarks,
+      shouldDismiss,
+      notification,
+      emailFoundation: { ...emailFoundation },
+    });
+
+    const nextRecords = solePending
+      ? student.compExamRecords.map((r) => (r.id === solePending ? record : r))
+      : [record, ...student.compExamRecords];
+    const afterEval = evaluateCompExamSummary(nextRecords);
+
+    const message =
+      input.status === "PASSED"
+        ? `Comprehensive Examination Attempt ${attemptNumber} recorded as PASSED. Title Defense is now unlocked.`
+        : shouldDismiss
+          ? `Comprehensive Examination Attempt ${attemptNumber} recorded as FAILED. Student is now permanently disqualified (DISMISSED) per Manual §7.15.4.`
+          : `Comprehensive Examination Attempt ${attemptNumber} of ${MAX_COMP_EXAM_ATTEMPTS} recorded as FAILED (${afterEval.attemptsRemaining} remaining attempt${afterEval.attemptsRemaining === 1 ? "" : "s"}).`;
+
+    return {
+      message,
+      attempt: record,
+      summary: {
+        standing: afterEval.standing,
+        isPassed: afterEval.isPassed,
+        isDismissed: afterEval.isDismissed,
+        attemptsUsed: afterEval.attemptsUsed,
+        failedAttempts: afterEval.failedCount,
+        attemptsRemaining: afterEval.attemptsRemaining,
+        maxAttempts: afterEval.maxAttempts,
+        nextAttemptNumber: afterEval.nextAttemptNumber,
+      },
+      dismissed: shouldDismiss,
+      emailNotification: emailFoundation,
+    };
+  }
+
+  async correctLatestCompExamAttempt(
+    studentId: string,
+    adminId: string,
+    input: CorrectCompExamAttemptInput,
+  ) {
+    if (!adminId) {
+      throw new AppError("Authenticated Admin identity is required.", 401);
+    }
+    if (input.status !== "PASSED" && input.status !== "FAILED") {
+      throw new AppError("Invalid status. Must be PASSED or FAILED.", 400);
+    }
+
+    const reason = typeof input.reason === "string" ? input.reason.trim() : "";
+    if (reason.length < 5) {
+      throw new AppError(
+        "A correction reason of at least 5 characters is required for audit logging.",
+        400,
+      );
+    }
+    if (reason.length > 500) {
+      throw new AppError(
+        "Correction reason must not exceed 500 characters.",
+        400,
+      );
+    }
+
+    const examDate = parseNullableDateInput(
+      input.examDate ?? null,
+      "examination date",
+    );
+    const trimmedRemarks =
+      typeof input.remarks === "string" ? input.remarks.trim() : "";
+    if (trimmedRemarks.length > 500) {
+      throw new AppError(
+        "Remarks must not exceed 500 characters.",
+        400,
+      );
+    }
+    const remarks = trimmedRemarks.length > 0 ? trimmedRemarks : null;
+
+    const student = await this.repository.findStudentById(studentId);
+    if (!student) {
+      throw new AppError("Student not found!", 404);
+    }
+    if (student.admissionStatus === "GRADUATED") {
+      throw new AppError(
+        "Cannot modify comprehensive examination records for a graduated student.",
+        400,
+      );
+    }
+
+    const evalSummary = evaluateCompExamSummary(student.compExamRecords);
+    const latestGraded = evalSummary.latestGradedAttempt;
+    if (!latestGraded || !latestGraded.id) {
+      throw new AppError(
+        "No recorded comprehensive examination attempt is available to correct.",
+        400,
+      );
+    }
+
+    const previousStatus = String(latestGraded.status).toUpperCase();
+    if (
+      previousStatus === "PASSED" &&
+      input.status === "FAILED" &&
+      student.thesisRecords.length > 0
+    ) {
+      throw new AppError(
+        "Cannot downgrade a passing Comprehensive Examination attempt because a thesis record already exists for this student.",
+        409,
+      );
+    }
+
+    const attemptNumber = latestGraded.attemptNumber ?? 1;
+    const simulatedRecords = student.compExamRecords.map((r) =>
+      r.id === latestGraded.id ? { ...r, status: input.status } : r,
+    );
+    const simulatedAfter = evaluateCompExamSummary(simulatedRecords);
+
+    let nextAdmissionStatus: "ENROLLED" | "DISMISSED" | null = null;
+    if (simulatedAfter.isDismissed && student.admissionStatus !== "DISMISSED") {
+      nextAdmissionStatus = "DISMISSED";
+    } else if (
+      !simulatedAfter.isDismissed &&
+      student.admissionStatus === "DISMISSED"
+    ) {
+      nextAdmissionStatus = "ENROLLED";
+    }
+
+    const statusChanged = previousStatus !== input.status;
+    const notification = statusChanged
+      ? buildCompExamNotificationCopy({
+          status: input.status,
+          attemptNumber,
+          maxAttempts: MAX_COMP_EXAM_ATTEMPTS,
+          isDismissed: simulatedAfter.isDismissed,
+          isCorrection: true,
+        })
+      : null;
+
+    const studentName = `${student.user.firstName} ${student.user.lastName}`.trim();
+    const emailFoundation = statusChanged
+      ? buildCompExamEmailFoundationPayload({
+          recipientEmail: student.user.email,
+          studentName,
+          status: input.status,
+          attemptNumber,
+          maxAttempts: MAX_COMP_EXAM_ATTEMPTS,
+          isDismissed: simulatedAfter.isDismissed,
+        })
+      : null;
+
+    const updated = await this.repository.correctLatestCompExamAttempt({
+      studentId,
+      userId: student.userId,
+      adminId,
+      attemptId: latestGraded.id,
+      attemptNumber,
+      existingCertificateNumber: latestGraded.certificateNumber ?? null,
+      existingCertificateIssuedAt: latestGraded.certificateIssuedAt ?? null,
+      status: input.status,
+      examDate,
+      remarks,
+      reason,
+      nextAdmissionStatus,
+      oldSnapshot: {
+        status: previousStatus,
+        examDate: latestGraded.examDate
+          ? new Date(latestGraded.examDate).toISOString()
+          : null,
+        remarks: latestGraded.remarks ?? null,
+        certificateNumber: latestGraded.certificateNumber ?? null,
+        admissionStatus: student.admissionStatus,
+      },
+      notification,
+      emailFoundation: emailFoundation ? { ...emailFoundation } : null,
+    });
+
+    const restoredToEnrolled = nextAdmissionStatus === "ENROLLED";
+    const dismissed = nextAdmissionStatus === "DISMISSED";
+    const message = restoredToEnrolled
+      ? `Comprehensive Examination Attempt ${attemptNumber} corrected to ${input.status} and student restored to ENROLLED.`
+      : dismissed
+        ? `Comprehensive Examination Attempt ${attemptNumber} corrected to FAILED. Student is now DISMISSED per Manual §7.15.4.`
+        : `Comprehensive Examination Attempt ${attemptNumber} corrected.`;
+
+    return {
+      message,
+      attempt: updated,
+      summary: {
+        standing: simulatedAfter.standing,
+        isPassed: simulatedAfter.isPassed,
+        isDismissed: simulatedAfter.isDismissed,
+        attemptsUsed: simulatedAfter.attemptsUsed,
+        failedAttempts: simulatedAfter.failedCount,
+        attemptsRemaining: simulatedAfter.attemptsRemaining,
+        maxAttempts: simulatedAfter.maxAttempts,
+        nextAttemptNumber: simulatedAfter.nextAttemptNumber,
+      },
+      restoredToEnrolled,
+      dismissed,
+      emailNotification: emailFoundation,
+    };
+  }
+
+  async getCompExamCertificateFoundation(studentId: string) {
+    return this.compExamCertService.getCertificateFoundationForStudentId(
+      studentId,
+    );
   }
 
   async updateStudent(

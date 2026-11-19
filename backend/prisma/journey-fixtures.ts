@@ -246,8 +246,13 @@ async function ensureCompExam(prisma: Prisma, studentId: string) {
     where: { studentId, status: "PASSED" },
   });
   if (!existing) {
+    const agg = await prisma.compExamRecord.aggregate({
+      where: { studentId },
+      _max: { attemptNumber: true },
+    });
+    const attemptNumber = (agg._max.attemptNumber ?? 0) + 1;
     await prisma.compExamRecord.create({
-      data: { studentId, status: "PASSED" },
+      data: { studentId, attemptNumber, status: "PASSED" },
     });
   }
 }

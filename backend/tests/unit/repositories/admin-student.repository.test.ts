@@ -220,6 +220,17 @@ describe("AdminStudentRepository.findStudentDetailById", () => {
       status: "PASSED",
       recordedAt: "2026-07-01T00:00:00.000Z",
     });
+    expect(detail?.compExamSummary).toMatchObject({
+      standing: "PASSED",
+      isPassed: true,
+      isDismissed: false,
+      attemptsUsed: 2,
+      failedAttempts: 1,
+      attemptsRemaining: 0,
+      maxAttempts: 3,
+      canRecordAttempt: false,
+      canCorrectLatest: true,
+    });
   });
 
   it("maps residency and the active adviser assignment", async () => {

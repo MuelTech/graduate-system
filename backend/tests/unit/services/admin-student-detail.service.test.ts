@@ -4,7 +4,8 @@ const repo = vi.hoisted(() => ({
   findStudentDetailById: vi.fn(),
   findStudentUserId: vi.fn(),
   findStudentById: vi.fn(),
-  updateCompExamStatus: vi.fn(),
+  recordCompExamAttempt: vi.fn(),
+  correctLatestCompExamAttempt: vi.fn(),
   findStudentForEdit: vi.fn(),
   findUserByEmailExcluding: vi.fn(),
   findStudentByNumberExcluding: vi.fn(),
@@ -14,6 +15,9 @@ const repo = vi.hoisted(() => ({
 }));
 
 const journey = vi.hoisted(() => ({ getJourney: vi.fn() }));
+const compExamCert = vi.hoisted(() => ({
+  getCertificateFoundationForStudentId: vi.fn(),
+}));
 
 vi.mock("../../../src/repositories/admin-student.repository", () => {
   class MockRepo {
@@ -33,7 +37,8 @@ vi.mock("../../../src/repositories/admin-student.repository", () => {
     findStudentDetailById = repo.findStudentDetailById;
     findStudentUserId = repo.findStudentUserId;
     findStudentById = repo.findStudentById;
-    updateCompExamStatus = repo.updateCompExamStatus;
+    recordCompExamAttempt = repo.recordCompExamAttempt;
+    correctLatestCompExamAttempt = repo.correctLatestCompExamAttempt;
     findStudentForEdit = repo.findStudentForEdit;
     findUserByEmailExcluding = repo.findUserByEmailExcluding;
     findStudentByNumberExcluding = repo.findStudentByNumberExcluding;
@@ -47,6 +52,13 @@ vi.mock("../../../src/repositories/admin-student.repository", () => {
 vi.mock("../../../src/services/student-thesis-journey.service", () => ({
   StudentThesisJourneyService: class {
     getJourney = journey.getJourney;
+  },
+}));
+
+vi.mock("../../../src/services/comp-exam-certificate.service", () => ({
+  CompExamCertificateService: class {
+    getCertificateFoundationForStudentId =
+      compExamCert.getCertificateFoundationForStudentId;
   },
 }));
 
@@ -197,5 +209,223 @@ describe("AdminStudentService management mutations", () => {
         adminId: "admin-1",
       }),
     );
+  });
+});
+
+describe("AdminStudentService Comprehensive Examination 3-attempt workflow", () => {
+  function compExamStudent(overrides: Record<string, unknown> = {}) {
+    return {
+      id: "s1",
+      userId: "u1",
+      admissionStatus: "ENROLLED",
+      user: {
+        id: "u1",
+        firstName: "Juan",
+        lastName: "Dela Cruz",
+        email: "juan@example.com",
+      },
+      program: { id: "prog-1", programName: "MBA" },
+      thesisRecords: [],
+      compExamRecords: [],
+      adviserAssignments: [],
+      ...overrides,
+    };
+  }
+
+  it("records attempt 1 and attempt 2 failures without dismissing the student (Manual §7.15.4)", async () => {
+    repo.findStudentById.mockResolvedValue(
+      compExamStudent({
+        compExamRecords: [
+          {
+            id: "ce-1",
+            attemptNumber: 1,
+            status: "FAILED",
+            createdAt: new Date("2026-06-01T00:00:00.000Z"),
+          },
+        ],
+      }),
+    );
+    repo.recordCompExamAttempt.mockResolvedValue({
+      id: "ce-2",
+      studentId: "s1",
+      attemptNumber: 2,
+      status: "FAILED",
+      examDate: new Date("2026-09-01T00:00:00.000Z"),
+      remarks: "Needs retake",
+      certificateNumber: null,
+      certificateIssuedAt: null,
+      createdAt: new Date("2026-09-02T00:00:00.000Z"),
+    });
+
+    const res = await new AdminStudentService().recordCompExamAttempt(
+      "s1",
+      "admin-1",
+      { status: "FAILED", examDate: "2026-09-01", remarks: "Needs retake" },
+    );
+
+    expect(res.dismissed).toBe(false);
+    expect(res.summary.standing).toBe("RETAKE_REQUIRED");
+    expect(res.summary.attemptsRemaining).toBe(1);
+    expect(res.emailNotification.templateKey).toBe("comp_exam_recorded");
+    expect(res.emailNotification.deliveryStatus).toBe(
+      "DEFERRED_SMTP_NOT_CONFIGURED",
+    );
+    expect(repo.recordCompExamAttempt).toHaveBeenCalledWith(
+      expect.objectContaining({
+        studentId: "s1",
+        attemptNumber: 2,
+        status: "FAILED",
+        shouldDismiss: false,
+      }),
+    );
+  });
+
+  it("automatically dismisses the student on the 3rd failed attempt and blocks a 4th attempt", async () => {
+    repo.findStudentById.mockResolvedValue(
+      compExamStudent({
+        compExamRecords: [
+          { id: "ce-2", attemptNumber: 2, status: "FAILED", createdAt: new Date("2026-07-01") },
+          { id: "ce-1", attemptNumber: 1, status: "FAILED", createdAt: new Date("2026-06-01") },
+        ],
+      }),
+    );
+    repo.recordCompExamAttempt.mockResolvedValue({
+      id: "ce-3",
+      studentId: "s1",
+      attemptNumber: 3,
+      status: "FAILED",
+      examDate: null,
+      remarks: null,
+      certificateNumber: null,
+      certificateIssuedAt: null,
+      createdAt: new Date("2026-10-01T00:00:00.000Z"),
+    });
+
+    const thirdRes = await new AdminStudentService().recordCompExamAttempt(
+      "s1",
+      "admin-1",
+      { status: "FAILED" },
+    );
+
+    expect(thirdRes.dismissed).toBe(true);
+    expect(thirdRes.summary.standing).toBe("DISMISSED");
+    expect(repo.recordCompExamAttempt).toHaveBeenCalledWith(
+      expect.objectContaining({
+        attemptNumber: 3,
+        shouldDismiss: true,
+      }),
+    );
+
+    // 4th attempt blocked once 3 failures exist
+    repo.findStudentById.mockResolvedValue(
+      compExamStudent({
+        admissionStatus: "DISMISSED",
+        compExamRecords: [
+          { id: "ce-3", attemptNumber: 3, status: "FAILED", createdAt: new Date("2026-10-01") },
+          { id: "ce-2", attemptNumber: 2, status: "FAILED", createdAt: new Date("2026-07-01") },
+          { id: "ce-1", attemptNumber: 1, status: "FAILED", createdAt: new Date("2026-06-01") },
+        ],
+      }),
+    );
+    await expect(
+      new AdminStudentService().recordCompExamAttempt("s1", "admin-1", {
+        status: "PASSED",
+      }),
+    ).rejects.toMatchObject({ statusCode: 400 });
+  });
+
+  it("blocks additional attempts once a student has already passed", async () => {
+    repo.findStudentById.mockResolvedValue(
+      compExamStudent({
+        compExamRecords: [
+          { id: "ce-1", attemptNumber: 1, status: "PASSED", createdAt: new Date("2026-06-01") },
+        ],
+      }),
+    );
+
+    await expect(
+      new AdminStudentService().recordCompExamAttempt("s1", "admin-1", {
+        status: "FAILED",
+      }),
+    ).rejects.toMatchObject({ statusCode: 400 });
+    expect(repo.recordCompExamAttempt).not.toHaveBeenCalled();
+  });
+
+  it("supports audited latest-attempt correction restoring a dismissed student to ENROLLED", async () => {
+    repo.findStudentById.mockResolvedValue(
+      compExamStudent({
+        admissionStatus: "DISMISSED",
+        compExamRecords: [
+          { id: "ce-3", attemptNumber: 3, status: "FAILED", createdAt: new Date("2026-10-01") },
+          { id: "ce-2", attemptNumber: 2, status: "FAILED", createdAt: new Date("2026-07-01") },
+          { id: "ce-1", attemptNumber: 1, status: "FAILED", createdAt: new Date("2026-06-01") },
+        ],
+      }),
+    );
+    repo.correctLatestCompExamAttempt.mockResolvedValue({
+      id: "ce-3",
+      attemptNumber: 3,
+      status: "PASSED",
+      examDate: null,
+      remarks: "Re-checked score",
+      certificateNumber: "WCE-2026-CE3",
+      certificateIssuedAt: new Date("2026-10-02"),
+      createdAt: new Date("2026-10-01"),
+    });
+
+    const corrected = await new AdminStudentService().correctLatestCompExamAttempt(
+      "s1",
+      "admin-1",
+      {
+        status: "PASSED",
+        remarks: "Re-checked score",
+        reason: "Corrected encoding mistake after chair review.",
+      },
+    );
+
+    expect(corrected.restoredToEnrolled).toBe(true);
+    expect(corrected.summary.standing).toBe("PASSED");
+    expect(repo.correctLatestCompExamAttempt).toHaveBeenCalledWith(
+      expect.objectContaining({
+        attemptId: "ce-3",
+        nextAdmissionStatus: "ENROLLED",
+        reason: "Corrected encoding mistake after chair review.",
+      }),
+    );
+  });
+
+  it("blocks downgrading PASSED to FAILED with 409 when a thesis record already exists", async () => {
+    repo.findStudentById.mockResolvedValue(
+      compExamStudent({
+        thesisRecords: [{ id: "t-1", stage: "TITLE", status: "PENDING" }],
+        compExamRecords: [
+          { id: "ce-1", attemptNumber: 1, status: "PASSED", createdAt: new Date("2026-06-01") },
+        ],
+      }),
+    );
+
+    await expect(
+      new AdminStudentService().correctLatestCompExamAttempt("s1", "admin-1", {
+        status: "FAILED",
+        reason: "Attempted downgrade test",
+      }),
+    ).rejects.toMatchObject({ statusCode: 409 });
+    expect(repo.correctLatestCompExamAttempt).not.toHaveBeenCalled();
+  });
+
+  it("delegates certificate foundation lookup to CompExamCertificateService", async () => {
+    compExamCert.getCertificateFoundationForStudentId.mockResolvedValue({
+      studentId: "s1",
+      eligible: true,
+      templateStatus: "TEMPLATE_PENDING",
+    });
+
+    const res = await new AdminStudentService().getCompExamCertificateFoundation(
+      "s1",
+    );
+    expect(res.templateStatus).toBe("TEMPLATE_PENDING");
+    expect(
+      compExamCert.getCertificateFoundationForStudentId,
+    ).toHaveBeenCalledWith("s1");
   });
 });

@@ -19,11 +19,12 @@ import {
 } from "@/lib/student-thesis-journey";
 import {
   activeDefense,
-  compExamStatusLabel,
+  compExamAttemptSummary,
   milestoneStateLabel,
   resolveDefenseVenue,
   resolveNextStep,
   type NextStepKind,
+  type StudentCompExamRecordLike,
 } from "@/lib/student-dashboard";
 import type {
   JourneyStepView,
@@ -50,7 +51,7 @@ interface StudentOverview {
   user?: { firstName?: string; lastName?: string };
   program?: { programName?: string } | null;
   studentNumber?: string | null;
-  compExamRecords?: Array<{ status?: string }>;
+  compExamRecords?: StudentCompExamRecordLike[];
 }
 
 interface MemoItem {
@@ -222,7 +223,7 @@ export default function StudentDashboard() {
   const firstName = overview?.user?.firstName?.trim() || "Student";
   const programName = overview?.program?.programName?.trim() || "Graduate Program";
   const studentNumber = overview?.studentNumber?.trim() || null;
-  const compExamStatus = overview?.compExamRecords?.[0]?.status ?? null;
+  const compExamSummary = compExamAttemptSummary(overview?.compExamRecords);
 
   const journey = journeyQuery.data;
   const currentStep = journey?.currentStep
@@ -319,11 +320,13 @@ export default function StudentDashboard() {
                 <p className="text-sm text-gray-500">Unavailable</p>
               ) : (
                 <p className="text-2xl font-bold text-[#333333]">
-                  {compExamStatusLabel(compExamStatus)}
+                  {compExamSummary.standingLabel}
                 </p>
               )}
               <p className="text-xs text-gray-500">
-                Required before Title Defense.
+                {overviewQuery.isError
+                  ? "Required before Title Defense."
+                  : compExamSummary.detailLine}
               </p>
             </CardContent>
           </Card>

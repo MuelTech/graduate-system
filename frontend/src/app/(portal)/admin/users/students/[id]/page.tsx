@@ -86,15 +86,21 @@ const ADMISSION_STATUS_TONE: Record<string, string> = {
 };
 
 const COMP_EXAM_LABEL: Record<string, string> = {
+  NOT_RECORDED: "Not recorded",
   PENDING: "Pending",
   PASSED: "Passed",
   FAILED: "Failed",
+  RETAKE_REQUIRED: "Retake Required",
+  DISMISSED: "Disqualified (3/3)",
 };
 
 const COMP_EXAM_TONE: Record<string, string> = {
   PASSED: "border-emerald-200 bg-emerald-50 text-emerald-700",
   FAILED: "border-red-200 bg-red-50 text-red-700",
+  DISMISSED: "border-red-200 bg-red-50 text-red-700",
+  RETAKE_REQUIRED: "border-amber-200 bg-amber-50 text-amber-800",
   PENDING: "border-amber-200 bg-amber-50 text-amber-800",
+  NOT_RECORDED: "border-gray-200 bg-gray-50 text-gray-600",
 };
 
 const JOURNEY_STATE_LABEL: Record<string, string> = {
@@ -313,6 +319,16 @@ export default function StudentDetailPage() {
   const [compExamAction, setCompExamAction] = useState<
     "PASSED" | "FAILED" | null
   >(null);
+  const [compExamDate, setCompExamDate] = useState("");
+  const [compExamRemarks, setCompExamRemarks] = useState("");
+  const [correctCompExamOpen, setCorrectCompExamOpen] = useState(false);
+  const [correctCompExamError, setCorrectCompExamError] = useState("");
+  const [correctCompExamForm, setCorrectCompExamForm] = useState({
+    status: "PASSED" as "PASSED" | "FAILED",
+    examDate: "",
+    remarks: "",
+    reason: "",
+  });
   const [editOpen, setEditOpen] = useState(false);
   const [resetOpen, setResetOpen] = useState(false);
   const [toggleActiveOpen, setToggleActiveOpen] = useState(false);
@@ -359,18 +375,54 @@ export default function StudentDetailPage() {
     queryClient.invalidateQueries({ queryKey: ["adminStudents"] });
   };
 
-  const markCompExamMutation = useMutation({
-    mutationFn: (status: "PASSED" | "FAILED") =>
+  const recordCompExamMutation = useMutation({
+    mutationFn: (payload: {
+      status: "PASSED" | "FAILED";
+      examDate: string | null;
+      remarks: string | null;
+    }) =>
       apiClientRequest(`/admin/students/${studentId}/comprehensive-exam`, {
         method: "PUT",
-        body: JSON.stringify({ status }),
+        body: JSON.stringify(payload),
       }),
     onSuccess: (data: { message?: string }) => {
-      toast.success(data?.message ?? "Comprehensive exam status updated.");
+      toast.success(
+        data?.message ?? "Comprehensive examination attempt recorded.",
+      );
       setCompExamAction(null);
+      setCompExamDate("");
+      setCompExamRemarks("");
       invalidateStudent();
     },
     onError: (error: Error) => toast.error(error.message),
+  });
+
+  const correctCompExamMutation = useMutation({
+    mutationFn: (payload: {
+      status: "PASSED" | "FAILED";
+      examDate: string | null;
+      remarks: string | null;
+      reason: string;
+    }) =>
+      apiClientRequest(
+        `/admin/students/${studentId}/comprehensive-exam/latest`,
+        {
+          method: "PATCH",
+          body: JSON.stringify(payload),
+        },
+      ),
+    onSuccess: (data: { message?: string }) => {
+      toast.success(
+        data?.message ?? "Comprehensive examination attempt corrected.",
+      );
+      setCorrectCompExamOpen(false);
+      setCorrectCompExamError("");
+      invalidateStudent();
+    },
+    onError: (error: Error) => {
+      setCorrectCompExamError(error.message);
+      toast.error(error.message);
+    },
   });
 
   const updateMutation = useMutation({
@@ -477,7 +529,57 @@ export default function StudentDetailPage() {
   const currentStep =
     journey?.steps.find((step) => step.key === journey.currentStep) ?? null;
 
-  const canRecordCompExam = student.admissionStatus === "ENROLLED";
+  const compExamSummary = student.compExamSummary ?? {
+    standing:
+      student.compExam?.status === "PASSED"
+        ? ("PASSED" as const)
+        : student.compExam?.status === "FAILED"
+          ? ("RETAKE_REQUIRED" as const)
+          : student.compExam?.status === "PENDING"
+            ? ("PENDING" as const)
+            : ("NOT_RECORDED" as const),
+    isPassed: student.compExam?.status === "PASSED",
+    isDismissed: false,
+    attemptsUsed:
+      student.compExam && student.compExam.status !== "PENDING" ? 1 : 0,
+    failedAttempts: student.compExam?.status === "FAILED" ? 1 : 0,
+    attemptsRemaining: student.compExam?.status === "PASSED" ? 0 : 3,
+    maxAttempts: 3,
+    nextAttemptNumber: student.compExam?.status === "PASSED" ? null : 1,
+    canRecordAttempt:
+      student.admissionStatus === "ENROLLED" &&
+      student.compExam?.status !== "PASSED",
+    canCorrectLatest:
+      Boolean(student.compExam) && student.compExam?.status !== "PENDING",
+    certificate: {
+      eligible: student.compExam?.status === "PASSED",
+      templateStatus: "TEMPLATE_PENDING" as const,
+      certificateNumber: null,
+      issuedAt: null,
+    },
+    attempts: [],
+  };
+  const latestGradedAttempt =
+    compExamSummary.attempts.find(
+      (a) => a.status === "PASSED" || a.status === "FAILED",
+    ) ?? null;
+
+  const openRecordCompExamDialog = (status: "PASSED" | "FAILED") => {
+    setCompExamDate("");
+    setCompExamRemarks("");
+    setCompExamAction(status);
+  };
+
+  const openCorrectCompExamDialog = () => {
+    setCorrectCompExamError("");
+    setCorrectCompExamForm({
+      status: latestGradedAttempt?.status === "FAILED" ? "FAILED" : "PASSED",
+      examDate: toDateInputValue(latestGradedAttempt?.examDate ?? null),
+      remarks: latestGradedAttempt?.remarks ?? "",
+      reason: "",
+    });
+    setCorrectCompExamOpen(true);
+  };
   const programs = programsQuery.data?.graduatePrograms ?? [];
   const selectedEditProgram = programs.find(
     (p) => p.id === formState.programId,
@@ -619,20 +721,26 @@ export default function StudentDetailPage() {
               <p className="text-[11px] font-semibold tracking-wider text-gray-500 uppercase">
                 Comprehensive Exam
               </p>
-              {student.compExam ? (
-                <Badge
-                  variant="outline"
-                  className={cn(
-                    "font-medium",
-                    COMP_EXAM_TONE[student.compExam.status] ??
-                      "border-gray-200 text-gray-700",
-                  )}
-                >
-                  {compExamLabel(student.compExam.status)}
-                </Badge>
+              {compExamSummary.standing !== "NOT_RECORDED" ? (
+                <div className="flex flex-wrap items-center gap-2">
+                  <Badge
+                    variant="outline"
+                    className={cn(
+                      "font-medium",
+                      COMP_EXAM_TONE[compExamSummary.standing] ??
+                        "border-gray-200 text-gray-700",
+                    )}
+                  >
+                    {compExamLabel(compExamSummary.standing)}
+                  </Badge>
+                  <span className="text-xs text-gray-500">
+                    {compExamSummary.attemptsUsed} /{" "}
+                    {compExamSummary.maxAttempts} attempts
+                  </span>
+                </div>
               ) : (
                 <p className="text-sm font-medium text-gray-500">
-                  Not recorded
+                  Not recorded (0 / {compExamSummary.maxAttempts})
                 </p>
               )}
             </div>
@@ -832,45 +940,110 @@ export default function StudentDetailPage() {
         <div className="space-y-6 lg:col-span-5">
           <SectionCard
             title="Comprehensive Examination"
-            description="Record or update formal comprehensive examination standing."
+            description="Official Written Comprehensive Examination standing (Manual §7.15.4 · max 3 attempts)."
+            action={
+              compExamSummary.canCorrectLatest && latestGradedAttempt ? (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={openCorrectCompExamDialog}
+                  disabled={correctCompExamMutation.isPending}
+                >
+                  Correct Latest Attempt
+                </Button>
+              ) : null
+            }
           >
             <dl className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <DataItem label="Current Standing">
-                {student.compExam
-                  ? compExamLabel(student.compExam.status)
-                  : "Not recorded"}
+                {compExamLabel(compExamSummary.standing)}
               </DataItem>
-              {student.compExam?.recordedAt ? (
-                <DataItem label="Recorded Date">
-                  {formatDate(student.compExam.recordedAt)}
-                </DataItem>
-              ) : null}
+              <DataItem label="Attempts Used">
+                {compExamSummary.attemptsUsed} / {compExamSummary.maxAttempts}
+                {!compExamSummary.isPassed && !compExamSummary.isDismissed
+                  ? ` (${compExamSummary.attemptsRemaining} remaining)`
+                  : ""}
+              </DataItem>
             </dl>
 
-            {canRecordCompExam ? (
+            {compExamSummary.attempts.length > 0 ? (
+              <div className="space-y-2 border-t border-gray-100 pt-4">
+                <p className="text-[11px] font-semibold tracking-wider text-gray-500 uppercase">
+                  Attempt History
+                </p>
+                <div className="divide-y divide-gray-100 rounded-lg border border-gray-200/80 bg-white">
+                  {compExamSummary.attempts.map((attempt) => (
+                    <div key={attempt.id} className="space-y-1 p-3 text-xs">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div className="flex items-center gap-2">
+                          <span className="font-semibold text-[#262220]">
+                            Attempt {attempt.attemptNumber}
+                          </span>
+                          <Badge
+                            variant="outline"
+                            className={cn(
+                              "text-[11px] font-medium",
+                              COMP_EXAM_TONE[attempt.status] ??
+                                "border-gray-200 text-gray-700",
+                            )}
+                          >
+                            {compExamLabel(attempt.status)}
+                          </Badge>
+                        </div>
+                        <span className="text-gray-500">
+                          {attempt.examDate
+                            ? `Exam: ${formatDate(attempt.examDate)}`
+                            : `Recorded: ${formatDate(attempt.recordedAt)}`}
+                        </span>
+                      </div>
+                      {(attempt.recordedByName || attempt.remarks) && (
+                        <p className="text-gray-500">
+                          {attempt.recordedByName
+                            ? `Recorded by ${attempt.recordedByName}`
+                            : ""}
+                          {attempt.recordedByName && attempt.remarks
+                            ? " · "
+                            : ""}
+                          {attempt.remarks ? attempt.remarks : ""}
+                        </p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+
+            {compExamSummary.isDismissed ? (
+              <div className="rounded-lg border border-red-200 bg-red-50/80 p-3 text-xs text-red-800">
+                Permanently disqualified after 3 failed attempts under Graduate
+                School Manual §7.15.4. Use &ldquo;Correct Latest Attempt&rdquo;
+                above only for verified encoding corrections.
+              </div>
+            ) : compExamSummary.canRecordAttempt &&
+              compExamSummary.nextAttemptNumber !== null ? (
               <div className="flex flex-wrap gap-2 pt-1">
                 <Button
                   size="sm"
                   className="bg-emerald-600 text-white hover:bg-emerald-700"
-                  onClick={() => setCompExamAction("PASSED")}
-                  disabled={markCompExamMutation.isPending}
+                  onClick={() => openRecordCompExamDialog("PASSED")}
+                  disabled={recordCompExamMutation.isPending}
                 >
-                  Mark as Passed
+                  Record Attempt #{compExamSummary.nextAttemptNumber} Passed
                 </Button>
                 <Button
                   size="sm"
                   variant="destructive"
-                  onClick={() => setCompExamAction("FAILED")}
-                  disabled={markCompExamMutation.isPending}
+                  onClick={() => openRecordCompExamDialog("FAILED")}
+                  disabled={recordCompExamMutation.isPending}
                 >
-                  Mark as Failed
+                  Record Attempt #{compExamSummary.nextAttemptNumber} Failed
                 </Button>
               </div>
-            ) : (
+            ) : !compExamSummary.isPassed ? (
               <p className="text-xs text-gray-500">
                 Examination recording is available for enrolled students only.
               </p>
-            )}
+            ) : null}
           </SectionCard>
 
           <SectionCard
@@ -1293,7 +1466,7 @@ export default function StudentDetailPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Comprehensive Exam confirmation */}
+      {/* Record Comprehensive Exam Attempt dialog */}
       <Dialog
         open={compExamAction !== null}
         onOpenChange={(open) => {
@@ -1303,29 +1476,221 @@ export default function StudentDetailPage() {
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>
-              Mark comprehensive exam as{" "}
-              {compExamAction === "FAILED" ? "Failed" : "Passed"}?
+              Record Attempt #{compExamSummary.nextAttemptNumber ?? 1} as{" "}
+              {compExamAction === "FAILED" ? "Failed" : "Passed"}
             </DialogTitle>
             <DialogDescription>
-              {compExamAction === "FAILED"
-                ? "This records a failed comprehensive examination for this student."
-                : "This records a passing comprehensive examination result for this student."}
+              {compExamAction === "FAILED" &&
+              (compExamSummary.nextAttemptNumber ?? 1) >=
+                compExamSummary.maxAttempts
+                ? "Warning: Recording a 3rd failed attempt will permanently disqualify this student and set Admission Status to Dismissed per Graduate School Manual §7.15.4."
+                : compExamAction === "FAILED"
+                  ? "Records a failed attempt and notifies the student of remaining retakes under Manual §7.15.4."
+                  : "Records a passing result, unlocks Title Defense (§7.17.1), assigns a certificate reference, and sends a student notification."}
             </DialogDescription>
           </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-1.5">
+              <label
+                htmlFor="comp-exam-date"
+                className="block text-xs font-semibold tracking-wider text-gray-600 uppercase"
+              >
+                Examination Date (optional)
+              </label>
+              <Input
+                id="comp-exam-date"
+                type="date"
+                value={compExamDate}
+                onChange={(e) => setCompExamDate(e.target.value)}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label
+                htmlFor="comp-exam-remarks"
+                className="block text-xs font-semibold tracking-wider text-gray-600 uppercase"
+              >
+                Remarks (optional)
+              </label>
+              <Textarea
+                id="comp-exam-remarks"
+                rows={2}
+                maxLength={500}
+                value={compExamRemarks}
+                onChange={(e) => setCompExamRemarks(e.target.value)}
+                placeholder="e.g. Passed all Written Comprehensive Exam components"
+              />
+            </div>
+          </div>
           <DialogFooter>
             <DialogClose render={<Button variant="outline" />}>
               Cancel
             </DialogClose>
             <Button
               variant={compExamAction === "FAILED" ? "destructive" : "default"}
-              disabled={markCompExamMutation.isPending}
+              disabled={recordCompExamMutation.isPending}
               onClick={() => {
-                if (compExamAction) markCompExamMutation.mutate(compExamAction);
+                if (!compExamAction) return;
+                recordCompExamMutation.mutate({
+                  status: compExamAction,
+                  examDate: compExamDate.trim() || null,
+                  remarks: compExamRemarks.trim() || null,
+                });
               }}
             >
-              {markCompExamMutation.isPending ? "Saving…" : "Confirm"}
+              {recordCompExamMutation.isPending ? "Saving…" : "Confirm"}
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Correct Latest Comprehensive Exam Attempt dialog */}
+      <Dialog open={correctCompExamOpen} onOpenChange={setCorrectCompExamOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              Correct Comprehensive Exam Attempt #
+              {latestGradedAttempt?.attemptNumber ?? 1}
+            </DialogTitle>
+            <DialogDescription>
+              Updates the latest recorded attempt and writes an audited entry.
+              If a dismissed student is corrected to Passed, enrollment is
+              restored.
+            </DialogDescription>
+          </DialogHeader>
+          <form
+            className="space-y-4"
+            onSubmit={(e) => {
+              e.preventDefault();
+              setCorrectCompExamError("");
+              if (correctCompExamForm.reason.trim().length < 5) {
+                setCorrectCompExamError(
+                  "Please provide an audit reason of at least 5 characters.",
+                );
+                return;
+              }
+              correctCompExamMutation.mutate({
+                status: correctCompExamForm.status,
+                examDate: correctCompExamForm.examDate.trim() || null,
+                remarks: correctCompExamForm.remarks.trim() || null,
+                reason: correctCompExamForm.reason.trim(),
+              });
+            }}
+          >
+            {correctCompExamError ? (
+              <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
+                {correctCompExamError}
+              </div>
+            ) : null}
+
+            <div className="space-y-1.5">
+              <label
+                htmlFor="comp-correct-status"
+                className="block text-xs font-semibold tracking-wider text-gray-600 uppercase"
+              >
+                Result *
+              </label>
+              <Select
+                value={correctCompExamForm.status}
+                onValueChange={(value) =>
+                  setCorrectCompExamForm((s) => ({
+                    ...s,
+                    status: value === "FAILED" ? "FAILED" : "PASSED",
+                  }))
+                }
+              >
+                <SelectTrigger id="comp-correct-status" className="w-full">
+                  <span className="flex-1 text-left text-[#262220]">
+                    {correctCompExamForm.status === "FAILED"
+                      ? "Failed"
+                      : "Passed"}
+                  </span>
+                </SelectTrigger>
+                <SelectContent alignItemWithTrigger={false}>
+                  <SelectItem value="PASSED">Passed</SelectItem>
+                  <SelectItem value="FAILED">Failed</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-1.5">
+              <label
+                htmlFor="comp-correct-date"
+                className="block text-xs font-semibold tracking-wider text-gray-600 uppercase"
+              >
+                Examination Date (optional)
+              </label>
+              <Input
+                id="comp-correct-date"
+                type="date"
+                value={correctCompExamForm.examDate}
+                onChange={(e) =>
+                  setCorrectCompExamForm((s) => ({
+                    ...s,
+                    examDate: e.target.value,
+                  }))
+                }
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <label
+                htmlFor="comp-correct-remarks"
+                className="block text-xs font-semibold tracking-wider text-gray-600 uppercase"
+              >
+                Remarks (optional)
+              </label>
+              <Textarea
+                id="comp-correct-remarks"
+                rows={2}
+                maxLength={500}
+                value={correctCompExamForm.remarks}
+                onChange={(e) =>
+                  setCorrectCompExamForm((s) => ({
+                    ...s,
+                    remarks: e.target.value,
+                  }))
+                }
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <label
+                htmlFor="comp-correct-reason"
+                className="block text-xs font-semibold tracking-wider text-gray-600 uppercase"
+              >
+                Reason for Correction *
+              </label>
+              <Textarea
+                id="comp-correct-reason"
+                rows={2}
+                required
+                minLength={5}
+                maxLength={500}
+                value={correctCompExamForm.reason}
+                onChange={(e) =>
+                  setCorrectCompExamForm((s) => ({
+                    ...s,
+                    reason: e.target.value,
+                  }))
+                }
+                placeholder="Required for audit log (minimum 5 characters)"
+              />
+            </div>
+
+            <DialogFooter>
+              <DialogClose render={<Button variant="outline" type="button" />}>
+                Cancel
+              </DialogClose>
+              <Button
+                type="submit"
+                disabled={correctCompExamMutation.isPending}
+              >
+                {correctCompExamMutation.isPending
+                  ? "Saving…"
+                  : "Save Correction"}
+              </Button>
+            </DialogFooter>
+          </form>
         </DialogContent>
       </Dialog>
     </div>

@@ -746,6 +746,45 @@ export interface AdminStudentListItem {
   enrollmentDate: string | null;
 }
 
+export type CompExamStanding =
+  | "NOT_RECORDED"
+  | "PENDING"
+  | "PASSED"
+  | "RETAKE_REQUIRED"
+  | "DISMISSED";
+
+export interface CompExamAttemptDto {
+  id: string;
+  attemptNumber: number;
+  status: string;
+  examDate: string | null;
+  remarks: string | null;
+  recordedAt: string;
+  recordedByName: string | null;
+  certificateNumber: string | null;
+  certificateIssuedAt: string | null;
+}
+
+export interface CompExamSummaryDto {
+  standing: CompExamStanding;
+  isPassed: boolean;
+  isDismissed: boolean;
+  attemptsUsed: number;
+  failedAttempts: number;
+  attemptsRemaining: number;
+  maxAttempts: number;
+  nextAttemptNumber: number | null;
+  canRecordAttempt: boolean;
+  canCorrectLatest: boolean;
+  certificate: {
+    eligible: boolean;
+    templateStatus: "TEMPLATE_PENDING";
+    certificateNumber: string | null;
+    issuedAt: string | null;
+  };
+  attempts: CompExamAttemptDto[];
+}
+
 export interface AdminStudentDetail {
   id: string;
   firstName: string;
@@ -765,6 +804,8 @@ export interface AdminStudentDetail {
   residency: { startDate: string | null; maxYears: number | null } | null;
   /** Latest recorded Comprehensive Exam status; null when no record exists. */
   compExam: { status: string; recordedAt: string | null } | null;
+  /** Authoritative 3-attempt Comprehensive Examination summary and certificate foundation. */
+  compExamSummary?: CompExamSummaryDto;
   adviserAssignment: {
     adviserId: string;
     adviserName: string;

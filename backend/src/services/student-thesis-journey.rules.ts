@@ -163,6 +163,8 @@ export interface JourneyStepView {
 export interface JourneySnapshot {
   /** Comprehensive Examination PASSED (CompExamRecord). */
   compExamPassed: boolean;
+  /** Comprehensive Examination permanently disqualified after 3 failures (§7.15.4). */
+  compExamDismissed?: boolean;
 
   /** Formal Title Defense conclusion (PASSED). */
   titlePassed: boolean;
@@ -459,7 +461,9 @@ export function evaluateStudentThesisJourney(
     ? step(
         "TITLE_DEFENSE",
         "LOCKED",
-        "Pass the Comprehensive Examination before starting Title Defense.",
+        snap.compExamDismissed
+          ? "Permanently disqualified after three failed Comprehensive Examination attempts (Manual §7.15.4)."
+          : "Pass the Comprehensive Examination before starting Title Defense.",
         null,
         null,
         null,

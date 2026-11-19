@@ -2,7 +2,10 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { apiClientRequest } from "@/lib/api.client";
-import { compExamStatusLabel } from "@/lib/student-dashboard";
+import {
+  compExamAttemptSummary,
+  type StudentCompExamRecordLike,
+} from "@/lib/student-dashboard";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -51,9 +54,7 @@ interface StudentProfileResponse {
     startDate?: string | null;
     maxYears?: number | null;
   } | null;
-  compExamRecords?: Array<{
-    status?: string | null;
-  }>;
+  compExamRecords?: StudentCompExamRecordLike[];
   adviserAssignments?: Array<{
     adviser?: PersonSummary | null;
   }>;
@@ -132,7 +133,7 @@ export default function StudentProfilePage() {
     profile?.thesisRecords?.[0]?.assignment?.adviser ??
     null;
 
-  const compExamStatus = profile?.compExamRecords?.[0]?.status ?? null;
+  const compExamSummary = compExamAttemptSummary(profile?.compExamRecords);
   const admissionBadge = admissionStatusBadge(profile?.admissionStatus);
 
   const residencyStart =
@@ -357,7 +358,10 @@ export default function StudentProfilePage() {
                     Comprehensive Examination
                   </p>
                   <p className="mt-0.5 font-semibold text-[#333333]">
-                    {compExamStatusLabel(compExamStatus)}
+                    {compExamSummary.standingLabel}
+                  </p>
+                  <p className="mt-0.5 text-xs text-gray-500">
+                    {compExamSummary.detailLine}
                   </p>
                 </div>
               </div>

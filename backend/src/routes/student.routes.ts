@@ -1,6 +1,10 @@
 import { Router } from "express";
 import { StudentController } from "../controllers/student.controller";
-import { authenticateJWT, requireRole } from "../middlewares/auth.middleware";
+import {
+  authenticateJWT,
+  requireAdminCapability,
+  requireRole,
+} from "../middlewares/auth.middleware";
 const router = Router();
 const studentController = new StudentController();
 // STUDENT ONLY: Fetch their own academic journey pipeline
@@ -10,11 +14,19 @@ router.get(
   requireRole(["STUDENT"]),
   studentController.getJourney,
 );
-// ADMIN ONLY: Update a specific student's Comprehensive Exam status
+// STUDENT ONLY: Fetch Written Comprehensive Exam certification foundation
+router.get(
+  "/comprehensive-exam/certificate",
+  authenticateJWT,
+  requireRole(["STUDENT"]),
+  studentController.getCompExamCertificateFoundation,
+);
+// ADMIN ONLY: Record a Comprehensive Exam attempt (delegates to 3-attempt policy)
 router.post(
   "/:id/comprehensive-exam",
   authenticateJWT,
   requireRole(["ADMIN"]),
+  requireAdminCapability("students.manage"),
   studentController.updateCompExam,
 );
 export default router;

@@ -573,7 +573,7 @@ async function main() {
     enrollmentDate: new Date("2026-06-15T00:00:00.000Z"),
   });
 
-  // Student 4 — Pedro Reyes (Dismissed after 2 strikes)
+  // Student 4 — Pedro Reyes (Dismissed after 3 failed attempts — Manual §7.15.4)
   const s4 = await upsertEnrolledStudentAccount({
     email: "student4@earist.edu.ph",
     firstName: "Pedro",
@@ -586,9 +586,21 @@ async function main() {
   let s4FailedCount = await prisma.compExamRecord.count({
     where: { studentId: s4.student.id, status: "FAILED" },
   });
-  while (s4FailedCount < 2) {
+  let s4MaxAttempt =
+    (
+      await prisma.compExamRecord.aggregate({
+        where: { studentId: s4.student.id },
+        _max: { attemptNumber: true },
+      })
+    )._max.attemptNumber ?? 0;
+  while (s4FailedCount < 3) {
+    s4MaxAttempt += 1;
     await prisma.compExamRecord.create({
-      data: { studentId: s4.student.id, status: "FAILED" },
+      data: {
+        studentId: s4.student.id,
+        attemptNumber: s4MaxAttempt,
+        status: "FAILED",
+      },
     });
     s4FailedCount += 1;
   }
@@ -1787,13 +1799,26 @@ async function seedDefenseWorkflowFixtures(
       create: { studentId: student.id, startDate: enrollDate, maxYears },
     });
 
+    let maxAttempt =
+      (
+        await prisma.compExamRecord.aggregate({
+          where: { studentId: student.id },
+          _max: { attemptNumber: true },
+        })
+      )._max.attemptNumber ?? 0;
+
     if (opts.compExam) {
       const existing = await prisma.compExamRecord.findFirst({
         where: { studentId: student.id, status: opts.compExam },
       });
       if (!existing) {
+        maxAttempt += 1;
         await prisma.compExamRecord.create({
-          data: { studentId: student.id, status: opts.compExam },
+          data: {
+            studentId: student.id,
+            attemptNumber: maxAttempt,
+            status: opts.compExam,
+          },
         });
       }
     }
@@ -1802,8 +1827,13 @@ async function seedDefenseWorkflowFixtures(
         where: { studentId: student.id, status: "FAILED" },
       });
       for (let i = failedCount; i < opts.strikes; i++) {
+        maxAttempt += 1;
         await prisma.compExamRecord.create({
-          data: { studentId: student.id, status: "FAILED" },
+          data: {
+            studentId: student.id,
+            attemptNumber: maxAttempt,
+            status: "FAILED",
+          },
         });
       }
     }
