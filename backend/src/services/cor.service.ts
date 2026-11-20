@@ -3,6 +3,8 @@ import { fileTypeFromFile } from "file-type";
 import { CorRepository } from "../repositories/cor.repository";
 import { AppError } from "../utils/AppError";
 import { EmailService } from "./email.service";
+import { buildPortalUrl } from "./email-layout";
+import { EmailLifecycle } from "./email-lifecycle.helper";
 import { CorExtractionService } from "../extraction/cor-extraction.service";
 
 const ALLOWED_MIME_TYPES = ["application/pdf", "image/jpeg", "image/png"];
@@ -331,7 +333,7 @@ export class CorService {
             await EmailService.sendTemplateEmail(email, "credential_dispatch", {
                 student_name: userFirstName,
                 student_number: studentNumber,
-                portal_link: process.env.FRONTEND_URL || "http://localhost:3000",
+                portal_link: buildPortalUrl("/login"),
             });
         } catch (emailError) {
             console.error("[COR verify] credential email failed:", emailError);
@@ -361,11 +363,23 @@ export class CorService {
             throw new AppError("Only pending COR uploads can be rejected.", 409);
         }
 
-        return this.corRepository.rejectUpload(corUploadId, {
+        const rejected = await this.corRepository.rejectUpload(corUploadId, {
             studentId: upload.studentId,
             reason: trimmed,
             adminId,
         });
+
+        if (upload.student?.user?.email) {
+            EmailLifecycle.sendCorRejected({
+                email: upload.student.user.email,
+                firstName: upload.student.user.firstName,
+                lastName: upload.student.user.lastName,
+                remarks: trimmed,
+                triggeredById: adminId,
+            });
+        }
+
+        return rejected;
     }
 
     private async safeDeleteFile(filePath: string): Promise<void> {

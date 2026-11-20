@@ -11,6 +11,7 @@
  */
 import prisma from "../config/database";
 import { AppError } from "../utils/AppError";
+import { EmailLifecycle } from "./email-lifecycle.helper";
 import type {
   DeanResponseInput,
   RequestAdviserInput,
@@ -341,6 +342,11 @@ export class AdviserRequestService {
             evidenceHash: adviserRequestEvidenceHash(signed, signatureData), signedAt: now } },
         },
       });
+    }).then((created) => {
+      if (created?.id) {
+        EmailLifecycle.sendAdviserRequestReceivedByRequestId(created.id);
+      }
+      return created;
     });
   }
 
@@ -480,6 +486,15 @@ export class AdviserRequestService {
       );
     }
 
+    if (gate.decision === "DECLINED") {
+      EmailLifecycle.sendAdviserRequestDeclinedByRequestId(
+        requestId,
+        "Declined by Faculty",
+        remarks,
+        adviserUserId,
+      );
+    }
+
     return prisma.adviserRequest.findUnique({ where: { id: requestId } });
   }
 
@@ -605,7 +620,7 @@ export class AdviserRequestService {
     const remarks = input.remarks?.trim() ? input.remarks.trim() : null;
 
     try {
-      return await prisma.$transaction(async (tx) => {
+      const decided = await prisma.$transaction(async (tx) => {
         // Lock before any consistent read so MySQL's transaction snapshot sees
         // an earlier decision's assignment after waiting for this Student lock.
         await tx.$queryRaw`SELECT student_id FROM students WHERE student_id = ${existing.studentId} FOR UPDATE`;
@@ -720,6 +735,19 @@ export class AdviserRequestService {
 
         return tx.adviserRequest.findUnique({ where: { id: requestId } });
       });
+
+      if (gate.decision === "APPROVED") {
+        EmailLifecycle.sendAdviserAssignedByRequestId(requestId, deanUserId);
+      } else {
+        EmailLifecycle.sendAdviserRequestDeclinedByRequestId(
+          requestId,
+          "Rejected by Dean",
+          remarks,
+          deanUserId,
+        );
+      }
+
+      return decided;
     } catch (error: unknown) {
       // Map lock/deadlock/serialization conflicts to domain 409.
       const message = error instanceof Error ? error.message : String(error);

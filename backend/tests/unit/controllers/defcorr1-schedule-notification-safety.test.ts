@@ -49,12 +49,18 @@ describe("DEF-CORR-1 scheduling notification safety", () => {
     expect(sendTemplateEmail).toHaveBeenCalledWith(
       "student@example.test",
       "defense_schedule",
-      {
+      expect.objectContaining({
+        recipient_name: "Ana Cruz",
         student_name: "Ana Cruz",
-        defense_date: "Nov 10, 2026",
+        schedule_action: "Scheduled",
+        defense_date: "November 10, 2026",
         defense_time: "9:00 AM",
         venue: "Room 201",
-      },
+      }),
+      expect.objectContaining({
+        recipientName: "Ana Cruz",
+        triggeredById: "admin-1",
+      }),
     );
     expect(res.status).toHaveBeenCalledWith(201);
     expect(res.json).toHaveBeenCalledWith({

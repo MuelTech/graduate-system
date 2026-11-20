@@ -1,6 +1,7 @@
 import bcrypt from "bcryptjs";
 import { AdminAdministratorRepository } from "../repositories/admin-administrator.repository";
 import { AppError } from "../utils/AppError";
+import { EmailLifecycle } from "./email-lifecycle.helper";
 
 const repo = new AdminAdministratorRepository();
 
@@ -31,6 +32,15 @@ export class AdminAdministratorService {
     const passwordHash = await bcrypt.hash(defaultPassword, salt);
 
     const created = await repo.createAdministrator(data, passwordHash, actorId);
+
+    EmailLifecycle.sendAdminAccountCreated({
+      email: String(data.email).trim(),
+      firstName: String(data.firstName).trim(),
+      lastName: String(data.lastName).trim(),
+      accessLevel: data.adminAccessLevel ?? "FULL",
+      triggeredById: actorId,
+    });
+
     return { ...created, defaultPassword };
   }
 
@@ -53,6 +63,31 @@ export class AdminAdministratorService {
       passwordHash = await bcrypt.hash(String(data.password).trim(), salt);
     }
 
-    return repo.updateAdministrator(id, data, actorId, passwordHash);
+    const updated = await repo.updateAdministrator(id, data, actorId, passwordHash);
+
+    const targetEmail = (data.email ? String(data.email).trim() : existing.email) || "";
+    const targetFirst = (data.firstName ? String(data.firstName).trim() : existing.firstName) || "";
+    const targetLast = (data.lastName ? String(data.lastName).trim() : existing.lastName) || "";
+
+    if (targetEmail && typeof data.isActive === "boolean" && data.isActive !== existing.isActive) {
+      EmailLifecycle.sendAccountStatusChanged({
+        email: targetEmail,
+        firstName: targetFirst,
+        lastName: targetLast,
+        isActive: data.isActive,
+        triggeredById: actorId,
+      });
+    }
+    if (targetEmail && passwordHash) {
+      void EmailLifecycle.sendAccountPasswordReset({
+        email: targetEmail,
+        firstName: targetFirst,
+        lastName: targetLast,
+        loginIdentifier: targetEmail,
+        triggeredById: actorId,
+      });
+    }
+
+    return updated;
   }
 }

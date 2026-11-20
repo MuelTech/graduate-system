@@ -349,16 +349,14 @@ export const EMAIL_TEMPLATE_REGISTRY: readonly EmailTemplateDefinition[] = [
     categoryLabel: EMAIL_CATEGORY_LABELS.ADMISSIONS_EXAM,
     triggerEvent: "When an Administrator verifies an Applicant's COR and promotes the account to Student",
     recipientRole: "Student",
-    variables: ["recipient_name", "student_number", "program_name", "portal_link"],
-    variablesDescription:
-      "recipient_name, student_number, program_name, portal_link",
+    variables: ["recipient_name", "student_number", "portal_link"],
+    variablesDescription: "recipient_name, student_number, portal_link",
     defaultSubject: "COR Verified: Welcome to the Graduate Student Portal",
     defaultBodyHtml: `<p>Dear {{recipient_name}},</p>
 <p>Your Certificate of Registration (COR) has been verified and your account has been upgraded to an enrolled <strong>Graduate Student</strong> account.</p>
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:16px 0;border:1px solid #e5e0d8;border-left:4px solid #8b1e1e;background:#faf8f5;border-radius:6px;">
   <tr><td style="padding:14px 16px;font-size:14px;line-height:1.6;color:#2c2c2c;">
     <strong>Student Number:</strong> {{student_number}}<br/>
-    <strong>Program:</strong> {{program_name}}<br/>
     <strong>Password:</strong> Your existing account password
   </td></tr>
 </table>

@@ -5,6 +5,7 @@ import {
     evaluateFacultyDeactivationImpact,
     type FacultyDeactivationImpact,
 } from './faculty-deactivation.rules';
+import { EmailLifecycle } from './email-lifecycle.helper';
 
 const adminPanelistRepository = new AdminPanelistRepository();
 
@@ -40,6 +41,13 @@ export class AdminPanelistService {
         const passwordHash = await bcrypt.hash(defaultPassword, salt);
 
         const panelist = await adminPanelistRepository.createWithUserTransaction(data, passwordHash, adminId);
+
+        EmailLifecycle.sendFacultyAccountCreated({
+            email: data.email.trim(),
+            firstName: data.firstName,
+            lastName: data.lastName,
+            triggeredById: adminId,
+        });
 
         return { ...panelist, defaultPassword };
     }
@@ -90,12 +98,38 @@ export class AdminPanelistService {
             passwordHash = await bcrypt.hash(data.password, salt);
         }
 
-        return adminPanelistRepository.updateWithUserTransaction(
+        const updated = await adminPanelistRepository.updateWithUserTransaction(
             id,
             data,
             adminId,
             passwordHash,
             handoffSummary,
         );
+
+        const targetEmail = (data.email?.trim() || panelist.user.email || "").trim();
+        const targetFirst = data.firstName?.trim() || panelist.user.firstName;
+        const targetLast = data.lastName?.trim() || panelist.user.lastName;
+        const wasActive = Boolean(panelist.user.isActive && panelist.isActive);
+
+        if (targetEmail && typeof data.isActive === "boolean" && data.isActive !== wasActive) {
+            EmailLifecycle.sendAccountStatusChanged({
+                email: targetEmail,
+                firstName: targetFirst,
+                lastName: targetLast,
+                isActive: data.isActive,
+                triggeredById: adminId,
+            });
+        }
+        if (targetEmail && passwordHash) {
+            void EmailLifecycle.sendAccountPasswordReset({
+                email: targetEmail,
+                firstName: targetFirst,
+                lastName: targetLast,
+                loginIdentifier: targetEmail,
+                triggeredById: adminId,
+            });
+        }
+
+        return updated;
     }
 }

@@ -17,6 +17,7 @@ import {
   deriveAdmissionStage,
   hasAuthoritativePassedExam,
 } from "./admin-applicant-list.rules";
+import { EmailLifecycle } from "./email-lifecycle.helper";
 
 const EMAIL_FORMAT_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -476,6 +477,19 @@ export class AdminApplicantService {
       newSnapshot,
     });
 
+    if (
+      typeof userData.isActive === "boolean" &&
+      userData.isActive !== oldSnapshot.isActive
+    ) {
+      EmailLifecycle.sendAccountStatusChanged({
+        email: newSnapshot.email,
+        firstName: newSnapshot.firstName,
+        lastName: newSnapshot.lastName,
+        isActive: userData.isActive,
+        triggeredById: adminId,
+      });
+    }
+
     return this.getApplicantDetail(studentId);
   }
 
@@ -522,12 +536,20 @@ export class AdminApplicantService {
       email: student.user.email,
     });
 
-    // TODO(email-integration): Dispatch applicant password-reset email once EmailService is enabled.
+    const emailDispatched = await EmailLifecycle.sendAccountPasswordReset({
+      email: student.user.email,
+      firstName: student.user.firstName,
+      lastName: student.user.lastName,
+      loginIdentifier: student.pinnacleApplicantId || student.user.email,
+      triggeredById: adminId,
+    });
+
     return {
-      message:
-        "Password reset to temporary default (LAST NAME in ALL CAPS). Email notification will be sent once Email Integration is enabled.",
+      message: emailDispatched
+        ? "Password reset to temporary default (LAST NAME in ALL CAPS). Notification email queued for delivery."
+        : "Password reset to temporary default (LAST NAME in ALL CAPS).",
       mustChangePassword: true,
-      emailDispatched: false,
+      emailDispatched,
     };
   }
 

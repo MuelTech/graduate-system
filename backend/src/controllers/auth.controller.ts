@@ -1,11 +1,13 @@
 import { Request, Response } from "express";
 import { AuthService } from "../services/auth.service";
+import { PasswordResetService } from "../services/password-reset.service";
 import { UserSignatureService } from "../services/user-signature.service";
 import { AppError } from "../utils/AppError";
 import { AuthenticatedRequest } from "../middlewares/auth.middleware";
 
 export class AuthController {
     private authService = new AuthService();
+    private passwordResetService = new PasswordResetService();
     private userSignatureService = new UserSignatureService();
 
     register = async (req: Request, res: Response): Promise<void> => {
@@ -37,6 +39,57 @@ export class AuthController {
             }
         }
     }
+
+    forgotPassword = async (req: Request, res: Response): Promise<void> => {
+        try {
+            const forwarded = req.headers["x-forwarded-for"];
+            const requestedIp =
+                typeof forwarded === "string"
+                    ? forwarded.split(",")[0]?.trim()
+                    : req.ip || req.socket.remoteAddress || null;
+            const result = await this.passwordResetService.requestPasswordReset(
+                req.body?.email,
+                requestedIp,
+            );
+            res.status(200).json(result);
+        } catch (error: unknown) {
+            if (error instanceof AppError) {
+                res.status(error.statusCode).json({ error: error.message });
+            } else {
+                res.status(500).json({ error: "Unable to process password reset request." });
+            }
+        }
+    };
+
+    validateResetToken = async (req: Request, res: Response): Promise<void> => {
+        try {
+            const token = String(req.query.token ?? "");
+            const result = await this.passwordResetService.validateResetToken(token);
+            res.status(200).json(result);
+        } catch (error: unknown) {
+            if (error instanceof AppError) {
+                res.status(error.statusCode).json({ error: error.message });
+            } else {
+                res.status(500).json({ error: "Unable to validate reset link." });
+            }
+        }
+    };
+
+    resetPassword = async (req: Request, res: Response): Promise<void> => {
+        try {
+            const result = await this.passwordResetService.completePasswordReset(
+                req.body?.token,
+                req.body?.newPassword,
+            );
+            res.status(200).json(result);
+        } catch (error: unknown) {
+            if (error instanceof AppError) {
+                res.status(error.statusCode).json({ error: error.message });
+            } else {
+                res.status(500).json({ error: "Unable to reset password." });
+            }
+        }
+    };
 
     changePassword = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
         try {

@@ -6,6 +6,7 @@ import { Prisma, UserRole, AdmissionStatus } from '@prisma/client';
 import { AppError } from '../utils/AppError';
 import { sanitizeAdminCapabilities } from '../config/admin-capabilities';
 import { disconnectUserDefenseSockets } from '../realtime/defense-realtime.registry';
+import { EmailLifecycle } from './email-lifecycle.helper';
 
 export class AuthService {
     private authRepository = new AuthRepository();
@@ -82,6 +83,14 @@ export class AuthService {
 
         // 5. Save atomically
         const newUser = await this.authRepository.registerApplicant(userData, studentData);
+
+        EmailLifecycle.sendApplicantRegistered({
+            email: newUser.email,
+            firstName: data.firstName.trim(),
+            lastName: data.lastName.trim(),
+            applicantId: data.applicantId.trim(),
+            programName: intendedProgram.programName,
+        });
 
         return { id: newUser.id, email: newUser.email, role: newUser.role, mustChangePassword: false }
     }

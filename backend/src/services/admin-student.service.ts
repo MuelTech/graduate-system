@@ -19,6 +19,7 @@ import {
   evaluateCompExamSummary,
 } from "./comp-exam.rules";
 import { CompExamCertificateService } from "./comp-exam-certificate.service";
+import { EmailLifecycle } from "./email-lifecycle.helper";
 
 const EMAIL_FORMAT_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -174,6 +175,19 @@ export class AdminStudentService {
       ? student.compExamRecords.map((r) => (r.id === solePending ? record : r))
       : [record, ...student.compExamRecords];
     const afterEval = evaluateCompExamSummary(nextRecords);
+
+    if (student.user.email) {
+      EmailLifecycle.sendCompExamRecorded({
+        email: student.user.email,
+        firstName: student.user.firstName,
+        lastName: student.user.lastName,
+        attemptNumber,
+        result: input.status,
+        isDismissed: shouldDismiss,
+        attemptsRemaining: afterEval.attemptsRemaining,
+        triggeredById: adminId,
+      });
+    }
 
     const message =
       input.status === "PASSED"
@@ -339,6 +353,19 @@ export class AdminStudentService {
 
     const restoredToEnrolled = nextAdmissionStatus === "ENROLLED";
     const dismissed = nextAdmissionStatus === "DISMISSED";
+
+    if (statusChanged && student.user.email) {
+      EmailLifecycle.sendCompExamRecorded({
+        email: student.user.email,
+        firstName: student.user.firstName,
+        lastName: student.user.lastName,
+        attemptNumber,
+        result: input.status,
+        isDismissed: simulatedAfter.isDismissed,
+        attemptsRemaining: simulatedAfter.attemptsRemaining,
+        triggeredById: adminId,
+      });
+    }
     const message = restoredToEnrolled
       ? `Comprehensive Examination Attempt ${attemptNumber} corrected to ${input.status} and student restored to ENROLLED.`
       : dismissed
@@ -641,6 +668,19 @@ export class AdminStudentService {
           : "Admin updated student record."),
     });
 
+    if (
+      typeof userData.isActive === "boolean" &&
+      userData.isActive !== oldSnapshot.isActive
+    ) {
+      EmailLifecycle.sendAccountStatusChanged({
+        email: newSnapshot.email,
+        firstName: newSnapshot.firstName,
+        lastName: newSnapshot.lastName,
+        isActive: userData.isActive,
+        triggeredById: adminId,
+      });
+    }
+
     return this.getStudentDetail(studentId);
   }
 
@@ -687,12 +727,20 @@ export class AdminStudentService {
       studentNumber: existing.studentNumber ?? null,
     });
 
-    // TODO(email-integration): Dispatch student password-reset email once EmailService is enabled.
+    const emailDispatched = await EmailLifecycle.sendAccountPasswordReset({
+      email: existing.user.email,
+      firstName: existing.user.firstName,
+      lastName: existing.user.lastName,
+      loginIdentifier: existing.studentNumber || existing.user.email,
+      triggeredById: adminId,
+    });
+
     return {
-      message:
-        "Password reset to temporary default (LAST NAME in ALL CAPS). Email notification will be sent once Email Integration is enabled.",
+      message: emailDispatched
+        ? "Password reset to temporary default (LAST NAME in ALL CAPS). Notification email queued for delivery."
+        : "Password reset to temporary default (LAST NAME in ALL CAPS).",
       mustChangePassword: true,
-      emailDispatched: false,
+      emailDispatched,
     };
   }
 }

@@ -2,6 +2,7 @@ import { ExamRepository } from "../repositories/exam.repository";
 import { ExamAppStatus } from "@prisma/client";
 import { EmailService } from "./email.service";
 import { buildPortalUrl } from "./email-layout";
+import { EmailLifecycle } from "./email-lifecycle.helper";
 import { AppError } from "../utils/AppError";
 import { ExamRecordDetail } from "../interfaces/exam.interfaces";
 import { manilaCalendarDate, parseScheduleDate, requireFutureSchedule, requireSameDaySchedule, scheduleStartInstant } from "./exam-schedule-time";
@@ -152,6 +153,11 @@ export class ExamService {
         tx,
       );
 
+      return application;
+    }).then((application) => {
+      if (application?.id) {
+        EmailLifecycle.sendExamScheduledByApplicationId(application.id);
+      }
       return application;
     });
   }

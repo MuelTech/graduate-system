@@ -15,6 +15,7 @@ import {
 } from "./defense-audit";
 import { DefenseCommitteePolicy } from "./defense-committee.policy";
 import { NotificationService } from "./notification.service";
+import { EmailLifecycle } from "./email-lifecycle.helper";
 
 export interface CorrectScheduledDefenseInput {
   defenseDate: string;
@@ -289,6 +290,47 @@ export class DefenseScheduleCorrectionService {
         );
       }
     }
+
+    // Best-effort post-commit schedule & committee correction emails
+    void (async () => {
+      try {
+        const afterUserIds = new Set(auditAfter.committee.map((m) => m.userId));
+        const removedMembers = auditBefore.committee.filter(
+          (m) => !afterUserIds.has(m.userId),
+        );
+        let removedPanelists: Array<{ email: string; name: string; role: string }> = [];
+        if (removedMembers.length > 0 && typeof prisma.user?.findMany === "function") {
+          const users = await prisma.user.findMany({
+            where: { id: { in: removedMembers.map((m) => m.userId) } },
+            select: { id: true, email: true, firstName: true, lastName: true },
+          });
+          const userMap = new Map(users.map((u) => [u.id, u]));
+          removedPanelists = removedMembers
+            .map((m) => {
+              const u = userMap.get(m.userId);
+              if (!u?.email) return null;
+              return {
+                email: u.email,
+                name: `${u.firstName ?? ""} ${u.lastName ?? ""}`.trim() || m.displayName,
+                role: m.role,
+              };
+            })
+            .filter((entry): entry is NonNullable<typeof entry> => entry !== null);
+        }
+
+        EmailLifecycle.sendDefenseScheduleAndPanelEmails({
+          scheduleId,
+          isCorrection: true,
+          triggeredById: adminId,
+          removedPanelists,
+        });
+      } catch (error) {
+        console.error(
+          "Failed to enqueue defense correction emails:",
+          error instanceof Error ? error.message : error,
+        );
+      }
+    })();
 
     return auditAfter;
   }
