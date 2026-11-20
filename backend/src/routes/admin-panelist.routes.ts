@@ -10,6 +10,7 @@ router.use(authenticateJWT, requireRole(["ADMIN"]), requireAdminCapability("facu
 
 // Admin-only CRUD routes
 router.get("/", controller.getAllPanelists.bind(controller));
+router.get("/:id/deactivation-impact", controller.getDeactivationImpact.bind(controller));
 router.get("/:id", controller.getPanelistById.bind(controller));
 router.post("/", controller.createPanelist.bind(controller));
 router.put("/:id", controller.updatePanelist.bind(controller));

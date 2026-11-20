@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { PanelistResponse } from "@/types";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -133,6 +134,58 @@ type FacultyRow = {
   updatedByName?: string;
 };
 
+type FacultyDeactivationImpact = {
+  panelistId: string;
+  userId: string;
+  canDeactivate: boolean;
+  blockedReason: string | null;
+  requiresHandoffConfirmation: boolean;
+  blockingDefenses: Array<{
+    scheduleId: string;
+    defenseType: string;
+    sessionStatus: string;
+    role: string;
+    defenseDate: string;
+    studentName: string;
+  }>;
+  scheduledDefenses: Array<{
+    scheduleId: string;
+    defenseType: string;
+    sessionStatus: string;
+    role: string;
+    defenseDate: string;
+    studentName: string;
+  }>;
+  activeAdvisees: Array<{
+    assignmentId: string;
+    studentId: string;
+    studentName: string;
+    studentNumber: string | null;
+  }>;
+  pendingAdviserRequests: Array<{
+    requestId: string;
+    studentName: string;
+    requestDate: string;
+  }>;
+};
+
+function formatDefenseTypeLabel(defenseType: string): string {
+  switch (defenseType) {
+    case "TITLE_DEFENSE":
+      return "Title Defense";
+    case "PROPOSAL_DEFENSE":
+      return "Proposal Defense";
+    case "FINAL_DEFENSE":
+      return "Final Defense";
+    default:
+      return defenseType.replace(/_/g, " ");
+  }
+}
+
+function formatRoleLabel(role: string): string {
+  return role.charAt(0) + role.slice(1).toLowerCase();
+}
+
 function formatDisplayName(p: FacultyRow) {
   const parts = [p.title, p.firstName, p.lastName, p.suffix].filter(Boolean);
   return parts.join(" ") || p.firstName + " " + p.lastName;
@@ -179,6 +232,12 @@ export default function AdminFacultyPage() {
   const [selectedFaculty, setSelectedFaculty] = useState<FacultyRow | null>(
     null,
   );
+  const [deactivatingFaculty, setDeactivatingFaculty] =
+    useState<FacultyRow | null>(null);
+  const [pendingEditDeactivation, setPendingEditDeactivation] = useState<{
+    id: string;
+    data: FacultyEditData;
+  } | null>(null);
 
   const [createForm, setCreateForm] = useState<FacultyFormData>({
     ...emptyCreateForm,
@@ -236,16 +295,48 @@ export default function AdminFacultyPage() {
     },
   });
 
+  const {
+    data: deactivationImpact,
+    isLoading: isLoadingImpact,
+    isError: isImpactError,
+    error: impactError,
+  } = useQuery<FacultyDeactivationImpact>({
+    queryKey: ["facultyDeactivationImpact", deactivatingFaculty?.id],
+    enabled: Boolean(deactivatingFaculty?.id),
+    queryFn: async () => {
+      return apiClientRequest(
+        `/admin/panelists/${deactivatingFaculty!.id}/deactivation-impact`,
+      );
+    },
+  });
+
   const updateMutation = useMutation({
-    mutationFn: async ({ id, isActive }: { id: string; isActive: boolean }) => {
+    mutationFn: async ({
+      id,
+      isActive,
+      confirmHandoff,
+    }: {
+      id: string;
+      isActive: boolean;
+      confirmHandoff?: boolean;
+    }) => {
       return apiClientRequest(`/admin/panelists/${id}`, {
         method: "PUT",
-        body: JSON.stringify({ isActive }),
+        body: JSON.stringify({
+          isActive,
+          ...(confirmHandoff ? { confirmHandoff: true } : {}),
+        }),
       });
     },
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ["adminPanelists"] });
-      toast.success("Account status updated.");
+      setDeactivatingFaculty(null);
+      setPendingEditDeactivation(null);
+      toast.success(
+        variables.isActive
+          ? "Faculty account activated."
+          : "Faculty account deactivated.",
+      );
     },
     onError: (error: Error) => {
       toast.error(error.message || "Failed to update status.");
@@ -253,7 +344,15 @@ export default function AdminFacultyPage() {
   });
 
   const editMutation = useMutation({
-    mutationFn: async ({ id, data }: { id: string; data: FacultyEditData }) => {
+    mutationFn: async ({
+      id,
+      data,
+      confirmHandoff,
+    }: {
+      id: string;
+      data: FacultyEditData;
+      confirmHandoff?: boolean;
+    }) => {
       const payload: Record<string, unknown> = {
         title: data.title || null,
         firstName: data.firstName,
@@ -269,6 +368,7 @@ export default function AdminFacultyPage() {
           : data.isAvailableAsAdviser,
         canEvaluateEssays: data.canEvaluateEssays,
         isActive: data.isActive,
+        ...(confirmHandoff ? { confirmHandoff: true } : {}),
       };
       if (data.newPassword.trim()) {
         payload.password = data.newPassword.trim();
@@ -283,6 +383,8 @@ export default function AdminFacultyPage() {
       queryClient.invalidateQueries({ queryKey: ["panelistProfile"] });
       setShowEditModal(false);
       setSelectedFaculty(null);
+      setDeactivatingFaculty(null);
+      setPendingEditDeactivation(null);
       toast.success("Faculty account updated successfully.");
     },
     onError: (error: Error) => {
@@ -588,12 +690,17 @@ export default function AdminFacultyPage() {
                         <Edit className="h-4 w-4" />
                       </button>
                       <button
-                        onClick={() =>
-                          updateMutation.mutate({
-                            id: faculty.id,
-                            isActive: !faculty.isActive,
-                          })
-                        }
+                        onClick={() => {
+                          if (faculty.isActive) {
+                            setPendingEditDeactivation(null);
+                            setDeactivatingFaculty(faculty);
+                          } else {
+                            updateMutation.mutate({
+                              id: faculty.id,
+                              isActive: true,
+                            });
+                          }
+                        }}
                         disabled={updateMutation.isPending}
                         className={`rounded-lg p-1.5 transition-colors ${
                           faculty.isActive
@@ -1264,12 +1371,20 @@ export default function AdminFacultyPage() {
                   !editForm.lastName.trim() ||
                   !editForm.email.trim()
                 }
-                onClick={() =>
+                onClick={() => {
+                  if (selectedFaculty.isActive && !editForm.isActive) {
+                    setPendingEditDeactivation({
+                      id: selectedFaculty.id,
+                      data: editForm,
+                    });
+                    setDeactivatingFaculty(selectedFaculty);
+                    return;
+                  }
                   editMutation.mutate({
                     id: selectedFaculty.id,
                     data: editForm,
-                  })
-                }
+                  });
+                }}
                 className="flex-1 bg-(--earist-primary) text-white hover:bg-(--earist-primary)/90"
               >
                 {editMutation.isPending && (
@@ -1523,6 +1638,263 @@ export default function AdminFacultyPage() {
               >
                 <Edit className="mr-1 h-4 w-4" />
                 Edit Faculty
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================= */}
+      {/* DEACTIVATE FACULTY HANDOFF IMPACT MODAL   */}
+      {/* ========================================= */}
+      {deactivatingFaculty && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4">
+          <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl bg-white p-6 shadow-xl">
+            <div className="mb-4 flex items-center justify-between">
+              <h3 className="text-lg font-bold text-(--earist-primary)">
+                Deactivate Faculty Account
+              </h3>
+              <button
+                onClick={() => {
+                  setDeactivatingFaculty(null);
+                  setPendingEditDeactivation(null);
+                }}
+                className="rounded-full p-1 text-(--earist-body-text) hover:bg-(--earist-surface-gray)"
+                aria-label="Close deactivation dialog"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="space-y-4 text-sm text-(--earist-body-text)">
+              <div className="rounded-lg border border-(--earist-border-gray) bg-(--earist-surface-gray) px-3.5 py-2.5">
+                <p className="font-semibold text-gray-900">
+                  {formatDisplayName(deactivatingFaculty)}
+                </p>
+                <p className="text-xs text-gray-600">
+                  {deactivatingFaculty.email}
+                </p>
+              </div>
+
+              {isLoadingImpact && (
+                <div className="flex items-center gap-2 py-4 text-sm text-gray-600">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Checking active defense and adviser assignments...
+                </div>
+              )}
+
+              {isImpactError && (
+                <div className="rounded-lg border border-red-200 bg-red-50 px-3.5 py-2.5 text-sm text-red-700">
+                  {impactError instanceof Error
+                    ? impactError.message
+                    : "Could not load active assignments for this faculty account."}
+                </div>
+              )}
+
+              {!isLoadingImpact && !isImpactError && deactivationImpact && (
+                <>
+                  {!deactivationImpact.canDeactivate ? (
+                    <div className="space-y-3">
+                      <div className="rounded-lg border border-red-200 bg-red-50 px-3.5 py-3 text-red-800">
+                        <p className="font-medium">
+                          {deactivationImpact.blockedReason}
+                        </p>
+                      </div>
+
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                            Active Defenses ({deactivationImpact.blockingDefenses.length})
+                          </p>
+                          <Link
+                            href="/admin/thesis/scheduling"
+                            className="text-xs font-medium text-(--earist-primary) underline-offset-2 hover:underline"
+                          >
+                            Open Defense Scheduling
+                          </Link>
+                        </div>
+                        <ul className="divide-y divide-gray-200 rounded-lg border border-gray-200 bg-white">
+                          {deactivationImpact.blockingDefenses.map((item) => (
+                            <li
+                              key={item.scheduleId}
+                              className="flex items-center justify-between gap-2 px-3 py-2 text-xs"
+                            >
+                              <div>
+                                <p className="font-medium text-gray-900">
+                                  {item.studentName}
+                                </p>
+                                <p className="text-gray-600">
+                                  {formatDefenseTypeLabel(item.defenseType)} ·{" "}
+                                  {formatRoleLabel(item.role)}
+                                </p>
+                              </div>
+                              <span className="shrink-0 font-medium text-red-700">
+                                {item.sessionStatus.replace(/_/g, " ")}
+                              </span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {deactivationImpact.requiresHandoffConfirmation && (
+                        <div className="space-y-3 rounded-lg border border-amber-200 bg-amber-50/70 p-3.5">
+                          <p className="text-xs font-semibold text-amber-900">
+                            Active assignments require handoff review
+                          </p>
+
+                          {deactivationImpact.scheduledDefenses.length > 0 && (
+                            <div className="space-y-1.5">
+                              <div className="flex items-center justify-between">
+                                <span className="text-xs font-medium text-gray-800">
+                                  Scheduled Defenses (
+                                  {deactivationImpact.scheduledDefenses.length})
+                                </span>
+                                <Link
+                                  href="/admin/thesis/scheduling"
+                                  className="text-xs font-medium text-(--earist-primary) underline-offset-2 hover:underline"
+                                >
+                                  Reassign Committee
+                                </Link>
+                              </div>
+                              <ul className="space-y-1 rounded border border-amber-200/80 bg-white px-2.5 py-2 text-xs">
+                                {deactivationImpact.scheduledDefenses
+                                  .slice(0, 5)
+                                  .map((item) => (
+                                    <li
+                                      key={item.scheduleId}
+                                      className="flex justify-between gap-2"
+                                    >
+                                      <span className="truncate font-medium text-gray-900">
+                                        {item.studentName}
+                                      </span>
+                                      <span className="shrink-0 text-gray-600">
+                                        {formatDefenseTypeLabel(item.defenseType)} ·{" "}
+                                        {formatRoleLabel(item.role)}
+                                      </span>
+                                    </li>
+                                  ))}
+                                {deactivationImpact.scheduledDefenses.length > 5 && (
+                                  <li className="text-gray-500">
+                                    +
+                                    {deactivationImpact.scheduledDefenses.length - 5}{" "}
+                                    more scheduled defenses
+                                  </li>
+                                )}
+                              </ul>
+                            </div>
+                          )}
+
+                          {deactivationImpact.activeAdvisees.length > 0 && (
+                            <div className="space-y-1.5">
+                              <div className="flex items-center justify-between">
+                                <span className="text-xs font-medium text-gray-800">
+                                  Active Advisees (
+                                  {deactivationImpact.activeAdvisees.length})
+                                </span>
+                                <Link
+                                  href="/admin/thesis/advisers"
+                                  className="text-xs font-medium text-(--earist-primary) underline-offset-2 hover:underline"
+                                >
+                                  Review Advisers
+                                </Link>
+                              </div>
+                              <ul className="space-y-1 rounded border border-amber-200/80 bg-white px-2.5 py-2 text-xs">
+                                {deactivationImpact.activeAdvisees
+                                  .slice(0, 5)
+                                  .map((item) => (
+                                    <li
+                                      key={item.assignmentId}
+                                      className="flex justify-between gap-2"
+                                    >
+                                      <span className="truncate font-medium text-gray-900">
+                                        {item.studentName}
+                                      </span>
+                                      {item.studentNumber && (
+                                        <span className="shrink-0 font-mono text-gray-600">
+                                          {item.studentNumber}
+                                        </span>
+                                      )}
+                                    </li>
+                                  ))}
+                                {deactivationImpact.activeAdvisees.length > 5 && (
+                                  <li className="text-gray-500">
+                                    +{deactivationImpact.activeAdvisees.length - 5}{" "}
+                                    more advisees
+                                  </li>
+                                )}
+                              </ul>
+                            </div>
+                          )}
+
+                          {deactivationImpact.pendingAdviserRequests.length > 0 && (
+                            <p className="text-xs text-gray-700">
+                              Pending Adviser Requests awaiting CONFORME:{" "}
+                              <span className="font-semibold">
+                                {deactivationImpact.pendingAdviserRequests.length}
+                              </span>
+                            </p>
+                          )}
+                        </div>
+                      )}
+
+                      <p className="text-xs text-gray-600">
+                        Active sessions end immediately. Existing assignments and
+                        historical records are preserved.
+                      </p>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+
+            <div className="mt-5 flex gap-3">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setDeactivatingFaculty(null);
+                  setPendingEditDeactivation(null);
+                }}
+                className="flex-1"
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                disabled={
+                  isLoadingImpact ||
+                  isImpactError ||
+                  !deactivationImpact?.canDeactivate ||
+                  updateMutation.isPending ||
+                  editMutation.isPending
+                }
+                onClick={() => {
+                  const confirmHandoff = Boolean(
+                    deactivationImpact?.requiresHandoffConfirmation,
+                  );
+                  if (pendingEditDeactivation) {
+                    editMutation.mutate({
+                      id: pendingEditDeactivation.id,
+                      data: pendingEditDeactivation.data,
+                      confirmHandoff,
+                    });
+                  } else {
+                    updateMutation.mutate({
+                      id: deactivatingFaculty.id,
+                      isActive: false,
+                      confirmHandoff,
+                    });
+                  }
+                }}
+                className="flex-1"
+              >
+                {(updateMutation.isPending || editMutation.isPending) && (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                )}
+                {deactivationImpact?.requiresHandoffConfirmation
+                  ? "Confirm Deactivation"
+                  : "Deactivate Account"}
               </Button>
             </div>
           </div>
