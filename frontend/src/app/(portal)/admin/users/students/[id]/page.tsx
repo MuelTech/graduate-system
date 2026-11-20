@@ -32,10 +32,12 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import type { AdminStudentDetail } from "@/types";
+import type { StudentCurriculumChecklistDto } from "@/types/curriculum";
 import type {
   JourneyStepView,
   StudentThesisJourney,
 } from "@/types/student-thesis-journey";
+import { StudentCurriculumSection } from "@/components/admin/students/student-curriculum-section";
 import {
   defenseStatusDescription,
   defenseStatusHeading,
@@ -359,6 +361,12 @@ export default function StudentDetailPage() {
     retry: false,
   });
 
+  const curriculumQuery = useQuery<StudentCurriculumChecklistDto>({
+    queryKey: ["adminStudentCurriculum", studentId],
+    queryFn: () => apiClientRequest(`/admin/students/${studentId}/curriculum`),
+    retry: false,
+  });
+
   const programsQuery = useQuery<{ graduatePrograms: ProgramOption[] }>({
     queryKey: ["graduateProgramsPublic"],
     queryFn: () => apiClientRequest("/programs"),
@@ -371,6 +379,9 @@ export default function StudentDetailPage() {
     });
     queryClient.invalidateQueries({
       queryKey: ["adminStudentJourney", studentId],
+    });
+    queryClient.invalidateQueries({
+      queryKey: ["adminStudentCurriculum", studentId],
     });
     queryClient.invalidateQueries({ queryKey: ["adminStudents"] });
   };
@@ -843,8 +854,9 @@ export default function StudentDetailPage() {
                   <DataItem label="Enrollment Date">
                     {formatDate(student.enrollmentDate)}
                   </DataItem>
-                  <DataItem label="Curriculum Type">
-                    {curriculumLabel(student.curriculumType)}
+                  <DataItem label="Curriculum Version">
+                    {student.curriculumVersion?.label ??
+                      curriculumLabel(student.curriculumType)}
                   </DataItem>
                   <DataItem label="Active Adviser">
                     {student.adviserAssignment
@@ -940,7 +952,7 @@ export default function StudentDetailPage() {
         <div className="space-y-6 lg:col-span-5">
           <SectionCard
             title="Comprehensive Examination"
-            description="Official Written Comprehensive Examination standing (Manual §7.15.4 · max 3 attempts)."
+            description="Official Written Comprehensive Examination standing (max 3 attempts)."
             action={
               compExamSummary.canCorrectLatest && latestGradedAttempt ? (
                 <Button
@@ -1015,9 +1027,9 @@ export default function StudentDetailPage() {
 
             {compExamSummary.isDismissed ? (
               <div className="rounded-lg border border-red-200 bg-red-50/80 p-3 text-xs text-red-800">
-                Permanently disqualified after 3 failed attempts under Graduate
-                School Manual §7.15.4. Use &ldquo;Correct Latest Attempt&rdquo;
-                above only for verified encoding corrections.
+                Permanently disqualified after 3 failed attempts. Use
+                &ldquo;Correct Latest Attempt&rdquo; above only for verified
+                encoding corrections.
               </div>
             ) : compExamSummary.canRecordAttempt &&
               compExamSummary.nextAttemptNumber !== null ? (
@@ -1108,6 +1120,14 @@ export default function StudentDetailPage() {
           </SectionCard>
         </div>
       </div>
+
+      <StudentCurriculumSection
+        studentId={studentId}
+        checklist={curriculumQuery.data}
+        isLoading={curriculumQuery.isLoading}
+        isError={curriculumQuery.isError}
+        onRetry={() => curriculumQuery.refetch()}
+      />
 
       {/* Edit Student Information Dialog */}
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
@@ -1278,8 +1298,11 @@ export default function StudentDetailPage() {
               </Select>
               {!canChangeProgram && (
                 <p className="text-xs text-gray-500">
-                  Program changes are locked once Title Defense is completed or
-                  the student is no longer enrolled (Manual §7.14.3).
+                  {student.admissionStatus === "GRADUATED"
+                    ? "Program cannot be changed for graduated students."
+                    : student.admissionStatus === "DISMISSED"
+                      ? "Program cannot be changed for dismissed students."
+                      : "Program cannot be changed once Title Defense is completed."}
                 </p>
               )}
             </div>
@@ -1483,10 +1506,10 @@ export default function StudentDetailPage() {
               {compExamAction === "FAILED" &&
               (compExamSummary.nextAttemptNumber ?? 1) >=
                 compExamSummary.maxAttempts
-                ? "Warning: Recording a 3rd failed attempt will permanently disqualify this student and set Admission Status to Dismissed per Graduate School Manual §7.15.4."
+                ? "Warning: Recording a 3rd failed attempt will permanently disqualify this student and set Admission Status to Dismissed."
                 : compExamAction === "FAILED"
-                  ? "Records a failed attempt and notifies the student of remaining retakes under Manual §7.15.4."
-                  : "Records a passing result, unlocks Title Defense (§7.17.1), assigns a certificate reference, and sends a student notification."}
+                  ? "Records a failed attempt and notifies the student of remaining retakes."
+                  : "Records a passing result, unlocks Title Defense, assigns a certificate reference, and sends a student notification."}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">

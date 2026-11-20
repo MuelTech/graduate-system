@@ -1,10 +1,13 @@
 import { Response } from "express";
 import { StudentService } from "../services/student.service";
+import { CurriculumService } from "../services/curriculum.service";
+import { handleCurriculumControllerError } from "./curriculum.controller";
 import { AuthenticatedRequest } from "../middlewares/auth.middleware";
 import { AppError } from "../utils/AppError";
 
 export class StudentController {
   private studentService = new StudentService();
+  private curriculumService = new CurriculumService();
 
   // For Student Role
   getJourney = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
@@ -71,6 +74,54 @@ export class StudentController {
       } else {
         res.status(500).json({ error: "An unexpected error occurred." });
       }
+    }
+  };
+
+  getCurriculumChecklist = async (
+    req: AuthenticatedRequest,
+    res: Response,
+  ): Promise<void> => {
+    try {
+      if (!req.user) {
+        res.status(401).json({ error: "Unauthorized" });
+        return;
+      }
+      const result = await this.curriculumService.getStudentChecklistByUserId(
+        req.user.userId,
+      );
+      res.status(200).json(result);
+    } catch (error) {
+      handleCurriculumControllerError(
+        res,
+        error,
+        "Error loading student curriculum checklist:",
+      );
+    }
+  };
+
+  updateCourseProgress = async (
+    req: AuthenticatedRequest,
+    res: Response,
+  ): Promise<void> => {
+    try {
+      if (!req.user) {
+        res.status(401).json({ error: "Unauthorized" });
+        return;
+      }
+      const result = await this.curriculumService.updateCourseProgress({
+        actorRole: "STUDENT",
+        actorUserId: req.user.userId,
+        targetId: req.user.userId,
+        courseId: String(req.params.courseId ?? ""),
+        body: req.body ?? {},
+      });
+      res.status(200).json(result);
+    } catch (error) {
+      handleCurriculumControllerError(
+        res,
+        error,
+        "Error updating student coursework progress:",
+      );
     }
   };
 }

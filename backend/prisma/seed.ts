@@ -4,6 +4,10 @@ import prisma from "../src/config/database";
 import bcrypt from "bcryptjs";
 import { reconcileAuthoritativeGraduatePrograms } from "../src/config/graduate-programs";
 import {
+  assignMissingStudentCurriculumVersions,
+  reconcileAuthoritativeCurricula,
+} from "../src/config/earist-curriculum-catalog";
+import {
   ensureSyntheticPdf,
   getSyntheticSignatureDataUrl,
 } from "./seed-pdf-helper";
@@ -38,6 +42,11 @@ async function main() {
   const programSync = await reconcileAuthoritativeGraduatePrograms(prisma);
   console.log(
     `Reconciled 16 authoritative graduate programs (updated: ${programSync.updated}, created: ${programSync.created}).`,
+  );
+
+  const curriculaSync = await reconcileAuthoritativeCurricula(prisma);
+  console.log(
+    `Reconciled EARIST curriculum catalog (created: ${curriculaSync.versionsCreated}, updated: ${curriculaSync.versionsUpdated}).`,
   );
 
   // Clean up any leftover deprecated UIUX Fixture program so strictly 16 programs exist.
@@ -1723,6 +1732,9 @@ async function main() {
     });
   }
   console.log(`Reconciled slotsTaken counters across ${allSlots.length} ExamSlot rows.`);
+
+  const assignedCount = await assignMissingStudentCurriculumVersions(prisma);
+  console.log(`Assigned default curriculum versions to ${assignedCount} seeded student(s).`);
 }
 
 async function seedDefenseWorkflowFixtures(

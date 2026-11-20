@@ -341,6 +341,7 @@ export class CorRepository {
             lastName: string;
             email: string;
             programId: string;
+            curriculumVersionId?: string;
             verificationMethod: string;
         },
         adminId: string
@@ -420,6 +421,43 @@ export class CorRepository {
                 );
             }
 
+            let resolvedCurriculumVersion: {
+                id: string;
+                curriculumType: 'OLD' | 'NEW';
+            } | null = null;
+
+            if (tx.curriculumVersion?.findFirst) {
+                const requestedVersionId = verificationData.curriculumVersionId?.trim();
+                if (requestedVersionId) {
+                    resolvedCurriculumVersion = await tx.curriculumVersion.findFirst({
+                        where: {
+                            id: requestedVersionId,
+                            programId: verificationData.programId,
+                            isActive: true,
+                        },
+                        select: { id: true, curriculumType: true },
+                    });
+                    if (!resolvedCurriculumVersion) {
+                        throw new AppError(
+                            'The selected Curriculum Version does not belong to the confirmed Program or is inactive. Refresh and try again.',
+                            409,
+                        );
+                    }
+                } else {
+                    resolvedCurriculumVersion = await tx.curriculumVersion.findFirst({
+                        where: {
+                            programId: verificationData.programId,
+                            isActive: true,
+                        },
+                        orderBy: [
+                            { isDefaultForNewStudents: 'desc' },
+                            { createdAt: 'desc' },
+                        ],
+                        select: { id: true, curriculumType: true },
+                    });
+                }
+            }
+
             // 6. Conditional promotion writes (affected-row checks close races).
             const promotedStudent = await tx.student.updateMany({
                 where: { id: studentId, admissionStatus: 'APPLICANT' },
@@ -428,6 +466,13 @@ export class CorRepository {
                     studentNumber: verificationData.studentNumber,
                     // COR-AUTH-1: Admin-confirmed existing Program.
                     programId: verificationData.programId,
+                    // Bind confirmed or default active curriculum version when available.
+                    ...(resolvedCurriculumVersion
+                        ? {
+                            curriculumVersionId: resolvedCurriculumVersion.id,
+                            curriculumType: resolvedCurriculumVersion.curriculumType,
+                        }
+                        : {}),
                     // System enrollment/promotion confirmation timing only. It
                     // is NOT official residency start; `residencyStartDate` is
                     // deliberately never assigned from the verification time.
@@ -488,6 +533,9 @@ export class CorRepository {
                     newValue: JSON.stringify({
                         status: 'VERIFIED',
                         studentNumber: verificationData.studentNumber,
+                        ...(resolvedCurriculumVersion
+                            ? { curriculumVersionId: resolvedCurriculumVersion.id }
+                            : {}),
                     }),
                 },
             });

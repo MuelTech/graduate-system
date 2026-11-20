@@ -401,6 +401,7 @@ export class AdminStudentService {
       cellphone?: string;
       programId?: string;
       curriculumType?: "NEW" | "OLD" | null;
+      curriculumVersionId?: string | null;
       enrollmentDate?: Date | null;
       residencyStartDate?: Date | null;
     } = {};
@@ -505,6 +506,14 @@ export class AdminStudentService {
         if (program.maxResidencyYears != null) {
           syncResidencyTracking.maxYears = program.maxResidencyYears;
         }
+        const matchedVersion = await this.repository.findCurriculumVersionForProgram?.(
+          program.id,
+          input.curriculumType ?? existing.curriculumType ?? null,
+        );
+        studentData.curriculumVersionId = matchedVersion?.id ?? null;
+        if (matchedVersion && input.curriculumType === undefined) {
+          studentData.curriculumType = matchedVersion.curriculumType;
+        }
       }
     }
 
@@ -517,6 +526,23 @@ export class AdminStudentService {
         throw new AppError("Curriculum type must be NEW or OLD.", 400);
       }
       studentData.curriculumType = input.curriculumType;
+      if (
+        !studentData.programId &&
+        input.curriculumType !== existing.curriculumType
+      ) {
+        if (input.curriculumType === null) {
+          studentData.curriculumVersionId = null;
+        } else {
+          const matchedVersion =
+            await this.repository.findCurriculumVersionForProgram?.(
+              existing.programId,
+              input.curriculumType,
+            );
+          if (matchedVersion) {
+            studentData.curriculumVersionId = matchedVersion.id;
+          }
+        }
+      }
     }
 
     if (input.enrollmentDate !== undefined) {

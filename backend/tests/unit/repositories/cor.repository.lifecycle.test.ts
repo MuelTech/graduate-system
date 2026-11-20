@@ -55,6 +55,7 @@ function authorizeHappyPath() {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  delete (tx() as Record<string, unknown>).curriculumVersion;
   authorizeHappyPath();
 });
 
@@ -572,6 +573,92 @@ describe("CorRepository.getPendingUploads current actionable rows", () => {
       "DIFFERENT, PERSON",
     );
     expect(result[0].extraction.suggestions?.program).toBe("Some Other Program");
+  });
+
+  it("binds an Admin-confirmed curriculumVersionId (e.g., OLD) and audits it", async () => {
+    const findFirst = vi.fn().mockResolvedValue({
+      id: "cv-old-1",
+      curriculumType: "OLD",
+    });
+    (tx() as Record<string, unknown>).curriculumVersion = { findFirst };
+
+    const repo = new CorRepository();
+    await repo.verifyAndPromote(
+      uploadId,
+      studentId,
+      userId,
+      { ...verifyData, curriculumVersionId: "cv-old-1" },
+      adminId,
+    );
+
+    expect(findFirst).toHaveBeenCalledWith({
+      where: {
+        id: "cv-old-1",
+        programId: verifyData.programId,
+        isActive: true,
+      },
+      select: { id: true, curriculumType: true },
+    });
+    expect(tx().student.updateMany).toHaveBeenCalledWith({
+      where: { id: studentId, admissionStatus: "APPLICANT" },
+      data: expect.objectContaining({
+        curriculumVersionId: "cv-old-1",
+        curriculumType: "OLD",
+      }),
+    });
+    const auditCreate = tx().auditLog.create.mock.calls[0][0] as {
+      data: { newValue: string };
+    };
+    expect(JSON.parse(auditCreate.data.newValue)).toEqual(
+      expect.objectContaining({ curriculumVersionId: "cv-old-1" }),
+    );
+  });
+
+  it("falls back to the default active curriculum for the Program when curriculumVersionId is omitted", async () => {
+    const findFirst = vi.fn().mockResolvedValue({
+      id: "cv-new-default",
+      curriculumType: "NEW",
+    });
+    (tx() as Record<string, unknown>).curriculumVersion = { findFirst };
+
+    const repo = new CorRepository();
+    await repo.verifyAndPromote(uploadId, studentId, userId, verifyData, adminId);
+
+    expect(findFirst).toHaveBeenCalledWith({
+      where: {
+        programId: verifyData.programId,
+        isActive: true,
+      },
+      orderBy: [{ isDefaultForNewStudents: "desc" }, { createdAt: "desc" }],
+      select: { id: true, curriculumType: true },
+    });
+    expect(tx().student.updateMany).toHaveBeenCalledWith({
+      where: { id: studentId, admissionStatus: "APPLICANT" },
+      data: expect.objectContaining({
+        curriculumVersionId: "cv-new-default",
+        curriculumType: "NEW",
+      }),
+    });
+  });
+
+  it("rejects with 409 when a specified curriculumVersionId is inactive or belongs to another Program", async () => {
+    const findFirst = vi.fn().mockResolvedValue(null);
+    (tx() as Record<string, unknown>).curriculumVersion = { findFirst };
+
+    const repo = new CorRepository();
+    await expect(
+      repo.verifyAndPromote(
+        uploadId,
+        studentId,
+        userId,
+        { ...verifyData, curriculumVersionId: "cv-other-program" },
+        adminId,
+      ),
+    ).rejects.toMatchObject({ statusCode: 409 });
+
+    expect(tx().student.updateMany).not.toHaveBeenCalled();
+    expect(tx().user.updateMany).not.toHaveBeenCalled();
+    expect(tx().corRecord.create).not.toHaveBeenCalled();
   });
 
   it("remains backward-compatible when extraction or suggestions are null", async () => {

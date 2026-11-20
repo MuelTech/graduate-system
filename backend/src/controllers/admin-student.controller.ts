@@ -3,10 +3,13 @@
 import { Request, Response } from "express";
 import { AuthenticatedRequest } from "../middlewares/auth.middleware";
 import { AdminStudentService } from "../services/admin-student.service";
+import { CurriculumService } from "../services/curriculum.service";
+import { handleCurriculumControllerError } from "./curriculum.controller";
 import { AppError } from "../utils/AppError";
 
 export class AdminStudentController {
   private service = new AdminStudentService();
+  private curriculumService = new CurriculumService();
 
   listStudents = async (req: Request, res: Response): Promise<void> => {
     try {
@@ -170,6 +173,75 @@ export class AdminStudentController {
       } else {
         res.status(500).json({ error: "An unexpected error occurred." });
       }
+    }
+  };
+
+  getStudentCurriculum = async (req: Request, res: Response): Promise<void> => {
+    try {
+      const id = String(req.params.id ?? "");
+      const result = await this.curriculumService.getStudentChecklistByStudentId(id);
+      res.status(200).json(result);
+    } catch (error) {
+      handleCurriculumControllerError(
+        res,
+        error,
+        "Error loading admin student curriculum checklist:",
+      );
+    }
+  };
+
+  assignStudentCurriculumVersion = async (
+    req: AuthenticatedRequest,
+    res: Response,
+  ): Promise<void> => {
+    try {
+      const id = String(req.params.id ?? "");
+      const adminId = req.user?.userId ?? "";
+      if (!adminId) {
+        res.status(401).json({ error: "Unauthorized" });
+        return;
+      }
+      const result = await this.curriculumService.assignStudentCurriculumVersion(
+        id,
+        adminId,
+        req.body ?? {},
+      );
+      res.status(200).json(result);
+    } catch (error) {
+      handleCurriculumControllerError(
+        res,
+        error,
+        "Error assigning student curriculum version:",
+      );
+    }
+  };
+
+  updateStudentCourseProgress = async (
+    req: AuthenticatedRequest,
+    res: Response,
+  ): Promise<void> => {
+    try {
+      const id = String(req.params.id ?? "");
+      const courseId = String(req.params.courseId ?? "");
+      const adminId = req.user?.userId ?? "";
+      if (!adminId) {
+        res.status(401).json({ error: "Unauthorized" });
+        return;
+      }
+      const result = await this.curriculumService.updateCourseProgress({
+        actorRole: "ADMIN",
+        actorUserId: adminId,
+        targetId: id,
+        courseId,
+        body: req.body ?? {},
+      });
+      res.status(200).json(result);
+    } catch (error) {
+      handleCurriculumControllerError(
+        res,
+        error,
+        "Error updating student coursework progress:",
+      );
     }
   };
 }

@@ -136,19 +136,25 @@ describe("COR frontend credential contracts", () => {
 
     // Manual selection precedence over auto exact-match preselection.
     const derived = sliceBetween(page, "const autoProgramId", "function setField");
-    expect(derived).toContain(
-      "resolveProgramId(suggestions?.program, graduatePrograms)",
+    expect(derived).toMatch(
+      /resolveProgramId\(\s*suggestions\?\.program,\s*graduatePrograms,\s*suggestions\?\.major,?\s*\)/,
     );
     expect(derived).toMatch(/programSelection\s*\?\?\s*autoProgramId/);
+    expect(derived).toContain("resolveCurriculumVersion");
+    expect(derived).toContain(
+      "/curricula/programs/${confirmedProgramId}/versions",
+    );
 
     // Verify gating depends on the confirmed Program (unresolved blocks).
     const canVerify = sliceBetween(page, "const canVerify", "const confirmedName");
     expect(canVerify).toContain("confirmedProgramId");
 
-    // Payload sends the confirmed Program id, never the raw/auto value.
+    // Payload sends the confirmed Program & Curriculum ids, never raw extracted strings.
     const confirm = sliceBetween(page, "function handleConfirmVerify(", "const rejectMutation");
     expect(confirm).toContain("programId: confirmedProgramId");
+    expect(confirm).toContain("curriculumVersionId: confirmedCurriculumVersionId");
     expect(confirm).not.toContain("suggestions?.program");
+    expect(confirm).not.toContain("suggestions?.curriculum");
 
     // Loading/failure disable Program selection; Verify cannot validate without it.
     expect(page).toMatch(

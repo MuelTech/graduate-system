@@ -71,6 +71,8 @@ export interface CorExtractionSuggestions {
   registrationNumber: string | null;
   studentName: CorStudentNameSuggestion | null;
   program: string | null;
+  major?: string | null;
+  curriculum?: string | null;
   college: string | null;
   emailAddress: string | null;
 }
@@ -798,6 +800,13 @@ export interface AdminStudentDetail {
   admissionStatus: string;
   enrollmentDate: string | null;
   curriculumType: string | null;
+  curriculumVersion?: {
+    id: string;
+    versionCode: string;
+    label: string;
+    curriculumType: string;
+    effectiveSchoolYear: string | null;
+  } | null;
   isActive?: boolean;
   mustChangePassword?: boolean;
   canChangeProgram?: boolean;

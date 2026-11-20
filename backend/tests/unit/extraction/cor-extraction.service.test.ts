@@ -65,6 +65,8 @@ const COR_FULL_LINES = [
   "Student No : 123-45678A",
   "Name : DELA CRUZ, JUAN SANTOS",
   "Program : Master in Information Technology",
+  "Major : Information Systems",
+  "Curriculum : 2024-2025",
   "College : Graduate School",
   "Email Address : juan.delacruz@example.com",
 ];
@@ -74,6 +76,8 @@ const EMPTY_SUGGESTIONS = {
   registrationNumber: null,
   studentName: null,
   program: null,
+  major: null,
+  curriculum: null,
   college: null,
   emailAddress: null,
 };
@@ -275,6 +279,8 @@ describe("CorExtractionService COR-2 parser suggestion persistence", () => {
         middleNameOrInitial: "SANTOS",
       },
       program: "Master in Information Technology",
+      major: "Information Systems",
+      curriculum: "2024-2025",
       college: "Graduate School",
       emailAddress: "juan.delacruz@example.com",
     });
@@ -350,6 +356,8 @@ describe("CorExtractionService COR-2 parser suggestion persistence", () => {
         middleNameOrInitial: "SANTOS",
       },
       program: null,
+      major: null,
+      curriculum: null,
       college: null,
       emailAddress: null,
     });
