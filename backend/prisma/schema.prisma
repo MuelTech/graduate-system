@@ -68,9 +68,11 @@ model User {
   examResultDecisions                ExamResultDecision[]
   savedSignature                     UserSignature?
   compExamRecordsRecorded            CompExamRecord[]          @relation("CompExamRecordedBy")
-  courseProgressEncoded              StudentCourseProgress[]   @relation("CourseProgressEncodedBy")
-  courseProgressVerified             StudentCourseProgress[]   @relation("CourseProgressVerifiedBy")
-  customRole                         CustomRole?               @relation("UserCustomRole", fields: [customRoleId], references: [id])
+  courseProgressEncoded              StudentCourseProgress[]     @relation("CourseProgressEncodedBy")
+  courseProgressVerified             StudentCourseProgress[]     @relation("CourseProgressVerifiedBy")
+  officialTermsCreated               InstitutionalOfficialTerm[] @relation("OfficialTermCreatedBy")
+  officialTermsUpdated               InstitutionalOfficialTerm[] @relation("OfficialTermUpdatedBy")
+  customRole                         CustomRole?                 @relation("UserCustomRole", fields: [customRoleId], references: [id])
 
   @@index([customRoleId], map: "users_custom_role_id_fkey")
   @@map("users")
@@ -2042,4 +2044,33 @@ model StudentCourseProgress {
   @@index([encodedById], map: "student_course_progress_encoded_by_id_fkey")
   @@index([verifiedById], map: "student_course_progress_verified_by_id_fkey")
   @@map("student_course_progress")
+}
+
+enum InstitutionalOfficialRoleEnum {
+  DEAN
+  VPAA
+  PRESIDENT
+
+  @@map("institutional_official_role")
+}
+
+model InstitutionalOfficialTerm {
+  id            String                        @id @default(uuid()) @map("term_id")
+  role          InstitutionalOfficialRoleEnum
+  name          String                        @db.VarChar(120)
+  signatureData String?                       @map("signature_data") @db.LongText
+  effectiveFrom DateTime                      @map("effective_from") @db.Date
+  effectiveTo   DateTime?                     @map("effective_to") @db.Date
+  createdById   String?                       @map("created_by_id")
+  updatedById   String?                       @map("updated_by_id")
+  createdAt     DateTime                      @default(now()) @map("created_at")
+  updatedAt     DateTime                      @updatedAt @map("updated_at")
+  createdBy     User?                         @relation("OfficialTermCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  updatedBy     User?                         @relation("OfficialTermUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+
+  @@index([role, effectiveFrom], map: "institutional_official_terms_role_from_idx")
+  @@index([role, effectiveTo], map: "institutional_official_terms_role_to_idx")
+  @@index([createdById], map: "institutional_official_terms_created_by_fkey")
+  @@index([updatedById], map: "institutional_official_terms_updated_by_fkey")
+  @@map("institutional_official_terms")
 }

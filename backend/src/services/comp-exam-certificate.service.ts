@@ -2,7 +2,7 @@ import prisma from "../config/database";
 import { formatOfficialProgramDisplay } from "../config/graduate-programs";
 import { AppError } from "../utils/AppError";
 import { evaluateCompExamSummary } from "./comp-exam.rules";
-import { loadInstitutionalOfficials } from "./institutional-officials.service";
+import { loadInstitutionalOfficialsAsOf } from "./institutional-officials.service";
 
 export type CompExamCertificateTemplateStatus = "TEMPLATE_PENDING";
 
@@ -101,7 +101,10 @@ export class CompExamCertificateService {
       };
     }
 
-    const officials = await loadInstitutionalOfficials(prisma);
+    const officials = await loadInstitutionalOfficialsAsOf(
+      passed.examDate ?? passed.createdAt,
+      prisma,
+    );
     const signatoryDeanName = officials.dean.name.trim() || null;
 
     return {
