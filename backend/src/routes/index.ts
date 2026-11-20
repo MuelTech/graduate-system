@@ -22,6 +22,7 @@ import emailRoutes from './email.routes';
 import adminDashboardRoutes from './admin-dashboard.routes';
 import adminStorageRoutes from './admin-storage.routes';
 import documentRoutes from './document.routes';
+import plagiarismRoutes from './plagiarism.routes';
 
 const router = Router();
 
@@ -33,6 +34,7 @@ router.use('/cor', corRoutes);
 router.use('/student', studentRoutes);
 router.use('/evaluation', evaluationRoutes);
 router.use('/thesis', thesisRoutes);
+router.use('/thesis/plagiarism', plagiarismRoutes);
 router.use('/panelists', panelistRoutes);
 router.use('/faculty', panelistRoutes);
 router.use('/settings', settingsRoutes);
