@@ -154,7 +154,12 @@ export const requireFullAdmin = async (
   }
 };
 
-export const requireAdminCapability = (capability: AdminCapabilityKey) => {
+export const requireAdminCapability = (capability: AdminCapabilityKey) =>
+  requireAnyAdminCapability([capability]);
+
+export const requireAnyAdminCapability = (
+  allowedCapabilities: readonly AdminCapabilityKey[],
+) => {
   return async (
     req: AuthenticatedRequest,
     res: Response,
@@ -180,7 +185,7 @@ export const requireAdminCapability = (capability: AdminCapabilityKey) => {
       }
       if (admin.adminAccessLevel === "RESTRICTED") {
         const capabilities = sanitizeAdminCapabilities(admin.adminCapabilities);
-        if (!capabilities.includes(capability)) {
+        if (!allowedCapabilities.some((cap) => capabilities.includes(cap))) {
           res.status(403).json({
             error: "Forbidden. You do not have permission for this administrative module.",
           });

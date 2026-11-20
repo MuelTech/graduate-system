@@ -21,6 +21,25 @@ router.get(
   requireRole(["STUDENT"]),
   studentController.getCompExamCertificateFoundation,
 );
+// STUDENT ONLY: Curriculum Checklist / Plan of Coursework tracking
+router.get(
+  "/curriculum",
+  authenticateJWT,
+  requireRole(["STUDENT"]),
+  studentController.getCurriculumChecklist,
+);
+router.put(
+  "/curriculum/courses/:courseId",
+  authenticateJWT,
+  requireRole(["STUDENT"]),
+  studentController.updateCourseProgress,
+);
+router.put(
+  "/curriculum/publication",
+  authenticateJWT,
+  requireRole(["STUDENT"]),
+  studentController.updatePublicationMilestone,
+);
 // ADMIN ONLY: Record a Comprehensive Exam attempt (delegates to 3-attempt policy)
 router.post(
   "/:id/comprehensive-exam",

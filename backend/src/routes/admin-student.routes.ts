@@ -83,4 +83,45 @@ router.post(
   controller.resetStudentPassword,
 );
 
+// Curriculum Checklist / Plan of Coursework (Admin review, encoding, verification, version shift)
+router.get(
+  "/:id/curriculum",
+  authenticateJWT,
+  requireRole(["ADMIN"]),
+  requireAdminCapability("students.manage"),
+  controller.getStudentCurriculum,
+);
+
+router.patch(
+  "/:id/curriculum/version",
+  authenticateJWT,
+  requireRole(["ADMIN"]),
+  requireAdminCapability("students.manage"),
+  controller.assignStudentCurriculumVersion,
+);
+
+router.put(
+  "/:id/curriculum/courses/:courseId",
+  authenticateJWT,
+  requireRole(["ADMIN"]),
+  requireAdminCapability("students.manage"),
+  controller.updateStudentCourseProgress,
+);
+
+router.post(
+  "/:id/curriculum/verify-all",
+  authenticateJWT,
+  requireRole(["ADMIN"]),
+  requireAdminCapability("students.manage"),
+  controller.verifyAllStudentCourses,
+);
+
+router.put(
+  "/:id/curriculum/publication",
+  authenticateJWT,
+  requireRole(["ADMIN"]),
+  requireAdminCapability("students.manage"),
+  controller.updateStudentPublicationMilestone,
+);
+
 export default router;
