@@ -27,6 +27,7 @@ import {
   PanelLeft,
   ChevronDown,
   Megaphone,
+  Mail,
 } from "lucide-react";
 import { NotificationBell } from "@/components/layout/notification-bell";
 import { PortalBreadcrumbs } from "@/components/layout/portal-breadcrumbs";
@@ -91,6 +92,7 @@ const allNavItems = [
   { href: "/admin/analytics", label: "Analytics & Reports", icon: BarChart3 },
   { href: "/admin/settings", label: "System Settings", icon: Settings },
   { href: "/admin/settings/storage", label: "Storage Health", icon: HardDrive },
+  { href: "/admin/emails", label: "Email Manager", icon: Mail },
   { href: "/admin/memos", label: "Announcements & Memos", icon: Megaphone },
   { href: "/admin/repository", label: "Repository", icon: Library },
 ];

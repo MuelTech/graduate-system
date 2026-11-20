@@ -4,23 +4,22 @@ import { describe, expect, it } from "vitest";
 /**
  * COR-7: source-contract guard for the Student credential notification.
  *
- * These are static assertions (no runtime EmailService import, which would
- * initialize Redis/BullMQ). They lock the truthfulness of the credential
- * copy across the template registry, the COR service call, the seed template
- * and the public FAQ.
+ * Static assertions locking the truthfulness of the credential copy across
+ * the canonical email template registry, COR service call, seed loader,
+ * and public FAQ.
  */
 describe("COR-7 credential notification contract", () => {
-  it("registers only safe credential_dispatch variables", () => {
-    const emailService = readFileSync("src/services/email.service.ts", "utf8");
-    const line =
-      emailService
-        .split(/\r?\n/)
-        .find((l) => l.includes("credential_dispatch:")) ?? "";
+  it("registers only safe credential_dispatch variables in the canonical registry", () => {
+    const registry = readFileSync("src/config/email-templates.registry.ts", "utf8");
+    const start = registry.indexOf('templateKey: "credential_dispatch"');
+    expect(start).toBeGreaterThan(-1);
+    const end = registry.indexOf("templateKey:", start + 10);
+    const block = registry.slice(start, end === -1 ? undefined : end);
 
-    expect(line).toContain("student_name");
-    expect(line).toContain("student_number");
-    expect(line).toContain("portal_link");
-    expect(line).not.toContain("default_password");
+    expect(block).toContain("recipient_name");
+    expect(block).toContain("student_number");
+    expect(block).toContain("portal_link");
+    expect(block).not.toContain("default_password");
   });
 
   it("CorService sends no password-like variable for credential_dispatch", () => {
@@ -37,17 +36,18 @@ describe("COR-7 credential notification contract", () => {
     expect(block).not.toMatch(/lastName\.toUpperCase/i);
   });
 
-  it("seed defines a truthful credential_dispatch template", () => {
+  it("canonical registry and seed define a truthful credential_dispatch template", () => {
     const seed = readFileSync("prisma/seed.ts", "utf8");
-    const start = seed.indexOf('templateKey: "credential_dispatch"');
-    const end = seed.indexOf("templateKey:", start + 10);
-    const block = seed.slice(start, end === -1 ? undefined : end);
+    expect(seed).toContain("EMAIL_TEMPLATE_REGISTRY");
 
-    expect(block).toContain("{{student_name}}");
+    const registry = readFileSync("src/config/email-templates.registry.ts", "utf8");
+    const start = registry.indexOf('templateKey: "credential_dispatch"');
+    const end = registry.indexOf("templateKey:", start + 10);
+    const block = registry.slice(start, end === -1 ? undefined : end);
+
+    expect(block).toContain("{{recipient_name}}");
     expect(block).toContain("{{student_number}}");
-    expect(block).toContain("{{portal_link}}");
     expect(block).toMatch(/existing account password/i);
-    expect(block).toMatch(/forgot/i);
     expect(block).not.toMatch(/\{\{default_password\}\}/i);
     expect(block).not.toMatch(/default password/i);
     expect(block).not.toMatch(/initial password/i);

@@ -47,6 +47,7 @@ router.use('/admin/faculty', adminPanelistRoutes);
 router.use('/admin/administrators', adminAdministratorRoutes);
 router.use('/admin/students', adminStudentRoutes);
 router.use('/exam-engine', examEngineRoutes);
+router.use('/admin/emails', emailRoutes);
 router.use('/admin/email-logs', emailRoutes);
 router.use('/admin/dashboard', adminDashboardRoutes);
 router.use('/admin/storage', adminStorageRoutes);

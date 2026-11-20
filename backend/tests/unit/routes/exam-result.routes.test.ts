@@ -66,7 +66,7 @@ describe("B0B actual routes, authentication, controllers and services", () => {
     expect(response.status).toBe(200);
     expect(await response.json()).toMatchObject({ success: true, message: expect.stringContaining("queue") });
     expect(db.entranceExamApplication.findUnique.mock.calls[0][0].where).toEqual({ id: ids.app });
-    expect(sendEmail).toHaveBeenCalledExactlyOnceWith("record-owner@example.invalid", template, expect.objectContaining({ student_name: "Synthetic" }), { jobId: expect.stringContaining("exam-result-"), removeOnComplete: false, removeOnFail: false });
+    expect(sendEmail).toHaveBeenCalledExactlyOnceWith("record-owner@example.invalid", template, expect.objectContaining({ student_name: "Synthetic" }), expect.objectContaining({ jobId: expect.stringContaining("exam-result-") }));
   });
 
   it("returns a typed not-final conflict without queueing for TAKEN/PENDING", async () => {

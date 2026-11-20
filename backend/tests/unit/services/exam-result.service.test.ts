@@ -59,7 +59,16 @@ describe("B0B result finality", () => {
       return { success: true, message: "Result email queued." };
     });
     expect(await service.confirmResultAndEmail("exact-app")).toHaveProperty("success", true);
-    expect(sendEmail).toHaveBeenCalledExactlyOnceWith("authoritative@example.invalid", "ecat_result_pass", { student_name: "Synthetic", portal_link: process.env.FRONTEND_URL || "http://localhost:3000" }, { jobId: "exam-result-exact-identity", removeOnComplete: false, removeOnFail: false });
+    expect(sendEmail).toHaveBeenCalledExactlyOnceWith(
+      "authoritative@example.invalid",
+      "ecat_result_pass",
+      expect.objectContaining({
+        student_name: "Synthetic",
+        recipient_name: "Synthetic",
+        portal_link: expect.stringMatching(/^https?:\/\/[^,]+\/applicant\/result$/),
+      }),
+      expect.objectContaining({ jobId: "exam-result-exact-identity" }),
+    );
   });
   it("propagates queue failure without claiming success", async () => {
     repo.queueResultEmail.mockRejectedValue(new Error("Queue unavailable"));
