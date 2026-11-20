@@ -18,6 +18,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { ESignaturePad } from "@/components/defense-workspace/e-signature-pad";
 import { ProgramsSettingsTab } from "@/components/admin/settings/programs-settings-tab";
+import { CurriculaSettingsTab } from "@/components/admin/settings/curricula-settings-tab";
 import { normalizeUploadedSignatureImage } from "@/lib/user-signature";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiClientRequest } from "@/lib/api.client";
@@ -47,6 +48,7 @@ import {
   Upload,
   PenTool,
   X,
+  ListChecks,
 } from "lucide-react";
 
 type EmailTemplateItem = {
@@ -136,6 +138,7 @@ export default function AdminSettingsPage() {
 
   const tabs = [
     { id: "programs", label: "Programs", icon: BookOpen },
+    { id: "curricula", label: "Curricula", icon: ListChecks },
     { id: "chatbot", label: "AI Chatbot FAQ", icon: GraduationCap },
     { id: "email", label: "Email Templates", icon: Mail },
     { id: "strike", label: "STRIKE Settings", icon: Shield },
@@ -1154,8 +1157,12 @@ export default function AdminSettingsPage() {
           {/* Programs Tab */}
           {activeTab === "programs" && <ProgramsSettingsTab />}
 
+          {/* Curricula Tab */}
+          {activeTab === "curricula" && <CurriculaSettingsTab />}
+
           {/* Other Tabs Placeholder */}
           {activeTab !== "programs" &&
+            activeTab !== "curricula" &&
             activeTab !== "academic_year" &&
             activeTab !== "audit" &&
             activeTab !== "email" &&

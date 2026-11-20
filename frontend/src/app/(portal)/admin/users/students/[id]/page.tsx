@@ -32,10 +32,12 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import type { AdminStudentDetail } from "@/types";
+import type { StudentCurriculumChecklistDto } from "@/types/curriculum";
 import type {
   JourneyStepView,
   StudentThesisJourney,
 } from "@/types/student-thesis-journey";
+import { StudentCurriculumSection } from "@/components/admin/students/student-curriculum-section";
 import {
   defenseStatusDescription,
   defenseStatusHeading,
@@ -359,6 +361,12 @@ export default function StudentDetailPage() {
     retry: false,
   });
 
+  const curriculumQuery = useQuery<StudentCurriculumChecklistDto>({
+    queryKey: ["adminStudentCurriculum", studentId],
+    queryFn: () => apiClientRequest(`/admin/students/${studentId}/curriculum`),
+    retry: false,
+  });
+
   const programsQuery = useQuery<{ graduatePrograms: ProgramOption[] }>({
     queryKey: ["graduateProgramsPublic"],
     queryFn: () => apiClientRequest("/programs"),
@@ -371,6 +379,9 @@ export default function StudentDetailPage() {
     });
     queryClient.invalidateQueries({
       queryKey: ["adminStudentJourney", studentId],
+    });
+    queryClient.invalidateQueries({
+      queryKey: ["adminStudentCurriculum", studentId],
     });
     queryClient.invalidateQueries({ queryKey: ["adminStudents"] });
   };
@@ -843,8 +854,9 @@ export default function StudentDetailPage() {
                   <DataItem label="Enrollment Date">
                     {formatDate(student.enrollmentDate)}
                   </DataItem>
-                  <DataItem label="Curriculum Type">
-                    {curriculumLabel(student.curriculumType)}
+                  <DataItem label="Curriculum Version">
+                    {student.curriculumVersion?.label ??
+                      curriculumLabel(student.curriculumType)}
                   </DataItem>
                   <DataItem label="Active Adviser">
                     {student.adviserAssignment
@@ -965,6 +977,17 @@ export default function StudentDetailPage() {
                   : ""}
               </DataItem>
             </dl>
+
+            {curriculumQuery.data?.summary ? (
+              <p className="rounded-md border border-gray-200/80 bg-gray-50/70 px-3 py-2 text-xs text-gray-600">
+                <span className="font-medium text-[#262220]">
+                  Coursework tracker (advisory):
+                </span>{" "}
+                {curriculumQuery.data.summary.encodedCourseCount === 0
+                  ? `No courses encoded yet (${curriculumQuery.data.summary.wceRequiredUnits} academic units in curriculum).`
+                  : `${curriculumQuery.data.summary.wceEarnedUnits} / ${curriculumQuery.data.summary.wceRequiredUnits} academic units completed (${curriculumQuery.data.summary.wceVerifiedUnits} verified).`}
+              </p>
+            ) : null}
 
             {compExamSummary.attempts.length > 0 ? (
               <div className="space-y-2 border-t border-gray-100 pt-4">
@@ -1108,6 +1131,14 @@ export default function StudentDetailPage() {
           </SectionCard>
         </div>
       </div>
+
+      <StudentCurriculumSection
+        studentId={studentId}
+        checklist={curriculumQuery.data}
+        isLoading={curriculumQuery.isLoading}
+        isError={curriculumQuery.isError}
+        onRetry={() => curriculumQuery.refetch()}
+      />
 
       {/* Edit Student Information Dialog */}
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
