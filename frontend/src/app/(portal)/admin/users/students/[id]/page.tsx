@@ -952,7 +952,7 @@ export default function StudentDetailPage() {
         <div className="space-y-6 lg:col-span-5">
           <SectionCard
             title="Comprehensive Examination"
-            description="Official Written Comprehensive Examination standing (Manual §7.15.4 · max 3 attempts)."
+            description="Official Written Comprehensive Examination standing (max 3 attempts)."
             action={
               compExamSummary.canCorrectLatest && latestGradedAttempt ? (
                 <Button
@@ -977,17 +977,6 @@ export default function StudentDetailPage() {
                   : ""}
               </DataItem>
             </dl>
-
-            {curriculumQuery.data?.summary ? (
-              <p className="rounded-md border border-gray-200/80 bg-gray-50/70 px-3 py-2 text-xs text-gray-600">
-                <span className="font-medium text-[#262220]">
-                  Coursework progress:
-                </span>{" "}
-                {curriculumQuery.data.summary.encodedCourseCount === 0
-                  ? `No subjects encoded yet (${curriculumQuery.data.summary.wceRequiredUnits} academic units in curriculum).`
-                  : `${curriculumQuery.data.summary.wceEarnedUnits} / ${curriculumQuery.data.summary.wceRequiredUnits} academic units completed.`}
-              </p>
-            ) : null}
 
             {compExamSummary.attempts.length > 0 ? (
               <div className="space-y-2 border-t border-gray-100 pt-4">
@@ -1038,9 +1027,9 @@ export default function StudentDetailPage() {
 
             {compExamSummary.isDismissed ? (
               <div className="rounded-lg border border-red-200 bg-red-50/80 p-3 text-xs text-red-800">
-                Permanently disqualified after 3 failed attempts under Graduate
-                School Manual §7.15.4. Use &ldquo;Correct Latest Attempt&rdquo;
-                above only for verified encoding corrections.
+                Permanently disqualified after 3 failed attempts. Use
+                &ldquo;Correct Latest Attempt&rdquo; above only for verified
+                encoding corrections.
               </div>
             ) : compExamSummary.canRecordAttempt &&
               compExamSummary.nextAttemptNumber !== null ? (
@@ -1309,8 +1298,11 @@ export default function StudentDetailPage() {
               </Select>
               {!canChangeProgram && (
                 <p className="text-xs text-gray-500">
-                  Program changes are locked once Title Defense is completed or
-                  the student is no longer enrolled (Manual §7.14.3).
+                  {student.admissionStatus === "GRADUATED"
+                    ? "Program cannot be changed for graduated students."
+                    : student.admissionStatus === "DISMISSED"
+                      ? "Program cannot be changed for dismissed students."
+                      : "Program cannot be changed once Title Defense is completed."}
                 </p>
               )}
             </div>
@@ -1514,10 +1506,10 @@ export default function StudentDetailPage() {
               {compExamAction === "FAILED" &&
               (compExamSummary.nextAttemptNumber ?? 1) >=
                 compExamSummary.maxAttempts
-                ? "Warning: Recording a 3rd failed attempt will permanently disqualify this student and set Admission Status to Dismissed per Graduate School Manual §7.15.4."
+                ? "Warning: Recording a 3rd failed attempt will permanently disqualify this student and set Admission Status to Dismissed."
                 : compExamAction === "FAILED"
-                  ? "Records a failed attempt and notifies the student of remaining retakes under Manual §7.15.4."
-                  : "Records a passing result, unlocks Title Defense (§7.17.1), assigns a certificate reference, and sends a student notification."}
+                  ? "Records a failed attempt and notifies the student of remaining retakes."
+                  : "Records a passing result, unlocks Title Defense, assigns a certificate reference, and sends a student notification."}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
