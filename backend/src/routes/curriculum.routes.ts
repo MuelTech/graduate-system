@@ -10,12 +10,12 @@ import {
 const router = Router();
 const controller = new CurriculumController();
 
-// Admin lookup for Students & Settings modules
+// Admin lookup for Students, Settings, and COR Verification modules
 router.get(
   "/programs/:programId/versions",
   authenticateJWT,
   requireRole(["ADMIN"]),
-  requireAnyAdminCapability(["students.manage", "settings.manage"]),
+  requireAnyAdminCapability(["students.manage", "settings.manage", "cor.verify"]),
   controller.listProgramVersions,
 );
 

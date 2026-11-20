@@ -18,6 +18,8 @@ const EMPTY: CorExtractionSuggestions = {
   registrationNumber: null,
   studentName: null,
   program: null,
+  major: null,
+  curriculum: null,
   college: null,
   emailAddress: null,
 };
@@ -51,7 +53,7 @@ describe("parseEaristCorText", () => {
     expect(EARIST_COR_PARSER_VERSION).toMatch(/cor/i);
   });
 
-  it("extracts every approved v1 field from a full synthetic sample", () => {
+  it("extracts every approved v2 field from a full synthetic sample", () => {
     const result = parseEaristCorText(FULL_SAMPLE);
 
     expect(result.studentNumber).toBe("123-45678A");
@@ -63,18 +65,22 @@ describe("parseEaristCorText", () => {
       middleNameOrInitial: "SANTOS",
     });
     expect(result.program).toBe("Master in Information Technology");
+    expect(result.major).toBeNull();
+    expect(result.curriculum).toBe("2023-2024");
     expect(result.college).toBe("Graduate School");
     expect(result.emailAddress).toBe("juan.delacruz@example.com");
   });
 
-  it("does not treat Academic Year/Term, curriculum, fees or receipts as v1 fields", () => {
+  it("does not treat Academic Year/Term, fees, subject rows, or receipts as parsed suggestion fields", () => {
     const result = parseEaristCorText(FULL_SAMPLE);
-    // Deferred fields must never leak into the v1 suggestion contract.
+    // Subject rows, Academic Year/Term, fees and receipts must never leak into suggestions.
     expect(Object.keys(result)).toEqual([
       "studentNumber",
       "registrationNumber",
       "studentName",
       "program",
+      "major",
+      "curriculum",
       "college",
       "emailAddress",
     ]);
@@ -236,9 +242,51 @@ describe("parseEaristCorText", () => {
         middleNameOrInitial: "SANTOS",
       },
       program: "Master in Information Technology",
+      major: null,
+      curriculum: null,
       college: "Graduate School",
       emailAddress: "juan.delacruz@example.com",
     });
+  });
+
+  it("extracts Program with empty Major and populated Curriculum on TCPDF EARIST COR layout", () => {
+    const sample = [
+      "Student No : 261-00001M College :: Graduate School",
+      "Name : SANTOS, MARIA CLARA Program :: Master in Business Administration",
+      "Gender : Female Major :: Curriculum :: 2024-2025",
+      "Age: : 27 Year Level :: Graduate-Regular Scholarship/Discount :",
+      "MT_610 Thesis 2 3 0 3 3 MAED_COM S 05:00PM-08:00PM",
+    ].join("\n");
+
+    const result = parseEaristCorText(sample);
+    expect(result.program).toBe("Master in Business Administration");
+    expect(result.major).toBeNull();
+    expect(result.curriculum).toBe("2024-2025");
+  });
+
+  it("extracts both populated Major and Curriculum without label bleed", () => {
+    const sample = [
+      "Program :: Master of Arts in Education",
+      "Major :: Guidance and Counseling Curriculum :: 2019-2020",
+      "Year Level :: Graduate-Regular",
+    ].join("\n");
+
+    const result = parseEaristCorText(sample);
+    expect(result.program).toBe("Master of Arts in Education");
+    expect(result.major).toBe("Guidance and Counseling");
+    expect(result.curriculum).toBe("2019-2020");
+  });
+
+  it("returns null for blank Curriculum and placeholder Major values", () => {
+    const sample = [
+      "Program : Doctor of Business Administration",
+      "Major : N/A Curriculum :: Age: : 34",
+    ].join("\n");
+
+    const result = parseEaristCorText(sample);
+    expect(result.program).toBe("Doctor of Business Administration");
+    expect(result.major).toBeNull();
+    expect(result.curriculum).toBeNull();
   });
 
   it("returns empty suggestions without throwing for empty/null-ish input", () => {

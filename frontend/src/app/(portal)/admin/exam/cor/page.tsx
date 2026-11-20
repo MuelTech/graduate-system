@@ -30,6 +30,7 @@ import {
 } from "@/components/ui/dialog";
 import { DocumentViewer } from "@/components/ui/document-viewer";
 import { PendingCorUpload as PendingUpload, Program } from "@/types";
+import type { CurriculumVersionSummary } from "@/types/curriculum";
 import {
   AlertCircle,
   AlertTriangle,
@@ -75,19 +76,43 @@ function normalizeForCompare(value: string | null | undefined): string {
   return collapse(value).toLowerCase();
 }
 
+function stripTrailingProgramCode(value: string): string {
+  return value.replace(/\s*\([^()]+\)\s*$/, "").trim();
+}
+
 /**
- * Resolves an extracted COR Program string to a unique EXISTING Program id.
- * Exact match only — the parser never authoritatively selects or creates a
- * Program; ambiguous or absent matches yield no preselection.
+ * Resolves extracted COR Program + Major strings to a unique EXISTING Program id.
+ * Exact normalized match only — ambiguous or absent matches yield no preselection.
  */
 function resolveProgramId(
   corProgram: string | null | undefined,
   programs: Program[],
+  corMajor?: string | null,
 ): string {
-  const target = normalizeForCompare(corProgram);
-  if (!target) return "";
+  const targetProgram = normalizeForCompare(corProgram);
+  if (!targetProgram) return "";
+  const targetMajor = normalizeForCompare(corMajor);
+
+  if (targetMajor) {
+    const combined = `${targetProgram} major in ${targetMajor}`;
+    const matches = programs.filter(
+      (p) =>
+        (normalizeForCompare(p.degreeName) === targetProgram &&
+          normalizeForCompare(p.majorName) === targetMajor) ||
+        normalizeForCompare(p.programName) === combined ||
+        normalizeForCompare(stripTrailingProgramCode(p.programName)) ===
+          combined,
+    );
+    return matches.length === 1 ? matches[0].id : "";
+  }
+
   const matches = programs.filter(
-    (p) => normalizeForCompare(p.programName) === target,
+    (p) =>
+      normalizeForCompare(p.programName) === targetProgram ||
+      normalizeForCompare(stripTrailingProgramCode(p.programName)) ===
+        targetProgram ||
+      (!normalizeForCompare(p.majorName) &&
+        normalizeForCompare(p.degreeName) === targetProgram),
   );
   return matches.length === 1 ? matches[0].id : "";
 }
@@ -197,6 +222,159 @@ function SummaryRow({ label, value }: { label: string; value: string }) {
   );
 }
 
+type CurriculumResolutionSource =
+  | "EXACT_COR_MATCH"
+  | "INFERRED_TYPE"
+  | "FALLBACK_DEFAULT"
+  | "MANUAL"
+  | "UNAVAILABLE";
+
+interface CurriculumResolution {
+  versionId: string;
+  source: CurriculumResolutionSource;
+  note: string | null;
+}
+
+function normalizeSchoolYearLabel(value: string | null | undefined): string {
+  return collapse(value)
+    .toLowerCase()
+    .replace(/^(?:s\.?y\.?|a\.?y\.?)\s*/i, "")
+    .replace(/[–—]/g, "-")
+    .replace(/\s*-\s*/g, "-")
+    .trim();
+}
+
+function resolveCurriculumVersion(
+  corCurriculum: string | null | undefined,
+  versions: CurriculumVersionSummary[],
+): CurriculumResolution {
+  const active = versions.filter((v) => v.isActive);
+  if (active.length === 0) {
+    return { versionId: "", source: "UNAVAILABLE", note: null };
+  }
+
+  const defaultVersion =
+    active.find((v) => v.isDefaultForNewStudents) ??
+    active.find((v) => v.curriculumType === "NEW") ??
+    active[0];
+
+  const rawCor = collapse(corCurriculum);
+  if (!rawCor) {
+    return {
+      versionId: defaultVersion.id,
+      source: "FALLBACK_DEFAULT",
+      note: "Curriculum not extracted from COR. Default active curriculum preselected; confirm or adjust if needed.",
+    };
+  }
+
+  const targetSchoolYear = normalizeSchoolYearLabel(rawCor);
+  const exactMatches = active.filter(
+    (v) =>
+      v.effectiveSchoolYear &&
+      normalizeSchoolYearLabel(v.effectiveSchoolYear) === targetSchoolYear,
+  );
+  if (exactMatches.length === 1) {
+    return {
+      versionId: exactMatches[0].id,
+      source: "EXACT_COR_MATCH",
+      note: `Matched from COR (${rawCor}).`,
+    };
+  }
+
+  const yearMatch = /\b((?:19|20)\d{2})\b/.exec(rawCor);
+  let inferredType: "NEW" | "OLD" | null = null;
+  if (yearMatch) {
+    inferredType = Number(yearMatch[1]) >= 2024 ? "NEW" : "OLD";
+  } else if (targetSchoolYear === "new") {
+    inferredType = "NEW";
+  } else if (targetSchoolYear === "old") {
+    inferredType = "OLD";
+  }
+
+  if (inferredType) {
+    const typedCandidates = active.filter(
+      (v) => v.curriculumType === inferredType,
+    );
+    const typedMatch =
+      typedCandidates.find((v) => v.isDefaultForNewStudents) ??
+      typedCandidates[0];
+    if (typedMatch) {
+      return {
+        versionId: typedMatch.id,
+        source: "INFERRED_TYPE",
+        note: `Matched ${inferredType} curriculum from COR (${rawCor}).`,
+      };
+    }
+    return {
+      versionId: defaultVersion.id,
+      source: "FALLBACK_DEFAULT",
+      note: `COR indicates "${rawCor}" (${inferredType}), but no active ${inferredType} curriculum exists for this program. Default active curriculum preselected — review before confirming.`,
+    };
+  }
+
+  return {
+    versionId: defaultVersion.id,
+    source: "FALLBACK_DEFAULT",
+    note: `Could not map COR curriculum "${rawCor}". Default active curriculum preselected; confirm or adjust if needed.`,
+  };
+}
+
+function formatCurriculumOptionLabel(version: CurriculumVersionSummary): string {
+  const sy = version.effectiveSchoolYear
+    ? ` (${version.effectiveSchoolYear})`
+    : "";
+  const suffix = version.isDefaultForNewStudents ? " · Default" : "";
+  return `${version.label}${sy} — ${version.curriculumType}${suffix}`;
+}
+
+function CurriculumBadge({
+  source,
+  hasExtractedCurriculum,
+}: {
+  source: CurriculumResolutionSource;
+  hasExtractedCurriculum: boolean;
+}) {
+  if (source === "MANUAL") {
+    return (
+      <Badge variant="outline" className="font-medium text-(--earist-primary)">
+        Manual selection
+      </Badge>
+    );
+  }
+  if (source === "EXACT_COR_MATCH" || source === "INFERRED_TYPE") {
+    return (
+      <Badge variant="outline" className="font-medium text-(--earist-success)">
+        Matched from COR
+      </Badge>
+    );
+  }
+  if (!hasExtractedCurriculum && source === "FALLBACK_DEFAULT") {
+    return (
+      <Badge
+        variant="outline"
+        className="font-medium text-(--earist-body-text)/70"
+      >
+        Default fallback
+      </Badge>
+    );
+  }
+  if (source === "FALLBACK_DEFAULT") {
+    return (
+      <Badge variant="outline" className="font-medium text-(--earist-warning)">
+        Default fallback
+      </Badge>
+    );
+  }
+  return (
+    <Badge
+      variant="outline"
+      className="font-medium text-(--earist-body-text)/70"
+    >
+      Not extracted
+    </Badge>
+  );
+}
+
 function QueueSkeleton() {
   return (
     <div className="space-y-2" aria-hidden="true">
@@ -244,6 +422,9 @@ export default function AdminCorVerificationPage() {
   const [selectedCor, setSelectedCor] = useState<string | null>(null);
   const [form, setForm] = useState<ConfirmForm>(EMPTY_FORM);
   const [programSelection, setProgramSelection] = useState<string | null>(null);
+  const [curriculumSelection, setCurriculumSelection] = useState<string | null>(
+    null,
+  );
   const [fieldError, setFieldError] = useState("");
   const [verifyError, setVerifyError] = useState("");
   const [rejectError, setRejectError] = useState("");
@@ -287,8 +468,48 @@ export default function AdminCorVerificationPage() {
   // finishes loading — while a manual Admin selection always takes precedence.
   // No effect (avoids cascading setState), no fuzzy matching, no Program
   // creation, and no other edited field is ever reset.
-  const autoProgramId = resolveProgramId(suggestions?.program, graduatePrograms);
+  const autoProgramId = resolveProgramId(
+    suggestions?.program,
+    graduatePrograms,
+    suggestions?.major,
+  );
   const confirmedProgramId = programSelection ?? autoProgramId;
+
+  const curriculumVersionsQuery = useQuery<{
+    versions: CurriculumVersionSummary[];
+  }>({
+    queryKey: ["programCurriculumVersions", confirmedProgramId],
+    queryFn: async () =>
+      (await apiClientRequest(
+        `/curricula/programs/${confirmedProgramId}/versions`,
+      )) || { versions: [] },
+    enabled: Boolean(confirmedProgramId),
+  });
+
+  const activeCurriculumVersions = (
+    curriculumVersionsQuery.data?.versions ?? []
+  ).filter((v) => v.isActive);
+  const curriculumResolution = resolveCurriculumVersion(
+    suggestions?.curriculum,
+    activeCurriculumVersions,
+  );
+  const validManualCurriculumSelection =
+    curriculumSelection &&
+    activeCurriculumVersions.some((v) => v.id === curriculumSelection)
+      ? curriculumSelection
+      : null;
+  const confirmedCurriculumVersionId =
+    validManualCurriculumSelection ?? curriculumResolution.versionId;
+  const effectiveCurriculumBadgeSource: CurriculumResolutionSource =
+    validManualCurriculumSelection ? "MANUAL" : curriculumResolution.source;
+  const selectedCurriculumVersion = activeCurriculumVersions.find(
+    (v) => v.id === confirmedCurriculumVersionId,
+  );
+  const selectedCurriculumLabel = selectedCurriculumVersion
+    ? formatCurriculumOptionLabel(selectedCurriculumVersion)
+    : confirmedProgramId
+      ? "Default active curriculum (automatic fallback)"
+      : "—";
 
   function setField<K extends keyof ConfirmForm>(key: K, value: string) {
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -314,6 +535,7 @@ export default function AdminCorVerificationPage() {
     // never leak between queued applicants.
     setForm(upload ? buildInitialForm(upload) : EMPTY_FORM);
     setProgramSelection(null);
+    setCurriculumSelection(null);
     setFieldError("");
     setVerifyError("");
     setRejectError("");
@@ -416,6 +638,7 @@ export default function AdminCorVerificationPage() {
       setSelectedCor(null);
       setForm(EMPTY_FORM);
       setProgramSelection(null);
+      setCurriculumSelection(null);
       setFieldError("");
       setVerifyError("");
       setFeedback({
@@ -443,6 +666,9 @@ export default function AdminCorVerificationPage() {
       middleNameOrInitial: form.middleNameOrInitial.trim(),
       email: form.email.trim(),
       programId: confirmedProgramId,
+      ...(confirmedCurriculumVersionId
+        ? { curriculumVersionId: confirmedCurriculumVersionId }
+        : {}),
     });
   }
 
@@ -466,6 +692,7 @@ export default function AdminCorVerificationPage() {
       setSelectedCor(null);
       setForm(EMPTY_FORM);
       setProgramSelection(null);
+      setCurriculumSelection(null);
       setFeedback({
         type: "success",
         message: "COR rejected. The applicant may submit a new COR.",
@@ -872,6 +1099,9 @@ export default function AdminCorVerificationPage() {
                         <p className="mt-1 text-xs break-words text-(--earist-body-text)">
                           COR extracted:{" "}
                           {collapse(suggestions?.program) || "Not extracted"}
+                          {collapse(suggestions?.major)
+                            ? ` — Major: ${collapse(suggestions?.major)}`
+                            : ""}
                         </p>
                       </div>
                       <div>
@@ -880,7 +1110,10 @@ export default function AdminCorVerificationPage() {
                         </p>
                         <Select
                           value={confirmedProgramId || null}
-                          onValueChange={(v) => setProgramSelection(v ?? "")}
+                          onValueChange={(v) => {
+                            setProgramSelection(v ?? "");
+                            setCurriculumSelection(null);
+                          }}
                           disabled={
                             programsQuery.isLoading || programsQuery.isError
                           }
@@ -923,6 +1156,91 @@ export default function AdminCorVerificationPage() {
                               Programs are never created here.
                             </p>
                           )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Curriculum Version */}
+                  <div className="rounded-lg border border-(--earist-border-gray) p-3">
+                    <div className="mb-2 flex items-center justify-between gap-2">
+                      <p className="text-sm font-semibold text-(--earist-primary)">
+                        Curriculum
+                      </p>
+                      <CurriculumBadge
+                        source={effectiveCurriculumBadgeSource}
+                        hasExtractedCurriculum={Boolean(
+                          collapse(suggestions?.curriculum),
+                        )}
+                      />
+                    </div>
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <div>
+                        <p className="mb-1 text-xs font-medium text-(--earist-body-text)">
+                          COR Reference
+                        </p>
+                        <p className="text-xs break-words text-(--earist-body-text)">
+                          COR extracted:{" "}
+                          {collapse(suggestions?.curriculum) || "Not extracted"}
+                        </p>
+                        <p className="mt-1 text-xs text-(--earist-body-text)">
+                          {!confirmedProgramId
+                            ? "Select a Program first to load its curriculum versions."
+                            : curriculumVersionsQuery.isLoading
+                              ? "Loading curriculum versions…"
+                              : curriculumVersionsQuery.isError ||
+                                  activeCurriculumVersions.length === 0
+                                ? "Verification will fall back to this program's default active curriculum."
+                                : curriculumResolution.note}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="mb-1 text-xs font-medium text-(--earist-body-text)">
+                          Confirmed Curriculum Version
+                        </p>
+                        <Select
+                          value={confirmedCurriculumVersionId || null}
+                          onValueChange={(v) => setCurriculumSelection(v ?? "")}
+                          disabled={
+                            !confirmedProgramId ||
+                            curriculumVersionsQuery.isLoading ||
+                            curriculumVersionsQuery.isError ||
+                            activeCurriculumVersions.length === 0
+                          }
+                        >
+                          <SelectTrigger id="curriculum" className="w-full">
+                            <span
+                              className={cn(
+                                "flex-1 truncate text-left",
+                                !selectedCurriculumVersion &&
+                                  "text-muted-foreground",
+                              )}
+                            >
+                              {!confirmedProgramId
+                                ? "Select a program first…"
+                                : curriculumVersionsQuery.isLoading
+                                  ? "Loading curriculum versions…"
+                                  : curriculumVersionsQuery.isError ||
+                                      activeCurriculumVersions.length === 0
+                                    ? "Default active curriculum (fallback)"
+                                    : selectedCurriculumLabel}
+                            </span>
+                          </SelectTrigger>
+                          <SelectContent
+                            alignItemWithTrigger={false}
+                            className="w-(--anchor-width)"
+                          >
+                            {activeCurriculumVersions.map((v) => (
+                              <SelectItem key={v.id} value={v.id}>
+                                {formatCurriculumOptionLabel(v)}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <p className="mt-1 text-xs text-(--earist-body-text)">
+                          Determines the student&apos;s initial Plan of
+                          Coursework checklist (NEW vs. OLD); adjustable later
+                          by Admin if needed.
+                        </p>
                       </div>
                     </div>
                   </div>
@@ -1090,6 +1408,7 @@ export default function AdminCorVerificationPage() {
             <SummaryRow label="Name" value={confirmedName} />
             <SummaryRow label="Email" value={form.email.trim()} />
             <SummaryRow label="Program" value={selectedProgramName} />
+            <SummaryRow label="Curriculum" value={selectedCurriculumLabel} />
             <SummaryRow
               label="Student Number"
               value={form.studentNumber.trim()}

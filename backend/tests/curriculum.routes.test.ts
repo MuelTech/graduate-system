@@ -136,7 +136,11 @@ describe("Curriculum routes RBAC & registration", () => {
       adminCapabilities: ["dashboard.view"],
     } as never);
 
-    const anyCap = requireAnyAdminCapability(["students.manage", "settings.manage"]);
+    const anyCap = requireAnyAdminCapability([
+      "students.manage",
+      "settings.manage",
+      "cor.verify",
+    ]);
     const res2 = makeMockRes();
     const next2 = vi.fn() as unknown as NextFunction;
     await anyCap(
@@ -146,6 +150,21 @@ describe("Curriculum routes RBAC & registration", () => {
     );
     expect(res2.statusCode).toBe(403);
     expect(next2).not.toHaveBeenCalled();
+
+    vi.mocked(prisma.user.findUnique).mockResolvedValueOnce({
+      isActive: true,
+      role: "ADMIN",
+      adminAccessLevel: "RESTRICTED",
+      adminCapabilities: ["cor.verify"],
+    } as never);
+    const resCor = makeMockRes();
+    const nextCor = vi.fn() as unknown as NextFunction;
+    await anyCap(
+      { user: { userId: "admin-cor", role: "ADMIN" } } as AuthenticatedRequest,
+      resCor,
+      nextCor,
+    );
+    expect(nextCor).toHaveBeenCalledTimes(1);
 
     vi.mocked(prisma.user.findUnique).mockResolvedValueOnce({
       isActive: true,

@@ -315,6 +315,36 @@ describe("CorService.verifyCor canonical verify + promote", () => {
     expect(forwarded.registrationNumber).not.toBe("");
   });
 
+  it("trims and forwards an optional Admin-confirmed curriculumVersionId", async () => {
+    const svc = new CorService();
+    await svc.verifyCor("cor-1", "admin-1", {
+      studentNumber: "2026-GS-00123",
+      ...confirmed,
+      curriculumVersionId: "  cv-old-1  ",
+    });
+
+    const forwarded = repo.verifyAndPromote.mock.calls[0][3] as Record<
+      string,
+      unknown
+    >;
+    expect(forwarded.curriculumVersionId).toBe("cv-old-1");
+  });
+
+  it("omits curriculumVersionId when blank so repository falls back to program default", async () => {
+    const svc = new CorService();
+    await svc.verifyCor("cor-1", "admin-1", {
+      studentNumber: "2026-GS-00123",
+      ...confirmed,
+      curriculumVersionId: "   ",
+    });
+
+    const forwarded = repo.verifyAndPromote.mock.calls[0][3] as Record<
+      string,
+      unknown
+    >;
+    expect(forwarded).not.toHaveProperty("curriculumVersionId");
+  });
+
   it("rejects a non-PENDING upload", async () => {
     repo.getUploadById.mockResolvedValue({ ...pendingUpload, status: "REJECTED" });
     const svc = new CorService();

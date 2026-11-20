@@ -42,11 +42,14 @@ export interface NativePdfExtraction {
 }
 
 /**
- * COR-1: deterministic EARIST COR parser output.
+ * COR-1 / COR-2 v2: deterministic EARIST COR parser output.
  *
- * Suggestion-only evidence for Admin review. These values are never
- * authoritative profile data and must never promote an Applicant; Admin
- * confirmation remains the sole verification authority.
+ * Suggestion-only evidence for Admin review (Student Number, Registration
+ * Number, Student Name, Program, Major, Curriculum, College, Email Address).
+ * Academic Year/Term, subject rows, fees, payments, receipts, and signatures
+ * remain unparsed. These values are never authoritative profile data and must
+ * never promote an Applicant; Admin confirmation remains the sole verification
+ * authority.
  */
 export interface CorStudentNameSuggestion {
   /** COR-displayed name after safe whitespace normalization. */
@@ -61,6 +64,8 @@ export interface CorExtractionSuggestions {
   registrationNumber: string | null;
   studentName: CorStudentNameSuggestion | null;
   program: string | null;
+  major: string | null;
+  curriculum: string | null;
   college: string | null;
   emailAddress: string | null;
 }

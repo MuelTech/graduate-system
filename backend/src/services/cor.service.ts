@@ -31,13 +31,15 @@ interface ManagedFile extends Express.Multer.File {
 /**
  * COR-5 canonical v1 Admin verification inputs. Only the Admin-confirmed
  * Student Number and an optional Registration Number are v1 authority.
- * Academic Year, Semester, Curriculum Year, Year Level, residency and the COR
- * extraction fields are NOT part of the v1 verification contract. The
- * verification method is server-controlled (see CANONICAL_VERIFICATION_METHOD).
+ * Academic Year, Semester, residency and the COR extraction fields are NOT
+ * part of the verification contract. The verification method is server-controlled
+ * (see CANONICAL_VERIFICATION_METHOD).
  *
  * COR-AUTH-1 (2026-10-05 authority correction): the Admin-confirmed COR
  * identity/enrollment values are authoritative for `User.firstName`,
- * `User.lastName`, `User.email`, and `Student.programId`.
+ * `User.lastName`, `User.email`, and `Student.programId` (and optionally
+ * Admin-confirmed `curriculumVersionId` within that Program, with safe
+ * fallback to the Program's default active curriculum when omitted).
  */
 interface VerifyCorData {
   studentNumber?: string;
@@ -47,6 +49,7 @@ interface VerifyCorData {
   middleNameOrInitial?: string;
   email?: string;
   programId?: string;
+  curriculumVersionId?: string;
 }
 
 function isUniqueConstraintError(error: unknown): boolean {
@@ -253,6 +256,11 @@ export class CorService {
             throw new AppError("Confirmed Program is required.", 400);
         }
 
+        const trimmedCurriculumVersionId = String(
+            data.curriculumVersionId ?? "",
+        ).trim();
+        const curriculumVersionId = trimmedCurriculumVersionId || undefined;
+
         const upload = await this.corRepository.getUploadById(corUploadId);
         if (!upload) throw new AppError("COR Upload not found.", 404);
         if (upload.status !== "PENDING") {
@@ -288,6 +296,7 @@ export class CorService {
                     lastName: userLastName,
                     email,
                     programId,
+                    ...(curriculumVersionId ? { curriculumVersionId } : {}),
                     verificationMethod: CANONICAL_VERIFICATION_METHOD,
                 },
                 adminId,

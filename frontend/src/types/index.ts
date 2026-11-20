@@ -71,6 +71,8 @@ export interface CorExtractionSuggestions {
   registrationNumber: string | null;
   studentName: CorStudentNameSuggestion | null;
   program: string | null;
+  major?: string | null;
+  curriculum?: string | null;
   college: string | null;
   emailAddress: string | null;
 }

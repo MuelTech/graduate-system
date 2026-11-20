@@ -130,7 +130,14 @@ export default function StudentCurriculumPage() {
             Self-service Plan of Coursework tracker (EARIST Manual §7.9 &amp;
             §7.16). Use this checklist to track your completed, in-progress, and
             remaining subjects — encoding entries here is optional and does not
-            restrict Comprehensive Examination or Thesis/Dissertation workflows.
+            restrict Comprehensive Examination or Thesis/Dissertation workflows.{" "}
+            If your assigned curriculum version (
+            {checklist.curriculumVersion.curriculumType}
+            {checklist.curriculumVersion.effectiveSchoolYear
+              ? ` · ${checklist.curriculumVersion.effectiveSchoolYear}`
+              : ""}
+            ) does not match your Certificate of Registration (COR), please
+            contact the Graduate School Office to update it.
           </div>
 
           <CurriculumSummaryStrip checklist={checklist} />

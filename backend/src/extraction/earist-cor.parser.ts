@@ -4,24 +4,24 @@ import type {
 } from "./cor-extraction.types";
 
 /**
- * COR-1: deterministic EARIST Certificate of Registration parser.
+ * COR-1 / COR-2 v2: deterministic EARIST Certificate of Registration parser.
  *
  * This module is a pure function of normalized extracted text. It maps the
- * first supported EARIST COR layout (`SURNAME, FIRST NAME MIDDLE NAME/INITIAL`)
+ * supported EARIST COR layout (`SURNAME, FIRST NAME MIDDLE NAME/INITIAL`)
  * into bounded, typed Admin review suggestions.
  *
  * Authority: extraction is assistive only. The returned suggestions are never
  * authoritative profile data and never verify a COR or promote an Applicant.
- * Admin confirmation remains the sole promotion authority (later packages).
+ * Admin confirmation remains the sole promotion authority.
  *
- * v1 scope (see DOCUMENT_LIFECYCLE_SOURCE_OF_TRUTH.md §4.1):
+ * v2 scope:
  *   Student Number, Registration Number, Student Name (raw + components),
- *   Program, College, Email Address.
- * Academic Year, Semester, Curriculum Year, residency, subject rows, fees,
+ *   Program, Major, Curriculum, College, Email Address.
+ * Academic Year, Semester, Year Level, residency, subject rows, fees,
  * payments, receipts and signatures are deliberately NOT parsed.
  */
 
-export const EARIST_COR_PARSER_VERSION = "earist-cor-parser@1";
+export const EARIST_COR_PARSER_VERSION = "earist-cor-parser@2";
 
 /**
  * The real EARIST COR PDF text layer is overprinted: each text run is emitted
@@ -88,8 +88,8 @@ function normalizeCorText(text: string | null | undefined): string {
  * Requires leading whitespace so a label word is never matched inside a value
  * (e.g. "age" inside "Management").
  */
-const NEXT_LABEL =
-  String.raw`\s+(?:Registration\s*No|Student\s*No|Name|Program|College|Gender|Major|Curriculum|Age|Year\s*Level|Scholarship(?:\/Discount)?|Email\s*Address)\b`;
+const LABEL_WORDS = String.raw`(?:Registration\s*No|Student\s*No|Name|Program|College|Gender|Major|Curriculum|Age|Year\s*Level|Scholarship(?:\/Discount)?|Email\s*Address)`;
+const NEXT_LABEL = String.raw`\s+${LABEL_WORDS}\b`;
 
 const REGISTRATION_NUMBER_RE =
   /(?<![A-Za-z])Registration\s*No[:\s]*([A-Za-z0-9][A-Za-z0-9-]*)/i;
@@ -105,6 +105,14 @@ const PROGRAM_RE = new RegExp(
   String.raw`(?<![A-Za-z])Program[:\s]*(.+?)(?=${NEXT_LABEL}|$)`,
   "i",
 );
+const MAJOR_RE = new RegExp(
+  String.raw`(?<![A-Za-z])Major[\s:]*(?=[A-Za-z0-9])(?!${LABEL_WORDS}(?:[\s:]|$))(.+?)(?=${NEXT_LABEL}|$)`,
+  "i",
+);
+const CURRICULUM_RE = new RegExp(
+  String.raw`(?<![A-Za-z])Curriculum[\s:]*(?=[A-Za-z0-9])(?!${LABEL_WORDS}(?:[\s:]|$))(.+?)(?=${NEXT_LABEL}|$)`,
+  "i",
+);
 const COLLEGE_RE = new RegExp(
   String.raw`(?<![A-Za-z])College[:\s]*(.+?)(?=${NEXT_LABEL}|$)`,
   "i",
@@ -114,6 +122,15 @@ function firstCapturedValue(text: string, pattern: RegExp): string | null {
   const match = pattern.exec(text);
   const value = match?.[1]?.trim();
   return value ? value : null;
+}
+
+function cleanOptionalCorLabel(raw: string | null): string | null {
+  if (!raw) return null;
+  const cleaned = raw.replace(/[\s:]+$/g, "").trim();
+  if (!cleaned || /^(?:n\/a|na|none|-+)$/i.test(cleaned)) {
+    return null;
+  }
+  return cleaned;
 }
 
 /**
@@ -164,6 +181,8 @@ function emptySuggestions(): CorExtractionSuggestions {
     registrationNumber: null,
     studentName: null,
     program: null,
+    major: null,
+    curriculum: null,
     college: null,
     emailAddress: null,
   };
@@ -185,6 +204,10 @@ export function parseEaristCorText(
     registrationNumber: firstCapturedValue(normalized, REGISTRATION_NUMBER_RE),
     studentName: parseStudentName(firstCapturedValue(normalized, NAME_RE)),
     program: firstCapturedValue(normalized, PROGRAM_RE),
+    major: cleanOptionalCorLabel(firstCapturedValue(normalized, MAJOR_RE)),
+    curriculum: cleanOptionalCorLabel(
+      firstCapturedValue(normalized, CURRICULUM_RE),
+    ),
     college: firstCapturedValue(normalized, COLLEGE_RE),
     emailAddress: firstCapturedValue(normalized, EMAIL_RE),
   };
