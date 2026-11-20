@@ -242,6 +242,15 @@ export class AdminStudentRepository {
         program: {
           select: { id: true, programName: true, maxResidencyYears: true },
         },
+        curriculumVersion: {
+          select: {
+            id: true,
+            versionCode: true,
+            label: true,
+            curriculumType: true,
+            effectiveSchoolYear: true,
+          },
+        },
         compExamRecords: {
           select: {
             id: true,
@@ -376,6 +385,18 @@ export class AdminStudentRepository {
       admissionStatus: student.admissionStatus,
       enrollmentDate: student.enrollmentDate?.toISOString() ?? null,
       curriculumType: student.curriculumType ?? null,
+      curriculumVersion:
+        (
+          student as {
+            curriculumVersion?: {
+              id: string;
+              versionCode: string;
+              label: string;
+              curriculumType: string;
+              effectiveSchoolYear: string | null;
+            } | null;
+          }
+        ).curriculumVersion ?? null,
       isActive: userExtras.isActive ?? true,
       mustChangePassword: userExtras.mustChangePassword ?? false,
       canChangeProgram: AdminStudentRepository.canChangeProgram(
@@ -656,6 +677,29 @@ export class AdminStudentRepository {
     });
   }
 
+  async findCurriculumVersionForProgram(
+    programId: string,
+    preferredType?: "NEW" | "OLD" | null,
+  ): Promise<{ id: string; curriculumType: "NEW" | "OLD" } | null> {
+    if (!prisma.curriculumVersion?.findMany) return null;
+    const versions = await prisma.curriculumVersion.findMany({
+      where: { programId, isActive: true },
+      orderBy: [{ isDefaultForNewStudents: "desc" }, { createdAt: "desc" }],
+      select: { id: true, curriculumType: true, isDefaultForNewStudents: true },
+    });
+    if (versions.length === 0) return null;
+    const match =
+      (preferredType
+        ? versions.find((v) => v.curriculumType === preferredType)
+        : undefined) ??
+      versions.find((v) => v.isDefaultForNewStudents) ??
+      versions[0];
+    return {
+      id: match.id,
+      curriculumType: match.curriculumType,
+    };
+  }
+
   async updateStudentProfile(params: {
     studentId: string;
     userId: string;
@@ -672,6 +716,7 @@ export class AdminStudentRepository {
       cellphone?: string;
       programId?: string;
       curriculumType?: "NEW" | "OLD" | null;
+      curriculumVersionId?: string | null;
       enrollmentDate?: Date | null;
       residencyStartDate?: Date | null;
     };

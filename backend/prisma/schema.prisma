@@ -67,6 +67,10 @@ model User {
   examResultDecisions                ExamResultDecision[]
   savedSignature                     UserSignature?
   compExamRecordsRecorded            CompExamRecord[]          @relation("CompExamRecordedBy")
+  courseProgressEncoded              StudentCourseProgress[]   @relation("CourseProgressEncodedBy")
+  courseProgressVerified             StudentCourseProgress[]   @relation("CourseProgressVerifiedBy")
+  publicationsVerified               StudentGraduationMilestone[] @relation("PublicationVerifiedBy")
+  graduationMilestonesUpdated        StudentGraduationMilestone[] @relation("GraduationMilestoneUpdatedBy")
   customRole                         CustomRole?               @relation("UserCustomRole", fields: [customRoleId], references: [id])
 
   @@index([customRoleId], map: "users_custom_role_id_fkey")
@@ -83,6 +87,7 @@ model Student {
   enrollmentDate           DateTime?                 @map("enrollment_date") @db.Date
   residencyStartDate       DateTime?                 @map("residency_start_date") @db.Date
   curriculumType           CurriculumType?           @map("curriculum_type")
+  curriculumVersionId      String?                   @map("curriculum_version_id")
   pinnacleApplicantId      String?                   @map("pinnacle_applicant_id")
   corExtractedYearLevel    String?                   @map("cor_extracted_year_level")
   corExtractedScholarship  String?                   @map("cor_extracted_scholarship")
@@ -100,10 +105,14 @@ model Student {
   studentFiles             StudentFile[]
   studentRequirements      StudentRequirement[]
   program                  Program                   @relation(fields: [programId], references: [id])
+  curriculumVersion        CurriculumVersion?        @relation(fields: [curriculumVersionId], references: [id], onDelete: SetNull)
   user                     User                      @relation(fields: [userId], references: [id])
   thesisRecords            ThesisRecord[]
+  courseProgress           StudentCourseProgress[]
+  graduationMilestone      StudentGraduationMilestone?
 
   @@index([programId], map: "students_program_id_fkey")
+  @@index([curriculumVersionId], map: "students_curriculum_version_id_fkey")
   @@map("students")
 }
 
@@ -139,6 +148,7 @@ model Program {
   memos                     Memo[]
   requirementsChecklist     RequirementsChecklist[]
   students                  Student[]
+  curriculumVersions        CurriculumVersion[]
   examMcqTotal              Int?                      @map("exam_mcq_total")
   examEssayTotal            Int?                      @map("exam_essay_total")
   examPassingScore          Int?                      @map("exam_passing_score")
@@ -1914,4 +1924,157 @@ model UserSignature {
   user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("user_signatures")
+}
+
+enum CurriculumGroupType {
+  FOUNDATION
+  MAJOR
+  COGNATE
+  THESIS
+  DISSERTATION
+  FOREIGN_LANGUAGE
+  BRIDGING
+  OTHER
+
+  @@map("curriculum_group_type")
+}
+
+enum CourseProgressStatus {
+  NOT_TAKEN
+  IN_PROGRESS
+  PASSED
+  FAILED
+  INCOMPLETE
+  DROPPED
+  CREDITED
+
+  @@map("course_progress_status")
+}
+
+enum CourseProgressActorRole {
+  STUDENT
+  ADMIN
+
+  @@map("course_progress_actor_role")
+}
+
+enum PublicationMilestoneStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  SUBMITTED
+  VERIFIED
+
+  @@map("publication_milestone_status")
+}
+
+model CurriculumVersion {
+  id                      String                  @id @default(uuid()) @map("curriculum_version_id")
+  programId               String                  @map("program_id")
+  versionCode             String                  @map("version_code") @db.VarChar(64)
+  label                   String
+  curriculumType          CurriculumType          @default(NEW) @map("curriculum_type")
+  effectiveSchoolYear     String?                 @map("effective_school_year") @db.VarChar(64)
+  totalRequiredUnits      Int                     @map("total_required_units")
+  isDefaultForNewStudents Boolean                 @default(false) @map("is_default_for_new_students")
+  isActive                Boolean                 @default(true) @map("is_active")
+  notes                   String?                 @db.Text
+  createdAt               DateTime                @default(now()) @map("created_at")
+  updatedAt               DateTime                @updatedAt @map("updated_at")
+  program                 Program                 @relation(fields: [programId], references: [id], onDelete: Cascade)
+  groups                  CurriculumCourseGroup[]
+  students                Student[]
+
+  @@unique([programId, versionCode], map: "curriculum_versions_program_code_key")
+  @@index([programId], map: "curriculum_versions_program_id_fkey")
+  @@map("curriculum_versions")
+}
+
+model CurriculumCourseGroup {
+  id                  String              @id @default(uuid()) @map("course_group_id")
+  curriculumVersionId String              @map("curriculum_version_id")
+  groupType           CurriculumGroupType @map("group_type")
+  label               String
+  requiredUnits       Int                 @map("required_units")
+  countsTowardWce     Boolean             @default(true) @map("counts_toward_wce")
+  selectionNote       String?             @map("selection_note")
+  displayOrder        Int                 @default(0) @map("display_order")
+  createdAt           DateTime            @default(now()) @map("created_at")
+  updatedAt           DateTime            @updatedAt @map("updated_at")
+  curriculumVersion   CurriculumVersion   @relation(fields: [curriculumVersionId], references: [id], onDelete: Cascade)
+  courses             CurriculumCourse[]
+
+  @@index([curriculumVersionId], map: "curriculum_course_groups_version_id_fkey")
+  @@map("curriculum_course_groups")
+}
+
+model CurriculumCourse {
+  id               String                  @id @default(uuid()) @map("curriculum_course_id")
+  groupId          String                  @map("course_group_id")
+  courseCode       String                  @map("course_code") @db.VarChar(32)
+  courseTitle      String                  @map("course_title")
+  units            Int
+  isRequired       Boolean                 @default(true) @map("is_required")
+  prerequisiteNote String?                 @map("prerequisite_note")
+  displayOrder     Int                     @default(0) @map("display_order")
+  createdAt        DateTime                @default(now()) @map("created_at")
+  updatedAt        DateTime                @updatedAt @map("updated_at")
+  group            CurriculumCourseGroup   @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  studentProgress  StudentCourseProgress[]
+
+  @@unique([groupId, courseCode], map: "curriculum_courses_group_code_key")
+  @@index([groupId], map: "curriculum_courses_group_id_fkey")
+  @@map("curriculum_courses")
+}
+
+model StudentCourseProgress {
+  id                 String                  @id @default(uuid()) @map("student_course_progress_id")
+  studentId          String                  @map("student_id")
+  curriculumCourseId String                  @map("curriculum_course_id")
+  status             CourseProgressStatus    @default(NOT_TAKEN)
+  rating             String?                 @db.VarChar(16)
+  semester           String?                 @db.VarChar(32)
+  schoolYear         String?                 @map("school_year") @db.VarChar(32)
+  encodedByRole      CourseProgressActorRole @default(STUDENT) @map("encoded_by_role")
+  encodedById        String?                 @map("encoded_by_id")
+  isVerifiedByAdmin  Boolean                 @default(false) @map("is_verified_by_admin")
+  verifiedById       String?                 @map("verified_by_id")
+  verifiedAt         DateTime?               @map("verified_at")
+  remarks            String?                 @db.Text
+  createdAt          DateTime                @default(now()) @map("created_at")
+  updatedAt          DateTime                @updatedAt @map("updated_at")
+  student            Student                 @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  curriculumCourse   CurriculumCourse        @relation(fields: [curriculumCourseId], references: [id], onDelete: Cascade)
+  encodedBy          User?                   @relation("CourseProgressEncodedBy", fields: [encodedById], references: [id], onDelete: SetNull)
+  verifiedBy         User?                   @relation("CourseProgressVerifiedBy", fields: [verifiedById], references: [id], onDelete: SetNull)
+
+  @@unique([studentId, curriculumCourseId], map: "student_course_progress_student_course_key")
+  @@index([studentId], map: "student_course_progress_student_id_fkey")
+  @@index([curriculumCourseId], map: "student_course_progress_course_id_fkey")
+  @@index([encodedById], map: "student_course_progress_encoded_by_id_fkey")
+  @@index([verifiedById], map: "student_course_progress_verified_by_id_fkey")
+  @@map("student_course_progress")
+}
+
+model StudentGraduationMilestone {
+  id                      String                     @id @default(uuid()) @map("graduation_milestone_id")
+  studentId               String                     @unique @map("student_id")
+  publicationStatus       PublicationMilestoneStatus @default(NOT_STARTED) @map("publication_status")
+  publicationTitle        String?                    @map("publication_title") @db.Text
+  publicationVenue        String?                    @map("publication_venue") @db.VarChar(255)
+  publicationUrl          String?                    @map("publication_url") @db.VarChar(500)
+  publicationYear         String?                    @map("publication_year") @db.VarChar(16)
+  publicationNotes        String?                    @map("publication_notes") @db.Text
+  isPublicationVerified   Boolean                    @default(false) @map("is_publication_verified")
+  publicationVerifiedById String?                    @map("publication_verified_by_id")
+  publicationVerifiedAt   DateTime?                  @map("publication_verified_at")
+  updatedById             String?                    @map("updated_by_id")
+  createdAt               DateTime                   @default(now()) @map("created_at")
+  updatedAt               DateTime                   @updatedAt @map("updated_at")
+  student                 Student                    @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  publicationVerifiedBy   User?                      @relation("PublicationVerifiedBy", fields: [publicationVerifiedById], references: [id], onDelete: SetNull)
+  updatedBy               User?                      @relation("GraduationMilestoneUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+
+  @@index([publicationVerifiedById], map: "student_graduation_milestones_verified_by_fkey")
+  @@index([updatedById], map: "student_graduation_milestones_updated_by_fkey")
+  @@map("student_graduation_milestones")
 }

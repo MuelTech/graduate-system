@@ -67,6 +67,13 @@ export interface AdminStudentDetail {
   /** ISO string; null when not recorded. */
   enrollmentDate: string | null;
   curriculumType: string | null;
+  curriculumVersion?: {
+    id: string;
+    versionCode: string;
+    label: string;
+    curriculumType: string;
+    effectiveSchoolYear: string | null;
+  } | null;
   isActive?: boolean;
   mustChangePassword?: boolean;
   canChangeProgram?: boolean;

@@ -420,6 +420,20 @@ export class CorRepository {
                 );
             }
 
+            const defaultCurriculumVersion = tx.curriculumVersion?.findFirst
+                ? await tx.curriculumVersion.findFirst({
+                    where: {
+                        programId: verificationData.programId,
+                        isActive: true,
+                    },
+                    orderBy: [
+                        { isDefaultForNewStudents: 'desc' },
+                        { createdAt: 'desc' },
+                    ],
+                    select: { id: true, curriculumType: true },
+                })
+                : null;
+
             // 6. Conditional promotion writes (affected-row checks close races).
             const promotedStudent = await tx.student.updateMany({
                 where: { id: studentId, admissionStatus: 'APPLICANT' },
@@ -428,6 +442,13 @@ export class CorRepository {
                     studentNumber: verificationData.studentNumber,
                     // COR-AUTH-1: Admin-confirmed existing Program.
                     programId: verificationData.programId,
+                    // Bind default curriculum version non-destructively when available.
+                    ...(defaultCurriculumVersion
+                        ? {
+                            curriculumVersionId: defaultCurriculumVersion.id,
+                            curriculumType: defaultCurriculumVersion.curriculumType,
+                        }
+                        : {}),
                     // System enrollment/promotion confirmation timing only. It
                     // is NOT official residency start; `residencyStartDate` is
                     // deliberately never assigned from the verification time.
