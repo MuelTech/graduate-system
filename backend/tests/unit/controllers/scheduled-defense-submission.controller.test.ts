@@ -17,8 +17,9 @@ const mocks = vi.hoisted(() => ({
   adminPdf: vi.fn(),
   filename: vi.fn(),
   detail: vi.fn(),
+  findUser: vi.fn(),
 }));
-vi.mock("../../../src/config/database", () => ({ default: {} }));
+vi.mock("../../../src/config/database", () => ({ default: { user: { findUnique: mocks.findUser } } }));
 vi.mock("../../../src/services/thesis.service", () => ({
   ThesisService: class {
     getScheduledDefenseSubmission = mocks.submission;
@@ -55,6 +56,7 @@ describe("PREDEF-2 authenticated read-only routes", () => {
   });
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.findUser.mockResolvedValue({ isActive: true, role: "STUDENT", tokenVersion: 1, panelist: null });
     mocks.submission.mockResolvedValue({
       scheduleId: "exact-schedule",
       manuscript: { id: "v1" },

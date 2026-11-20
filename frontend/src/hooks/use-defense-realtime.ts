@@ -240,7 +240,11 @@ export function useDefenseRealtime({
       // Authentication failures are not a reason to sign the user out: REST
       // remains the session authority. Stop retrying with the rejected token;
       // a refreshed token re-runs this effect and reconnects.
-      if (error?.message === "UNAUTHORIZED") {
+      if (
+        error?.message === "UNAUTHORIZED" ||
+        error?.message === "ACCOUNT_DEACTIVATED" ||
+        error?.message === "SESSION_INVALIDATED"
+      ) {
         socket.disconnect();
         return;
       }

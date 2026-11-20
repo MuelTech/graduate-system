@@ -25,7 +25,22 @@ export const apiServerRequest = async (
 
   // Gracefully redirect the user rather than throwing an error boundary crash
   if (response.status === 401) {
-    redirect("/login");
+    const errorData = await response.json().catch(() => ({}));
+    const code = typeof errorData?.code === "string" ? errorData.code : "";
+    redirect(
+      code === "SESSION_INVALIDATED"
+        ? "/login?reason=session_invalidated"
+        : "/login",
+    );
+  }
+
+  if (response.status === 403) {
+    const errorData = await response.json().catch(() => ({}));
+    const code = typeof errorData?.code === "string" ? errorData.code : "";
+    if (code === "ACCOUNT_DEACTIVATED") {
+      redirect("/login?reason=deactivated");
+    }
+    throw new Error(errorData.error || `Server API error: ${response.status}`);
   }
 
   if (!response.ok) {

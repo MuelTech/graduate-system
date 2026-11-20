@@ -2,6 +2,7 @@ import prisma from "../config/database";
 import { AdminAccessLevel, UserRole } from "@prisma/client";
 import { sanitizeAdminCapabilities } from "../config/admin-capabilities";
 import { AppError } from "../utils/AppError";
+import { disconnectUserDefenseSockets } from "../realtime/defense-realtime.registry";
 
 const adminSelect = {
   id: true,
@@ -208,6 +209,11 @@ export class AdminAdministratorRepository {
       if (passwordHash) {
         updateData.passwordHash = passwordHash;
       }
+      const shouldInvalidateSessions =
+        (current.isActive && !nextIsActive) || Boolean(passwordHash);
+      if (shouldInvalidateSessions) {
+        updateData.tokenVersion = { increment: 1 };
+      }
 
       const updated = await tx.user.update({
         where: { id },
@@ -215,10 +221,17 @@ export class AdminAdministratorRepository {
         select: adminSelect,
       });
 
+      const statusTransition =
+        current.isActive !== nextIsActive
+          ? nextIsActive
+            ? "USER_ACCOUNT_REACTIVATED"
+            : "USER_ACCOUNT_DEACTIVATED"
+          : null;
+
       await tx.auditLog.create({
         data: {
           actorId,
-          actionType: "ADMIN_ACCOUNT_UPDATED",
+          actionType: statusTransition ?? "ADMIN_ACCOUNT_UPDATED",
           targetTable: "users",
           targetId: id,
           description: `Updated Administrator account ${updated.email} (${nextAccessLevel}, active=${nextIsActive}).`,
@@ -236,10 +249,22 @@ export class AdminAdministratorRepository {
       });
 
       return {
-        ...updated,
-        adminAccessLevel: updated.adminAccessLevel ?? "FULL",
-        adminCapabilities: nextCapabilities,
+        result: {
+          ...updated,
+          adminAccessLevel: updated.adminAccessLevel ?? "FULL",
+          adminCapabilities: nextCapabilities,
+        },
+        shouldInvalidateSessions,
+        deactivated: current.isActive && !nextIsActive,
       };
+    }).then((payload) => {
+      if (payload.shouldInvalidateSessions) {
+        void disconnectUserDefenseSockets(
+          id,
+          payload.deactivated ? "ACCOUNT_DEACTIVATED" : "SESSION_INVALIDATED",
+        );
+      }
+      return payload.result;
     });
   }
 }

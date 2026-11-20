@@ -1,6 +1,7 @@
 // backend/src/repositories/admin-applicant.repository.ts
 
 import prisma from "../config/database";
+import { disconnectUserDefenseSockets } from "../realtime/defense-realtime.registry";
 import { validReconsideredApplicationIds } from "../services/exam-effective-result.rules";
 import {
   AdminApplicantListQuery,
@@ -216,12 +217,16 @@ export class AdminApplicantRepository {
     oldSnapshot: Record<string, unknown>;
     newSnapshot: Record<string, unknown>;
   }) {
-    return prisma.$transaction(async (tx) => {
+    const shouldInvalidateSessions = params.userData.isActive === false;
+    await prisma.$transaction(async (tx) => {
       if (Object.keys(params.userData).length > 0) {
         await tx.user.update({
           where: { id: params.userId },
           data: {
             ...params.userData,
+            ...(shouldInvalidateSessions
+              ? { tokenVersion: { increment: 1 } }
+              : {}),
             updatedById: params.adminId,
           },
         });
@@ -244,6 +249,10 @@ export class AdminApplicantRepository {
         },
       });
     });
+
+    if (shouldInvalidateSessions) {
+      void disconnectUserDefenseSockets(params.userId, "ACCOUNT_DEACTIVATED");
+    }
   }
 
   async resetApplicantPassword(params: {
@@ -253,12 +262,13 @@ export class AdminApplicantRepository {
     passwordHash: string;
     email: string;
   }) {
-    return prisma.$transaction(async (tx) => {
+    await prisma.$transaction(async (tx) => {
       await tx.user.update({
         where: { id: params.userId },
         data: {
           passwordHash: params.passwordHash,
           mustChangePassword: true,
+          tokenVersion: { increment: 1 },
           updatedById: params.adminId,
         },
       });
@@ -279,6 +289,7 @@ export class AdminApplicantRepository {
         },
       });
     });
+    void disconnectUserDefenseSockets(params.userId, "SESSION_INVALIDATED");
   }
 
   async deleteApplicantAccount(params: {

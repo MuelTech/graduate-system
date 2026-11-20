@@ -4,8 +4,8 @@ import type { AddressInfo } from "node:net";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { AppError } from "../../../src/utils/AppError";
 
-const mocks = vi.hoisted(() => ({ pdf: vi.fn(), list: vi.fn(), create: vi.fn() }));
-vi.mock("../../../src/config/database", () => ({ default: {} }));
+const mocks = vi.hoisted(() => ({ pdf: vi.fn(), list: vi.fn(), create: vi.fn(), findUser: vi.fn() }));
+vi.mock("../../../src/config/database", () => ({ default: { user: { findUnique: mocks.findUser } } }));
 vi.mock("../../../src/services/adviser-request-record.service", () => ({ AdviserRequestRecordService: class {
   list = mocks.list; generatePdf = mocks.pdf;
 } }));
@@ -29,6 +29,7 @@ describe("GS020-1B authenticated Adviser Request record routes", () => {
   });
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.findUser.mockResolvedValue({ isActive: true, role: "STUDENT", tokenVersion: 1, panelist: null });
     mocks.pdf.mockResolvedValue({ pdf: Buffer.from("%PDF-1.7\nGS020"), filename: "Sam-Student-Adviser-Request.pdf" });
     mocks.list.mockResolvedValue([{ id: "req-1", studentName: "Sam Student", pdfAvailable: true }]);
     mocks.create.mockResolvedValue({ id: "req-1" });

@@ -19,3 +19,22 @@ export function setDefenseRealtimeServer(
 export function getDefenseRealtimeServer(): DefenseRealtimeServer | null {
   return activeServer;
 }
+
+/**
+ * Best-effort disconnection of all active defense Socket.IO connections for a
+ * user whose account was deactivated or whose credentials/session were revoked.
+ * Safe no-op when the realtime server is not running.
+ */
+export async function disconnectUserDefenseSockets(
+  userId: string,
+  reason: "ACCOUNT_DEACTIVATED" | "SESSION_INVALIDATED" = "SESSION_INVALIDATED",
+): Promise<number> {
+  if (!activeServer || !userId) {
+    return 0;
+  }
+  try {
+    return await activeServer.disconnectUser(userId, reason);
+  } catch {
+    return 0;
+  }
+}

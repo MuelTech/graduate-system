@@ -6,6 +6,8 @@ import jwt from "jsonwebtoken";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { AppError } from "../../../src/utils/AppError";
 
+const dbMock = vi.hoisted(() => ({ user: { findUnique: vi.fn() } }));
+vi.mock("../../../src/config/database", () => ({ default: dbMock }));
 const service = vi.hoisted(() => ({ createSlot: vi.fn(), getAllSlots: vi.fn(), updateSlot: vi.fn(), toggleSlotStatus: vi.fn(), getAvailableSlots: vi.fn(), scheduleExam: vi.fn(), getApplicantStatus: vi.fn(), assignApplicant: vi.fn(), getAssignmentOptions: vi.fn() }));
 vi.mock("../../../src/services/exam.service", () => ({ ExamService: class {
   createSlot = service.createSlot; getAllSlots = service.getAllSlots; updateSlot = service.updateSlot;
@@ -26,6 +28,7 @@ beforeAll(async () => {
 afterAll(async () => { const closed = once(server, "close"); server.close(); server.closeAllConnections(); await closed; vi.unstubAllEnvs(); });
 beforeEach(() => {
   vi.resetAllMocks();
+  dbMock.user.findUnique.mockResolvedValue({ isActive: true, role: "APPLICANT", tokenVersion: 1, panelist: null });
   for (const method of Object.values(service)) method.mockResolvedValue({ id });
 });
 async function request(method: string, path: string, role?: string, body?: unknown) {

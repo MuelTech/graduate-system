@@ -23,7 +23,15 @@ export function createPrismaDefenseRealtimeStore(
 
     async hasPanelAssignment(scheduleId, userId) {
       const assignment = await client.panelAssignment.findFirst({
-        where: { scheduleId, userId, isActive: true },
+        where: {
+          scheduleId,
+          userId,
+          isActive: true,
+          user: {
+            isActive: true,
+            NOT: { panelist: { is: { isActive: false } } },
+          },
+        },
         select: { id: true },
       });
 
@@ -44,6 +52,10 @@ export function createPrismaDefenseRealtimeStore(
           scheduleId,
           userId: { in: exactUserIds },
           isActive: true,
+          user: {
+            isActive: true,
+            NOT: { panelist: { is: { isActive: false } } },
+          },
         },
         select: { userId: true },
       });

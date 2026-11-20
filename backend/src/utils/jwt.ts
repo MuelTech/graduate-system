@@ -10,6 +10,7 @@ import jwt from "jsonwebtoken";
 export interface AuthenticatedIdentity {
   userId: string;
   role: string;
+  tokenVersion?: number;
 }
 
 export class JwtConfigurationError extends Error {
@@ -52,5 +53,18 @@ export function verifyAccessToken(
     throw new JwtVerificationError();
   }
 
-  return { userId: decoded.userId, role: decoded.role };
+  const identity: AuthenticatedIdentity = {
+    userId: decoded.userId,
+    role: decoded.role,
+  };
+
+  if (
+    typeof decoded.tokenVersion === "number" &&
+    Number.isInteger(decoded.tokenVersion) &&
+    decoded.tokenVersion >= 1
+  ) {
+    identity.tokenVersion = decoded.tokenVersion;
+  }
+
+  return identity;
 }

@@ -1,6 +1,7 @@
 import { Prisma } from "@prisma/client";
 import prisma from "../config/database";
 import { UserRole } from "@prisma/client";
+import { disconnectUserDefenseSockets } from "../realtime/defense-realtime.registry";
 
 /**
  * Patch-safe panelist flag resolution.
@@ -145,11 +146,24 @@ export class AdminPanelistRepository {
             if (typeof data.email === "string" && data.email.trim()) {
                 userData.email = data.email.trim();
             }
+            const previousIsActive =
+                panelistRecord.user.isActive && panelistRecord.isActive;
+            const nextIsActive =
+                typeof data.isActive === "boolean"
+                    ? data.isActive
+                    : previousIsActive;
+            const shouldInvalidateSessions =
+                (typeof data.isActive === "boolean" && !data.isActive) ||
+                Boolean(passwordHash);
+
             if (typeof data.isActive === "boolean") {
                 userData.isActive = data.isActive;
             }
             if (passwordHash) {
                 userData.passwordHash = passwordHash;
+            }
+            if (shouldInvalidateSessions) {
+                userData.tokenVersion = { increment: 1 };
             }
 
             await tx.user.update({
@@ -168,7 +182,7 @@ export class AdminPanelistRepository {
                     ? data.canEvaluateEssays
                     : panelistRecord.canEvaluateEssays;
 
-            return tx.panelist.update({
+            const updatedPanelist = await tx.panelist.update({
                 where: { id },
                 data: {
                     highestEducationalAttainment:
@@ -190,6 +204,45 @@ export class AdminPanelistRepository {
                 },
                 include: { user: { select: userSelect } },
             });
+
+            if (typeof data.isActive === "boolean" && previousIsActive !== nextIsActive) {
+                await tx.auditLog.create({
+                    data: {
+                        actorId: adminId,
+                        actionType: nextIsActive
+                            ? "USER_ACCOUNT_REACTIVATED"
+                            : "USER_ACCOUNT_DEACTIVATED",
+                        targetTable: "users",
+                        targetId: panelistRecord.userId,
+                        oldValue: JSON.stringify({
+                            isActive: previousIsActive,
+                            panelistId: id,
+                        }),
+                        newValue: JSON.stringify({
+                            isActive: nextIsActive,
+                            panelistId: id,
+                        }),
+                        description: nextIsActive
+                            ? `Reactivated Faculty account ${updatedPanelist.user.email}.`
+                            : `Deactivated Faculty account ${updatedPanelist.user.email}.`,
+                    },
+                });
+            }
+
+            return {
+                updatedPanelist,
+                userId: panelistRecord.userId,
+                shouldInvalidateSessions,
+                deactivated: typeof data.isActive === "boolean" && !data.isActive,
+            };
+        }).then((payload) => {
+            if (payload.shouldInvalidateSessions) {
+                void disconnectUserDefenseSockets(
+                    payload.userId,
+                    payload.deactivated ? "ACCOUNT_DEACTIVATED" : "SESSION_INVALIDATED",
+                );
+            }
+            return payload.updatedPanelist;
         });
     }
 }

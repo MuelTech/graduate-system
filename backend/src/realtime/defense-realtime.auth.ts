@@ -1,5 +1,6 @@
 import type { AuthenticatedIdentity } from "../utils/jwt";
 import { verifyAccessToken } from "../utils/jwt";
+import type { SessionValidationResult } from "../services/session-validation.service";
 
 interface DefenseAuthSocket {
   handshake: {
@@ -13,6 +14,9 @@ type SocketNext = (err?: Error) => void;
 
 export interface DefenseSocketAuthOptions {
   verifyToken?: (token: string) => AuthenticatedIdentity;
+  verifyActiveSession?: (
+    identity: AuthenticatedIdentity,
+  ) => Promise<SessionValidationResult> | SessionValidationResult;
 }
 
 /**
@@ -20,13 +24,13 @@ export interface DefenseSocketAuthOptions {
  *
  * The token is read ONLY from `socket.handshake.auth.token`. URL query tokens
  * and client-supplied identities are ignored. Any missing/invalid/expired
- * token rejects the connection; REST auth remains the authority for session
- * expiry and logout.
+ * token or deactivated/revoked account session rejects the connection.
  */
 export function createDefenseSocketAuthMiddleware(
   options: DefenseSocketAuthOptions = {},
 ): (socket: DefenseAuthSocket, next: SocketNext) => void {
   const verifyToken = options.verifyToken ?? verifyAccessToken;
+  const verifyActiveSession = options.verifyActiveSession;
 
   return (socket, next) => {
     const auth = socket.handshake.auth;
@@ -40,13 +44,33 @@ export function createDefenseSocketAuthMiddleware(
       return;
     }
 
+    let identity: AuthenticatedIdentity;
     try {
-      const identity = verifyToken(token);
+      identity = verifyToken(token);
+    } catch {
+      next(new Error("UNAUTHORIZED"));
+      return;
+    }
+
+    if (!verifyActiveSession) {
       socket.data.userId = identity.userId;
       socket.data.role = identity.role;
       next();
-    } catch {
-      next(new Error("UNAUTHORIZED"));
+      return;
     }
+
+    Promise.resolve(verifyActiveSession(identity))
+      .then((result) => {
+        if (!result.ok) {
+          next(new Error(result.code));
+          return;
+        }
+        socket.data.userId = identity.userId;
+        socket.data.role = identity.role;
+        next();
+      })
+      .catch(() => {
+        next(new Error("UNAUTHORIZED"));
+      });
   };
 }

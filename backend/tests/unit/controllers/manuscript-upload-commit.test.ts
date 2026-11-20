@@ -6,6 +6,10 @@ import type { AddressInfo } from "node:net";
 import jwt from "jsonwebtoken";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
+const dbMock = vi.hoisted(() => ({
+  user: { findUnique: vi.fn() },
+}));
+vi.mock("../../../src/config/database", () => ({ default: dbMock }));
 const proposal = vi.hoisted(() => ({
   submitManuscriptForReview: vi.fn(),
   getStudentReviewState: vi.fn(),
@@ -67,6 +71,12 @@ function makeRes() {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  dbMock.user.findUnique.mockResolvedValue({
+    isActive: true,
+    role: "STUDENT",
+    tokenVersion: 1,
+    panelist: null,
+  });
 });
 
 describe("PREDEF-1B0 actual authenticated multipart manuscript routes", () => {

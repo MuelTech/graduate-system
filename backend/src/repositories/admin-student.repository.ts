@@ -1,6 +1,7 @@
 // backend/src/repositories/admin-student.repository.ts
 
 import prisma from "../config/database";
+import { disconnectUserDefenseSockets } from "../realtime/defense-realtime.registry";
 import { NotificationType, Prisma } from "@prisma/client";
 import {
   AdminStudentDetail,
@@ -729,12 +730,16 @@ export class AdminStudentRepository {
     newSnapshot: Record<string, unknown>;
     reason: string;
   }) {
-    return prisma.$transaction(async (tx) => {
+    const shouldInvalidateSessions = params.userData.isActive === false;
+    await prisma.$transaction(async (tx) => {
       if (Object.keys(params.userData).length > 0) {
         await tx.user.update({
           where: { id: params.userId },
           data: {
             ...params.userData,
+            ...(shouldInvalidateSessions
+              ? { tokenVersion: { increment: 1 } }
+              : {}),
             updatedById: params.adminId,
           },
         });
@@ -789,6 +794,10 @@ export class AdminStudentRepository {
         },
       });
     });
+
+    if (shouldInvalidateSessions) {
+      void disconnectUserDefenseSockets(params.userId, "ACCOUNT_DEACTIVATED");
+    }
   }
 
   async resetStudentPassword(params: {
@@ -799,12 +808,13 @@ export class AdminStudentRepository {
     email: string;
     studentNumber: string | null;
   }) {
-    return prisma.$transaction(async (tx) => {
+    await prisma.$transaction(async (tx) => {
       await tx.user.update({
         where: { id: params.userId },
         data: {
           passwordHash: params.passwordHash,
           mustChangePassword: true,
+          tokenVersion: { increment: 1 },
           updatedById: params.adminId,
         },
       });
@@ -826,6 +836,7 @@ export class AdminStudentRepository {
         },
       });
     });
+    void disconnectUserDefenseSockets(params.userId, "SESSION_INVALIDATED");
   }
 
   private buildWhereClause(filters: AdminStudentListQuery): Prisma.StudentWhereInput {

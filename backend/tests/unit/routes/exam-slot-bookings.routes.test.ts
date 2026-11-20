@@ -7,7 +7,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vites
 import { evaluationApplication } from "../../fixtures/exam-essay-evaluation";
 import { calculatePoints } from "../../../src/services/exam-result.rules";
 
-const db = vi.hoisted(() => ({ examSlot: { findUnique: vi.fn() } }));
+const db = vi.hoisted(() => ({ user: { findUnique: vi.fn() }, examSlot: { findUnique: vi.fn() } }));
 vi.mock("../../../src/config/database", () => ({ default: db }));
 vi.mock("../../../src/services/email.service", () => ({ EmailService: {} }));
 import router from "../../../src/routes/exam.routes";
@@ -34,6 +34,7 @@ afterAll(async () => {
 });
 beforeEach(() => {
   vi.clearAllMocks();
+  db.user.findUnique.mockResolvedValue({ isActive: true, role: "ADMIN", tokenVersion: 1, panelist: null });
   rows = [booking("b"), booking("released", slotId, recorded), booking("foreign", otherSlot),
     { ...booking("older"), createdAt: new Date("2026-11-01T00:00:00Z") }, booking("a")];
   // Model only the Prisma read contract, with mixed-slot/released fixtures.

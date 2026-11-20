@@ -9,6 +9,7 @@ import {
   JwtConfigurationError,
   verifyAccessToken,
 } from "../utils/jwt";
+import { verifyActiveUserSession } from "../services/session-validation.service";
 
 export function isFacultyRole(role?: string | null): boolean {
   return role === "FACULTY" || role === "PANELIST";
@@ -67,43 +68,75 @@ function loadOptionalAccessTokenVerifier(): (token: string) => AuthenticatedIden
 
 const verifyOptionalAccessToken = loadOptionalAccessTokenVerifier();
 
-export const authenticateJWT = (req: AuthenticatedRequest, res: Response, next: NextFunction): void => {
+export const authenticateJWT = async (
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction,
+): Promise<void> => {
   const authHeader = req.headers.authorization;
-  const token = authHeader && authHeader.split(' ')[1]; // Extracts the token after 'Bearer'
+  const token = authHeader && authHeader.split(" ")[1]; // Extracts the token after 'Bearer'
 
   if (!token) {
-    res.status(401).json({ error: 'Access denied. No authentication token provided.' });
+    res.status(401).json({ error: "Access denied. No authentication token provided." });
+    return;
+  }
+
+  let identity: AuthenticatedIdentity;
+  try {
+    identity = verifyAccessToken(token);
+  } catch (err) {
+    if (err instanceof JwtConfigurationError) {
+      console.error("CRITICAL ERROR: JWT_SECRET environment variable is not defined!");
+      res.status(500).json({ error: "Internal Server Error configuration" });
+      return;
+    }
+
+    res.status(403).json({ error: "Invalid or expired authentication token." });
     return;
   }
 
   try {
-    req.user = verifyAccessToken(token);
-    next();
-  } catch (err) {
-    if (err instanceof JwtConfigurationError) {
-      console.error('CRITICAL ERROR: JWT_SECRET environment variable is not defined!');
-      res.status(500).json({ error: 'Internal Server Error configuration' });
+    const sessionCheck = await verifyActiveUserSession(identity);
+    if (!sessionCheck.ok) {
+      const status =
+        sessionCheck.code === "ACCOUNT_DEACTIVATED" ? 403 : 401;
+      res.status(status).json({
+        error: sessionCheck.error,
+        code: sessionCheck.code,
+      });
       return;
     }
 
-    res.status(403).json({ error: 'Invalid or expired authentication token.' });
+    req.user = { userId: identity.userId, role: identity.role };
+    next();
+  } catch {
+    res.status(500).json({ error: "Failed to verify active session." });
   }
 };
 
 /**
  * Optional authentication: decodes JWT if present in Authorization header,
- * but proceeds unauthenticated without error if absent or invalid.
+ * verifies active account/session state, and proceeds unauthenticated without
+ * error if absent, invalid, or revoked.
  */
-export const optionalAuthenticateJWT = (req: AuthenticatedRequest, res: Response, next: NextFunction): void => {
+export const optionalAuthenticateJWT = async (
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction,
+): Promise<void> => {
   const authHeader = req.headers.authorization;
-  const token = authHeader && authHeader.split(' ')[1];
+  const token = authHeader && authHeader.split(" ")[1];
 
   if (!token) {
     return next();
   }
 
   try {
-    req.user = verifyOptionalAccessToken(token);
+    const identity = verifyOptionalAccessToken(token);
+    const sessionCheck = await verifyActiveUserSession(identity);
+    if (sessionCheck.ok) {
+      req.user = { userId: identity.userId, role: identity.role };
+    }
   } catch {
     // Soft ignore for optional authentication.
   }
