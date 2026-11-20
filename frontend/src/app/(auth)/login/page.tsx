@@ -139,8 +139,17 @@ function LoginForm() {
 
       if (res?.error) {
         if (res.error === "CredentialsSignin") {
+          const code = typeof res.code === "string" ? res.code.trim() : "";
+          const isGenericCredentialError =
+            !code ||
+            code === "credentials" ||
+            code === "Invalid credentials" ||
+            code === "Invalid credentials!" ||
+            code === "Invalid login credentials!";
           setError(
-            "Invalid credentials. Please check your details and try again.",
+            isGenericCredentialError
+              ? "Invalid credentials. Please check your details and try again."
+              : code,
           );
         } else {
           setError("An error occurred during sign in.");

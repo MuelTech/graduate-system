@@ -133,13 +133,13 @@ export class AuthService {
             throw new AppError("Invalid credentials!", 401);
         }
 
-        if (user.isActive === false) {
-            throw new AppError("This account has been deactivated. Please contact the Administrator.", 403);
-        }
-
         const isPasswordValid = await bcrypt.compare(data.password, user.passwordHash);
         if (!isPasswordValid) {
             throw new AppError("Invalid login credentials!", 401);
+        }
+
+        if (user.isActive === false) {
+            throw new AppError("This account has been deactivated. Please contact the Administrator.", 403);
         }
 
         const effectiveRole: UserRole = user.role === UserRole.PANELIST ? UserRole.FACULTY : user.role;
