@@ -44,13 +44,10 @@ import {
 } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
 
-type VersionTypeFilter = "ALL" | "NEW" | "OLD";
-
 export function CurriculaSettingsTab() {
   const queryClient = useQueryClient();
-  const [selectedProgramId, setSelectedProgramId] = useState<string>("ALL");
-  const [typeFilter, setTypeFilter] = useState<VersionTypeFilter>("ALL");
-  const [activeVersionId, setActiveVersionId] = useState<string | null>(null);
+  const [selectedProgramId, setSelectedProgramId] = useState<string>("");
+  const [selectedVersionId, setSelectedVersionId] = useState<string>("");
 
   const [versionDialog, setVersionDialog] = useState<{
     mode: "create" | "edit";
@@ -81,7 +78,7 @@ export function CurriculaSettingsTab() {
   });
 
   const programs = useMemo(
-    () => programsQuery.data?.programs ?? [],
+    () => (programsQuery.data?.programs ?? []).filter((p) => p.isActive !== false),
     [programsQuery.data],
   );
   const versions = useMemo(
@@ -89,25 +86,38 @@ export function CurriculaSettingsTab() {
     [versionsQuery.data],
   );
 
-  const filteredVersions = useMemo(() => {
-    return versions.filter((v) => {
-      if (selectedProgramId !== "ALL" && v.programId !== selectedProgramId) {
-        return false;
-      }
-      if (typeFilter !== "ALL" && v.curriculumType !== typeFilter) {
-        return false;
-      }
-      return true;
-    });
-  }, [versions, selectedProgramId, typeFilter]);
+  const activeProgramId = useMemo(() => {
+    if (
+      selectedProgramId &&
+      programs.some((p) => p.id === selectedProgramId)
+    ) {
+      return selectedProgramId;
+    }
+    return programs[0]?.id ?? "";
+  }, [programs, selectedProgramId]);
 
-  const selectedVersion = useMemo(() => {
-    if (filteredVersions.length === 0) return null;
+  const programVersions = useMemo(() => {
+    if (!activeProgramId) return [];
+    return versions
+      .filter((v) => v.programId === activeProgramId)
+      .sort((a, b) => {
+        if (a.curriculumType !== b.curriculumType) {
+          return a.curriculumType === "NEW" ? -1 : 1;
+        }
+        if (a.isDefaultForNewStudents !== b.isDefaultForNewStudents) {
+          return a.isDefaultForNewStudents ? -1 : 1;
+        }
+        return a.label.localeCompare(b.label);
+      });
+  }, [versions, activeProgramId]);
+
+  const activeVersion = useMemo(() => {
+    if (programVersions.length === 0) return null;
     return (
-      filteredVersions.find((v) => v.id === activeVersionId) ??
-      filteredVersions[0]
+      programVersions.find((v) => v.id === selectedVersionId) ??
+      programVersions[0]
     );
-  }, [filteredVersions, activeVersionId]);
+  }, [programVersions, selectedVersionId]);
 
   const invalidateAll = () => {
     queryClient.invalidateQueries({ queryKey: ["adminCurricula"] });
@@ -119,7 +129,6 @@ export function CurriculaSettingsTab() {
       id?: string;
       body: {
         programId?: string;
-        versionCode: string;
         label: string;
         curriculumType: "NEW" | "OLD";
         effectiveSchoolYear: string | null;
@@ -141,10 +150,15 @@ export function CurriculaSettingsTab() {
     },
     onSuccess: (res: { version?: AdminCurriculumVersionDetail }, vars) => {
       invalidateAll();
-      if (res?.version?.id) setActiveVersionId(res.version.id);
+      if (res?.version?.programId) {
+        setSelectedProgramId(res.version.programId);
+      }
+      if (res?.version?.id) {
+        setSelectedVersionId(res.version.id);
+      }
       setVersionDialog(null);
       toast.success(
-        vars.id ? "Curriculum version updated." : "Curriculum version created.",
+        vars.id ? "Curriculum updated." : "Curriculum version added.",
       );
     },
     onError: (err: Error) => {
@@ -254,24 +268,21 @@ export function CurriculaSettingsTab() {
     },
   });
 
-  const selectedProgramLabel =
-    selectedProgramId === "ALL"
-      ? "All Graduate Programs"
-      : (programs.find((p) => p.id === selectedProgramId)?.programName ??
-        "Select program");
+  const activeProgramLabel =
+    programs.find((p) => p.id === activeProgramId)?.programName ??
+    "Select a graduate program";
 
   return (
     <div className="space-y-5">
       <Card className="border-gray-200/80 shadow-xs">
-        <CardHeader className="flex flex-wrap flex-row items-center justify-between gap-3 border-b border-gray-100 pb-4">
+        <CardHeader className="flex flex-wrap flex-row items-start justify-between gap-3 pb-4">
           <div className="space-y-1">
-            <CardTitle className="text-base font-semibold text-[#262220]">
-              Curriculum Checklists &amp; Versions
+            <CardTitle className="text-lg font-semibold text-[#262220]">
+              Curriculum Checklists
             </CardTitle>
             <p className="text-xs text-gray-500">
-              Manage official Graduate School curriculum versions, course
-              groups, and subjects. Existing students keep their assigned
-              version unless explicitly shifted.
+              Select a Graduate Program and switch between curriculum versions to
+              manage course groups and subjects.
             </p>
           </div>
           <Button
@@ -283,232 +294,172 @@ export function CurriculaSettingsTab() {
             Add Curriculum Version
           </Button>
         </CardHeader>
-        <CardContent className="space-y-4 pt-4">
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-            <div className="sm:col-span-2">
-              <Label className="mb-1.5 block text-xs font-semibold tracking-wider text-gray-600 uppercase">
-                Filter by Graduate Program
-              </Label>
-              <Select
-                value={selectedProgramId}
-                onValueChange={(val) => setSelectedProgramId(val ?? "ALL")}
-              >
-                <SelectTrigger className="w-full data-[size=default]:h-10">
-                  <span className="flex-1 truncate text-left text-[#262220]">
-                    {selectedProgramLabel}
-                  </span>
-                </SelectTrigger>
-                <SelectContent
-                  alignItemWithTrigger={false}
-                  className="w-(--anchor-width)"
-                >
-                  <SelectItem value="ALL">All Graduate Programs</SelectItem>
-                  {programs.map((p) => (
-                    <SelectItem key={p.id} value={p.id}>
-                      {p.programName}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
 
-            <div>
-              <Label className="mb-1.5 block text-xs font-semibold tracking-wider text-gray-600 uppercase">
-                Curriculum Track
-              </Label>
-              <Select
-                value={typeFilter}
-                onValueChange={(val) =>
-                  setTypeFilter((val as VersionTypeFilter) ?? "ALL")
-                }
-              >
-                <SelectTrigger className="w-full data-[size=default]:h-10">
-                  <span className="flex-1 truncate text-left text-[#262220]">
-                    {typeFilter === "ALL"
-                      ? "All Versions"
-                      : typeFilter === "NEW"
-                        ? "New (S.Y. 2024–2025)"
-                        : "Old (Pre-2024)"}
-                  </span>
-                </SelectTrigger>
-                <SelectContent
-                  alignItemWithTrigger={false}
-                  className="w-(--anchor-width)"
-                >
-                  <SelectItem value="ALL">All Versions</SelectItem>
-                  <SelectItem value="NEW">New (S.Y. 2024–2025)</SelectItem>
-                  <SelectItem value="OLD">Old (Pre-2024)</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          {versionsQuery.isLoading ? (
+        <CardContent className="space-y-5">
+          {programsQuery.isLoading || versionsQuery.isLoading ? (
             <p className="py-6 text-center text-sm text-gray-500">
               Loading curricula...
             </p>
-          ) : filteredVersions.length === 0 ? (
+          ) : programs.length === 0 ? (
             <p className="py-6 text-center text-sm text-gray-500">
-              No curriculum versions match the selected filter.
+              No active graduate programs found.
             </p>
           ) : (
-            <div className="overflow-x-auto rounded-lg border border-gray-200/80">
-              <Table>
-                <TableHeader>
-                  <TableRow className="border-gray-100 bg-gray-50/70 hover:bg-gray-50/70">
-                    <TableHead className="text-[11px] font-semibold tracking-wider text-gray-500 uppercase">
-                      Program
-                    </TableHead>
-                    <TableHead className="text-[11px] font-semibold tracking-wider text-gray-500 uppercase">
-                      Version
-                    </TableHead>
-                    <TableHead className="text-center text-[11px] font-semibold tracking-wider text-gray-500 uppercase">
-                      Units
-                    </TableHead>
-                    <TableHead className="text-center text-[11px] font-semibold tracking-wider text-gray-500 uppercase">
-                      Students
-                    </TableHead>
-                    <TableHead className="text-[11px] font-semibold tracking-wider text-gray-500 uppercase">
-                      Status
-                    </TableHead>
-                    <TableHead className="text-right text-[11px] font-semibold tracking-wider text-gray-500 uppercase">
-                      Actions
-                    </TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredVersions.map((ver) => {
-                    const isSelected = selectedVersion?.id === ver.id;
-                    return (
-                      <TableRow
-                        key={ver.id}
-                        className={cn(
-                          "cursor-pointer border-gray-100",
-                          isSelected && "bg-[#8b1a1a]/5",
-                        )}
-                        onClick={() => setActiveVersionId(ver.id)}
+            <>
+              <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
+                <div className="lg:col-span-7">
+                  <Label className="mb-1.5 block text-xs font-semibold tracking-wider text-gray-600 uppercase">
+                    Graduate Program
+                  </Label>
+                  <Select
+                    value={activeProgramId}
+                    onValueChange={(val) => {
+                      setSelectedProgramId(val ?? "");
+                      setSelectedVersionId("");
+                    }}
+                  >
+                    <SelectTrigger className="w-full data-[size=default]:h-10">
+                      <span className="flex-1 truncate text-left text-[#262220]">
+                        {activeProgramLabel}
+                      </span>
+                    </SelectTrigger>
+                    <SelectContent
+                      alignItemWithTrigger={false}
+                      className="w-(--anchor-width)"
+                    >
+                      {programs.map((p) => (
+                        <SelectItem key={p.id} value={p.id}>
+                          {p.programName}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="lg:col-span-5">
+                  <Label className="mb-1.5 block text-xs font-semibold tracking-wider text-gray-600 uppercase">
+                    Curriculum Version
+                  </Label>
+                  {programVersions.length === 0 ? (
+                    <div className="flex h-10 items-center rounded-md border border-dashed border-gray-200 px-3 text-xs text-gray-500">
+                      No curriculum versions yet for this program
+                    </div>
+                  ) : (
+                    <div className="flex flex-wrap gap-2">
+                      {programVersions.map((ver) => {
+                        const isSelected = activeVersion?.id === ver.id;
+                        return (
+                          <button
+                            key={ver.id}
+                            type="button"
+                            onClick={() => setSelectedVersionId(ver.id)}
+                            className={cn(
+                              "min-h-10 rounded-md border px-3 py-1.5 text-left text-xs font-medium transition-colors",
+                              isSelected
+                                ? "border-[#8b1a1a] bg-[#8b1a1a]/10 text-[#8b1a1a]"
+                                : "border-gray-200 bg-white text-gray-700 hover:bg-gray-50",
+                            )}
+                          >
+                            {ver.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {activeVersion ? (
+                <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-gray-200/80 bg-gray-50/60 px-4 py-3">
+                  <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-gray-600">
+                    <span className="font-semibold text-[#262220]">
+                      {activeVersion.label}
+                    </span>
+                    <span>
+                      Total:{" "}
+                      <strong className="text-[#262220]">
+                        {activeVersion.totalRequiredUnits} units
+                      </strong>
+                    </span>
+                    <span>
+                      Students:{" "}
+                      <strong className="text-[#262220]">
+                        {activeVersion._count.students}
+                      </strong>
+                    </span>
+                    <div className="flex items-center gap-1.5">
+                      <Badge
+                        variant="outline"
+                        className={
+                          activeVersion.isActive
+                            ? "border-emerald-200 bg-emerald-50 text-[11px] text-emerald-700"
+                            : "border-gray-200 bg-gray-100 text-[11px] text-gray-600"
+                        }
                       >
-                        <TableCell className="text-sm font-medium text-[#262220]">
-                          {ver.program.programName}
-                        </TableCell>
-                        <TableCell>
-                          <div className="space-y-0.5">
-                            <p className="text-sm font-medium text-[#262220]">
-                              {ver.label}
-                            </p>
-                            <p className="font-mono text-[11px] text-gray-500">
-                              {ver.versionCode}
-                              {ver.effectiveSchoolYear
-                                ? ` · ${ver.effectiveSchoolYear}`
-                                : ""}
-                            </p>
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-center text-sm font-medium">
-                          {ver.totalRequiredUnits}
-                        </TableCell>
-                        <TableCell className="text-center text-sm text-gray-600">
-                          {ver._count.students}
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex flex-wrap items-center gap-1.5">
-                            <Badge
-                              variant="outline"
-                              className={
-                                ver.isActive
-                                  ? "border-emerald-200 bg-emerald-50 text-[11px] text-emerald-700"
-                                  : "border-gray-200 bg-gray-100 text-[11px] text-gray-600"
-                              }
-                            >
-                              {ver.isActive ? "Active" : "Archived"}
-                            </Badge>
-                            {ver.isDefaultForNewStudents ? (
-                              <Badge
-                                variant="outline"
-                                className="border-sky-200 bg-sky-50 text-[11px] text-sky-700"
-                              >
-                                Default
-                              </Badge>
-                            ) : null}
-                          </div>
-                        </TableCell>
-                        <TableCell
-                          className="text-right"
-                          onClick={(e) => e.stopPropagation()}
+                        {activeVersion.isActive ? "Active" : "Archived"}
+                      </Badge>
+                      {activeVersion.isDefaultForNewStudents ? (
+                        <Badge
+                          variant="outline"
+                          className="border-sky-200 bg-sky-50 text-[11px] text-sky-700"
                         >
-                          <div className="flex justify-end gap-2">
-                            <Button
-                              type="button"
-                              size="sm"
-                              variant="outline"
-                              onClick={() => setActiveVersionId(ver.id)}
-                            >
-                              {isSelected ? "Inspecting" : "Manage"}
-                            </Button>
-                            <Button
-                              type="button"
-                              size="sm"
-                              variant="outline"
-                              onClick={() =>
-                                setVersionDialog({ mode: "edit", version: ver })
-                              }
-                            >
-                              Edit
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            </div>
+                          Default
+                        </Badge>
+                      ) : null}
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={() =>
+                        setVersionDialog({
+                          mode: "edit",
+                          version: activeVersion,
+                        })
+                      }
+                    >
+                      Edit Version
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={() =>
+                        setGroupDialog({
+                          mode: "create",
+                          versionId: activeVersion.id,
+                        })
+                      }
+                    >
+                      Add Course Group
+                    </Button>
+                  </div>
+                </div>
+              ) : null}
+            </>
           )}
         </CardContent>
       </Card>
 
-      {selectedVersion ? (
-        <Card className="border-gray-200/80 shadow-xs">
-          <CardHeader className="flex flex-wrap flex-row items-start justify-between gap-3 border-b border-gray-100 pb-4">
-            <div className="space-y-1">
-              <CardTitle className="text-base font-semibold text-[#262220]">
-                {selectedVersion.program.programName} — {selectedVersion.label}
-              </CardTitle>
-              <p className="text-xs text-gray-500">
-                Total required units across groups:{" "}
-                <strong className="text-[#262220]">
-                  {selectedVersion.totalRequiredUnits} units
-                </strong>
-                {selectedVersion.notes ? ` · ${selectedVersion.notes}` : ""}
-              </p>
-            </div>
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              onClick={() =>
-                setGroupDialog({
-                  mode: "create",
-                  versionId: selectedVersion.id,
-                })
-              }
-            >
-              Add Course Group
-            </Button>
-          </CardHeader>
-
-          <CardContent className="space-y-5 pt-5">
-            {selectedVersion.groups.length === 0 ? (
-              <p className="text-sm text-gray-500">
-                No course groups defined in this curriculum version yet.
-              </p>
-            ) : (
-              selectedVersion.groups.map((grp) => (
-                <div
-                  key={grp.id}
-                  className="space-y-3 rounded-lg border border-gray-200/80 p-4"
-                >
-                  <div className="flex flex-wrap items-start justify-between gap-3">
+      {activeVersion ? (
+        <div className="space-y-4">
+          {activeVersion.groups.length === 0 ? (
+            <Card className="border-gray-200/80 shadow-xs">
+              <CardContent className="p-6 text-sm text-gray-500">
+                No course groups defined in this curriculum yet. Click{" "}
+                <strong className="text-[#262220]">Add Course Group</strong>{" "}
+                above to add Foundation, Major, Cognate, or Thesis/Dissertation
+                sections.
+              </CardContent>
+            </Card>
+          ) : (
+            activeVersion.groups.map((grp) => (
+              <Card key={grp.id} className="border-gray-200/80 shadow-xs">
+                <CardContent className="space-y-3 p-5">
+                  <div className="flex flex-wrap items-start justify-between gap-3 border-b border-gray-100 pb-3">
                     <div className="space-y-0.5">
                       <div className="flex flex-wrap items-center gap-2">
                         <h3 className="text-sm font-semibold text-[#262220]">
@@ -518,16 +469,8 @@ export function CurriculaSettingsTab() {
                           variant="outline"
                           className="border-gray-200 text-[11px]"
                         >
-                          {grp.requiredUnits} required units
+                          {grp.requiredUnits} units
                         </Badge>
-                        {!grp.countsTowardWce ? (
-                          <Badge
-                            variant="outline"
-                            className="border-gray-200 bg-gray-50 text-[11px] text-gray-600"
-                          >
-                            Excluded from WCE coursework
-                          </Badge>
-                        ) : null}
                       </div>
                       {grp.selectionNote ? (
                         <p className="text-xs text-[#8b1a1a]">
@@ -558,7 +501,7 @@ export function CurriculaSettingsTab() {
                         onClick={() =>
                           setGroupDialog({
                             mode: "edit",
-                            versionId: selectedVersion.id,
+                            versionId: activeVersion.id,
                             group: grp,
                           })
                         }
@@ -596,7 +539,7 @@ export function CurriculaSettingsTab() {
                               Units
                             </TableHead>
                             <TableHead className="w-[110px] text-[11px] font-semibold tracking-wider text-gray-500 uppercase">
-                              Requirement
+                              Type
                             </TableHead>
                             <TableHead className="w-[150px] text-right text-[11px] font-semibold tracking-wider text-gray-500 uppercase">
                               Actions
@@ -664,21 +607,17 @@ export function CurriculaSettingsTab() {
                       </Table>
                     </div>
                   )}
-                </div>
-              ))
-            )}
-          </CardContent>
-        </Card>
+                </CardContent>
+              </Card>
+            ))
+          )}
+        </div>
       ) : null}
 
       <VersionFormDialog
         state={versionDialog}
         programs={programs}
-        defaultProgramId={
-          selectedProgramId !== "ALL"
-            ? selectedProgramId
-            : (programs[0]?.id ?? "")
-        }
+        defaultProgramId={activeProgramId}
         isSaving={saveVersionMutation.isPending}
         onClose={() => setVersionDialog(null)}
         onSubmit={(id, body) => saveVersionMutation.mutate({ id, body })}
@@ -725,7 +664,6 @@ function VersionFormDialog({
     id: string | undefined,
     body: {
       programId?: string;
-      versionCode: string;
       label: string;
       curriculumType: "NEW" | "OLD";
       effectiveSchoolYear: string | null;
@@ -745,9 +683,8 @@ function VersionFormDialog({
               : "Add Curriculum Version"}
           </DialogTitle>
           <DialogDescription>
-            Define a program curriculum version. Setting a version as default
-            applies to newly promoted students without modifying existing
-            student assignments.
+            Setting a version as default applies to newly promoted students
+            without changing existing student assignments.
           </DialogDescription>
         </DialogHeader>
         {state ? (
@@ -783,7 +720,6 @@ function VersionFormBody({
     id: string | undefined,
     body: {
       programId?: string;
-      versionCode: string;
       label: string;
       curriculumType: "NEW" | "OLD";
       effectiveSchoolYear: string | null;
@@ -796,14 +732,11 @@ function VersionFormBody({
   const [programId, setProgramId] = useState(
     initial?.programId ?? defaultProgramId,
   );
-  const [versionCode, setVersionCode] = useState(
-    initial?.versionCode ?? "NEW-2025",
-  );
-  const [label, setLabel] = useState(
-    initial?.label ?? "New Curriculum (S.Y. 2025-2026)",
-  );
   const [curriculumType, setCurriculumType] = useState<"NEW" | "OLD">(
     initial?.curriculumType ?? "NEW",
+  );
+  const [label, setLabel] = useState(
+    initial?.label ?? "New Curriculum (S.Y. 2025–2026)",
   );
   const [effectiveSchoolYear, setEffectiveSchoolYear] = useState(
     initial?.effectiveSchoolYear ?? "",
@@ -824,7 +757,6 @@ function VersionFormBody({
         e.preventDefault();
         onSubmit(initial?.id, {
           ...(mode === "create" ? { programId } : {}),
-          versionCode: versionCode.trim(),
           label: label.trim(),
           curriculumType,
           effectiveSchoolYear: effectiveSchoolYear.trim() || null,
@@ -864,24 +796,8 @@ function VersionFormBody({
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div className="space-y-1.5">
-          <Label
-            htmlFor="ver-code"
-            className="text-xs font-semibold tracking-wider text-gray-600 uppercase"
-          >
-            Version Code *
-          </Label>
-          <Input
-            id="ver-code"
-            required
-            maxLength={64}
-            value={versionCode}
-            onChange={(e) => setVersionCode(e.target.value)}
-            placeholder="e.g. NEW-2026"
-          />
-        </div>
-        <div className="space-y-1.5">
           <Label className="text-xs font-semibold tracking-wider text-gray-600 uppercase">
-            Track *
+            Curriculum Track *
           </Label>
           <Select
             value={curriculumType}
@@ -905,24 +821,7 @@ function VersionFormBody({
             </SelectContent>
           </Select>
         </div>
-      </div>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <div className="space-y-1.5">
-          <Label
-            htmlFor="ver-label"
-            className="text-xs font-semibold tracking-wider text-gray-600 uppercase"
-          >
-            Display Label *
-          </Label>
-          <Input
-            id="ver-label"
-            required
-            maxLength={191}
-            value={label}
-            onChange={(e) => setLabel(e.target.value)}
-          />
-        </div>
         <div className="space-y-1.5">
           <Label
             htmlFor="ver-sy"
@@ -935,9 +834,26 @@ function VersionFormBody({
             maxLength={64}
             value={effectiveSchoolYear}
             onChange={(e) => setEffectiveSchoolYear(e.target.value)}
-            placeholder="e.g. 2024-2025"
+            placeholder="e.g. 2024-2025 (optional)"
           />
         </div>
+      </div>
+
+      <div className="space-y-1.5">
+        <Label
+          htmlFor="ver-label"
+          className="text-xs font-semibold tracking-wider text-gray-600 uppercase"
+        >
+          Display Label *
+        </Label>
+        <Input
+          id="ver-label"
+          required
+          maxLength={191}
+          value={label}
+          onChange={(e) => setLabel(e.target.value)}
+          placeholder="e.g. New Curriculum (S.Y. 2024–2025)"
+        />
       </div>
 
       <div className="space-y-1.5">
@@ -1019,7 +935,8 @@ function GroupFormDialog({
             {state?.mode === "edit" ? "Edit Course Group" : "Add Course Group"}
           </DialogTitle>
           <DialogDescription>
-            Configure unit requirements and WCE inclusion for this group.
+            Configure the group label, required units, and optional elective
+            note.
           </DialogDescription>
         </DialogHeader>
         {state ? (
@@ -1065,9 +982,6 @@ function GroupFormBody({
   const [requiredUnits, setRequiredUnits] = useState(
     String(initial?.requiredUnits ?? 6),
   );
-  const [countsTowardWce, setCountsTowardWce] = useState(
-    initial?.countsTowardWce ?? true,
-  );
   const [selectionNote, setSelectionNote] = useState(
     initial?.selectionNote ?? "",
   );
@@ -1088,7 +1002,8 @@ function GroupFormBody({
           groupType,
           label: label.trim(),
           requiredUnits: Number(requiredUnits) || 0,
-          countsTowardWce,
+          countsTowardWce:
+            groupType !== "THESIS" && groupType !== "DISSERTATION",
           selectionNote: selectionNote.trim() || null,
           displayOrder: Number(displayOrder) || 0,
         });
@@ -1100,15 +1015,7 @@ function GroupFormBody({
         </Label>
         <Select
           value={groupType}
-          onValueChange={(val) => {
-            const next = val as CurriculumGroupType;
-            setGroupType(next);
-            if (!initial) {
-              setCountsTowardWce(
-                next !== "THESIS" && next !== "DISSERTATION",
-              );
-            }
-          }}
+          onValueChange={(val) => setGroupType(val as CurriculumGroupType)}
         >
           <SelectTrigger className="w-full data-[size=default]:h-10">
             <span className="flex-1 truncate text-left text-[#262220]">
@@ -1194,16 +1101,6 @@ function GroupFormBody({
           value={selectionNote}
           onChange={(e) => setSelectionNote(e.target.value)}
           placeholder="e.g. Choose only 1 course (3 units)"
-        />
-      </div>
-
-      <div className="flex items-center justify-between rounded-lg border border-gray-200 px-3 py-2">
-        <span className="text-xs font-medium text-[#262220]">
-          Include in WCE Academic Coursework Summary
-        </span>
-        <Switch
-          checked={countsTowardWce}
-          onCheckedChange={setCountsTowardWce}
         />
       </div>
 
@@ -1409,7 +1306,7 @@ function CourseFormBody({
 
       <div className="flex items-center justify-between rounded-lg border border-gray-200 px-3 py-2">
         <span className="text-xs font-medium text-[#262220]">
-          Mandatory Subject (uncheck for Elective Pool option)
+          Required Subject (uncheck for Elective option)
         </span>
         <Switch checked={isRequired} onCheckedChange={setIsRequired} />
       </div>

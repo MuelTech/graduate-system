@@ -1,8 +1,4 @@
 import { AppError } from "../utils/AppError";
-import {
-  evaluateCompExamSummary,
-  type CompExamRecordLike,
-} from "./comp-exam.rules";
 
 export type CurriculumProgramType = "MASTERS" | "DOCTORAL";
 
@@ -25,12 +21,6 @@ export type CourseProgressStatusValue =
   | "DROPPED"
   | "CREDITED";
 
-export type PublicationMilestoneStatusValue =
-  | "NOT_STARTED"
-  | "IN_PROGRESS"
-  | "SUBMITTED"
-  | "VERIFIED";
-
 export interface GradingScaleOption {
   value: string;
   label: string;
@@ -47,7 +37,7 @@ export interface GradingScaleInfo {
 }
 
 export const INC_REMOVAL_NOTE =
-  "Removal of INC must be completed within one (1) year; maximum removal grade is 1.25 (EARIST Manual §7.16.3).";
+  "Removal of INC must be completed within one (1) year; maximum removal grade is 1.25.";
 
 export const SEMESTER_OPTIONS = ["1st Sem", "2nd Sem", "Summer"] as const;
 
@@ -577,167 +567,5 @@ export function evaluateCurriculumProgress(params: {
     encodedCourseCount,
     verifiedCourseCount,
     groups: groupEvaluations,
-  };
-}
-
-export interface ThesisRecordMilestoneLike {
-  stage: string;
-  status: string;
-  outcome?: string | null;
-  defenseSchedules?: ReadonlyArray<{
-    defenseType: string;
-    conclusion?: { outcome?: string | null } | null;
-  }>;
-}
-
-export interface GraduationMilestoneInputLike {
-  publicationStatus?: PublicationMilestoneStatusValue | string | null;
-  publicationTitle?: string | null;
-  publicationVenue?: string | null;
-  publicationUrl?: string | null;
-  publicationYear?: string | null;
-  publicationNotes?: string | null;
-  isPublicationVerified?: boolean;
-  publicationVerifiedAt?: Date | string | null;
-}
-
-export interface GraduationRequirementsEvaluation {
-  comprehensiveExam: {
-    status: "NOT_RECORDED" | "PENDING" | "RETAKE_REQUIRED" | "PASSED" | "DISMISSED";
-    label: string;
-    attemptsUsed: number;
-    maxAttempts: number;
-    passedAt: string | null;
-  };
-  thesisOrDissertation: {
-    status: "NOT_STARTED" | "IN_PROGRESS" | "PASSED";
-    label: string;
-    requirementName: string;
-    currentStage: string | null;
-  };
-  publication: {
-    status: PublicationMilestoneStatusValue;
-    requirementDescription: string;
-    title: string | null;
-    venue: string | null;
-    url: string | null;
-    year: string | null;
-    notes: string | null;
-    isVerified: boolean;
-    verifiedAt: string | null;
-  };
-}
-
-export function evaluateGraduationRequirements(params: {
-  programType: string | null | undefined;
-  compExamRecords: readonly CompExamRecordLike[];
-  thesisRecords: readonly ThesisRecordMilestoneLike[];
-  milestone: GraduationMilestoneInputLike | null | undefined;
-}): GraduationRequirementsEvaluation {
-  const normalizedType = normalizeProgramType(params.programType);
-  const compSummary = evaluateCompExamSummary(params.compExamRecords);
-
-  const compLabelMap: Record<string, string> = {
-    NOT_RECORDED: "Not yet taken",
-    PENDING: "Pending result",
-    RETAKE_REQUIRED: `Retake required (${compSummary.failedCount}/${compSummary.maxAttempts} failed)`,
-    PASSED: "Passed",
-    DISMISSED: "Disqualified (3/3 failed)",
-  };
-
-  const passedAtDate = compSummary.passedAttempt?.examDate ?? compSummary.passedAttempt?.createdAt ?? null;
-  const passedAtIso =
-    passedAtDate instanceof Date
-      ? passedAtDate.toISOString()
-      : passedAtDate
-        ? String(passedAtDate)
-        : null;
-
-  const requirementName =
-    normalizedType === "DOCTORAL" ? "Publicly Defended Dissertation" : "Thesis";
-
-  let thesisStatus: "NOT_STARTED" | "IN_PROGRESS" | "PASSED" = "NOT_STARTED";
-  let thesisLabel = "Not yet started";
-  let currentStage: string | null = null;
-
-  const hasFinalPassed = params.thesisRecords.some((tr) => {
-    const schedules = tr.defenseSchedules ?? [];
-    if (
-      schedules.some(
-        (s) =>
-          s.defenseType === "FINAL_DEFENSE" && s.conclusion?.outcome === "PASSED",
-      )
-    ) {
-      return true;
-    }
-    return tr.stage === "FINAL" && tr.outcome === "PASSED";
-  });
-
-  if (hasFinalPassed) {
-    thesisStatus = "PASSED";
-    thesisLabel =
-      normalizedType === "DOCTORAL" ? "Dissertation Passed" : "Thesis Passed";
-    currentStage = "FINAL";
-  } else if (params.thesisRecords.length > 0) {
-    thesisStatus = "IN_PROGRESS";
-    const latest = params.thesisRecords[0];
-    currentStage = latest.stage;
-    const stageMap: Record<string, string> = {
-      TITLE: "Title Defense stage",
-      PROPOSAL: "Proposal Defense stage",
-      FINAL: "Final Defense stage",
-    };
-    thesisLabel = stageMap[latest.stage] ?? "In progress";
-  }
-
-  const rawPubStatus = String(
-    params.milestone?.publicationStatus ?? "NOT_STARTED",
-  ).toUpperCase();
-  const publicationStatus: PublicationMilestoneStatusValue =
-    params.milestone?.isPublicationVerified || rawPubStatus === "VERIFIED"
-      ? "VERIFIED"
-      : rawPubStatus === "SUBMITTED"
-        ? "SUBMITTED"
-        : rawPubStatus === "IN_PROGRESS"
-          ? "IN_PROGRESS"
-          : "NOT_STARTED";
-
-  const publicationDescription =
-    normalizedType === "DOCTORAL"
-      ? "Publication in a nationally/internationally indexed journal or juried creative work outlet (Manual §7.25.2)."
-      : "At least one (1) publication in a refereed journal or juried creative work outlet (Manual §7.25.2).";
-
-  const pubVerifiedAt = params.milestone?.publicationVerifiedAt ?? null;
-
-  return {
-    comprehensiveExam: {
-      status: compSummary.standing,
-      label: compLabelMap[compSummary.standing] ?? compSummary.standing,
-      attemptsUsed: compSummary.attemptsUsed,
-      maxAttempts: compSummary.maxAttempts,
-      passedAt: passedAtIso,
-    },
-    thesisOrDissertation: {
-      status: thesisStatus,
-      label: thesisLabel,
-      requirementName,
-      currentStage,
-    },
-    publication: {
-      status: publicationStatus,
-      requirementDescription: publicationDescription,
-      title: params.milestone?.publicationTitle ?? null,
-      venue: params.milestone?.publicationVenue ?? null,
-      url: params.milestone?.publicationUrl ?? null,
-      year: params.milestone?.publicationYear ?? null,
-      notes: params.milestone?.publicationNotes ?? null,
-      isVerified: Boolean(params.milestone?.isPublicationVerified),
-      verifiedAt:
-        pubVerifiedAt instanceof Date
-          ? pubVerifiedAt.toISOString()
-          : pubVerifiedAt
-            ? String(pubVerifiedAt)
-            : null,
-    },
   };
 }

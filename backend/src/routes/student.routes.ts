@@ -34,12 +34,6 @@ router.put(
   requireRole(["STUDENT"]),
   studentController.updateCourseProgress,
 );
-router.put(
-  "/curriculum/publication",
-  authenticateJWT,
-  requireRole(["STUDENT"]),
-  studentController.updatePublicationMilestone,
-);
 // ADMIN ONLY: Record a Comprehensive Exam attempt (delegates to 3-attempt policy)
 router.post(
   "/:id/comprehensive-exam",

@@ -18,13 +18,10 @@ import {
   SelectItem,
   SelectTrigger,
 } from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import {
   COURSE_STATUS_LABEL,
   COURSE_STATUS_OPTIONS,
-  PUBLICATION_STATUS_LABEL,
-  PUBLICATION_STATUS_OPTIONS,
   SEMESTER_OPTIONS,
   isGradedCourseStatus,
 } from "@/lib/curriculum";
@@ -33,8 +30,6 @@ import type {
   CurriculumChecklistCourse,
   CurriculumChecklistGroup,
   GradingScaleInfo,
-  GraduationRequirementsView,
-  PublicationMilestoneStatus,
 } from "@/types/curriculum";
 
 export interface CourseProgressFormPayload {
@@ -43,17 +38,14 @@ export interface CourseProgressFormPayload {
   semester: string | null;
   schoolYear: string | null;
   remarks: string | null;
-  isVerifiedByAdmin?: boolean;
 }
 
 function CourseProgressForm({
-  mode,
   course,
   gradingScale,
   isSaving,
   onSave,
 }: {
-  mode: "STUDENT" | "ADMIN";
   course: CurriculumChecklistCourse;
   gradingScale: GradingScaleInfo;
   isSaving: boolean;
@@ -73,9 +65,6 @@ function CourseProgressForm({
   );
   const [remarks, setRemarks] = useState<string>(
     course.progress.remarks ?? "",
-  );
-  const [isVerifiedByAdmin, setIsVerifiedByAdmin] = useState<boolean>(
-    course.progress.isVerifiedByAdmin,
   );
 
   const showRating = isGradedCourseStatus(status);
@@ -127,7 +116,6 @@ function CourseProgressForm({
       semester: semester !== "NONE" ? semester : null,
       schoolYear: schoolYear.trim() || null,
       remarks: remarks.trim() || null,
-      ...(mode === "ADMIN" ? { isVerifiedByAdmin } : {}),
     });
   };
 
@@ -179,7 +167,7 @@ function CourseProgressForm({
             htmlFor="curr-course-rating"
             className="block text-xs font-semibold tracking-wider text-gray-600 uppercase"
           >
-            Rating (Manual §7.16)
+            Rating
           </label>
           <Select
             value={showRating ? rating : "NONE"}
@@ -280,28 +268,10 @@ function CourseProgressForm({
           rows={2}
           maxLength={500}
           value={remarks}
-          placeholder="e.g. Credited from prior coursework or Registrar grade slip"
+          placeholder="Optional note"
           onChange={(e) => setRemarks(e.target.value)}
         />
       </div>
-
-      {mode === "ADMIN" ? (
-        <div className="flex items-center justify-between rounded-lg border border-gray-200 bg-gray-50/70 px-3.5 py-2.5">
-          <div className="space-y-0.5 pr-3">
-            <p className="text-xs font-semibold text-[#262220]">
-              Verified by Graduate School
-            </p>
-            <p className="text-[11px] text-gray-500">
-              Locks this entry from student edits after COR or Registrar
-              confirmation.
-            </p>
-          </div>
-          <Switch
-            checked={isVerifiedByAdmin}
-            onCheckedChange={setIsVerifiedByAdmin}
-          />
-        </div>
-      ) : null}
 
       <DialogFooter>
         <DialogClose render={<Button type="button" variant="outline" />}>
@@ -322,7 +292,6 @@ function CourseProgressForm({
 export function CourseProgressDialog({
   open,
   onOpenChange,
-  mode,
   course,
   group,
   gradingScale,
@@ -331,7 +300,6 @@ export function CourseProgressDialog({
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  mode: "STUDENT" | "ADMIN";
   course: CurriculumChecklistCourse | null;
   group: CurriculumChecklistGroup | null;
   gradingScale: GradingScaleInfo;
@@ -355,260 +323,8 @@ export function CourseProgressDialog({
         {open && course ? (
           <CourseProgressForm
             key={`${course.id}-${course.progress.updatedAt ?? "new"}`}
-            mode={mode}
             course={course}
             gradingScale={gradingScale}
-            isSaving={isSaving}
-            onSave={onSave}
-          />
-        ) : null}
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-export interface PublicationFormPayload {
-  publicationStatus: PublicationMilestoneStatus;
-  publicationTitle: string | null;
-  publicationVenue: string | null;
-  publicationUrl: string | null;
-  publicationYear: string | null;
-  publicationNotes: string | null;
-  isPublicationVerified?: boolean;
-}
-
-function PublicationMilestoneForm({
-  mode,
-  publication,
-  isSaving,
-  onSave,
-}: {
-  mode: "STUDENT" | "ADMIN";
-  publication: GraduationRequirementsView["publication"];
-  isSaving: boolean;
-  onSave: (payload: PublicationFormPayload) => void;
-}) {
-  const [status, setStatus] = useState<PublicationMilestoneStatus>(
-    publication.status,
-  );
-  const [title, setTitle] = useState(publication.title ?? "");
-  const [venue, setVenue] = useState(publication.venue ?? "");
-  const [url, setUrl] = useState(publication.url ?? "");
-  const [year, setYear] = useState(publication.year ?? "");
-  const [notes, setNotes] = useState(publication.notes ?? "");
-  const [isVerified, setIsVerified] = useState(publication.isVerified);
-
-  const statusChoices =
-    mode === "ADMIN"
-      ? PUBLICATION_STATUS_OPTIONS
-      : PUBLICATION_STATUS_OPTIONS.filter((opt) => opt.value !== "VERIFIED");
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    onSave({
-      publicationStatus: mode === "ADMIN" && isVerified ? "VERIFIED" : status,
-      publicationTitle: title.trim() || null,
-      publicationVenue: venue.trim() || null,
-      publicationUrl: url.trim() || null,
-      publicationYear: year.trim() || null,
-      publicationNotes: notes.trim() || null,
-      ...(mode === "ADMIN" ? { isPublicationVerified: isVerified } : {}),
-    });
-  };
-
-  return (
-    <form className="space-y-4" onSubmit={handleSubmit}>
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <div className="space-y-1.5">
-          <label
-            htmlFor="pub-status"
-            className="block text-xs font-semibold tracking-wider text-gray-600 uppercase"
-          >
-            Status
-          </label>
-          <Select
-            value={status}
-            onValueChange={(val) => {
-              const next = val as PublicationMilestoneStatus;
-              setStatus(next);
-              if (mode === "ADMIN" && next === "VERIFIED") {
-                setIsVerified(true);
-              } else if (mode === "ADMIN" && next !== "VERIFIED") {
-                setIsVerified(false);
-              }
-            }}
-          >
-            <SelectTrigger
-              id="pub-status"
-              className="w-full data-[size=default]:h-10"
-            >
-              <span className="flex-1 truncate text-left text-[#262220]">
-                {PUBLICATION_STATUS_LABEL[status] ?? status}
-              </span>
-            </SelectTrigger>
-            <SelectContent
-              alignItemWithTrigger={false}
-              className="w-(--anchor-width)"
-            >
-              {statusChoices.map((opt) => (
-                <SelectItem key={opt.value} value={opt.value}>
-                  {opt.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div className="space-y-1.5">
-          <label
-            htmlFor="pub-year"
-            className="block text-xs font-semibold tracking-wider text-gray-600 uppercase"
-          >
-            Publication Year
-          </label>
-          <Input
-            id="pub-year"
-            value={year}
-            maxLength={16}
-            placeholder="e.g. 2026"
-            onChange={(e) => setYear(e.target.value)}
-          />
-        </div>
-      </div>
-
-      <div className="space-y-1.5">
-        <label
-          htmlFor="pub-title"
-          className="block text-xs font-semibold tracking-wider text-gray-600 uppercase"
-        >
-          Article / Output Title
-        </label>
-        <Input
-          id="pub-title"
-          value={title}
-          maxLength={500}
-          placeholder="Title of published journal article or creative work"
-          onChange={(e) => setTitle(e.target.value)}
-        />
-      </div>
-
-      <div className="space-y-1.5">
-        <label
-          htmlFor="pub-venue"
-          className="block text-xs font-semibold tracking-wider text-gray-600 uppercase"
-        >
-          Journal / Refereed Outlet
-        </label>
-        <Input
-          id="pub-venue"
-          value={venue}
-          maxLength={255}
-          placeholder="e.g. Philippine Journal of Mathematics Education"
-          onChange={(e) => setVenue(e.target.value)}
-        />
-      </div>
-
-      <div className="space-y-1.5">
-        <label
-          htmlFor="pub-url"
-          className="block text-xs font-semibold tracking-wider text-gray-600 uppercase"
-        >
-          DOI / Reference URL (optional)
-        </label>
-        <Input
-          id="pub-url"
-          type="url"
-          value={url}
-          maxLength={500}
-          placeholder="https://..."
-          onChange={(e) => setUrl(e.target.value)}
-        />
-      </div>
-
-      <div className="space-y-1.5">
-        <label
-          htmlFor="pub-notes"
-          className="block text-xs font-semibold tracking-wider text-gray-600 uppercase"
-        >
-          Notes (optional)
-        </label>
-        <Textarea
-          id="pub-notes"
-          rows={2}
-          maxLength={1000}
-          value={notes}
-          onChange={(e) => setNotes(e.target.value)}
-        />
-      </div>
-
-      {mode === "ADMIN" ? (
-        <div className="flex items-center justify-between rounded-lg border border-gray-200 bg-gray-50/70 px-3.5 py-2.5">
-          <div className="space-y-0.5 pr-3">
-            <p className="text-xs font-semibold text-[#262220]">
-              Verified by Graduate School
-            </p>
-            <p className="text-[11px] text-gray-500">
-              Confirms compliance with Manual §7.25.2 graduation publication
-              requirement.
-            </p>
-          </div>
-          <Switch
-            checked={isVerified}
-            onCheckedChange={(checked) => {
-              setIsVerified(checked);
-              setStatus(checked ? "VERIFIED" : "SUBMITTED");
-            }}
-          />
-        </div>
-      ) : null}
-
-      <DialogFooter>
-        <DialogClose render={<Button type="button" variant="outline" />}>
-          Cancel
-        </DialogClose>
-        <Button
-          type="submit"
-          className="bg-[#e02b20] text-white hover:bg-[#b71c1c]"
-          disabled={isSaving}
-        >
-          {isSaving ? "Saving..." : "Save Publication"}
-        </Button>
-      </DialogFooter>
-    </form>
-  );
-}
-
-export function PublicationMilestoneDialog({
-  open,
-  onOpenChange,
-  mode,
-  publication,
-  isSaving,
-  onSave,
-}: {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  mode: "STUDENT" | "ADMIN";
-  publication: GraduationRequirementsView["publication"] | null;
-  isSaving: boolean;
-  onSave: (payload: PublicationFormPayload) => void;
-}) {
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg">
-        <DialogHeader>
-          <DialogTitle>Research Publication Requirement</DialogTitle>
-          <DialogDescription>
-            {publication?.requirementDescription ??
-              "Track journal or juried creative work publication progress."}
-          </DialogDescription>
-        </DialogHeader>
-
-        {open && publication ? (
-          <PublicationMilestoneForm
-            key={`${publication.status}-${publication.isVerified}-${publication.title ?? ""}`}
-            mode={mode}
-            publication={publication}
             isSaving={isSaving}
             onSave={onSave}
           />

@@ -69,8 +69,6 @@ model User {
   compExamRecordsRecorded            CompExamRecord[]          @relation("CompExamRecordedBy")
   courseProgressEncoded              StudentCourseProgress[]   @relation("CourseProgressEncodedBy")
   courseProgressVerified             StudentCourseProgress[]   @relation("CourseProgressVerifiedBy")
-  publicationsVerified               StudentGraduationMilestone[] @relation("PublicationVerifiedBy")
-  graduationMilestonesUpdated        StudentGraduationMilestone[] @relation("GraduationMilestoneUpdatedBy")
   customRole                         CustomRole?               @relation("UserCustomRole", fields: [customRoleId], references: [id])
 
   @@index([customRoleId], map: "users_custom_role_id_fkey")
@@ -109,7 +107,6 @@ model Student {
   user                     User                      @relation(fields: [userId], references: [id])
   thesisRecords            ThesisRecord[]
   courseProgress           StudentCourseProgress[]
-  graduationMilestone      StudentGraduationMilestone?
 
   @@index([programId], map: "students_program_id_fkey")
   @@index([curriculumVersionId], map: "students_curriculum_version_id_fkey")
@@ -1958,15 +1955,6 @@ enum CourseProgressActorRole {
   @@map("course_progress_actor_role")
 }
 
-enum PublicationMilestoneStatus {
-  NOT_STARTED
-  IN_PROGRESS
-  SUBMITTED
-  VERIFIED
-
-  @@map("publication_milestone_status")
-}
-
 model CurriculumVersion {
   id                      String                  @id @default(uuid()) @map("curriculum_version_id")
   programId               String                  @map("program_id")
@@ -2053,28 +2041,4 @@ model StudentCourseProgress {
   @@index([encodedById], map: "student_course_progress_encoded_by_id_fkey")
   @@index([verifiedById], map: "student_course_progress_verified_by_id_fkey")
   @@map("student_course_progress")
-}
-
-model StudentGraduationMilestone {
-  id                      String                     @id @default(uuid()) @map("graduation_milestone_id")
-  studentId               String                     @unique @map("student_id")
-  publicationStatus       PublicationMilestoneStatus @default(NOT_STARTED) @map("publication_status")
-  publicationTitle        String?                    @map("publication_title") @db.Text
-  publicationVenue        String?                    @map("publication_venue") @db.VarChar(255)
-  publicationUrl          String?                    @map("publication_url") @db.VarChar(500)
-  publicationYear         String?                    @map("publication_year") @db.VarChar(16)
-  publicationNotes        String?                    @map("publication_notes") @db.Text
-  isPublicationVerified   Boolean                    @default(false) @map("is_publication_verified")
-  publicationVerifiedById String?                    @map("publication_verified_by_id")
-  publicationVerifiedAt   DateTime?                  @map("publication_verified_at")
-  updatedById             String?                    @map("updated_by_id")
-  createdAt               DateTime                   @default(now()) @map("created_at")
-  updatedAt               DateTime                   @updatedAt @map("updated_at")
-  student                 Student                    @relation(fields: [studentId], references: [id], onDelete: Cascade)
-  publicationVerifiedBy   User?                      @relation("PublicationVerifiedBy", fields: [publicationVerifiedById], references: [id], onDelete: SetNull)
-  updatedBy               User?                      @relation("GraduationMilestoneUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
-
-  @@index([publicationVerifiedById], map: "student_graduation_milestones_verified_by_fkey")
-  @@index([updatedById], map: "student_graduation_milestones_updated_by_fkey")
-  @@map("student_graduation_milestones")
 }

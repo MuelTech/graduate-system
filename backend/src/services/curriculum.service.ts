@@ -1,13 +1,11 @@
 import type {
   CurriculumGroupType,
   CurriculumType,
-  PublicationMilestoneStatus,
 } from "@prisma/client";
 import { CurriculumRepository } from "../repositories/curriculum.repository";
 import { AppError } from "../utils/AppError";
 import {
   evaluateCurriculumProgress,
-  evaluateGraduationRequirements,
   getGradingScaleForProgram,
   normalizeProgramType,
   validateAndNormalizeCourseProgressInput,
@@ -27,12 +25,19 @@ const VALID_GROUP_TYPES: readonly CurriculumGroupType[] = [
   "OTHER",
 ];
 
-const VALID_PUBLICATION_STATUSES: readonly PublicationMilestoneStatus[] = [
-  "NOT_STARTED",
-  "IN_PROGRESS",
-  "SUBMITTED",
-  "VERIFIED",
-];
+function generateInternalVersionCode(
+  curriculumType: CurriculumType,
+  effectiveSchoolYear: string | null,
+  label: string,
+): string {
+  const base = (effectiveSchoolYear || label)
+    .toUpperCase()
+    .replace(/[^A-Z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 32);
+  const suffix = Date.now().toString(36).toUpperCase().slice(-5);
+  return `${curriculumType}-${base || "CUR"}-${suffix}`.slice(0, 64);
+}
 
 function formatPersonName(
   person: { firstName: string; lastName: string; suffix?: string | null } | null | undefined,
@@ -142,12 +147,6 @@ export class CurriculumService {
       throw new AppError("Selected graduate program was not found.", 404);
     }
 
-    const versionCode = parseRequiredTrimmed(
-      body.versionCode,
-      1,
-      64,
-      "Version code",
-    );
     const label = parseRequiredTrimmed(body.label, 2, 191, "Curriculum label");
 
     const rawType = String(body.curriculumType ?? "NEW").trim().toUpperCase();
@@ -161,6 +160,14 @@ export class CurriculumService {
       64,
       "Effective school year",
     );
+    const providedVersionCode = parseOptionalTrimmed(
+      body.versionCode,
+      64,
+      "Version code",
+    );
+    const versionCode =
+      providedVersionCode ??
+      generateInternalVersionCode(curriculumType, effectiveSchoolYear, label);
     const notes = parseOptionalTrimmed(body.notes, 2000, "Notes");
     const isDefaultForNewStudents = Boolean(body.isDefaultForNewStudents);
     const isActive =
@@ -656,9 +663,9 @@ export class CurriculumService {
                       remarks: p.remarks,
                       encodedByRole: p.encodedByRole,
                       encodedByName: formatPersonName(p.encodedBy),
-                      isVerifiedByAdmin: p.isVerifiedByAdmin,
-                      verifiedByName: formatPersonName(p.verifiedBy),
-                      verifiedAt: p.verifiedAt?.toISOString() ?? null,
+                      isVerifiedByAdmin: false,
+                      verifiedByName: null,
+                      verifiedAt: null,
                       updatedAt: p.updatedAt.toISOString(),
                     }
                   : {
@@ -679,13 +686,6 @@ export class CurriculumService {
           };
         })
       : [];
-
-    const graduationRequirements = evaluateGraduationRequirements({
-      programType,
-      compExamRecords: context.compExamRecords,
-      thesisRecords: context.thesisRecords,
-      milestone: context.graduationMilestone,
-    });
 
     return {
       student: {
@@ -719,15 +719,6 @@ export class CurriculumService {
       gradingScale,
       summary,
       groups,
-      graduationRequirements: {
-        ...graduationRequirements,
-        publication: {
-          ...graduationRequirements.publication,
-          verifiedByName: formatPersonName(
-            context.graduationMilestone?.publicationVerifiedBy,
-          ),
-        },
-      },
     };
   }
 
@@ -788,16 +779,6 @@ export class CurriculumService {
       );
     }
 
-    if (
-      params.actorRole === "STUDENT" &&
-      params.body.isVerifiedByAdmin === true
-    ) {
-      throw new AppError(
-        "Only a Graduate School Administrator can verify coursework records.",
-        403,
-      );
-    }
-
     const resolved = await this.resolveChecklistContext(context);
     if (!resolved.resolvedVersion) {
       throw new AppError(
@@ -828,12 +809,6 @@ export class CurriculumService {
       },
     );
 
-    const isVerifiedByAdmin =
-      params.actorRole === "ADMIN" &&
-      params.body.isVerifiedByAdmin !== undefined
-        ? Boolean(params.body.isVerifiedByAdmin)
-        : undefined;
-
     await this.repository.upsertStudentCourseProgress({
       studentId: context.id,
       courseId: targetCourse.id,
@@ -845,7 +820,6 @@ export class CurriculumService {
       semester: normalized.semester,
       schoolYear: normalized.schoolYear,
       remarks: normalized.remarks,
-      isVerifiedByAdmin,
       fallbackVersionToBind: resolved.isFallbackVersion
         ? {
             id: resolved.resolvedVersion.id,
@@ -857,39 +831,6 @@ export class CurriculumService {
     return params.actorRole === "STUDENT"
       ? this.getStudentChecklistByUserId(params.targetId)
       : this.getStudentChecklistByStudentId(params.targetId);
-  }
-
-  async verifyAllPassedCourses(studentId: string, adminId: string) {
-    if (!adminId) {
-      throw new AppError("Authenticated Admin identity is required.", 401);
-    }
-    const context =
-      await this.repository.findStudentChecklistContextByStudentId(studentId);
-    if (!context) {
-      throw new AppError("Student not found.", 404);
-    }
-    if (context.admissionStatus === "APPLICANT") {
-      throw new AppError(
-        "Curriculum verification is only available for Student records.",
-        409,
-      );
-    }
-
-    const resolved = await this.resolveChecklistContext(context);
-    const courseIds = resolved.resolvedVersion
-      ? resolved.resolvedVersion.groups.flatMap((g) =>
-          g.courses.map((c) => c.id),
-        )
-      : [];
-
-    const verifiedCount = await this.repository.verifyAllPassedCourseProgress({
-      studentId: context.id,
-      adminId,
-      courseIds,
-    });
-
-    const checklist = await this.getStudentChecklistByStudentId(studentId);
-    return { verifiedCount, checklist };
   }
 
   async assignStudentCurriculumVersion(
@@ -952,109 +893,5 @@ export class CurriculumService {
     });
 
     return this.getStudentChecklistByStudentId(studentId);
-  }
-
-  async updatePublicationMilestone(params: {
-    actorRole: "STUDENT" | "ADMIN";
-    actorUserId: string;
-    targetId: string; // userId when STUDENT, studentId when ADMIN
-    body: Record<string, unknown>;
-  }) {
-    const context =
-      params.actorRole === "STUDENT"
-        ? await this.repository.findStudentChecklistContextByUserId(
-            params.targetId,
-          )
-        : await this.repository.findStudentChecklistContextByStudentId(
-            params.targetId,
-          );
-
-    if (!context) {
-      throw new AppError("Student not found.", 404);
-    }
-    if (context.admissionStatus === "APPLICANT") {
-      throw new AppError(
-        "Publication milestone tracking is only available for Student accounts.",
-        409,
-      );
-    }
-
-    const rawStatus = String(
-      params.body.publicationStatus ?? "NOT_STARTED",
-    )
-      .trim()
-      .toUpperCase() as PublicationMilestoneStatus;
-
-    if (!VALID_PUBLICATION_STATUSES.includes(rawStatus)) {
-      throw new AppError("Invalid publication milestone status.", 400);
-    }
-
-    if (
-      params.actorRole === "STUDENT" &&
-      (rawStatus === "VERIFIED" || params.body.isPublicationVerified === true)
-    ) {
-      throw new AppError(
-        "Only a Graduate School Administrator can mark a publication milestone as verified.",
-        403,
-      );
-    }
-
-    const publicationTitle = parseOptionalTrimmed(
-      params.body.publicationTitle,
-      500,
-      "Publication title",
-    );
-    const publicationVenue = parseOptionalTrimmed(
-      params.body.publicationVenue,
-      255,
-      "Journal or outlet",
-    );
-    const publicationUrl = parseOptionalTrimmed(
-      params.body.publicationUrl,
-      500,
-      "Publication URL",
-    );
-    if (
-      publicationUrl &&
-      !/^https?:\/\//i.test(publicationUrl)
-    ) {
-      throw new AppError(
-        "Publication link must start with http:// or https://.",
-        400,
-      );
-    }
-    const publicationYear = parseOptionalTrimmed(
-      params.body.publicationYear,
-      16,
-      "Publication year",
-    );
-    const publicationNotes = parseOptionalTrimmed(
-      params.body.publicationNotes,
-      1000,
-      "Publication notes",
-    );
-
-    const isPublicationVerified =
-      params.actorRole === "ADMIN" &&
-      params.body.isPublicationVerified !== undefined
-        ? Boolean(params.body.isPublicationVerified)
-        : undefined;
-
-    await this.repository.upsertStudentGraduationMilestone({
-      studentId: context.id,
-      actorUserId: params.actorUserId,
-      actorRole: params.actorRole,
-      publicationStatus: rawStatus,
-      publicationTitle,
-      publicationVenue,
-      publicationUrl,
-      publicationYear,
-      publicationNotes,
-      isPublicationVerified,
-    });
-
-    return params.actorRole === "STUDENT"
-      ? this.getStudentChecklistByUserId(params.targetId)
-      : this.getStudentChecklistByStudentId(params.targetId);
   }
 }

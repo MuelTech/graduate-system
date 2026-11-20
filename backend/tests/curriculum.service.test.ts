@@ -96,9 +96,6 @@ function makeContext(overrides: Record<string, unknown> = {}) {
       ],
     },
     courseProgress: [],
-    compExamRecords: [],
-    thesisRecords: [],
-    graduationMilestone: null,
     ...overrides,
   };
 }
@@ -111,7 +108,7 @@ function makeMockRepo(overrides: Partial<Record<keyof CurriculumRepository, unkn
       id: "ver-old",
       programId: "prog-mat-math",
       versionCode: "OLD-PRE2024",
-      label: "Old Curriculum (Pre-2024)",
+      label: "Old Curriculum",
       curriculumType: "OLD",
       groups: [],
     }),
@@ -120,7 +117,7 @@ function makeMockRepo(overrides: Partial<Record<keyof CurriculumRepository, unkn
         id: "ver-1",
         programId: "prog-mat-math",
         versionCode: "NEW-2024",
-        label: "New Curriculum (S.Y. 2024-2025)",
+        label: "New Curriculum (S.Y. 2024–2025)",
         curriculumType: "NEW",
         effectiveSchoolYear: "2024-2025",
         totalRequiredUnits: 9,
@@ -157,9 +154,7 @@ function makeMockRepo(overrides: Partial<Record<keyof CurriculumRepository, unkn
     findStudentChecklistContextByStudentId: vi.fn().mockResolvedValue(defaultCtx),
     findFallbackCurriculumVersionForProgram: vi.fn().mockResolvedValue(null),
     upsertStudentCourseProgress: vi.fn().mockResolvedValue({ id: "prog-1" }),
-    verifyAllPassedCourseProgress: vi.fn().mockResolvedValue(2),
     assignStudentCurriculumVersion: vi.fn().mockResolvedValue(undefined),
-    upsertStudentGraduationMilestone: vi.fn().mockResolvedValue({ id: "mile-1" }),
     ...overrides,
   } as unknown as CurriculumRepository;
 }
@@ -223,51 +218,6 @@ describe("CurriculumService", () => {
       ).rejects.toMatchObject({ statusCode: 400 });
     });
 
-    it("blocks student from passing isVerifiedByAdmin=true or publicationStatus=VERIFIED (403)", async () => {
-      const repo = makeMockRepo();
-      const service = new CurriculumService(repo);
-
-      await expect(
-        service.updateCourseProgress({
-          actorRole: "STUDENT",
-          actorUserId: "user-stu-1",
-          targetId: "user-stu-1",
-          courseId: "course-1",
-          body: { status: "PASSED", rating: "1.25", isVerifiedByAdmin: true },
-        }),
-      ).rejects.toMatchObject({ statusCode: 403 });
-
-      await expect(
-        service.updatePublicationMilestone({
-          actorRole: "STUDENT",
-          actorUserId: "user-stu-1",
-          targetId: "user-stu-1",
-          body: { publicationStatus: "VERIFIED" },
-        }),
-      ).rejects.toMatchObject({ statusCode: 403 });
-    });
-
-    it("propagates 409 lock when repository rejects edit of an Admin-verified subject", async () => {
-      const repo = makeMockRepo({
-        upsertStudentCourseProgress: vi
-          .fn()
-          .mockRejectedValue(
-            new AppError("Already verified by the Graduate School.", 409),
-          ),
-      });
-      const service = new CurriculumService(repo);
-
-      await expect(
-        service.updateCourseProgress({
-          actorRole: "STUDENT",
-          actorUserId: "user-stu-1",
-          targetId: "user-stu-1",
-          courseId: "course-1",
-          body: { status: "PASSED", rating: "1.25" },
-        }),
-      ).rejects.toMatchObject({ statusCode: 409 });
-    });
-
     it("binds fallback default curriculum version automatically when student has null curriculumVersionId", async () => {
       const baseCtx = makeContext({ curriculumVersionId: null, curriculumVersion: null });
       const fallbackVersion = makeContext().curriculumVersion;
@@ -298,8 +248,8 @@ describe("CurriculumService", () => {
     });
   });
 
-  describe("Admin verification, version shift & master CRUD guards", () => {
-    it("allows Admin to verify coursework, bulk-verify passed rows, and verify publication", async () => {
+  describe("Admin coursework editing, version shift & master CRUD guards", () => {
+    it("allows Admin to encode student coursework and auto-generates versionCode when omitted on createVersion", async () => {
       const repo = makeMockRepo();
       const service = new CurriculumService(repo);
 
@@ -308,40 +258,28 @@ describe("CurriculumService", () => {
         actorUserId: "admin-1",
         targetId: "stu-1",
         courseId: "course-1",
-        body: { status: "PASSED", rating: "1.25", isVerifiedByAdmin: true },
+        body: { status: "PASSED", rating: "1.25" },
       });
       expect(repo.upsertStudentCourseProgress).toHaveBeenCalledWith(
         expect.objectContaining({
           actorRole: "ADMIN",
-          isVerifiedByAdmin: true,
+          status: "PASSED",
+          rating: "1.25",
         }),
       );
 
-      const bulk = await service.verifyAllPassedCourses("stu-1", "admin-1");
-      expect(bulk.verifiedCount).toBe(2);
-      expect(repo.verifyAllPassedCourseProgress).toHaveBeenCalledWith({
-        studentId: "stu-1",
-        adminId: "admin-1",
-        courseIds: ["course-1", "course-2", "course-3"],
+      await service.createVersion("admin-1", {
+        programId: "prog-mat-math",
+        label: "New Curriculum (S.Y. 2026–2027)",
+        curriculumType: "NEW",
+        effectiveSchoolYear: "2026-2027",
       });
-
-      await service.updatePublicationMilestone({
-        actorRole: "ADMIN",
-        actorUserId: "admin-1",
-        targetId: "stu-1",
-        body: {
-          publicationStatus: "VERIFIED",
-          publicationTitle: "Refereed Paper",
-          publicationVenue: "Journal of Math Education",
-          publicationUrl: "https://example.org/paper",
-          isPublicationVerified: true,
-        },
-      });
-      expect(repo.upsertStudentGraduationMilestone).toHaveBeenCalledWith(
+      expect(repo.createVersion).toHaveBeenCalledWith(
+        "admin-1",
         expect.objectContaining({
-          actorRole: "ADMIN",
-          publicationStatus: "VERIFIED",
-          isPublicationVerified: true,
+          programId: "prog-mat-math",
+          label: "New Curriculum (S.Y. 2026–2027)",
+          versionCode: expect.stringMatching(/^NEW-2026-2027-/),
         }),
       );
     });

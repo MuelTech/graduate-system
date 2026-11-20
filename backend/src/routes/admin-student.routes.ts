@@ -83,7 +83,7 @@ router.post(
   controller.resetStudentPassword,
 );
 
-// Curriculum Checklist / Plan of Coursework (Admin review, encoding, verification, version shift)
+// Curriculum Checklist / Plan of Coursework (Admin review, encoding, version shift)
 router.get(
   "/:id/curriculum",
   authenticateJWT,
@@ -106,22 +106,6 @@ router.put(
   requireRole(["ADMIN"]),
   requireAdminCapability("students.manage"),
   controller.updateStudentCourseProgress,
-);
-
-router.post(
-  "/:id/curriculum/verify-all",
-  authenticateJWT,
-  requireRole(["ADMIN"]),
-  requireAdminCapability("students.manage"),
-  controller.verifyAllStudentCourses,
-);
-
-router.put(
-  "/:id/curriculum/publication",
-  authenticateJWT,
-  requireRole(["ADMIN"]),
-  requireAdminCapability("students.manage"),
-  controller.updateStudentPublicationMilestone,
 );
 
 export default router;

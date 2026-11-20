@@ -981,11 +981,11 @@ export default function StudentDetailPage() {
             {curriculumQuery.data?.summary ? (
               <p className="rounded-md border border-gray-200/80 bg-gray-50/70 px-3 py-2 text-xs text-gray-600">
                 <span className="font-medium text-[#262220]">
-                  Coursework tracker (advisory):
+                  Coursework progress:
                 </span>{" "}
                 {curriculumQuery.data.summary.encodedCourseCount === 0
-                  ? `No courses encoded yet (${curriculumQuery.data.summary.wceRequiredUnits} academic units in curriculum).`
-                  : `${curriculumQuery.data.summary.wceEarnedUnits} / ${curriculumQuery.data.summary.wceRequiredUnits} academic units completed (${curriculumQuery.data.summary.wceVerifiedUnits} verified).`}
+                  ? `No subjects encoded yet (${curriculumQuery.data.summary.wceRequiredUnits} academic units in curriculum).`
+                  : `${curriculumQuery.data.summary.wceEarnedUnits} / ${curriculumQuery.data.summary.wceRequiredUnits} academic units completed.`}
               </p>
             ) : null}
 

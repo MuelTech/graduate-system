@@ -3,7 +3,6 @@ import { AUTHORITATIVE_GRADUATE_PROGRAMS } from "../src/config/graduate-programs
 import { AUTHORITATIVE_CURRICULA } from "../src/config/earist-curriculum-catalog";
 import {
   evaluateCurriculumProgress,
-  evaluateGraduationRequirements,
   getGradingScaleForProgram,
   validateAndNormalizeCourseProgressInput,
   type CurriculumVersionLike,
@@ -309,48 +308,8 @@ describe("EARIST Curriculum Checklist pure domain rules (Manual §7.9, §7.16, �
     });
   });
 
-  describe("Live Graduation Requirements derivation", () => {
-    it("derives WCE, Thesis/Dissertation, and Publication milestones live from domain records", () => {
-      const docEval = evaluateGraduationRequirements({
-        programType: "DOCTORAL",
-        compExamRecords: [
-          { status: "FAILED", attemptNumber: 1, createdAt: "2026-01-10T00:00:00Z" },
-          { status: "PASSED", attemptNumber: 2, examDate: "2026-06-15T00:00:00Z" },
-        ],
-        thesisRecords: [
-          {
-            stage: "FINAL",
-            status: "PASSED",
-            outcome: "PASSED",
-            defenseSchedules: [
-              { defenseType: "FINAL_DEFENSE", conclusion: { outcome: "PASSED" } },
-            ],
-          },
-        ],
-        milestone: {
-          publicationStatus: "VERIFIED",
-          publicationTitle: "Indexed Study on Management",
-          publicationVenue: "Journal of Management",
-          isPublicationVerified: true,
-        },
-      });
-
-      expect(docEval.comprehensiveExam.status).toBe("PASSED");
-      expect(docEval.comprehensiveExam.attemptsUsed).toBe(2);
-      expect(docEval.thesisOrDissertation.status).toBe("PASSED");
-      expect(docEval.thesisOrDissertation.requirementName).toBe(
-        "Publicly Defended Dissertation",
-      );
-      expect(docEval.publication.status).toBe("VERIFIED");
-      expect(docEval.publication.isVerified).toBe(true);
-      expect(docEval.publication.requirementDescription).toContain(
-        "nationally/internationally indexed",
-      );
-    });
-  });
-
   describe("Official EARIST Curriculum Catalog integrity (16 NEW + 14 OLD = 30)", () => {
-    it("contains 16 default NEW-2024 curricula covering every authoritative program and 14 OLD curricula", () => {
+    it("contains 16 default NEW curricula covering every authoritative program and 14 OLD curricula with clean labels", () => {
       const newCurricula = AUTHORITATIVE_CURRICULA.filter(
         (c) => c.curriculumType === "NEW",
       );
@@ -372,10 +331,13 @@ describe("EARIST Curriculum Checklist pure domain rules (Manual §7.9, §7.16, �
           `Missing NEW curriculum for ${prog.programName}`,
         ).toBeDefined();
         expect(matchNew?.isDefaultForNewStudents).toBe(true);
+        expect(matchNew?.label).toBe("New Curriculum (S.Y. 2024–2025)");
       }
 
       for (const oldCur of oldCurricula) {
         expect(oldCur.isDefaultForNewStudents).toBe(false);
+        expect(oldCur.label).toBe("Old Curriculum");
+        expect(oldCur.effectiveSchoolYear).toBeNull();
       }
     });
 

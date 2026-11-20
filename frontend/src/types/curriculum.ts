@@ -19,12 +19,6 @@ export type CourseProgressStatus =
   | "DROPPED"
   | "CREDITED";
 
-export type PublicationMilestoneStatus =
-  | "NOT_STARTED"
-  | "IN_PROGRESS"
-  | "SUBMITTED"
-  | "VERIFIED";
-
 export interface GradingScaleOption {
   value: string;
   label: string;
@@ -118,34 +112,6 @@ export interface CurriculumProgressSummary {
   verifiedCourseCount: number;
 }
 
-export interface GraduationRequirementsView {
-  comprehensiveExam: {
-    status: "NOT_RECORDED" | "PENDING" | "RETAKE_REQUIRED" | "PASSED" | "DISMISSED";
-    label: string;
-    attemptsUsed: number;
-    maxAttempts: number;
-    passedAt: string | null;
-  };
-  thesisOrDissertation: {
-    status: "NOT_STARTED" | "IN_PROGRESS" | "PASSED";
-    label: string;
-    requirementName: string;
-    currentStage: string | null;
-  };
-  publication: {
-    status: PublicationMilestoneStatus;
-    requirementDescription: string;
-    title: string | null;
-    venue: string | null;
-    url: string | null;
-    year: string | null;
-    notes: string | null;
-    isVerified: boolean;
-    verifiedAt: string | null;
-    verifiedByName: string | null;
-  };
-}
-
 export interface StudentCurriculumChecklistDto {
   student: {
     id: string;
@@ -165,7 +131,6 @@ export interface StudentCurriculumChecklistDto {
   gradingScale: GradingScaleInfo;
   summary: CurriculumProgressSummary | null;
   groups: CurriculumChecklistGroup[];
-  graduationRequirements: GraduationRequirementsView;
 }
 
 export interface AdminCurriculumCourseItem {

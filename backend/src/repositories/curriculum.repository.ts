@@ -2,7 +2,6 @@ import type {
   CourseProgressStatus,
   CurriculumGroupType,
   CurriculumType,
-  PublicationMilestoneStatus,
 } from "@prisma/client";
 import prisma from "../config/database";
 import { AppError } from "../utils/AppError";
@@ -72,42 +71,6 @@ const STUDENT_CHECKLIST_INCLUDE = {
   courseProgress: {
     include: {
       encodedBy: { select: { id: true, firstName: true, lastName: true } },
-      verifiedBy: { select: { id: true, firstName: true, lastName: true } },
-    },
-  },
-  compExamRecords: {
-    select: {
-      id: true,
-      attemptNumber: true,
-      status: true,
-      examDate: true,
-      createdAt: true,
-    },
-    orderBy: [{ attemptNumber: "desc" as const }, { createdAt: "desc" as const }],
-  },
-  thesisRecords: {
-    select: {
-      id: true,
-      stage: true,
-      status: true,
-      outcome: true,
-      createdAt: true,
-      defenseSchedules: {
-        select: {
-          defenseType: true,
-          conclusion: {
-            select: { outcome: true },
-          },
-        },
-      },
-    },
-    orderBy: { createdAt: "desc" as const },
-  },
-  graduationMilestone: {
-    include: {
-      publicationVerifiedBy: {
-        select: { id: true, firstName: true, lastName: true },
-      },
     },
   },
 };
@@ -668,7 +631,6 @@ export class CurriculumRepository {
     semester: string | null;
     schoolYear: string | null;
     remarks: string | null;
-    isVerifiedByAdmin?: boolean;
     fallbackVersionToBind?: { id: string; curriculumType: CurriculumType } | null;
   }) {
     return prisma.$transaction(async (tx) => {
@@ -691,40 +653,6 @@ export class CurriculumRepository {
         },
       });
 
-      if (params.actorRole === "STUDENT" && existing?.isVerifiedByAdmin) {
-        throw new AppError(
-          "This subject has already been verified by the Graduate School and can no longer be edited.",
-          409,
-        );
-      }
-
-      const now = new Date();
-      let verificationPatch: {
-        isVerifiedByAdmin: boolean;
-        verifiedById: string | null;
-        verifiedAt: Date | null;
-      };
-
-      if (params.actorRole === "STUDENT") {
-        verificationPatch = {
-          isVerifiedByAdmin: false,
-          verifiedById: null,
-          verifiedAt: null,
-        };
-      } else if (params.isVerifiedByAdmin !== undefined) {
-        verificationPatch = {
-          isVerifiedByAdmin: params.isVerifiedByAdmin,
-          verifiedById: params.isVerifiedByAdmin ? params.actorUserId : null,
-          verifiedAt: params.isVerifiedByAdmin ? now : null,
-        };
-      } else {
-        verificationPatch = {
-          isVerifiedByAdmin: existing?.isVerifiedByAdmin ?? false,
-          verifiedById: existing?.verifiedById ?? null,
-          verifiedAt: existing?.verifiedAt ?? null,
-        };
-      }
-
       const saved = await tx.studentCourseProgress.upsert({
         where: {
           studentId_curriculumCourseId: {
@@ -740,7 +668,9 @@ export class CurriculumRepository {
           remarks: params.remarks,
           encodedByRole: params.actorRole,
           encodedById: params.actorUserId,
-          ...verificationPatch,
+          isVerifiedByAdmin: false,
+          verifiedById: null,
+          verifiedAt: null,
         },
         create: {
           studentId: params.studentId,
@@ -752,7 +682,9 @@ export class CurriculumRepository {
           remarks: params.remarks,
           encodedByRole: params.actorRole,
           encodedById: params.actorUserId,
-          ...verificationPatch,
+          isVerifiedByAdmin: false,
+          verifiedById: null,
+          verifiedAt: null,
         },
       });
 
@@ -769,7 +701,6 @@ export class CurriculumRepository {
                   rating: existing.rating,
                   semester: existing.semester,
                   schoolYear: existing.schoolYear,
-                  isVerifiedByAdmin: existing.isVerifiedByAdmin,
                 })
               : null,
             newValue: JSON.stringify({
@@ -779,7 +710,6 @@ export class CurriculumRepository {
               rating: saved.rating,
               semester: saved.semester,
               schoolYear: saved.schoolYear,
-              isVerifiedByAdmin: saved.isVerifiedByAdmin,
             }),
             description: `Admin updated ${params.courseCode} progress (${saved.status}${saved.rating ? `, ${saved.rating}` : ""})`,
           },
@@ -787,46 +717,6 @@ export class CurriculumRepository {
       }
 
       return saved;
-    });
-  }
-
-  async verifyAllPassedCourseProgress(params: {
-    studentId: string;
-    adminId: string;
-    courseIds: string[];
-  }): Promise<number> {
-    if (params.courseIds.length === 0) return 0;
-
-    return prisma.$transaction(async (tx) => {
-      const now = new Date();
-      const result = await tx.studentCourseProgress.updateMany({
-        where: {
-          studentId: params.studentId,
-          curriculumCourseId: { in: params.courseIds },
-          status: { in: ["PASSED", "CREDITED"] },
-          isVerifiedByAdmin: false,
-        },
-        data: {
-          isVerifiedByAdmin: true,
-          verifiedById: params.adminId,
-          verifiedAt: now,
-        },
-      });
-
-      if (result.count > 0) {
-        await tx.auditLog.create({
-          data: {
-            actorId: params.adminId,
-            actionType: "STUDENT_CURRICULUM_VERIFIED",
-            targetTable: "students",
-            targetId: params.studentId,
-            newValue: JSON.stringify({ verifiedCount: result.count }),
-            description: `Admin verified ${result.count} completed coursework subject(s).`,
-          },
-        });
-      }
-
-      return result.count;
     });
   }
 
@@ -871,110 +761,6 @@ export class CurriculumRepository {
           description: params.reason,
         },
       });
-    });
-  }
-
-  async upsertStudentGraduationMilestone(params: {
-    studentId: string;
-    actorUserId: string;
-    actorRole: "STUDENT" | "ADMIN";
-    publicationStatus: PublicationMilestoneStatus;
-    publicationTitle: string | null;
-    publicationVenue: string | null;
-    publicationUrl: string | null;
-    publicationYear: string | null;
-    publicationNotes: string | null;
-    isPublicationVerified?: boolean;
-  }) {
-    return prisma.$transaction(async (tx) => {
-      const existing = await tx.studentGraduationMilestone.findUnique({
-        where: { studentId: params.studentId },
-      });
-
-      if (params.actorRole === "STUDENT" && existing?.isPublicationVerified) {
-        throw new AppError(
-          "Your publication milestone has already been verified by the Graduate School and cannot be modified.",
-          409,
-        );
-      }
-
-      const now = new Date();
-      let isVerified = existing?.isPublicationVerified ?? false;
-      let verifiedById = existing?.publicationVerifiedById ?? null;
-      let verifiedAt = existing?.publicationVerifiedAt ?? null;
-      let finalStatus = params.publicationStatus;
-
-      if (params.actorRole === "STUDENT") {
-        isVerified = false;
-        verifiedById = null;
-        verifiedAt = null;
-      } else if (params.isPublicationVerified !== undefined) {
-        isVerified = params.isPublicationVerified;
-        verifiedById = isVerified ? params.actorUserId : null;
-        verifiedAt = isVerified ? now : null;
-        if (isVerified) {
-          finalStatus = "VERIFIED";
-        }
-      } else if (finalStatus === "VERIFIED") {
-        isVerified = true;
-        verifiedById = params.actorUserId;
-        verifiedAt = now;
-      }
-
-      const saved = await tx.studentGraduationMilestone.upsert({
-        where: { studentId: params.studentId },
-        update: {
-          publicationStatus: finalStatus,
-          publicationTitle: params.publicationTitle,
-          publicationVenue: params.publicationVenue,
-          publicationUrl: params.publicationUrl,
-          publicationYear: params.publicationYear,
-          publicationNotes: params.publicationNotes,
-          isPublicationVerified: isVerified,
-          publicationVerifiedById: verifiedById,
-          publicationVerifiedAt: verifiedAt,
-          updatedById: params.actorUserId,
-        },
-        create: {
-          studentId: params.studentId,
-          publicationStatus: finalStatus,
-          publicationTitle: params.publicationTitle,
-          publicationVenue: params.publicationVenue,
-          publicationUrl: params.publicationUrl,
-          publicationYear: params.publicationYear,
-          publicationNotes: params.publicationNotes,
-          isPublicationVerified: isVerified,
-          publicationVerifiedById: verifiedById,
-          publicationVerifiedAt: verifiedAt,
-          updatedById: params.actorUserId,
-        },
-      });
-
-      if (params.actorRole === "ADMIN") {
-        await tx.auditLog.create({
-          data: {
-            actorId: params.actorUserId,
-            actionType: "STUDENT_PUBLICATION_UPDATED",
-            targetTable: "student_graduation_milestones",
-            targetId: saved.id,
-            oldValue: existing
-              ? JSON.stringify({
-                  publicationStatus: existing.publicationStatus,
-                  isPublicationVerified: existing.isPublicationVerified,
-                })
-              : null,
-            newValue: JSON.stringify({
-              studentId: params.studentId,
-              publicationStatus: saved.publicationStatus,
-              isPublicationVerified: saved.isPublicationVerified,
-              publicationTitle: saved.publicationTitle,
-            }),
-            description: `Admin updated student publication milestone (${saved.publicationStatus})`,
-          },
-        });
-      }
-
-      return saved;
     });
   }
 }

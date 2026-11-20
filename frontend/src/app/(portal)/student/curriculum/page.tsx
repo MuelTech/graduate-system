@@ -9,15 +9,13 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import {
+  CurriculumGraduationSummaryCard,
   CurriculumGroupsList,
   CurriculumSummaryStrip,
-  GraduationRequirementsCard,
 } from "@/components/curriculum/curriculum-checklist-views";
 import {
   CourseProgressDialog,
-  PublicationMilestoneDialog,
   type CourseProgressFormPayload,
-  type PublicationFormPayload,
 } from "@/components/curriculum/curriculum-edit-dialogs";
 import type {
   CurriculumChecklistCourse,
@@ -31,7 +29,6 @@ export default function StudentCurriculumPage() {
     group: CurriculumChecklistGroup;
     course: CurriculumChecklistCourse;
   } | null>(null);
-  const [publicationOpen, setPublicationOpen] = useState(false);
 
   const checklistQuery = useQuery<StudentCurriculumChecklistDto>({
     queryKey: ["studentCurriculum"],
@@ -57,22 +54,6 @@ export default function StudentCurriculumPage() {
     },
   });
 
-  const updatePublicationMutation = useMutation({
-    mutationFn: async (payload: PublicationFormPayload) =>
-      apiClientRequest("/student/curriculum/publication", {
-        method: "PUT",
-        body: JSON.stringify(payload),
-      }),
-    onSuccess: (updated: StudentCurriculumChecklistDto) => {
-      queryClient.setQueryData(["studentCurriculum"], updated);
-      setPublicationOpen(false);
-      toast.success("Publication milestone saved.");
-    },
-    onError: (err: Error) => {
-      toast.error(err.message || "Failed to update publication milestone.");
-    },
-  });
-
   const checklist = checklistQuery.data;
 
   return (
@@ -81,8 +62,8 @@ export default function StudentCurriculumPage() {
         title="Curriculum Checklist"
         description={
           checklist
-            ? `${checklist.student.programName} — Plan of Coursework`
-            : "Track your required subjects, ratings, and graduation requirements."
+            ? checklist.student.programName
+            : "Track your required subjects and earned units."
         }
       />
 
@@ -119,27 +100,13 @@ export default function StudentCurriculumPage() {
             </p>
             <p className="text-xs text-gray-600">
               No active curriculum checklist has been linked to{" "}
-              {checklist.student.programName}. Please contact the Graduate School
-              Office to verify your curriculum assignment.
+              {checklist.student.programName}. Please contact the Graduate
+              School Office to verify your curriculum assignment.
             </p>
           </CardContent>
         </Card>
       ) : (
         <>
-          <div className="rounded-lg border border-gray-200/80 bg-white px-4 py-3 text-xs text-gray-600 shadow-2xs">
-            Self-service Plan of Coursework tracker (EARIST Manual §7.9 &amp;
-            §7.16). Use this checklist to track your completed, in-progress, and
-            remaining subjects — encoding entries here is optional and does not
-            restrict Comprehensive Examination or Thesis/Dissertation workflows.{" "}
-            If your assigned curriculum version (
-            {checklist.curriculumVersion.curriculumType}
-            {checklist.curriculumVersion.effectiveSchoolYear
-              ? ` · ${checklist.curriculumVersion.effectiveSchoolYear}`
-              : ""}
-            ) does not match your Certificate of Registration (COR), please
-            contact the Graduate School Office to update it.
-          </div>
-
           <CurriculumSummaryStrip checklist={checklist} />
 
           {checklist.summary.incCount > 0 ? (
@@ -150,24 +117,23 @@ export default function StudentCurriculumPage() {
 
           <CurriculumGroupsList
             groups={checklist.groups}
-            mode="STUDENT"
             onEditCourse={(group, course) =>
               setEditingCourse({ group, course })
             }
           />
 
-          <GraduationRequirementsCard
-            checklist={checklist}
-            mode="STUDENT"
-            onEditPublication={() => setPublicationOpen(true)}
-          />
+          <CurriculumGraduationSummaryCard checklist={checklist} />
+
+          <p className="text-xs text-gray-500">
+            If your assigned curriculum does not match your Certificate of
+            Registration (COR), please contact the Graduate School Office.
+          </p>
 
           <CourseProgressDialog
             open={editingCourse !== null}
             onOpenChange={(open) => {
               if (!open) setEditingCourse(null);
             }}
-            mode="STUDENT"
             course={editingCourse?.course ?? null}
             group={editingCourse?.group ?? null}
             gradingScale={checklist.gradingScale}
@@ -179,15 +145,6 @@ export default function StudentCurriculumPage() {
                 payload,
               });
             }}
-          />
-
-          <PublicationMilestoneDialog
-            open={publicationOpen}
-            onOpenChange={setPublicationOpen}
-            mode="STUDENT"
-            publication={checklist.graduationRequirements.publication}
-            isSaving={updatePublicationMutation.isPending}
-            onSave={(payload) => updatePublicationMutation.mutate(payload)}
           />
         </>
       )}

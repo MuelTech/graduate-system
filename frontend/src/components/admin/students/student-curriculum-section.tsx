@@ -24,15 +24,13 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import {
+  CurriculumGraduationSummaryCard,
   CurriculumGroupsList,
   CurriculumSummaryStrip,
-  GraduationRequirementsCard,
 } from "@/components/curriculum/curriculum-checklist-views";
 import {
   CourseProgressDialog,
-  PublicationMilestoneDialog,
   type CourseProgressFormPayload,
-  type PublicationFormPayload,
 } from "@/components/curriculum/curriculum-edit-dialogs";
 import type {
   CurriculumChecklistCourse,
@@ -58,7 +56,6 @@ export function StudentCurriculumSection({
     group: CurriculumChecklistGroup;
     course: CurriculumChecklistCourse;
   } | null>(null);
-  const [publicationOpen, setPublicationOpen] = useState(false);
   const [versionOpen, setVersionOpen] = useState(false);
   const [selectedVersionId, setSelectedVersionId] = useState("");
   const [versionReason, setVersionReason] = useState("");
@@ -99,27 +96,6 @@ export function StudentCurriculumSection({
     },
   });
 
-  const verifyAllMutation = useMutation({
-    mutationFn: async () =>
-      apiClientRequest(`/admin/students/${studentId}/curriculum/verify-all`, {
-        method: "POST",
-      }),
-    onSuccess: (res: {
-      verifiedCount: number;
-      checklist: StudentCurriculumChecklistDto;
-    }) => {
-      invalidateChecklist(res.checklist);
-      toast.success(
-        res.verifiedCount > 0
-          ? `Verified ${res.verifiedCount} passed/credited subject(s).`
-          : "All completed subjects are already verified.",
-      );
-    },
-    onError: (err: Error) => {
-      toast.error(err.message || "Failed to verify coursework.");
-    },
-  });
-
   const assignVersionMutation = useMutation({
     mutationFn: async (payload: {
       curriculumVersionId: string;
@@ -136,22 +112,6 @@ export function StudentCurriculumSection({
     },
     onError: (err: Error) => {
       setVersionError(err.message || "Failed to assign curriculum version.");
-    },
-  });
-
-  const updatePublicationMutation = useMutation({
-    mutationFn: async (payload: PublicationFormPayload) =>
-      apiClientRequest(`/admin/students/${studentId}/curriculum/publication`, {
-        method: "PUT",
-        body: JSON.stringify(payload),
-      }),
-    onSuccess: (updated: StudentCurriculumChecklistDto) => {
-      invalidateChecklist(updated);
-      setPublicationOpen(false);
-      toast.success("Publication milestone updated.");
-    },
-    onError: (err: Error) => {
-      toast.error(err.message || "Failed to update publication milestone.");
     },
   });
 
@@ -199,14 +159,6 @@ export function StudentCurriculumSection({
     );
   }
 
-  const hasUnverifiedCompleted = checklist.groups.some((g) =>
-    g.courses.some(
-      (c) =>
-        (c.progress.status === "PASSED" || c.progress.status === "CREDITED") &&
-        !c.progress.isVerifiedByAdmin,
-    ),
-  );
-
   const selectedVersionLabel =
     checklist.availableVersions.find((v) => v.id === selectedVersionId)?.label ??
     "Select curriculum version";
@@ -217,45 +169,30 @@ export function StudentCurriculumSection({
         <CardContent className="flex flex-wrap items-center justify-between gap-4 p-5 sm:p-6">
           <div className="space-y-1">
             <h2 className="text-base font-semibold text-[#262220]">
-              Curriculum Checklist &amp; Plan of Coursework
+              Curriculum Checklist
             </h2>
             <p className="text-xs text-gray-500">
-              Advisory coursework tracker per EARIST Manual §7.9 &amp; §7.16
-              (non-blocking on Comprehensive Exam and Defense workflows).
+              View or update coursework progress and manage the student&apos;s
+              assigned curriculum.
             </p>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
-            {checklist.availableVersions.length > 0 ? (
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={openVersionDialog}
-              >
-                Change Version
-              </Button>
-            ) : null}
-            {checklist.curriculumVersion ? (
-              <Button
-                type="button"
-                size="sm"
-                className="bg-[#e02b20] text-white hover:bg-[#b71c1c]"
-                disabled={!hasUnverifiedCompleted || verifyAllMutation.isPending}
-                onClick={() => verifyAllMutation.mutate()}
-              >
-                {verifyAllMutation.isPending
-                  ? "Verifying..."
-                  : "Verify All Passed"}
-              </Button>
-            ) : null}
-          </div>
+          {checklist.availableVersions.length > 0 ? (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={openVersionDialog}
+            >
+              Change Curriculum
+            </Button>
+          ) : null}
         </CardContent>
       </Card>
 
       {!checklist.curriculumVersion || !checklist.summary ? (
         <Card className="border-gray-200/80 shadow-xs">
           <CardContent className="p-6 text-sm text-gray-600">
-            No curriculum checklist version is currently assigned for{" "}
+            No curriculum checklist is currently assigned for{" "}
             {checklist.student.programName}.
           </CardContent>
         </Card>
@@ -271,17 +208,12 @@ export function StudentCurriculumSection({
 
           <CurriculumGroupsList
             groups={checklist.groups}
-            mode="ADMIN"
             onEditCourse={(group, course) =>
               setEditingCourse({ group, course })
             }
           />
 
-          <GraduationRequirementsCard
-            checklist={checklist}
-            mode="ADMIN"
-            onEditPublication={() => setPublicationOpen(true)}
-          />
+          <CurriculumGraduationSummaryCard checklist={checklist} />
         </>
       )}
 
@@ -290,7 +222,6 @@ export function StudentCurriculumSection({
         onOpenChange={(open) => {
           if (!open) setEditingCourse(null);
         }}
-        mode="ADMIN"
         course={editingCourse?.course ?? null}
         group={editingCourse?.group ?? null}
         gradingScale={checklist.gradingScale}
@@ -304,23 +235,13 @@ export function StudentCurriculumSection({
         }}
       />
 
-      <PublicationMilestoneDialog
-        open={publicationOpen}
-        onOpenChange={setPublicationOpen}
-        mode="ADMIN"
-        publication={checklist.graduationRequirements.publication}
-        isSaving={updatePublicationMutation.isPending}
-        onSave={(payload) => updatePublicationMutation.mutate(payload)}
-      />
-
       <Dialog open={versionOpen} onOpenChange={setVersionOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Assign Curriculum Version</DialogTitle>
+            <DialogTitle>Change Assigned Curriculum</DialogTitle>
             <DialogDescription>
-              Assign or shift the student&apos;s curriculum checklist version
-              (e.g., Old Curriculum vs. New S.Y. 2024-2025). Prior coursework
-              entries remain preserved.
+              Assign or switch between New Curriculum (S.Y. 2024–2025) and Old
+              Curriculum. Existing subject entries remain preserved.
             </DialogDescription>
           </DialogHeader>
           <form
@@ -355,7 +276,7 @@ export function StudentCurriculumSection({
                 htmlFor="stu-curr-version-select"
                 className="block text-xs font-semibold tracking-wider text-gray-600 uppercase"
               >
-                Curriculum Version
+                Curriculum
               </label>
               <Select
                 value={selectedVersionId}
@@ -387,7 +308,7 @@ export function StudentCurriculumSection({
                 htmlFor="stu-curr-version-reason"
                 className="block text-xs font-semibold tracking-wider text-gray-600 uppercase"
               >
-                Reason for Assignment / Shift *
+                Reason for Change *
               </label>
               <Textarea
                 id="stu-curr-version-reason"
@@ -395,7 +316,7 @@ export function StudentCurriculumSection({
                 required
                 minLength={3}
                 maxLength={500}
-                placeholder="e.g., Assigned Old Curriculum for continuing student or shifted per GS-023"
+                placeholder="e.g., Matches student COR curriculum"
                 value={versionReason}
                 onChange={(e) => setVersionReason(e.target.value)}
               />
@@ -410,7 +331,9 @@ export function StudentCurriculumSection({
                 className="bg-[#e02b20] text-white hover:bg-[#b71c1c]"
                 disabled={assignVersionMutation.isPending}
               >
-                {assignVersionMutation.isPending ? "Saving..." : "Save Version"}
+                {assignVersionMutation.isPending
+                  ? "Saving..."
+                  : "Save Curriculum"}
               </Button>
             </DialogFooter>
           </form>

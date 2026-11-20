@@ -124,29 +124,4 @@ export class StudentController {
       );
     }
   };
-
-  updatePublicationMilestone = async (
-    req: AuthenticatedRequest,
-    res: Response,
-  ): Promise<void> => {
-    try {
-      if (!req.user) {
-        res.status(401).json({ error: "Unauthorized" });
-        return;
-      }
-      const result = await this.curriculumService.updatePublicationMilestone({
-        actorRole: "STUDENT",
-        actorUserId: req.user.userId,
-        targetId: req.user.userId,
-        body: req.body ?? {},
-      });
-      res.status(200).json(result);
-    } catch (error) {
-      handleCurriculumControllerError(
-        res,
-        error,
-        "Error updating student publication milestone:",
-      );
-    }
-  };
 }

@@ -1,7 +1,6 @@
 import type {
   CourseProgressStatus,
   CurriculumGroupType,
-  PublicationMilestoneStatus,
 } from "@/types/curriculum";
 
 export const COURSE_STATUS_OPTIONS: Array<{
@@ -12,7 +11,7 @@ export const COURSE_STATUS_OPTIONS: Array<{
   { value: "IN_PROGRESS", label: "In Progress" },
   { value: "PASSED", label: "Passed" },
   { value: "CREDITED", label: "Credited (Transfer / Shifted)" },
-  { value: "INCOMPLETE", label: "INC (Incomplete)" },
+  { value: "INCOMPLETE", label: "Incomplete (INC)" },
   { value: "FAILED", label: "Failed" },
   { value: "DROPPED", label: "Dropped" },
 ];
@@ -37,30 +36,6 @@ export const COURSE_STATUS_TONE: Record<CourseProgressStatus, string> = {
   DROPPED: "border-gray-200 bg-gray-100 text-gray-600",
 };
 
-export const PUBLICATION_STATUS_OPTIONS: Array<{
-  value: PublicationMilestoneStatus;
-  label: string;
-}> = [
-  { value: "NOT_STARTED", label: "Not Started" },
-  { value: "IN_PROGRESS", label: "Drafting / Under Review" },
-  { value: "SUBMITTED", label: "Submitted / Published" },
-  { value: "VERIFIED", label: "Verified by Graduate School" },
-];
-
-export const PUBLICATION_STATUS_LABEL: Record<PublicationMilestoneStatus, string> = {
-  NOT_STARTED: "Not Started",
-  IN_PROGRESS: "Drafting / Under Review",
-  SUBMITTED: "Submitted / Published",
-  VERIFIED: "Verified",
-};
-
-export const PUBLICATION_STATUS_TONE: Record<PublicationMilestoneStatus, string> = {
-  NOT_STARTED: "border-gray-200 bg-gray-50 text-gray-600",
-  IN_PROGRESS: "border-sky-200 bg-sky-50 text-sky-700",
-  SUBMITTED: "border-amber-200 bg-amber-50 text-amber-800",
-  VERIFIED: "border-emerald-200 bg-emerald-50 text-emerald-700",
-};
-
 export const SEMESTER_OPTIONS = ["1st Sem", "2nd Sem", "Summer"] as const;
 
 export const CURRICULUM_GROUP_TYPE_OPTIONS: Array<{
@@ -76,17 +51,6 @@ export const CURRICULUM_GROUP_TYPE_OPTIONS: Array<{
   { value: "BRIDGING", label: "Bridging Program" },
   { value: "OTHER", label: "Other" },
 ];
-
-export function formatShortDate(iso: string | null | undefined): string {
-  if (!iso) return "—";
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return "—";
-  return d.toLocaleDateString(undefined, {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  });
-}
 
 export function isGradedCourseStatus(status: CourseProgressStatus): boolean {
   return (

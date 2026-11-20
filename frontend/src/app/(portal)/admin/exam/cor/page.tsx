@@ -320,11 +320,15 @@ function resolveCurriculumVersion(
 }
 
 function formatCurriculumOptionLabel(version: CurriculumVersionSummary): string {
-  const sy = version.effectiveSchoolYear
-    ? ` (${version.effectiveSchoolYear})`
-    : "";
+  const sy =
+    version.effectiveSchoolYear &&
+    normalizeSchoolYearLabel(version.label).indexOf(
+      normalizeSchoolYearLabel(version.effectiveSchoolYear),
+    ) === -1
+      ? ` (${version.effectiveSchoolYear})`
+      : "";
   const suffix = version.isDefaultForNewStudents ? " · Default" : "";
-  return `${version.label}${sy} — ${version.curriculumType}${suffix}`;
+  return `${version.label}${sy}${suffix}`;
 }
 
 function CurriculumBadge({

@@ -93,7 +93,6 @@ describe("Curriculum routes RBAC & registration", () => {
     for (const [path, method] of [
       ["/curriculum", "get"],
       ["/curriculum/courses/:courseId", "put"],
-      ["/curriculum/publication", "put"],
     ] as const) {
       const route = findRoute(studentRoutes, path, method);
       expect(route, `Missing ${method.toUpperCase()} /api/student${path}`).toBeDefined();
@@ -107,8 +106,6 @@ describe("Curriculum routes RBAC & registration", () => {
       ["/:id/curriculum", "get"],
       ["/:id/curriculum/version", "patch"],
       ["/:id/curriculum/courses/:courseId", "put"],
-      ["/:id/curriculum/verify-all", "post"],
-      ["/:id/curriculum/publication", "put"],
     ] as const) {
       const route = findRoute(adminStudentRoutes, path, method);
       expect(route, `Missing ${method.toUpperCase()} /api/admin/students${path}`).toBeDefined();
