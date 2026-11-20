@@ -124,7 +124,13 @@ export class EmailService {
         }
 
         if (!emailQueue) {
-            console.log(`ℹ️ [EmailService] Redis queue disabled; skipping email '${templateKey}' to ${to}.`);
+            console.log(`ℹ️ [EmailService] Redis queue disabled; sending directly to ${to}...`);
+            try {
+                await EmailService.sendDirectEmail(to, template.subject, compileHtml, templateKey);
+                console.log(`✅ [EmailService] Direct email successfully sent to ${to}`);
+            } catch (smtpError: any) {
+                console.error(`❌ [EmailService] Direct email to ${to} failed:`, smtpError.message);
+            }
             return;
         }
 
@@ -167,7 +173,14 @@ export class EmailService {
         }));
 
         if (!emailQueue) {
-            console.log(`ℹ️ [EmailService] Redis queue disabled; skipping batch '${templateKey}' (${jobs.length} recipients).`);
+            console.log(`ℹ️ [EmailService] Redis queue disabled; sending batch directly to ${jobs.length} recipients...`);
+            for (const job of jobs) {
+                try {
+                    await EmailService.sendDirectEmail(job.data.to, job.data.subject, job.data.html, job.data.templateKey);
+                } catch (batchErr: any) {
+                    console.error(`❌ [EmailService] Batch item failed for ${job.data.to}:`, batchErr.message);
+                }
+            }
             return;
         }
 
