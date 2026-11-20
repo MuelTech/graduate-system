@@ -59,12 +59,18 @@ function LoginForm() {
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
-  // Derived directly from the URL (no effect/state): the "password changed"
-  // confirmation is a property of the query string, not mutable local state.
+  // Derived directly from the URL (no effect/state): status notices from query params.
   const success =
     searchParams.get("passwordChanged") === "true"
       ? "Password changed successfully! Please login with your new password."
       : "";
+  const sessionReason = searchParams.get("reason");
+  const sessionNotice =
+    sessionReason === "deactivated"
+      ? "Your account has been deactivated. Please contact the Administrator."
+      : sessionReason === "session_invalidated"
+        ? "Your session has ended. Please sign in again."
+        : "";
 
   const clearFields = () => {
     setApplicantId("");
@@ -133,8 +139,17 @@ function LoginForm() {
 
       if (res?.error) {
         if (res.error === "CredentialsSignin") {
+          const code = typeof res.code === "string" ? res.code.trim() : "";
+          const isGenericCredentialError =
+            !code ||
+            code === "credentials" ||
+            code === "Invalid credentials" ||
+            code === "Invalid credentials!" ||
+            code === "Invalid login credentials!";
           setError(
-            "Invalid credentials. Please check your details and try again.",
+            isGenericCredentialError
+              ? "Invalid credentials. Please check your details and try again."
+              : code,
           );
         } else {
           setError("An error occurred during sign in.");
@@ -184,10 +199,10 @@ function LoginForm() {
               Sign In to Your Portal
             </h1>
 
-            {error && (
+            {(error || sessionNotice) && (
               <Alert variant="destructive" className="mb-5">
                 <AlertCircle className="h-4 w-4" />
-                <AlertDescription>{error}</AlertDescription>
+                <AlertDescription>{error || sessionNotice}</AlertDescription>
               </Alert>
             )}
 

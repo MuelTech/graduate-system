@@ -33,7 +33,14 @@ describe("Prisma defense report preview store", () => {
       select: {
         sessionStatus: true,
         panelAssignments: {
-          where: { userId: "rapporteur-1", isActive: true },
+          where: {
+            userId: "rapporteur-1",
+            isActive: true,
+            user: {
+              isActive: true,
+              NOT: { panelist: { is: { isActive: false } } },
+            },
+          },
           select: { role: true },
           take: 1,
         },

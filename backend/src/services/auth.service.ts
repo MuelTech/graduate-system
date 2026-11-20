@@ -5,6 +5,7 @@ import { RegisterInput, LoginInput, UserResponse, LoginResponse } from '../inter
 import { Prisma, UserRole, AdmissionStatus } from '@prisma/client';
 import { AppError } from '../utils/AppError';
 import { sanitizeAdminCapabilities } from '../config/admin-capabilities';
+import { disconnectUserDefenseSockets } from '../realtime/defense-realtime.registry';
 
 export class AuthService {
     private authRepository = new AuthRepository();
@@ -132,13 +133,13 @@ export class AuthService {
             throw new AppError("Invalid credentials!", 401);
         }
 
-        if (user.isActive === false) {
-            throw new AppError("This account has been deactivated. Please contact the Administrator.", 403);
-        }
-
         const isPasswordValid = await bcrypt.compare(data.password, user.passwordHash);
         if (!isPasswordValid) {
             throw new AppError("Invalid login credentials!", 401);
+        }
+
+        if (user.isActive === false) {
+            throw new AppError("This account has been deactivated. Please contact the Administrator.", 403);
         }
 
         const effectiveRole: UserRole = user.role === UserRole.PANELIST ? UserRole.FACULTY : user.role;
@@ -147,8 +148,17 @@ export class AuthService {
             throw new AppError("This Faculty profile is currently inactive.", 403);
         }
 
+        const tokenVersion =
+            typeof (user as { tokenVersion?: unknown }).tokenVersion === "number"
+                ? (user as { tokenVersion: number }).tokenVersion
+                : 1;
         const token = jwt.sign(
-            { userId: user.id, role: effectiveRole, mustChangePassword: user.mustChangePassword },
+            {
+                userId: user.id,
+                role: effectiveRole,
+                mustChangePassword: user.mustChangePassword,
+                tokenVersion,
+            },
             this.getJwtSecret(),
             { expiresIn: '24h' }
         );
@@ -192,6 +202,9 @@ export class AuthService {
         }
         const effectiveRole: UserRole = user.role === UserRole.PANELIST ? UserRole.FACULTY : user.role;
         const panelist = user.panelist;
+        if (effectiveRole === UserRole.FACULTY && panelist && !panelist.isActive) {
+            throw new AppError("This Faculty profile is currently inactive.", 403);
+        }
         return {
             id: user.id,
             email: user.email,
@@ -234,12 +247,23 @@ export class AuthService {
         }
 
         const effectiveRole: UserRole = user.role === UserRole.PANELIST ? UserRole.FACULTY : user.role;
-        // Issue new JWT with mustChangePassword: false
+        const tokenVersion =
+            typeof (user as { tokenVersion?: unknown }).tokenVersion === "number"
+                ? (user as { tokenVersion: number }).tokenVersion
+                : 1;
+        // Issue new JWT with mustChangePassword: false and the incremented tokenVersion
         const token = jwt.sign(
-            { userId: user.id, role: effectiveRole, mustChangePassword: false },
+            {
+                userId: user.id,
+                role: effectiveRole,
+                mustChangePassword: false,
+                tokenVersion,
+            },
             this.getJwtSecret(),
             { expiresIn: '24h' }
         );
+
+        void disconnectUserDefenseSockets(user.id, "SESSION_INVALIDATED");
 
         return { token };
     }

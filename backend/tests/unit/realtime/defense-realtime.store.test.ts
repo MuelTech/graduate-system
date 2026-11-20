@@ -39,7 +39,15 @@ describe("Prisma defense realtime authorization store", () => {
 
     await expect(store.hasPanelAssignment("sched-1", "u-1")).resolves.toBe(true);
     expect(client.panelAssignment.findFirst).toHaveBeenCalledWith({
-      where: { scheduleId: "sched-1", userId: "u-1", isActive: true },
+      where: {
+        scheduleId: "sched-1",
+        userId: "u-1",
+        isActive: true,
+        user: {
+          isActive: true,
+          NOT: { panelist: { is: { isActive: false } } },
+        },
+      },
       select: { id: true },
     });
   });
@@ -70,6 +78,10 @@ describe("Prisma defense realtime authorization store", () => {
         scheduleId: "sched-1",
         userId: { in: ["u-1", "u-2", "u-3"] },
         isActive: true,
+        user: {
+          isActive: true,
+          NOT: { panelist: { is: { isActive: false } } },
+        },
       },
       select: { userId: true },
     });

@@ -5,7 +5,7 @@ import type { AddressInfo } from "node:net";
 import jwt from "jsonwebtoken";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
-const db = vi.hoisted(() => ({ $transaction: vi.fn(), $queryRaw: vi.fn(), entranceExamScore: { update: vi.fn() }, entranceExamApplication: { findFirst: vi.fn(), findUnique: vi.fn() }, examQuestion: { count: vi.fn() } }));
+const db = vi.hoisted(() => ({ $transaction: vi.fn(), $queryRaw: vi.fn(), user: { findUnique: vi.fn() }, entranceExamScore: { update: vi.fn() }, entranceExamApplication: { findFirst: vi.fn(), findUnique: vi.fn() }, examQuestion: { count: vi.fn() } }));
 const sendEmail = vi.hoisted(() => vi.fn());
 vi.mock("../../../src/config/database", () => ({ default: db }));
 vi.mock("../../../src/services/email.service", () => ({ EmailService: { sendTemplateEmail: sendEmail } }));
@@ -43,6 +43,7 @@ afterAll(async () => {
 });
 beforeEach(() => {
   vi.resetAllMocks();
+  db.user.findUnique.mockResolvedValue({ isActive: true, role: "ADMIN", tokenVersion: 1, panelist: null });
   db.$transaction.mockImplementation(fn => fn(db)); db.$queryRaw.mockResolvedValue([{}]);
   vi.stubEnv("JWT_SECRET", secret);
   db.entranceExamApplication.findFirst.mockResolvedValue(application());

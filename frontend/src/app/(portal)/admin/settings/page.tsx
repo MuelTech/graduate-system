@@ -65,6 +65,24 @@ type InstitutionalOfficialEntry = {
   name: string;
   signatureData: string | null;
   updatedAt: string | null;
+  effectiveFrom?: string | null;
+};
+
+type InstitutionalOfficialTermItem = {
+  id: string;
+  role: OfficialRoleKey;
+  name: string;
+  hasSignature: boolean;
+  effectiveFrom: string;
+  effectiveTo: string | null;
+  isCurrent: boolean;
+  createdAt: string;
+  updatedAt: string;
+};
+
+type InstitutionalOfficialHistoryState = {
+  current: InstitutionalOfficialsState;
+  terms: Record<OfficialRoleKey, InstitutionalOfficialTermItem[]>;
 };
 
 type InstitutionalOfficialsState = Record<OfficialRoleKey, InstitutionalOfficialEntry>;
@@ -132,6 +150,19 @@ export default function AdminSettingsPage() {
   const [activeSignaturePadRole, setActiveSignaturePadRole] =
     useState<OfficialRoleKey | null>(null);
   const [padDraftSignature, setPadDraftSignature] = useState("");
+  const [transitionRole, setTransitionRole] = useState<OfficialRoleKey | null>(
+    null,
+  );
+  const [transitionName, setTransitionName] = useState("");
+  const [transitionEffectiveFrom, setTransitionEffectiveFrom] = useState(() =>
+    new Date().toISOString().slice(0, 10),
+  );
+  const [transitionSignature, setTransitionSignature] = useState<string | null>(
+    null,
+  );
+  const [showTransitionPad, setShowTransitionPad] = useState(false);
+  const [transitionPadDraft, setTransitionPadDraft] = useState("");
+  const transitionFileInputRef = useRef<HTMLInputElement | null>(null);
   const officialFileInputRefs = useRef<
     Partial<Record<OfficialRoleKey, HTMLInputElement | null>>
   >({});
@@ -235,6 +266,16 @@ export default function AdminSettingsPage() {
       enabled: activeTab === "officials",
     });
 
+  const { data: officialsHistoryData } =
+    useQuery<InstitutionalOfficialHistoryState>({
+      queryKey: ["institutionalOfficialsHistory"],
+      queryFn: async () =>
+        (await apiClientRequest(
+          "/settings/institutional-officials/history",
+        )) as InstitutionalOfficialHistoryState,
+      enabled: activeTab === "officials",
+    });
+
   const effectiveOfficials: InstitutionalOfficialsState =
     officialsDraft ?? officialsData ?? EMPTY_OFFICIALS;
 
@@ -295,6 +336,9 @@ export default function AdminSettingsPage() {
       }),
     onSuccess: (updated: InstitutionalOfficialsState) => {
       queryClient.setQueryData(["institutionalOfficials"], updated);
+      queryClient.invalidateQueries({
+        queryKey: ["institutionalOfficialsHistory"],
+      });
       setOfficialsDraft(null);
       setActiveSignaturePadRole(null);
       setPadDraftSignature("");
@@ -304,6 +348,59 @@ export default function AdminSettingsPage() {
       toast.error(error.message || "Failed to save institutional officials.");
     },
   });
+
+  const recordTransitionMutation = useMutation({
+    mutationFn: async (payload: {
+      role: OfficialRoleKey;
+      name: string;
+      effectiveFrom: string;
+      signatureData: string | null;
+    }) =>
+      apiClientRequest("/settings/institutional-officials/transitions", {
+        method: "POST",
+        body: JSON.stringify(payload),
+      }),
+    onSuccess: (history: InstitutionalOfficialHistoryState) => {
+      queryClient.setQueryData(["institutionalOfficialsHistory"], history);
+      queryClient.setQueryData(["institutionalOfficials"], history.current);
+      setOfficialsDraft(null);
+      setTransitionRole(null);
+      setTransitionName("");
+      setTransitionSignature(null);
+      setShowTransitionPad(false);
+      setTransitionPadDraft("");
+      toast.success("Term transition recorded.");
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || "Failed to record term transition.");
+    },
+  });
+
+  const openTransitionModal = (role: OfficialRoleKey) => {
+    setTransitionRole(role);
+    setTransitionName("");
+    setTransitionEffectiveFrom(new Date().toISOString().slice(0, 10));
+    setTransitionSignature(null);
+    setShowTransitionPad(false);
+    setTransitionPadDraft("");
+  };
+
+  const handleUploadTransitionSignature = async (file: File) => {
+    try {
+      const cleanedPng = await normalizeUploadedSignatureImage(file, {
+        removeBackground: true,
+        strength: "standard",
+      });
+      setTransitionSignature(cleanedPng);
+      setShowTransitionPad(false);
+      setTransitionPadDraft("");
+      toast.success("Signature image uploaded.");
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : "Failed to process signature image.",
+      );
+    }
+  };
 
   // Helper to safely populate state without triggering the useEffect linter
   const populateForm = (data: Record<string, string>) => {
@@ -723,11 +820,26 @@ export default function AdminSettingsPage() {
                             key={meta.key}
                             className="space-y-4 rounded-xl border border-gray-200 bg-white p-4"
                           >
-                            <div>
-                              <h3 className="text-sm font-bold text-[#333333]">
-                                {meta.title}
-                              </h3>
-                              <p className="text-xs text-gray-500">{meta.forms}</p>
+                            <div className="flex flex-wrap items-start justify-between gap-2">
+                              <div>
+                                <h3 className="text-sm font-bold text-[#333333]">
+                                  {meta.title}
+                                </h3>
+                                <p className="text-xs text-gray-500">{meta.forms}</p>
+                                {entry.effectiveFrom && (
+                                  <p className="mt-0.5 text-[11px] font-medium text-gray-500">
+                                    Effective since {entry.effectiveFrom}
+                                  </p>
+                                )}
+                              </div>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() => openTransitionModal(meta.key)}
+                              >
+                                Record Term Transition
+                              </Button>
                             </div>
 
                             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -921,6 +1033,295 @@ export default function AdminSettingsPage() {
                   )}
                 </CardContent>
               </Card>
+
+              {/* Office-Holder Term History */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base font-bold text-[#333333]">
+                    Office-Holder History
+                  </CardTitle>
+                  <p className="mt-0.5 text-xs text-gray-500">
+                    Historical Defense Applications and Oral Examination Summaries resolve the official in office on their record date.
+                  </p>
+                </CardHeader>
+                <CardContent>
+                  {(() => {
+                    const allHistoryRows = OFFICIAL_ROLE_META.flatMap((meta) =>
+                      (officialsHistoryData?.terms?.[meta.key] ?? []).map(
+                        (term) => ({
+                          ...term,
+                          roleTitle: meta.title,
+                        }),
+                      ),
+                    );
+                    if (allHistoryRows.length === 0) {
+                      return (
+                        <p className="py-4 text-sm text-gray-500">
+                          No term transitions recorded yet. Save the current office holders above or record a term transition when an official changes.
+                        </p>
+                      );
+                    }
+                    return (
+                      <div className="overflow-x-auto rounded-lg border border-gray-200">
+                        <table className="w-full text-left text-xs">
+                          <thead className="border-b border-gray-200 bg-gray-50 text-[11px] font-semibold uppercase tracking-wide text-gray-600">
+                            <tr>
+                              <th className="px-3 py-2.5">Office</th>
+                              <th className="px-3 py-2.5">Office Holder</th>
+                              <th className="px-3 py-2.5">Effective From</th>
+                              <th className="px-3 py-2.5">Effective To</th>
+                              <th className="px-3 py-2.5">Signature</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-gray-200 bg-white">
+                            {allHistoryRows.map((term) => (
+                              <tr key={term.id}>
+                                <td className="px-3 py-2.5 font-medium text-gray-700">
+                                  {term.roleTitle}
+                                </td>
+                                <td className="px-3 py-2.5 font-semibold text-gray-900">
+                                  {term.name}
+                                </td>
+                                <td className="px-3 py-2.5 font-mono text-gray-700">
+                                  {term.effectiveFrom}
+                                </td>
+                                <td className="px-3 py-2.5">
+                                  {term.effectiveTo ? (
+                                    <span className="font-mono text-gray-700">
+                                      {term.effectiveTo}
+                                    </span>
+                                  ) : (
+                                    <Badge className="bg-emerald-50 text-emerald-700 hover:bg-emerald-50">
+                                      Present
+                                    </Badge>
+                                  )}
+                                </td>
+                                <td className="px-3 py-2.5 text-gray-600">
+                                  {term.hasSignature ? "On file" : "None"}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    );
+                  })()}
+                </CardContent>
+              </Card>
+
+              {/* Record Term Transition Dialog */}
+              {transitionRole && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+                  <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl bg-white p-6 shadow-xl">
+                    <div className="mb-4 flex items-center justify-between">
+                      <div>
+                        <h3 className="text-base font-bold text-[#333333]">
+                          Record Term Transition
+                        </h3>
+                        <p className="text-xs text-gray-500">
+                          {
+                            OFFICIAL_ROLE_META.find(
+                              (m) => m.key === transitionRole,
+                            )?.title
+                          }
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setTransitionRole(null)}
+                        className="rounded-full p-1 text-gray-500 hover:bg-gray-100"
+                        aria-label="Close term transition dialog"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    </div>
+
+                    <div className="space-y-4">
+                      <div className="space-y-1.5">
+                        <Label
+                          htmlFor="transition-official-name"
+                          className="text-xs font-semibold text-gray-700"
+                        >
+                          New Office Holder Full Name &amp; Title
+                        </Label>
+                        <Input
+                          id="transition-official-name"
+                          type="text"
+                          maxLength={120}
+                          value={transitionName}
+                          onChange={(e) => setTransitionName(e.target.value)}
+                          placeholder={
+                            OFFICIAL_ROLE_META.find(
+                              (m) => m.key === transitionRole,
+                            )?.placeholder
+                          }
+                        />
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <Label
+                          htmlFor="transition-effective-from"
+                          className="text-xs font-semibold text-gray-700"
+                        >
+                          Effective Date
+                        </Label>
+                        <Input
+                          id="transition-effective-from"
+                          type="date"
+                          value={transitionEffectiveFrom}
+                          onChange={(e) =>
+                            setTransitionEffectiveFrom(e.target.value)
+                          }
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label className="text-xs font-semibold text-gray-700">
+                          Official E-Signature (Optional, PNG / JPEG)
+                        </Label>
+                        <div className="flex min-h-[72px] items-center justify-center rounded-lg border border-dashed border-gray-300 bg-gray-50/70 p-2">
+                          {transitionSignature ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
+                              src={transitionSignature}
+                              alt="New official signature preview"
+                              className="max-h-14 w-auto object-contain"
+                            />
+                          ) : (
+                            <span className="text-xs text-gray-400">
+                              No signature attached (can be added later)
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() =>
+                              transitionFileInputRef.current?.click()
+                            }
+                          >
+                            <Upload className="mr-1.5 h-3.5 w-3.5" />
+                            Upload Image
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setShowTransitionPad((prev) => !prev);
+                              setTransitionPadDraft("");
+                            }}
+                          >
+                            <PenTool className="mr-1.5 h-3.5 w-3.5" />
+                            {showTransitionPad ? "Close Pad" : "Draw Signature"}
+                          </Button>
+                          {transitionSignature && (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              className="text-red-600 hover:bg-red-50 hover:text-red-700"
+                              onClick={() => setTransitionSignature(null)}
+                            >
+                              <X className="mr-1 h-3.5 w-3.5" />
+                              Remove
+                            </Button>
+                          )}
+                          <input
+                            ref={transitionFileInputRef}
+                            type="file"
+                            accept=".png,.jpg,.jpeg,image/png,image/jpeg"
+                            className="hidden"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) {
+                                void handleUploadTransitionSignature(file);
+                              }
+                              e.target.value = "";
+                            }}
+                          />
+                        </div>
+                        {showTransitionPad && (
+                          <div className="space-y-3 rounded-lg border border-gray-200 bg-gray-50/70 p-3">
+                            <ESignaturePad
+                              value={transitionPadDraft}
+                              onChange={setTransitionPadDraft}
+                              allowUpload={false}
+                              enableProfileVault={false}
+                              readyText="Signature ready — click Apply Signature below."
+                              requiredText="Draw the official's signature above."
+                            />
+                            <div className="flex justify-end gap-2">
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                  setShowTransitionPad(false);
+                                  setTransitionPadDraft("");
+                                }}
+                              >
+                                Cancel
+                              </Button>
+                              <Button
+                                type="button"
+                                size="sm"
+                                disabled={!transitionPadDraft}
+                                onClick={() => {
+                                  setTransitionSignature(transitionPadDraft);
+                                  setShowTransitionPad(false);
+                                  setTransitionPadDraft("");
+                                }}
+                              >
+                                Apply Signature
+                              </Button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      <p className="text-xs text-gray-500">
+                        Closes the previous term on the day before the effective
+                        date. Historical defense documents retain the official
+                        in office on their record date.
+                      </p>
+                    </div>
+
+                    <div className="mt-5 flex justify-end gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        disabled={recordTransitionMutation.isPending}
+                        onClick={() => setTransitionRole(null)}
+                      >
+                        Cancel
+                      </Button>
+                      <Button
+                        type="button"
+                        disabled={
+                          recordTransitionMutation.isPending ||
+                          !transitionName.trim() ||
+                          !transitionEffectiveFrom
+                        }
+                        onClick={() =>
+                          recordTransitionMutation.mutate({
+                            role: transitionRole,
+                            name: transitionName.trim(),
+                            effectiveFrom: transitionEffectiveFrom,
+                            signatureData: transitionSignature,
+                          })
+                        }
+                      >
+                        {recordTransitionMutation.isPending
+                          ? "Recording..."
+                          : "Record Transition"}
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 

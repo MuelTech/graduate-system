@@ -24,7 +24,7 @@ import {
   meanAcademicValues,
   roundAcademicValue,
 } from "./academic-number.rules";
-import { loadInstitutionalOfficials } from "./institutional-officials.service";
+import { loadInstitutionalOfficialsAsOf } from "./institutional-officials.service";
 import { formatOfficialProgramDisplay } from "../config/graduate-programs";
 
 export const OFFICIAL_DEFENSE_FEE_DISPLAY = "P 900.00";
@@ -649,8 +649,9 @@ export class OfficialDefenseRecordService {
       select: {
         id: true,
         defenseType: true,
+        defenseDate: true,
         oralExamSummary: {
-          select: { id: true, snapshotData: true },
+          select: { id: true, snapshotData: true, createdAt: true },
         },
       },
     });
@@ -687,7 +688,10 @@ export class OfficialDefenseRecordService {
       }
     }
 
-    const officials = await loadInstitutionalOfficials(prisma);
+    const officials = await loadInstitutionalOfficialsAsOf(
+      summary?.createdAt ?? schedule.defenseDate,
+      prisma,
+    );
 
     return {
       scheduleId,
@@ -807,7 +811,10 @@ export class OfficialDefenseRecordService {
       typeof rawOrNumber === "string" && rawOrNumber.trim().length > 0
         ? rawOrNumber.trim()
         : null;
-    const officials = await loadInstitutionalOfficials(prisma);
+    const officials = await loadInstitutionalOfficialsAsOf(
+      applicationSubmittedAt ?? schedule.defenseDate,
+      prisma,
+    );
 
     return {
       scheduleId: schedule.id,

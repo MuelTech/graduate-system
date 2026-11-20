@@ -1,6 +1,7 @@
 import { Prisma } from "@prisma/client";
 import prisma from "../config/database";
 import { UserRole } from "@prisma/client";
+import { disconnectUserDefenseSockets } from "../realtime/defense-realtime.registry";
 
 /**
  * Patch-safe panelist flag resolution.
@@ -72,6 +73,110 @@ export class AdminPanelistRepository {
         });
     }
 
+    async findDeactivationImpactData(panelistId: string) {
+        const panelist = await prisma.panelist.findUnique({
+            where: { id: panelistId },
+            select: {
+                id: true,
+                userId: true,
+            },
+        });
+        if (!panelist) return null;
+
+        const [panelAssignments, adviserAssignments, pendingAdviserRequests] =
+            await Promise.all([
+                prisma.panelAssignment.findMany({
+                    where: {
+                        userId: panelist.userId,
+                        isActive: true,
+                        schedule: {
+                            sessionStatus: {
+                                in: ["IN_PROGRESS", "AWAITING_CONCLUSION", "SCHEDULED"],
+                            },
+                        },
+                    },
+                    select: {
+                        role: true,
+                        schedule: {
+                            select: {
+                                id: true,
+                                defenseType: true,
+                                sessionStatus: true,
+                                defenseDate: true,
+                                thesis: {
+                                    select: {
+                                        student: {
+                                            select: {
+                                                user: {
+                                                    select: {
+                                                        firstName: true,
+                                                        lastName: true,
+                                                    },
+                                                },
+                                            },
+                                        },
+                                    },
+                                },
+                            },
+                        },
+                    },
+                    orderBy: { schedule: { defenseDate: "asc" } },
+                }),
+                prisma.adviserAssignment.findMany({
+                    where: {
+                        adviserId: panelist.userId,
+                        isActive: true,
+                    },
+                    select: {
+                        id: true,
+                        studentId: true,
+                        student: {
+                            select: {
+                                studentNumber: true,
+                                user: {
+                                    select: {
+                                        firstName: true,
+                                        lastName: true,
+                                    },
+                                },
+                            },
+                        },
+                    },
+                    orderBy: { assignedDate: "desc" },
+                }),
+                prisma.adviserRequest.findMany({
+                    where: {
+                        requestedAdviserId: panelist.userId,
+                        status: "PENDING",
+                        adviserStatus: "PENDING",
+                    },
+                    select: {
+                        id: true,
+                        requestDate: true,
+                        student: {
+                            select: {
+                                user: {
+                                    select: {
+                                        firstName: true,
+                                        lastName: true,
+                                    },
+                                },
+                            },
+                        },
+                    },
+                    orderBy: { requestDate: "desc" },
+                }),
+            ]);
+
+        return {
+            panelistId: panelist.id,
+            userId: panelist.userId,
+            panelAssignments,
+            adviserAssignments,
+            pendingAdviserRequests,
+        };
+    }
+
     async checkEmailInUse(email: string) {
         return prisma.user.findUnique({ where: { email } });
     }
@@ -117,7 +222,17 @@ export class AdminPanelistRepository {
         });
     }
 
-    async updateWithUserTransaction(id: string, data: any, adminId: string, passwordHash?: string) {
+    async updateWithUserTransaction(
+        id: string,
+        data: any,
+        adminId: string,
+        passwordHash?: string,
+        deactivationHandoffSummary?: {
+            scheduledDefensesCount: number;
+            activeAdviseesCount: number;
+            pendingAdviserRequestsCount: number;
+        },
+    ) {
         return prisma.$transaction(async (tx) => {
             const panelistRecord = await tx.panelist.findUnique({
                 where: { id },
@@ -145,11 +260,24 @@ export class AdminPanelistRepository {
             if (typeof data.email === "string" && data.email.trim()) {
                 userData.email = data.email.trim();
             }
+            const previousIsActive =
+                panelistRecord.user.isActive && panelistRecord.isActive;
+            const nextIsActive =
+                typeof data.isActive === "boolean"
+                    ? data.isActive
+                    : previousIsActive;
+            const shouldInvalidateSessions =
+                (typeof data.isActive === "boolean" && !data.isActive) ||
+                Boolean(passwordHash);
+
             if (typeof data.isActive === "boolean") {
                 userData.isActive = data.isActive;
             }
             if (passwordHash) {
                 userData.passwordHash = passwordHash;
+            }
+            if (shouldInvalidateSessions) {
+                userData.tokenVersion = { increment: 1 };
             }
 
             await tx.user.update({
@@ -168,7 +296,7 @@ export class AdminPanelistRepository {
                     ? data.canEvaluateEssays
                     : panelistRecord.canEvaluateEssays;
 
-            return tx.panelist.update({
+            const updatedPanelist = await tx.panelist.update({
                 where: { id },
                 data: {
                     highestEducationalAttainment:
@@ -190,6 +318,48 @@ export class AdminPanelistRepository {
                 },
                 include: { user: { select: userSelect } },
             });
+
+            if (typeof data.isActive === "boolean" && previousIsActive !== nextIsActive) {
+                await tx.auditLog.create({
+                    data: {
+                        actorId: adminId,
+                        actionType: nextIsActive
+                            ? "USER_ACCOUNT_REACTIVATED"
+                            : "USER_ACCOUNT_DEACTIVATED",
+                        targetTable: "users",
+                        targetId: panelistRecord.userId,
+                        oldValue: JSON.stringify({
+                            isActive: previousIsActive,
+                            panelistId: id,
+                        }),
+                        newValue: JSON.stringify({
+                            isActive: nextIsActive,
+                            panelistId: id,
+                            ...(deactivationHandoffSummary && !nextIsActive
+                                ? { handoffImpact: deactivationHandoffSummary }
+                                : {}),
+                        }),
+                        description: nextIsActive
+                            ? `Reactivated Faculty account ${updatedPanelist.user.email}.`
+                            : `Deactivated Faculty account ${updatedPanelist.user.email}.`,
+                    },
+                });
+            }
+
+            return {
+                updatedPanelist,
+                userId: panelistRecord.userId,
+                shouldInvalidateSessions,
+                deactivated: typeof data.isActive === "boolean" && !data.isActive,
+            };
+        }).then((payload) => {
+            if (payload.shouldInvalidateSessions) {
+                void disconnectUserDefenseSockets(
+                    payload.userId,
+                    payload.deactivated ? "ACCOUNT_DEACTIVATED" : "SESSION_INVALIDATED",
+                );
+            }
+            return payload.updatedPanelist;
         });
     }
 }

@@ -69,6 +69,7 @@ export class AuthRepository {
             data: {
                 passwordHash,
                 mustChangePassword: false,
+                tokenVersion: { increment: 1 },
             },
         });
     }

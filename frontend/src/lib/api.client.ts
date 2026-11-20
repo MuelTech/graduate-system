@@ -40,12 +40,25 @@ export const apiClientRequest = async (
     headers,
   });
 
-  // Automatically force logout if the backend rejects the token
+  // Automatically force logout if the backend rejects the token or invalidates the session
   if (response.status === 401 || response.status === 403) {
+    const errorData = await response.json().catch(() => ({}));
+    const code = typeof errorData?.code === "string" ? errorData.code : "";
+    const callbackUrl =
+      code === "ACCOUNT_DEACTIVATED"
+        ? "/login?reason=deactivated"
+        : code === "SESSION_INVALIDATED"
+          ? "/login?reason=session_invalidated"
+          : "/login";
+
     if (typeof window !== "undefined") {
-      signOut({ callbackUrl: "/login" });
+      signOut({ callbackUrl });
     }
-    throw new Error("Session expired. Please log in again.");
+    throw new Error(
+      typeof errorData?.error === "string" && errorData.error.trim().length > 0
+        ? errorData.error
+        : "Session expired. Please log in again.",
+    );
   }
 
   if (!response.ok) {

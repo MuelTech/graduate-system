@@ -18,6 +18,7 @@ import {
 import { DEFENSE_REPORT_PREVIEW_EVENT } from "./defense-report-preview.rules";
 import { createPrismaDefenseReportPreviewStore } from "./defense-report-preview.store";
 import { createPrismaDefenseRealtimeStore } from "./defense-realtime.store";
+import { verifyActiveUserSession } from "../services/session-validation.service";
 import { parseCorsOrigins } from "../utils/cors-origins";
 import {
   getDefenseRealtimeServer,
@@ -84,6 +85,7 @@ export interface DefenseRealtimeServerOptions extends DefenseSocketAuthOptions {
 export interface DefenseRealtimeServer {
   io: SocketIOServer;
   deliver(input: DefenseRealtimeDeliveryInput): Promise<boolean>;
+  disconnectUser(userId: string, reason?: string): Promise<number>;
   shutdown(): Promise<void>;
 }
 
@@ -323,6 +325,10 @@ export function initializeDefenseRealtime(
   io.use(
     createDefenseSocketAuthMiddleware({
       verifyToken: options.verifyToken,
+      verifyActiveSession:
+        options.verifyActiveSession !== undefined
+          ? options.verifyActiveSession
+          : verifyActiveUserSession,
     }),
   );
 
@@ -368,6 +374,26 @@ export function initializeDefenseRealtime(
   const server: DefenseRealtimeServer = {
     io,
     deliver,
+    async disconnectUser(
+      userId: string,
+      reason = "SESSION_INVALIDATED",
+    ): Promise<number> {
+      if (!userId) return 0;
+      const sockets = await io.fetchSockets();
+      let disconnected = 0;
+      for (const remoteSocket of sockets) {
+        if (remoteSocket.data?.userId === userId) {
+          try {
+            remoteSocket.emit("session.invalidated", { reason });
+          } catch {
+            // Ignore emit failures during forced disconnect
+          }
+          remoteSocket.disconnect(true);
+          disconnected += 1;
+        }
+      }
+      return disconnected;
+    },
     async shutdown(): Promise<void> {
       await io.close();
     },

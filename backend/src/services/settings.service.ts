@@ -1,8 +1,11 @@
 import { SettingsRepository, AuditLogQuery } from "../repositories/settings.repository";
 import { AppError } from "../utils/AppError";
 import {
-    loadInstitutionalOfficials,
+    listInstitutionalOfficialHistory,
+    loadInstitutionalOfficialsAsOf,
+    recordInstitutionalOfficialTransition,
     updateInstitutionalOfficials,
+    type InstitutionalOfficialTransitionInput,
     type InstitutionalOfficialUpdatePayload,
 } from "./institutional-officials.service";
 
@@ -18,7 +21,11 @@ export class SettingsService {
     }
 
     async getInstitutionalOfficials() {
-        return loadInstitutionalOfficials();
+        return loadInstitutionalOfficialsAsOf(null);
+    }
+
+    async getInstitutionalOfficialHistory() {
+        return listInstitutionalOfficialHistory();
     }
 
     async updateInstitutionalOfficials(
@@ -26,6 +33,13 @@ export class SettingsService {
         userId: string,
     ) {
         return updateInstitutionalOfficials(payload, userId);
+    }
+
+    async recordInstitutionalOfficialTransition(
+        payload: InstitutionalOfficialTransitionInput,
+        userId: string,
+    ) {
+        return recordInstitutionalOfficialTransition(payload, userId);
     }
 
     async getAllEmailTemplates() {

@@ -54,11 +54,42 @@ export class SettingsController {
         }
     }
 
+    async getInstitutionalOfficialHistory(req: AuthenticatedRequest, res: Response): Promise<void> {
+        try {
+            const history = await settingsService.getInstitutionalOfficialHistory();
+            res.json(history);
+        } catch (error: unknown) {
+            if (error instanceof AppError) {
+                res.status(error.statusCode).json({ error: error.message });
+            } else if (error instanceof Error) {
+                res.status(400).json({ error: error.message });
+            } else {
+                res.status(500).json({ error: "An unexpected error occurred." });
+            }
+        }
+    }
+
     async updateInstitutionalOfficials(req: AuthenticatedRequest, res: Response): Promise<void> {
         try {
             const userId = req.user!.userId;
             const updated = await settingsService.updateInstitutionalOfficials(req.body, userId);
             res.json(updated);
+        } catch (error: unknown) {
+            if (error instanceof AppError) {
+                res.status(error.statusCode).json({ error: error.message });
+            } else if (error instanceof Error) {
+                res.status(400).json({ error: error.message });
+            } else {
+                res.status(500).json({ error: "An unexpected error occurred." });
+            }
+        }
+    }
+
+    async recordInstitutionalOfficialTransition(req: AuthenticatedRequest, res: Response): Promise<void> {
+        try {
+            const userId = req.user!.userId;
+            const history = await settingsService.recordInstitutionalOfficialTransition(req.body, userId);
+            res.status(201).json(history);
         } catch (error: unknown) {
             if (error instanceof AppError) {
                 res.status(error.statusCode).json({ error: error.message });

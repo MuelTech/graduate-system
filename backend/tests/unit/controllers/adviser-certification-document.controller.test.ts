@@ -3,8 +3,8 @@ import jwt from "jsonwebtoken";
 import type { AddressInfo } from "node:net";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
-const mocks = vi.hoisted(() => ({ generate: vi.fn(), list: vi.fn() }));
-vi.mock("../../../src/config/database", () => ({ default: {} }));
+const mocks = vi.hoisted(() => ({ generate: vi.fn(), list: vi.fn(), findUser: vi.fn() }));
+vi.mock("../../../src/config/database", () => ({ default: { user: { findUnique: mocks.findUser } } }));
 vi.mock("../../../src/services/thesis.service", () => ({ ThesisService: class {
   generateAdviserCertificationPdf = mocks.generate;
   listAdviserCertifications = mocks.list;
@@ -29,6 +29,7 @@ describe("PREDEF-1C actual authenticated GS-017 routes and PDF response", () => 
   });
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.findUser.mockResolvedValue({ isActive: true, role: "STUDENT", tokenVersion: 1, panelist: null });
     mocks.generate.mockResolvedValue({ pdf: Buffer.from("%PDF-1.7\nGS-017"), filename: "Alex-Student-Proposal-Defense-Adviser-Certification-GS-017.pdf" });
     mocks.list.mockResolvedValue([{ id: "cert-1", status: "ISSUED", manuscriptTitle: "Exact Title" }]);
   });

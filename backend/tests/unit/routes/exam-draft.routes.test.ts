@@ -6,6 +6,7 @@ import jwt from "jsonwebtoken";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { executionApplication, executionRevision, executionIds as ids, configuration } from "../../fixtures/exam-execution";
 const db = vi.hoisted(() => ({ $transaction: vi.fn(), $queryRaw: vi.fn(),
+  user: { findUnique: vi.fn() },
   entranceExamApplication: { findUnique: vi.fn() }, examContentRevision: { findUnique: vi.fn() },
   applicantAnswer: { findUnique: vi.fn(), findMany: vi.fn(), upsert: vi.fn() },
 }));
@@ -19,6 +20,7 @@ beforeAll(async () => {
 afterAll(() => { server.closeAllConnections(); server.close(); vi.unstubAllEnvs(); });
 beforeEach(() => {
   vi.resetAllMocks(); vi.stubEnv("JWT_SECRET", secret); app = executionApplication(); saved = null; revision = executionRevision();
+  db.user.findUnique.mockResolvedValue({ isActive: true, role: "APPLICANT", tokenVersion: 1, panelist: null });
   app.actualStartedAt = new Date(); app.deadlineAt = new Date(app.actualStartedAt.getTime() + 120 * 60_000); app.executionConfiguration = { ...configuration, timezone: "Asia/Manila", passingThresholdUnit: "PERCENT" }; app.contentRevisionId = ids.revision;
   db.$transaction.mockImplementation(fn => fn(db)); db.$queryRaw.mockResolvedValue([{ status: "PENDING" }]);
   db.entranceExamApplication.findUnique.mockImplementation(async () => app); db.examContentRevision.findUnique.mockImplementation(async () => revision);
