@@ -9,7 +9,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vites
 import { LocalStorageProvider } from "../../../src/storage/local-storage.provider";
 import { EXAM_PNG, EXAM_JPEG } from "../../fixtures/exam-images";
 
-const db = vi.hoisted(() => ({ examMedia: { create: vi.fn(), findUnique: vi.fn() } }));
+const db = vi.hoisted(() => ({ user: { findUnique: vi.fn() }, examMedia: { create: vi.fn(), findUnique: vi.fn() } }));
 vi.mock("../../../src/config/database", () => ({ default: db }));
 vi.mock("../../../src/utils/jwt", () => ({
   JwtConfigurationError: class extends Error {},
@@ -36,6 +36,7 @@ beforeAll(async () => {
 });
 beforeEach(() => {
   vi.clearAllMocks();
+  db.user.findUnique.mockResolvedValue({ isActive: true, role: "ADMIN", tokenVersion: 1, panelist: null });
   db.examMedia.create.mockImplementation(async ({ data }) => { records.set(data.id, data); return { id: data.id }; });
   db.examMedia.findUnique.mockImplementation(async ({ where }) => records.get(where.id) ?? null);
 });

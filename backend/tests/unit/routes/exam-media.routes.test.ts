@@ -7,7 +7,8 @@ import { EXAM_PNG, EXAM_JPEG } from "../../fixtures/exam-images";
 import { AppError } from "../../../src/utils/AppError";
 
 const content = vi.hoisted(() => vi.fn());
-vi.mock("../../../src/config/database", () => ({ default: {} }));
+const findUser = vi.hoisted(() => vi.fn());
+vi.mock("../../../src/config/database", () => ({ default: { user: { findUnique: findUser } } }));
 vi.mock("../../../src/services/exam-media.service", () => ({ ExamMediaService: class { getContent = content; } }));
 vi.mock("../../../src/utils/jwt", () => ({
   JwtConfigurationError: class extends Error {},
@@ -36,6 +37,7 @@ afterAll(async () => {
 });
 beforeEach(() => {
   content.mockReset();
+  findUser.mockResolvedValue({ isActive: true, role: "ADMIN", tokenVersion: 1, panelist: null });
   content.mockResolvedValue({ bytes: EXAM_PNG, mimeType: "image/png" });
 });
 function get(role?: string) { return fetch(url, { headers: role ? { Authorization: `Bearer ${role}` } : {} }); }
