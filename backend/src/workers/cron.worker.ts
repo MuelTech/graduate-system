@@ -1,53 +1,179 @@
-import cron from "node-cron";
+import cron, { type ScheduledTask } from "node-cron";
 import prisma from "../config/database";
 import { EmailService } from "../services/email.service";
+import { buildPortalUrl } from "../services/email-layout";
+import {
+  EXAM_SCHEDULE_TIMEZONE,
+  manilaCalendarDate,
+} from "../services/exam-schedule-time";
 
-export function startCronJobs() {
-    console.log("Starting background Cron Jobs...");
+export interface ExamReminderRunSummary {
+  targetDate: string;
+  matchedCount: number;
+  queuedCount: number;
+  skippedCount: number;
+}
 
-    // This schedule runs every day at 8:00 AM
-    // For development purposes, change " 0 8 * * *" to "* * * * *" to run every minute!
+function formatWallClockDate(date: Date): string {
+  return new Intl.DateTimeFormat("en-US", {
+    timeZone: "UTC",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  }).format(date);
+}
 
-    cron.schedule("* * * * *", async () => {
-        console.log("[Cron] Checking for exams happening in exactly 24 hours...");
-        try {
-            // Calculate exactly tomorrow's start and end times
-            const tomorrowStart = new Date();
-            tomorrowStart.setDate(tomorrowStart.getDate() + 1);
-            tomorrowStart.setHours(0, 0, 0, 0);
-            const tomorrowEnd = new Date(tomorrowStart);
-            tomorrowEnd.setHours(23, 59, 59, 999);
-            // Query the database for exams happening tomorrow
-            const upcomingExams = await prisma.entranceExamApplication.findMany({
-                where: {
-                    examDate: {
-                        gte: tomorrowStart,
-                        lte: tomorrowEnd
-                    },
-                    status: "APPROVED" // Change this to "PENDING" or "SCHEDULED" depending on your exact Enum!
-                },
-                include: {
-                    student: {
-                        include: { user: true }
-                    }
-                }
-            });
-            if (upcomingExams.length === 0) {
-                console.log("[Cron] No exams found for tomorrow.");
-                return;
-            }
-            console.log(`[Cron] Found ${upcomingExams.length} students taking an exam tomorrow. Sending reminders...`);
-            // Extract the emails and send them efficiently using our batch queue!
-            const emails = upcomingExams.map(app => app.student.user.email);
-            
-            await EmailService.sendBatch(emails, "exam_reminder_24h", {
-                student_name: "Applicant", 
-                exam_date: tomorrowStart.toDateString(),
-                portal_link: process.env.FRONTEND_URL || "http://localhost:3000"
-            });
-            console.log("[Cron] ✅ Exam reminders successfully queued!");
-        } catch (error) {
-            console.error("[Cron] ❌ Failed to process exam reminders:", error);
+function formatWallClockTime(time: Date | null): string {
+  if (!time) return "Scheduled Time";
+  const hours = time.getUTCHours();
+  const minutes = time.getUTCMinutes();
+  const suffix = hours >= 12 ? "PM" : "AM";
+  const hour12 = hours % 12 || 12;
+  return `${hour12}:${String(minutes).padStart(2, "0")} ${suffix}`;
+}
+
+/**
+ * Checks for PENDING (unreleased, active) Entrance Examinations scheduled for
+ * tomorrow in Asia/Manila that have not yet received a 24-hour reminder,
+ * enqueues personalized reminders via the MySQL persistent queue, and stamps
+ * `reminder24hSentAt` so applicants are never reminded twice.
+ */
+export async function runExamReminder24hCheck(
+  now = new Date(),
+  triggeredById?: string,
+): Promise<ExamReminderRunSummary> {
+  const todayManila = new Date(`${manilaCalendarDate(now)}T00:00:00.000Z`);
+  const tomorrowManila = new Date(todayManila.getTime() + 24 * 60 * 60 * 1000);
+  const targetDateIso = tomorrowManila.toISOString().slice(0, 10);
+
+  const upcomingExams = await prisma.entranceExamApplication.findMany({
+    where: {
+      examDate: tomorrowManila,
+      status: "PENDING",
+      seatReleasedAt: null,
+      reminder24hSentAt: null,
+      student: {
+        user: {
+          isActive: true,
+        },
+      },
+    },
+    include: {
+      program: { select: { programName: true } },
+      student: {
+        include: {
+          user: {
+            select: {
+              email: true,
+              firstName: true,
+              lastName: true,
+              isActive: true,
+            },
+          },
+        },
+      },
+    },
+  });
+
+  if (upcomingExams.length === 0) {
+    return {
+      targetDate: targetDateIso,
+      matchedCount: 0,
+      queuedCount: 0,
+      skippedCount: 0,
+    };
+  }
+
+  let queuedCount = 0;
+  let skippedCount = 0;
+  const formattedDate = formatWallClockDate(tomorrowManila);
+  const portalLink = buildPortalUrl("/applicant/exam");
+  const batchId = `exam_reminder_24h_${targetDateIso}`;
+
+  for (const app of upcomingExams) {
+    const email = app.student?.user?.email?.trim();
+    if (!email) {
+      skippedCount += 1;
+      continue;
+    }
+
+    const fullName =
+      `${app.student.user.firstName ?? ""} ${app.student.user.lastName ?? ""}`.trim() ||
+      "Applicant";
+
+    try {
+      const res = await EmailService.sendTemplateEmail(
+        email,
+        "exam_reminder_24h",
+        {
+          recipient_name: fullName,
+          program_name: app.program?.programName ?? "Graduate Program",
+          exam_date: formattedDate,
+          exam_time: formatWallClockTime(app.examTime),
+          portal_link: portalLink,
+        },
+        {
+          recipientName: fullName,
+          batchId,
+          idempotencyKey: `exam-reminder-24h-${app.id}`,
+          triggeredById,
+        },
+      );
+
+      if (res.queued && !res.skipped) {
+        await prisma.entranceExamApplication.update({
+          where: { id: app.id },
+          data: { reminder24hSentAt: new Date() },
+        });
+        queuedCount += 1;
+      } else {
+        skippedCount += 1;
+      }
+    } catch (error: unknown) {
+      skippedCount += 1;
+      console.error(
+        `[Cron] Failed to enqueue 24h exam reminder for application ${app.id}:`,
+        error instanceof Error ? error.message : error,
+      );
+    }
+  }
+
+  return {
+    targetDate: targetDateIso,
+    matchedCount: upcomingExams.length,
+    queuedCount,
+    skippedCount,
+  };
+}
+
+export function startCronJobs(): { stop: () => void } {
+  console.log(
+    `[Cron] Scheduling daily 24h Entrance Exam Reminder at 08:00 (${EXAM_SCHEDULE_TIMEZONE}).`,
+  );
+
+  const task: ScheduledTask = cron.schedule(
+    "0 8 * * *",
+    async () => {
+      try {
+        const summary = await runExamReminder24hCheck();
+        if (summary.matchedCount > 0) {
+          console.log(
+            `[Cron] 24h Exam Reminder (${summary.targetDate}): queued=${summary.queuedCount}, skipped=${summary.skippedCount}`,
+          );
         }
-    });
+      } catch (error: unknown) {
+        console.error(
+          "[Cron] Failed to process 24h exam reminders:",
+          error instanceof Error ? error.message : error,
+        );
+      }
+    },
+    { timezone: EXAM_SCHEDULE_TIMEZONE },
+  );
+
+  return {
+    stop() {
+      task.stop();
+    },
+  };
 }

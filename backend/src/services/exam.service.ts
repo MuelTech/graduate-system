@@ -1,6 +1,7 @@
 import { ExamRepository } from "../repositories/exam.repository";
 import { ExamAppStatus } from "@prisma/client";
 import { EmailService } from "./email.service";
+import { buildPortalUrl } from "./email-layout";
 import { AppError } from "../utils/AppError";
 import { ExamRecordDetail } from "../interfaces/exam.interfaces";
 import { manilaCalendarDate, parseScheduleDate, requireFutureSchedule, requireSameDaySchedule, scheduleStartInstant } from "./exam-schedule-time";
@@ -357,10 +358,21 @@ export class ExamService {
   }
 
   async confirmResultAndEmail(applicationId: string) {
-    return this.examRepo.queueResultEmail(applicationId, (recipient, template, firstName, jobId) =>
-      EmailService.sendTemplateEmail(recipient, template, {
-        student_name: firstName, portal_link: process.env.FRONTEND_URL || "http://localhost:3000",
-      }, { jobId, removeOnComplete: false, removeOnFail: false }));
+    return this.examRepo.queueResultEmail(
+      applicationId,
+      async (recipient, template, firstName, jobId) => {
+        await EmailService.sendTemplateEmail(
+          recipient,
+          template,
+          {
+            recipient_name: firstName,
+            student_name: firstName,
+            portal_link: buildPortalUrl("/applicant/result"),
+          },
+          { jobId, recipientName: firstName },
+        );
+      },
+    );
   }
 
   finalizeResult(applicationId: string, adminId: string) { return this.examRepo.finalizeResult(applicationId, adminId); }

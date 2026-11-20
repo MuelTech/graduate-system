@@ -72,6 +72,8 @@ model User {
   courseProgressVerified             StudentCourseProgress[]     @relation("CourseProgressVerifiedBy")
   officialTermsCreated               InstitutionalOfficialTerm[] @relation("OfficialTermCreatedBy")
   officialTermsUpdated               InstitutionalOfficialTerm[] @relation("OfficialTermUpdatedBy")
+  emailLogsTriggered                 EmailLog[]                  @relation("EmailLogTriggeredBy")
+  passwordResetTokens                PasswordResetToken[]
   customRole                         CustomRole?                 @relation("UserCustomRole", fields: [customRoleId], references: [id])
 
   @@index([customRoleId], map: "users_custom_role_id_fkey")
@@ -242,6 +244,7 @@ model EntranceExamApplication {
   finalizationReceiptId String? @unique @map("finalization_receipt_id") @db.VarChar(36)
   finalizationAnsweredCount Int? @map("finalization_answered_count")
   finalizationQuestionCount Int? @map("finalization_question_count")
+  reminder24hSentAt DateTime? @map("reminder_24h_sent_at") @db.DateTime(3)
   startAuthorizedBy User? @relation("ExamStartAuthorizedBy", fields: [startAuthorizedById], references: [id], onDelete: Restrict)
   contentRevision ExamContentRevision? @relation(fields: [contentRevisionId], references: [id], onDelete: Restrict)
   program   Program            @relation(fields: [programId], references: [id])
@@ -1364,23 +1367,58 @@ model EmailTemplate {
 }
 
 model EmailLog {
-  id           String      @id @default(uuid()) @map("log_id")
-  recipient    String
-  subject      String
-  templateKey  String?     @map("template_key")
-  status       EmailStatus @default(QUEUED)
-  errorMessage String?     @map("error_message") @db.Text
-  sentAt       DateTime?   @map("sent_at")
-  createdAt    DateTime    @default(now()) @map("created_at")
+  id             String      @id @default(uuid()) @map("log_id")
+  recipient      String
+  recipientName  String?     @map("recipient_name") @db.VarChar(180)
+  subject        String
+  templateKey    String?     @map("template_key")
+  category       String?     @db.VarChar(50)
+  batchId        String?     @map("batch_id") @db.VarChar(64)
+  idempotencyKey String?     @unique @map("idempotency_key") @db.VarChar(191)
+  htmlBody       String?     @map("html_body") @db.LongText
+  textBody       String?     @map("text_body") @db.LongText
+  status         EmailStatus @default(QUEUED)
+  attemptCount   Int         @default(0) @map("attempt_count")
+  maxAttempts    Int         @default(3) @map("max_attempts")
+  nextAttemptAt  DateTime?   @map("next_attempt_at") @db.DateTime(3)
+  lockedAt       DateTime?   @map("locked_at") @db.DateTime(3)
+  lastAttemptAt  DateTime?   @map("last_attempt_at") @db.DateTime(3)
+  errorMessage   String?     @map("error_message") @db.Text
+  triggeredById  String?     @map("triggered_by_id")
+  sentAt         DateTime?   @map("sent_at")
+  createdAt      DateTime    @default(now()) @map("created_at")
+  updatedAt      DateTime    @default(now()) @updatedAt @map("updated_at")
+  triggeredBy    User?       @relation("EmailLogTriggeredBy", fields: [triggeredById], references: [id], onDelete: SetNull)
 
   @@index([recipient], map: "email_logs_recipient_idx")
   @@index([status], map: "email_logs_status_idx")
+  @@index([status, nextAttemptAt], map: "email_logs_status_next_attempt_idx")
   @@index([templateKey], map: "email_logs_template_key_idx")
+  @@index([category], map: "email_logs_category_idx")
+  @@index([batchId], map: "email_logs_batch_id_idx")
+  @@index([createdAt], map: "email_logs_created_at_idx")
+  @@index([triggeredById], map: "email_logs_triggered_by_fkey")
   @@map("email_logs")
+}
+
+model PasswordResetToken {
+  id          String    @id @default(uuid()) @map("token_id")
+  userId      String    @map("user_id")
+  tokenHash   String    @unique @map("token_hash") @db.VarChar(64)
+  expiresAt   DateTime  @map("expires_at") @db.DateTime(3)
+  usedAt      DateTime? @map("used_at") @db.DateTime(3)
+  requestedIp String?   @map("requested_ip") @db.VarChar(64)
+  createdAt   DateTime  @default(now()) @map("created_at") @db.DateTime(3)
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId], map: "password_reset_tokens_user_id_idx")
+  @@index([expiresAt], map: "password_reset_tokens_expires_at_idx")
+  @@map("password_reset_tokens")
 }
 
 enum EmailStatus {
   QUEUED
+  PROCESSING
   SENT
   FAILED
 
