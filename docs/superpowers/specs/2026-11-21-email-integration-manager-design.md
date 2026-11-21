@@ -1,9 +1,9 @@
 # Email Integration & Admin Email Manager Design Specification
 
-**System:** EARIST Graduate School Information System (GS-IS)  
-**Branch:** `feat/email-integration-manager` (off `main` at `63e50fdd`)  
-**Status:** DRAFT — AWAITING PROJECT-OWNER REVIEW BEFORE IMPLEMENTATION  
-**Date:** 2026-11-21  
+**System:** EARIST Graduate School Information System (GS-IS)
+**Branch:** `feat/email-integration-manager` (merged to `main` via PR #67 at `0e210895`)
+**Status:** ✅ ACCEPTED & MERGED — 2026-11-21
+**Date:** 2026-11-21
 **Related Checklist Sections:** §8 (Email Integration), §14 (Collaborator Review Queue), §15 (Immediate Priority Queue), §17 (Auth & Credential UX), §21.1–§21.2 (Account Recovery & Background Workers)
 
 ---
@@ -56,8 +56,8 @@ Every enqueued email creates a durable row in `email_logs` with `status = QUEUED
 | Env Variable | Values / Behavior |
 |---|---|
 | `EMAIL_MODE` | `smtp` (real SMTP send), `dry_run` (renders & records `SENT` in `email_logs` without connecting to SMTP — ideal for local UI QA), `disabled` (default in `NODE_ENV=test` / Vitest unless explicitly overridden) |
-| `APP_PUBLIC_URL` | Single canonical URL for email links & buttons (e.g., `http://localhost:3000` or `https://gsis.earist.edu.ph`). Falls back safely to the **first** comma-separated origin of `FRONTEND_URL`. |
-| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `EMAIL_FROM` | Standard SMTP sender configuration (supports Gmail App Password, Brevo, institutional SMTP). Never committed to git. |
+| `APP_PUBLIC_URL` | Single canonical URL for email links & buttons (e.g., `http://localhost:3000` for local dev or `https://graduate.earist.app` for production). Falls back safely to the **first** comma-separated origin of `FRONTEND_URL`. |
+| `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASS`, `EMAIL_FROM` (or `SMTP_FROM`) | Standard SMTP sender configuration (supports Gmail App Password, Brevo, institutional SMTP). Never committed to git. |
 
 ---
 
@@ -93,8 +93,8 @@ Migration name: `20261121070000_email_mysql_queue_and_password_reset`
 
 All emails are rendered through one shared layout builder (`backend/src/services/email-layout.ts`):
 - **Header:** EARIST Crimson (`#8B1E1E`) banner with gold accent border (`#D4AF37`), white institutional header (`EULOGIO "AMANG" RODRIGUEZ INSTITUTE OF SCIENCE AND TECHNOLOGY` / `Office of the Graduate School`). No external image URLs that break in Gmail/Outlook/testmail.
-- **Body Card:** `max-width: 600px`, warm neutral canvas (`#F8F6F2`), crisp white paper card (`#FFFFFF`), category kicker, clear subject heading, personalized greeting (`Dear {{recipient_name}},`), concise body, optional structured key-value summary box, and a single solid crimson CTA button with a plain-text fallback link beneath it.
-- **Footer:** Automated notice disclaimer, Graduate School Office contact guidance, campus address (`Nagtahan, Sampaloc, Manila`).
+- **Body Card:** `max-width: 600px`, warm neutral canvas (`#F8F6F2`), crisp white paper card (`#FFFFFF`), category kicker, clear subject heading, personalized greeting (`Dear {{recipient_name}},`), concise formal body, optional structured key-value summary box (with separate `Date:` and `Time: ... (Philippine Time)` rows for scheduled events), a single solid crimson CTA button with a plain-text fallback link beneath it, and formal institutional closing (`Respectfully, Office of the Graduate School`).
+- **Footer:** Automated notice disclaimer and campus address (`Office of the Graduate School, Nagtahan, Sampaloc, Manila`), avoiding special-character em-dashes and middots across subjects, bodies, and footers.
 - **Plain-Text Fallback:** Automatically strips HTML into clean readable plain text for `text` MIME part (reduces spam filtering).
 - **Copy Compliance:** Strictly follows `docs/superpowers/USER_FACING_COPY_SOURCE_OF_TRUTH.md`: shortest truthful wording, zero internal manual citations (`Manual §7.14.3`), zero raw enum strings, and **policy-only temporary password guidance** (*"Your temporary password is your LAST NAME in ALL CAPS. You will be required to change it upon signing in."*) — never printing raw plaintext passwords in emails.
 
@@ -175,9 +175,10 @@ All emails are rendered through one shared layout builder (`backend/src/services
 1. **Delivery Logs Tab:**
    - Compact status bar showing **Delivery Mode** (`SMTP Active` / `Dry Run` / `Disabled`), **Worker State** (`Running`), and a **Send Test Email** button (opens modal accepting any email address such as `{namespace}.test@inbox.testmail.app` + optional template selector).
    - Summary KPI strip: `Total`, `Sent`, `Queued`, `Failed`, `Delivery Rate`.
-   - Filters: Status (`All`, `Queued`, `Processing`, `Sent`, `Failed`), Category (the 4 cycles + `System Test`), Template dropdown, Recipient search.
-   - Table: Timestamp, Recipient, Template / Category, Subject, Attempts (`1/3`), Status pill, Actions (`View`, `Retry` for failed rows) + **Retry All Failed** action.
-   - Detail Drawer/Modal: Exact recipient, subject, status, timestamps, error message (if failed), and rendered HTML preview in a sandboxed `iframe` (`srcDoc`).
+   - Filters: Status (`All Statuses`, `Sent`, `Queued`, `Processing`, `Failed`), Category (the 4 cycles + `System Test`), Time Window (`Last 7 Days`, `Last 30 Days` default, `Last 90 Days`, `All Time` — synced to both table and KPI strip), and Recipient/Subject/Template search.
+   - Table: Timestamp, Recipient, Subject (plus error excerpt if any), Attempts (`1/3`), Status pill (plus `Next retry: <time>` when `QUEUED` on backoff), Actions (`View`, `Resend` for `SENT`/`FAILED` non-token logs, `Retry` for failed rows) + **Retry All Failed** action.
+   - **Resend to Original or Corrected Email (`POST /api/admin/emails/logs/:id/resend`):** Allows Admins to resend any stored `SENT` or `FAILED` notification to either the original email or a corrected address (e.g., after fixing a user's email typo in User Management), automatically suggesting an updated profile email when a uniquely matching user is found, preserving the original log immutably, creating a new queued `EmailLog` + `AuditLog` (`EMAIL_RESENT`), and blocking single-use expiring `password_reset_link` logs (`409`).
+   - Detail Modal: Exact recipient, subject, status, attempts/next-retry timing, error message (if failed), `Resend Email` / `Retry Delivery` actions, and rendered HTML preview in a sandboxed `iframe` (`srcDoc`).
 2. **Templates Tab:**
    - Grouped cleanly by the **4 Lifecycle Cycles** with clear human-readable names, trigger descriptions, Active/Paused status badge, and `Edit` button.
    - Editor View:
@@ -203,10 +204,14 @@ All emails are rendered through one shared layout builder (`backend/src/services
 
 ---
 
-## 10. Live QA Credentials Boundary (Phase 4 Only)
+## 10. Acceptance & Verification Evidence (PR #67 — `0e210895`)
 
-No SMTP passwords or `testmail.app` keys are needed during Phases 1–3. During Phase 4 live QA, credentials live **strictly in untracked local `backend/.env`**:
-- Outgoing SMTP (`SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `EMAIL_FROM`)
-- `EMAIL_MODE=smtp`
-- `APP_PUBLIC_URL=http://localhost:3000`
-- Test recipient addresses under your `testmail.app` namespace (`{namespace}.{tag}@inbox.testmail.app`).
+- **Schema & Seed:** Migration #64 (`20261121070000_email_mysql_queue_and_password_reset`) applied cleanly to local MySQL; 22 canonical templates synchronized via `backend/src/cli/sync-email-templates.ts` and retired keys removed.
+- **Automated Verification:**
+  - Backend: `tsc` 0 errors; full Vitest suite **278 passed | 9 skipped | 0 failed** (4,116 tests passed), including unit/route tests for MySQL persistent queue, exponential retry, layout/copy invariants, enum sanitization, verified CTA routes, daily 24-hour reminder cron, self-service password reset + `tokenVersion` invalidation, RBAC (`settings.manage`), time-window filtering, and audited resend fallback.
+  - Frontend: `tsc --noEmit` 0 errors; scoped ESLint 0 errors/warnings; Next.js production build **71/71 pages** passed.
+  - Diff hygiene: `git diff --check` passed; verified no `.env` secrets committed.
+- **Live QA (Project Owner — 2026-11-21):**
+  - Verified live Gmail SMTP (`smtp.gmail.com:587`, STARTTLS) delivery, branded EARIST HTML rendering, defense committee notifications, self-service `/forgot-password` on `https://graduate.earist.app/`, and Admin `/admin/emails` delivery monitoring.
+  - Live QA findings resolved prior to merge: sanitized raw Prisma defense/WCE enums (`PROPOSAL_DEFENSE` → `Proposal Defense`, `REDEFENSE_REQUIRED` → `Re-Defense Required`, `PASSED` → `Passed`), removed special characters (`—` / `·`), aligned all email CTA paths to actual Next.js routes, switched password-reset auth pages to `getClientBackendBaseUrl()`, added `Resend` to original/corrected email and time-window filtering, and removed the redundant `Preview Notification` button from `/admin/thesis/scheduling`.
+- **Operational Configuration Boundary:** SMTP credentials (`SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASS`, `EMAIL_FROM`/`SMTP_FROM`), `EMAIL_MODE=smtp`, and `APP_PUBLIC_URL=https://graduate.earist.app` remain strictly in untracked runtime `.env`.
