@@ -17,11 +17,12 @@ router.get("/health", emailController.getHealth);
 router.post("/verify-smtp", emailController.verifySmtp);
 router.post("/test", emailController.sendTestEmail);
 
-// Delivery Logs & Retry
+// Delivery Logs, Retry & Resend
 router.get("/logs", emailController.getEmailLogs);
 router.post("/logs/retry-failed", emailController.retryAllFailed);
 router.get("/logs/:id", emailController.getEmailLogDetail);
 router.post("/logs/:id/retry", emailController.retryEmailLog);
+router.post("/logs/:id/resend", emailController.resendEmailLog);
 
 // Template Management
 router.get("/templates", emailController.listTemplates);

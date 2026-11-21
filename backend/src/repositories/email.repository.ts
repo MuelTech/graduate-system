@@ -32,6 +32,7 @@ export interface EmailLogFilterQuery {
   templateKey?: string;
   batchId?: string;
   search?: string;
+  days?: number;
 }
 
 /** Exponential retry backoff schedule (in milliseconds): 30s -> 2m -> 10m. */
@@ -343,6 +344,11 @@ export class EmailRepository {
     if (filters.category) where.category = filters.category;
     if (filters.templateKey) where.templateKey = filters.templateKey;
     if (filters.batchId) where.batchId = filters.batchId;
+    if (filters.days && filters.days > 0) {
+      where.createdAt = {
+        gte: new Date(Date.now() - filters.days * 24 * 60 * 60 * 1000),
+      };
+    }
     if (filters.search?.trim()) {
       const term = filters.search.trim();
       where.OR = [
@@ -392,11 +398,16 @@ export class EmailRepository {
     };
   }
 
-  async getDeliveryStats() {
+  async getDeliveryStats(days?: number) {
     const since24h = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const windowWhere: Prisma.EmailLogWhereInput | undefined =
+      days && days > 0
+        ? { createdAt: { gte: new Date(Date.now() - days * 24 * 60 * 60 * 1000) } }
+        : undefined;
     const [grouped, last24hSent, last24hFailed] = await Promise.all([
       prisma.emailLog.groupBy({
         by: ["status"],
+        ...(windowWhere ? { where: windowWhere } : {}),
         _count: { _all: true },
       }),
       prisma.emailLog.count({

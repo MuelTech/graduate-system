@@ -3,7 +3,7 @@ import { EmailStatus } from "@prisma/client";
 import prisma from "../config/database";
 import { AuthenticatedRequest } from "../middlewares/auth.middleware";
 import { EmailRepository } from "../repositories/email.repository";
-import { EmailService } from "../services/email.service";
+import { EmailService, wakeEmailWorker } from "../services/email.service";
 import {
   EMAIL_TEMPLATE_REGISTRY,
   getTemplateDefinition,
@@ -15,7 +15,57 @@ import { EXAM_SCHEDULE_TIMEZONE } from "../services/exam-schedule-time";
 const emailRepository = new EmailRepository();
 
 const VALID_STATUSES = new Set<string>(["QUEUED", "PROCESSING", "SENT", "FAILED"]);
+const ALLOWED_DAY_WINDOWS = new Set<number>([7, 30, 90]);
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+function parseDaysWindow(raw: unknown): number | undefined {
+  if (raw === undefined || raw === null) return undefined;
+  const trimmed = String(raw).trim().toUpperCase();
+  if (!trimmed || trimmed === "ALL") return undefined;
+  const parsed = parseInt(trimmed, 10);
+  return ALLOWED_DAY_WINDOWS.has(parsed) ? parsed : undefined;
+}
+
+/**
+ * Safely checks whether a uniquely matching user (by recipientName) now has
+ * an updated profile email address different from the historical log recipient.
+ */
+async function lookupSuggestedCurrentEmail(
+  recipientName: string | null | undefined,
+  loggedRecipient: string,
+): Promise<string | null> {
+  const cleanName = recipientName?.trim();
+  if (!cleanName || cleanName === "Test Recipient" || cleanName === "User") {
+    return null;
+  }
+  const parts = cleanName.split(/\s+/).filter(Boolean);
+  if (parts.length < 2) return null;
+  if (typeof prisma.user?.findMany !== "function") return null;
+
+  const firstName = parts[0];
+  const lastName = parts[parts.length - 1];
+  try {
+    const matches = await prisma.user.findMany({
+      where: {
+        firstName: { equals: firstName },
+        lastName: { equals: lastName },
+      },
+      select: { email: true },
+      take: 2,
+    });
+    if (matches.length !== 1) return null;
+    const currentEmail = matches[0].email?.trim();
+    if (
+      currentEmail &&
+      currentEmail.toLowerCase() !== loggedRecipient.trim().toLowerCase()
+    ) {
+      return currentEmail;
+    }
+  } catch {
+    // Non-fatal suggestion lookup
+  }
+  return null;
+}
 
 export const emailController = {
   // GET /api/admin/emails/health
@@ -99,6 +149,7 @@ export const emailController = {
       const search = req.query.search
         ? String(req.query.search).trim()
         : undefined;
+      const days = parseDaysWindow(req.query.days);
 
       const [result, stats] = await Promise.all([
         emailRepository.getFilteredPaginatedLogs({
@@ -109,8 +160,9 @@ export const emailController = {
           templateKey,
           batchId,
           search,
+          days,
         }),
-        emailRepository.getDeliveryStats(),
+        emailRepository.getDeliveryStats(days),
       ]);
 
       res.status(200).json({
@@ -135,9 +187,14 @@ export const emailController = {
       const def = log.templateKey
         ? getTemplateDefinition(log.templateKey)
         : undefined;
+      const suggestedCurrentEmail = await lookupSuggestedCurrentEmail(
+        log.recipientName,
+        log.recipient,
+      );
       res.status(200).json({
         ...log,
         templateName: def?.name ?? (log.category === "SYSTEM_TEST" ? "System Test Email" : log.templateKey),
+        suggestedCurrentEmail,
       });
     } catch (error: unknown) {
       console.error("[EmailController] Failed to fetch log detail:", error);
@@ -158,6 +215,7 @@ export const emailController = {
         res.status(409).json({ error: outcome.error });
         return;
       }
+      wakeEmailWorker();
       res.status(200).json({
         message: "Failed email re-queued for delivery.",
         log: outcome.log,
@@ -165,6 +223,63 @@ export const emailController = {
     } catch (error: unknown) {
       console.error("[EmailController] Failed to retry email log:", error);
       res.status(500).json({ error: "Failed to re-queue email." });
+    }
+  },
+
+  // POST /api/admin/emails/logs/:id/resend
+  async resendEmailLog(req: AuthenticatedRequest, res: Response) {
+    try {
+      const id = String(req.params.id ?? "").trim();
+      const rawRecipient =
+        req.body?.recipient !== undefined ? String(req.body.recipient).trim() : "";
+
+      if (rawRecipient && !EMAIL_PATTERN.test(rawRecipient)) {
+        res.status(400).json({
+          error: "Please enter a valid recipient email address.",
+        });
+        return;
+      }
+
+      const outcome = await EmailService.resendEmailLog({
+        logId: id,
+        recipient: rawRecipient || undefined,
+        triggeredById: req.user!.userId,
+      });
+
+      if (!outcome.ok) {
+        res.status(outcome.statusCode).json({ error: outcome.error });
+        return;
+      }
+
+      const recipientChanged =
+        outcome.recipient.toLowerCase() !== outcome.originalRecipient.toLowerCase();
+
+      await prisma.auditLog
+        .create({
+          data: {
+            actorId: req.user!.userId,
+            actionType: "EMAIL_RESENT",
+            targetTable: "email_logs",
+            targetId: outcome.newLogId,
+            description: recipientChanged
+              ? `Resent email "${outcome.subject}" from ${outcome.originalRecipient} to corrected address ${outcome.recipient} (original log ${id}).`
+              : `Resent email "${outcome.subject}" to ${outcome.recipient} (original log ${id}).`,
+          },
+        })
+        .catch(() => {});
+
+      res.status(200).json({
+        message:
+          outcome.status === "QUEUED"
+            ? `Email queued for delivery to ${outcome.recipient}.`
+            : `Email recorded for ${outcome.recipient} (${outcome.mode} mode).`,
+        logId: outcome.newLogId,
+        status: outcome.status,
+        recipient: outcome.recipient,
+      });
+    } catch (error: unknown) {
+      console.error("[EmailController] Failed to resend email log:", error);
+      res.status(500).json({ error: "Failed to resend email." });
     }
   },
 
@@ -182,6 +297,9 @@ export const emailController = {
         category,
         templateKey,
       });
+      if (count > 0) {
+        wakeEmailWorker();
+      }
 
       res.status(200).json({
         message:

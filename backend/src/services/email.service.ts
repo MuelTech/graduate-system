@@ -61,7 +61,7 @@ export function registerEmailWorkerWakeHandler(handler: (() => void) | null) {
   workerWakeHandler = handler;
 }
 
-function wakeWorkerIfRegistered() {
+export function wakeEmailWorker() {
   if (workerWakeHandler) {
     try {
       workerWakeHandler();
@@ -69,6 +69,10 @@ function wakeWorkerIfRegistered() {
       // Best-effort wakeup; safety poll will still pick up queued rows.
     }
   }
+}
+
+function wakeWorkerIfRegistered() {
+  wakeEmailWorker();
 }
 
 export function isSmtpConfigured(): boolean {
@@ -607,6 +611,85 @@ export class EmailService {
         message: `SMTP delivery failed: ${errMsg}`,
       };
     }
+  }
+
+  /**
+   * Resends an existing email log (SENT or FAILED) to either its original
+   * recipient or an admin-corrected email address by creating a brand-new
+   * EmailLog row (preserving the original record as immutable audit history).
+   *
+   * Single-use expiring security links (`password_reset_link`) are blocked.
+   */
+  static async resendEmailLog(params: {
+    logId: string;
+    recipient?: string;
+    triggeredById: string;
+  }): Promise<
+    | { ok: false; statusCode: 404 | 409; error: string }
+    | {
+        ok: true;
+        newLogId: string;
+        status: "QUEUED" | "SENT";
+        recipient: string;
+        originalRecipient: string;
+        subject: string;
+        mode: EmailDeliveryMode;
+      }
+  > {
+    const original = await emailRepository.getLogById(params.logId);
+    if (!original) {
+      return { ok: false, statusCode: 404, error: "Email delivery log not found." };
+    }
+    if (original.templateKey === "password_reset_link") {
+      return {
+        ok: false,
+        statusCode: 409,
+        error:
+          "Password reset links expire and cannot be resent. Ask the user to request a new link from Forgot Password.",
+      };
+    }
+    if (!original.htmlBody) {
+      return {
+        ok: false,
+        statusCode: 409,
+        error:
+          "This legacy log entry has no stored message body and cannot be resent.",
+      };
+    }
+
+    const targetRecipient = (params.recipient?.trim() || original.recipient).trim();
+    const mode = getEmailDeliveryMode();
+    const isDry = mode === "dry_run" || mode === "disabled";
+    const now = new Date();
+
+    const created = await emailRepository.createLog({
+      recipient: targetRecipient,
+      recipientName: original.recipientName,
+      subject: original.subject,
+      templateKey: original.templateKey,
+      category: original.category,
+      htmlBody: original.htmlBody,
+      textBody: original.textBody || htmlToPlainText(original.htmlBody),
+      status: isDry ? "SENT" : "QUEUED",
+      attemptCount: isDry ? 1 : 0,
+      lastAttemptAt: isDry ? now : null,
+      sentAt: isDry ? now : null,
+      triggeredById: params.triggeredById,
+    });
+
+    if (!isDry) {
+      wakeWorkerIfRegistered();
+    }
+
+    return {
+      ok: true,
+      newLogId: created.id,
+      status: isDry ? "SENT" : "QUEUED",
+      recipient: targetRecipient,
+      originalRecipient: original.recipient,
+      subject: original.subject,
+      mode,
+    };
   }
 
   static async verifySmtpConnection(): Promise<{

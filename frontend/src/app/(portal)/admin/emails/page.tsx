@@ -79,6 +79,7 @@ interface EmailLogDetail extends EmailLogRow {
   htmlBody: string | null;
   textBody: string | null;
   templateName: string | null;
+  suggestedCurrentEmail?: string | null;
   triggeredBy?: {
     firstName: string;
     lastName: string;
@@ -138,6 +139,13 @@ const CATEGORY_OPTIONS = [
   { value: "SYSTEM_TEST", label: "System Test" },
 ];
 
+const DATE_RANGE_OPTIONS = [
+  { value: "7", label: "Last 7 Days" },
+  { value: "30", label: "Last 30 Days" },
+  { value: "90", label: "Last 90 Days" },
+  { value: "ALL", label: "All Time" },
+];
+
 const STATUS_BADGE_STYLES: Record<EmailLogRow["status"], string> = {
   SENT: "border-emerald-200 bg-emerald-50 text-emerald-800",
   QUEUED: "border-amber-200 bg-amber-50 text-amber-800",
@@ -180,8 +188,13 @@ export default function AdminEmailManagerPage() {
   const [logPage, setLogPage] = useState(1);
   const [logStatus, setLogStatus] = useState("ALL");
   const [logCategory, setLogCategory] = useState("ALL");
+  const [logDays, setLogDays] = useState("30");
   const [logSearch, setLogSearch] = useState("");
   const [selectedLogId, setSelectedLogId] = useState<string | null>(null);
+
+  // Resend Email Dialog
+  const [resendTarget, setResendTarget] = useState<EmailLogRow | null>(null);
+  const [resendRecipient, setResendRecipient] = useState("");
 
   // Templates filters & editor
   const [templateCategory, setTemplateCategory] = useState("ALL");
@@ -219,7 +232,7 @@ export default function AdminEmailManagerPage() {
     meta: { total: number; page: number; limit: number; totalPages: number };
     stats: DeliveryStats;
   }>({
-    queryKey: ["adminEmailLogs", logPage, logStatus, logCategory, logSearch],
+    queryKey: ["adminEmailLogs", logPage, logStatus, logCategory, logDays, logSearch],
     queryFn: () => {
       const params = new URLSearchParams({
         page: String(logPage),
@@ -227,17 +240,19 @@ export default function AdminEmailManagerPage() {
       });
       if (logStatus !== "ALL") params.set("status", logStatus);
       if (logCategory !== "ALL") params.set("category", logCategory);
+      if (logDays !== "ALL") params.set("days", logDays);
       if (logSearch.trim()) params.set("search", logSearch.trim());
       return apiClientRequest(`/admin/emails/logs?${params.toString()}`);
     },
     enabled: activeTab === "logs",
   });
 
+  const activeDetailId = selectedLogId ?? resendTarget?.id ?? null;
   const { data: logDetail, isLoading: logDetailLoading } =
     useQuery<EmailLogDetail>({
-      queryKey: ["adminEmailLogDetail", selectedLogId],
-      queryFn: () => apiClientRequest(`/admin/emails/logs/${selectedLogId}`),
-      enabled: Boolean(selectedLogId),
+      queryKey: ["adminEmailLogDetail", activeDetailId],
+      queryFn: () => apiClientRequest(`/admin/emails/logs/${activeDetailId}`),
+      enabled: Boolean(activeDetailId),
     });
 
   const { data: templatesData, isLoading: templatesLoading } = useQuery<{
@@ -298,6 +313,28 @@ export default function AdminEmailManagerPage() {
     },
     onError: (err: Error) => toast.error(err.message),
   });
+
+  const resendEmailMutation = useMutation({
+    mutationFn: (payload: { logId: string; recipient: string }) =>
+      apiClientRequest(`/admin/emails/logs/${payload.logId}/resend`, {
+        method: "POST",
+        body: JSON.stringify({ recipient: payload.recipient }),
+      }),
+    onSuccess: (res: { message: string }) => {
+      toast.success(res.message);
+      setResendTarget(null);
+      setResendRecipient("");
+      queryClient.invalidateQueries({ queryKey: ["adminEmailLogs"] });
+      queryClient.invalidateQueries({ queryKey: ["adminEmailHealth"] });
+    },
+    onError: (err: Error) => toast.error(err.message),
+  });
+
+  const openResendDialog = (log: EmailLogRow) => {
+    setSelectedLogId(null);
+    setResendTarget(log);
+    setResendRecipient(log.recipient);
+  };
 
   const retryAllFailedMutation = useMutation({
     mutationFn: () =>
@@ -655,6 +692,30 @@ export default function AdminEmailManagerPage() {
                       ))}
                     </SelectContent>
                   </Select>
+                  <Select
+                    value={logDays}
+                    onValueChange={(val) => {
+                      setLogDays(val ?? "30");
+                      setLogPage(1);
+                    }}
+                  >
+                    <SelectTrigger className="h-9 w-[150px] text-sm">
+                      <span className="truncate text-left">
+                        {DATE_RANGE_OPTIONS.find((o) => o.value === logDays)
+                          ?.label ?? "Last 30 Days"}
+                      </span>
+                    </SelectTrigger>
+                    <SelectContent
+                      alignItemWithTrigger={false}
+                      className="w-(--anchor-width)"
+                    >
+                      {DATE_RANGE_OPTIONS.map((opt) => (
+                        <SelectItem key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 {(stats?.failed ?? 0) > 0 && (
@@ -775,6 +836,19 @@ export default function AdminEmailManagerPage() {
                                 <Eye className="mr-1 h-3 w-3" />
                                 View
                               </Button>
+                              {(log.status === "SENT" || log.status === "FAILED") &&
+                                log.templateKey !== "password_reset_link" && (
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-7 px-2.5 text-xs text-[#8b1a1a] hover:bg-[#8b1a1a]/5"
+                                    onClick={() => openResendDialog(log)}
+                                  >
+                                    <Send className="mr-1 h-3 w-3" />
+                                    Resend
+                                  </Button>
+                                )}
                               {log.status === "FAILED" && (
                                 <Button
                                   type="button"
@@ -1378,6 +1452,20 @@ export default function AdminEmailManagerPage() {
             </div>
           )}
           <DialogFooter>
+            {logDetail &&
+              (logDetail.status === "SENT" || logDetail.status === "FAILED") &&
+              logDetail.htmlBody &&
+              logDetail.templateKey !== "password_reset_link" && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="text-[#8b1a1a] hover:bg-[#8b1a1a]/5"
+                  onClick={() => openResendDialog(logDetail)}
+                >
+                  <Send className="mr-1.5 h-3.5 w-3.5" />
+                  Resend Email
+                </Button>
+              )}
             {logDetail?.status === "FAILED" && logDetail.htmlBody && (
               <Button
                 type="button"
@@ -1398,6 +1486,125 @@ export default function AdminEmailManagerPage() {
               onClick={() => setSelectedLogId(null)}
             >
               Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── MODAL: RESEND TO ORIGINAL OR CORRECTED EMAIL ─────────────────── */}
+      <Dialog
+        open={Boolean(resendTarget)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setResendTarget(null);
+            setResendRecipient("");
+          }
+        }}
+      >
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-base font-bold text-gray-900">
+              Resend Email Notification
+            </DialogTitle>
+            <DialogDescription className="text-xs text-gray-500">
+              Deliver this exact notification again to the original address or a
+              corrected email address.
+            </DialogDescription>
+          </DialogHeader>
+          {resendTarget && (
+            <div className="space-y-4">
+              <div className="space-y-1.5 rounded-md border border-gray-200 bg-gray-50/70 p-3 text-xs">
+                <div>
+                  <span className="text-gray-500">Original Recipient:</span>{" "}
+                  <strong className="text-gray-900">
+                    {resendTarget.recipientName
+                      ? `${resendTarget.recipientName} <${resendTarget.recipient}>`
+                      : resendTarget.recipient}
+                  </strong>
+                </div>
+                <div className="truncate">
+                  <span className="text-gray-500">Subject:</span>{" "}
+                  <span className="font-medium text-gray-800">
+                    {resendTarget.subject}
+                  </span>
+                </div>
+              </div>
+
+              {logDetail?.id === resendTarget.id &&
+                logDetail.suggestedCurrentEmail && (
+                  <div className="flex items-center justify-between gap-2 rounded-md border border-amber-200 bg-amber-50/80 px-3 py-2 text-xs text-amber-900">
+                    <div className="min-w-0">
+                      <span className="font-semibold">Updated profile email:</span>{" "}
+                      <span className="truncate font-mono">
+                        {logDetail.suggestedCurrentEmail}
+                      </span>
+                    </div>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="h-7 shrink-0 border-amber-300 bg-white px-2.5 text-xs text-amber-900 hover:bg-amber-100"
+                      onClick={() =>
+                        setResendRecipient(logDetail.suggestedCurrentEmail!)
+                      }
+                    >
+                      Use This
+                    </Button>
+                  </div>
+                )}
+
+              <div>
+                <label
+                  htmlFor="resend-email-to"
+                  className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-gray-600"
+                >
+                  Recipient Email Address
+                </label>
+                <Input
+                  id="resend-email-to"
+                  type="email"
+                  value={resendRecipient}
+                  onChange={(e) => setResendRecipient(e.target.value)}
+                  placeholder="recipient@example.com"
+                  className="h-9 text-sm"
+                />
+                <p className="mt-1.5 text-[11px] leading-relaxed text-gray-500">
+                  Creates a new delivery log entry without altering the original
+                  record. If the user&apos;s email had a typo, update their
+                  profile in User Management so future notifications go to the
+                  corrected address.
+                </p>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setResendTarget(null);
+                setResendRecipient("");
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              disabled={
+                !resendTarget ||
+                !resendRecipient.trim() ||
+                resendEmailMutation.isPending
+              }
+              onClick={() => {
+                if (!resendTarget) return;
+                resendEmailMutation.mutate({
+                  logId: resendTarget.id,
+                  recipient: resendRecipient.trim(),
+                });
+              }}
+              className="bg-[#8b1a1a] text-white hover:bg-[#701414]"
+            >
+              {resendEmailMutation.isPending ? "Sending..." : "Resend Email"}
             </Button>
           </DialogFooter>
         </DialogContent>

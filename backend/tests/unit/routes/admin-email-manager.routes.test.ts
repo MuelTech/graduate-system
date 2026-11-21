@@ -4,7 +4,7 @@ import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 const { prismaMock } = vi.hoisted(() => ({
   prismaMock: {
-    user: { findUnique: vi.fn() },
+    user: { findUnique: vi.fn(), findMany: vi.fn() },
     emailTemplate: { findMany: vi.fn(), findUnique: vi.fn(), upsert: vi.fn() },
     emailLog: {
       findMany: vi.fn(),
@@ -226,5 +226,143 @@ describe("Admin Email Manager Routes (/api/admin/emails)", () => {
     );
     expect(retried.status).toBe(200);
     expect(retried.body.log.status).toBe("QUEUED");
+  });
+
+  it("supports time-window filtering (days=30) on delivery logs and KPI stats", async () => {
+    prismaMock.emailLog.findMany.mockResolvedValue([]);
+    prismaMock.emailLog.count.mockResolvedValue(0);
+    prismaMock.emailLog.groupBy.mockResolvedValue([]);
+
+    const res = await request(
+      app,
+      "GET",
+      "/api/admin/emails/logs?days=30",
+      fullAdminToken,
+    );
+    expect(res.status).toBe(200);
+    expect(prismaMock.emailLog.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          createdAt: { gte: expect.any(Date) },
+        }),
+      }),
+    );
+    expect(prismaMock.emailLog.groupBy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          createdAt: { gte: expect.any(Date) },
+        }),
+      }),
+    );
+  });
+
+  it("resends SENT logs to a corrected recipient email with immutable audit log and blocks password_reset_link", async () => {
+    // 1. Log detail suggests updated profile email when uniquely matched
+    prismaMock.emailLog.findUnique.mockResolvedValueOnce({
+      id: "log-s1",
+      recipient: "old.typo@earist.edu.ph",
+      recipientName: "Mateo Soriano",
+      subject: "Notice of Defense Committee Assignment: Proposal Defense (Pia Proposal)",
+      templateKey: "defense_panel_assignment",
+      category: "THESIS_DEFENSE",
+      htmlBody: "<p>Defense schedule details</p>",
+      textBody: "Defense schedule details",
+      status: "SENT",
+      attemptCount: 1,
+      maxAttempts: 3,
+      triggeredBy: null,
+    });
+    prismaMock.user.findMany.mockResolvedValueOnce([
+      { email: "mateo.soriano@gmail.com" },
+    ]);
+
+    const detail = await request(
+      app,
+      "GET",
+      "/api/admin/emails/logs/log-s1",
+      fullAdminToken,
+    );
+    expect(detail.status).toBe(200);
+    expect(detail.body.suggestedCurrentEmail).toBe("mateo.soriano@gmail.com");
+
+    // 2. Reject invalid email format
+    const invalid = await request(
+      app,
+      "POST",
+      "/api/admin/emails/logs/log-s1/resend",
+      fullAdminToken,
+      { recipient: "not-an-email" },
+    );
+    expect(invalid.status).toBe(400);
+
+    // 3. Block single-use password_reset_link resend
+    prismaMock.emailLog.findUnique.mockResolvedValueOnce({
+      id: "log-reset",
+      recipient: "user@example.com",
+      recipientName: "Juan Dela Cruz",
+      subject: "Password Reset Request",
+      templateKey: "password_reset_link",
+      category: "ACCOUNTS",
+      htmlBody: "<p>Reset link</p>",
+      textBody: "Reset link",
+      status: "SENT",
+    });
+    const blocked = await request(
+      app,
+      "POST",
+      "/api/admin/emails/logs/log-reset/resend",
+      fullAdminToken,
+      { recipient: "new@example.com" },
+    );
+    expect(blocked.status).toBe(409);
+
+    // 4. Resend SENT log to corrected email -> creates new log + AuditLog
+    prismaMock.emailLog.findUnique.mockResolvedValueOnce({
+      id: "log-s1",
+      recipient: "old.typo@earist.edu.ph",
+      recipientName: "Mateo Soriano",
+      subject: "Notice of Defense Committee Assignment: Proposal Defense (Pia Proposal)",
+      templateKey: "defense_panel_assignment",
+      category: "THESIS_DEFENSE",
+      htmlBody: "<p>Defense schedule details</p>",
+      textBody: "Defense schedule details",
+      status: "SENT",
+    });
+    prismaMock.emailLog.create.mockResolvedValueOnce({
+      id: "log-s2-resent",
+      status: "SENT",
+    });
+    prismaMock.auditLog.create.mockResolvedValueOnce({});
+
+    const resent = await request(
+      app,
+      "POST",
+      "/api/admin/emails/logs/log-s1/resend",
+      fullAdminToken,
+      { recipient: "mateo.soriano@gmail.com" },
+    );
+    expect(resent.status).toBe(200);
+    expect(resent.body.logId).toBe("log-s2-resent");
+    expect(resent.body.recipient).toBe("mateo.soriano@gmail.com");
+    expect(prismaMock.emailLog.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          recipient: "mateo.soriano@gmail.com",
+          recipientName: "Mateo Soriano",
+          templateKey: "defense_panel_assignment",
+          htmlBody: "<p>Defense schedule details</p>",
+          triggeredById: "admin-full",
+        }),
+      }),
+    );
+    expect(prismaMock.auditLog.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          actorId: "admin-full",
+          actionType: "EMAIL_RESENT",
+          targetId: "log-s2-resent",
+        }),
+      }),
+    );
   });
 });
