@@ -30,16 +30,27 @@ function formatUtcTime(time: Date | string | null | undefined): string {
   return `${hour12}:${String(minutes).padStart(2, "0")} ${suffix}`;
 }
 
+function toTitleCaseWords(raw: string): string {
+  return raw
+    .trim()
+    .replace(/_/g, " ")
+    .toLowerCase()
+    .replace(/\b\w/g, (ch) => ch.toUpperCase());
+}
+
 export function formatDefenseStageLabel(stage: string | null | undefined): string {
-  const upper = String(stage ?? "").toUpperCase();
-  if (upper === "TITLE") return "Title";
-  if (upper === "PROPOSAL") return "Proposal";
-  if (upper === "FINAL") return "Final";
-  return upper || "Defense";
+  const normalized = String(stage ?? "")
+    .trim()
+    .toUpperCase()
+    .replace(/[\s_]+DEFENSE$/i, "");
+  if (normalized === "TITLE") return "Title";
+  if (normalized === "PROPOSAL") return "Proposal";
+  if (normalized === "FINAL") return "Final";
+  return normalized ? toTitleCaseWords(normalized) : "Thesis";
 }
 
 export function formatPanelRoleLabel(role: string | null | undefined): string {
-  const upper = String(role ?? "").toUpperCase();
+  const upper = String(role ?? "").trim().toUpperCase();
   const map: Record<string, string> = {
     CHAIRMAN: "Chairman",
     PANELIST: "Panelist",
@@ -47,27 +58,39 @@ export function formatPanelRoleLabel(role: string | null | undefined): string {
     RAPPORTEUR: "Rapporteur",
     FACILITATOR: "Facilitator",
   };
-  return map[upper] ?? (upper || "Committee Member");
+  return map[upper] ?? (upper ? toTitleCaseWords(upper) : "Committee Member");
 }
 
-function formatDefenseOutcomeLabel(outcome: string | null | undefined): string {
-  const upper = String(outcome ?? "").toUpperCase();
+export function formatDefenseOutcomeLabel(outcome: string | null | undefined): string {
+  const upper = String(outcome ?? "").trim().toUpperCase();
   const map: Record<string, string> = {
     PASSED: "Passed",
     PASSED_WITH_MINOR_REVISIONS: "Passed with Minor Revisions",
     PASSED_WITH_MAJOR_REVISIONS: "Passed with Major Revisions",
+    REVISION_REQUIRED: "Revision Required",
+    REDEFENSE_REQUIRED: "Re-Defense Required",
     REDEFENSE: "Re-Defense Required",
     FAILED: "Failed",
     APPROVED: "Approved",
   };
-  return map[upper] ?? (upper.replace(/_/g, " ") || "Recorded");
+  return map[upper] ?? (upper ? toTitleCaseWords(upper) : "Recorded");
+}
+
+export function formatCompExamResultLabel(result: "PASSED" | "FAILED" | string): string {
+  const upper = String(result ?? "").trim().toUpperCase();
+  if (upper === "PASSED") return "Passed";
+  if (upper === "FAILED") return "Did Not Pass";
+  return upper ? toTitleCaseWords(upper) : "Recorded";
 }
 
 function studentStagePortalPath(stage: string | null | undefined): string {
-  const upper = String(stage ?? "").toUpperCase();
-  if (upper === "TITLE") return "/student/thesis/title";
-  if (upper === "PROPOSAL") return "/student/thesis/proposal";
-  if (upper === "FINAL") return "/student/thesis/final";
+  const normalized = String(stage ?? "")
+    .trim()
+    .toUpperCase()
+    .replace(/[\s_]+DEFENSE$/i, "");
+  if (normalized === "TITLE") return "/student/thesis/title-defense";
+  if (normalized === "PROPOSAL") return "/student/thesis/proposal-defense";
+  if (normalized === "FINAL") return "/student/thesis/final-defense";
   return "/student/journey";
 }
 
@@ -278,7 +301,7 @@ export const EmailLifecycle = {
           "ecat_result_reconsidered",
           {
             recipient_name: name,
-            portal_link: buildPortalUrl("/applicant/cor"),
+            portal_link: buildPortalUrl("/applicant/cor-upload"),
           },
           {
             recipientName: name,
@@ -306,7 +329,7 @@ export const EmailLifecycle = {
         {
           recipient_name: name,
           remarks: params.remarks,
-          portal_link: buildPortalUrl("/applicant/cor"),
+          portal_link: buildPortalUrl("/applicant/cor-upload"),
         },
         { recipientName: name, triggeredById: params.triggeredById },
       ),
@@ -340,7 +363,7 @@ export const EmailLifecycle = {
         {
           recipient_name: name,
           attempt_number: String(params.attemptNumber),
-          result: params.result,
+          result: formatCompExamResultLabel(params.result),
           outcome_note: outcomeNote,
           portal_link: buildPortalUrl("/student/journey"),
         },
@@ -383,7 +406,7 @@ export const EmailLifecycle = {
             recipient_name: adviserName,
             student_name: studentName,
             program_name: req.student.program?.programName ?? "Graduate Program",
-            portal_link: buildPortalUrl("/faculty/adviser-requests"),
+            portal_link: buildPortalUrl("/panelist/adviser-requests"),
           },
           { recipientName: adviserName, idempotencyKey: `adviser-req-new-${req.id}` },
         );
@@ -443,7 +466,7 @@ export const EmailLifecycle = {
               recipient_name: adviserName,
               student_name: studentName,
               adviser_name: adviserName,
-              portal_link: buildPortalUrl("/faculty/advisees"),
+              portal_link: buildPortalUrl("/panelist/advisees"),
             },
             idempotencyKey: `adviser-assigned-faculty-${req.id}`,
           });
@@ -610,6 +633,9 @@ export const EmailLifecycle = {
         );
 
         if (studentUser?.email) {
+          const scheduleMessage = params.isCorrection
+            ? `Please be informed that the schedule details for your ${stageLabel} Defense have been updated by the Office of the Graduate School.`
+            : `Please be informed that your ${stageLabel} Defense has been officially scheduled by the Office of the Graduate School.`;
           await EmailService.sendTemplateEmail(
             studentUser.email,
             "defense_schedule",
@@ -618,6 +644,7 @@ export const EmailLifecycle = {
               student_name: studentName,
               defense_stage: stageLabel,
               schedule_action: params.isCorrection ? "Updated" : "Scheduled",
+              schedule_message: scheduleMessage,
               defense_date: defenseDate,
               defense_time: defenseTime,
               venue,
@@ -645,38 +672,45 @@ export const EmailLifecycle = {
             assignment.user?.firstName,
             assignment.user?.lastName,
           );
+          const panelRole = formatPanelRoleLabel(assignment.role);
+          const assignmentMessage = params.isCorrection
+            ? `Please be informed that the schedule details for your ${stageLabel} Defense committee assignment as ${panelRole} for ${studentName} have been updated.`
+            : `You have been formally designated to serve as ${panelRole} for the ${stageLabel} Defense of ${studentName}.`;
           panelBatch.push({
             to: email,
             recipientName: facultyName,
             variables: {
               recipient_name: facultyName,
-              assignment_action: params.isCorrection ? "Updated" : "Assigned",
-              panel_role: formatPanelRoleLabel(assignment.role),
+              assignment_action: params.isCorrection ? "Schedule Update" : "Assignment",
+              assignment_message: assignmentMessage,
+              panel_role: panelRole,
               student_name: studentName,
               defense_stage: stageLabel,
               defense_date: defenseDate,
               defense_time: defenseTime,
               venue,
-              portal_link: buildPortalUrl(`/faculty/defenses/${schedule.id}`),
+              portal_link: buildPortalUrl(`/panelist/defense-workspace/${schedule.id}`),
             },
           });
         }
 
         for (const removed of params.removedPanelists ?? []) {
           if (!removed.email?.trim()) continue;
+          const panelRole = formatPanelRoleLabel(removed.role);
           panelBatch.push({
             to: removed.email.trim(),
             recipientName: removed.name,
             variables: {
               recipient_name: removed.name,
-              assignment_action: "Removed from Schedule",
-              panel_role: formatPanelRoleLabel(removed.role),
+              assignment_action: "Update",
+              assignment_message: `Please be informed that your designation as ${panelRole} for the ${stageLabel} Defense of ${studentName} has been updated, and you are no longer included in this defense committee.`,
+              panel_role: panelRole,
               student_name: studentName,
               defense_stage: stageLabel,
               defense_date: defenseDate,
               defense_time: defenseTime,
               venue,
-              portal_link: buildPortalUrl("/faculty/defenses"),
+              portal_link: buildPortalUrl("/panelist/defenses"),
             },
           });
         }

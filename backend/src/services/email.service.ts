@@ -147,7 +147,24 @@ function normalizeVariables(
   if (!normalized.portal_link) {
     normalized.portal_link = buildPortalUrl("/login");
   }
+  if (!normalized.schedule_message && normalized.defense_stage) {
+    normalized.schedule_message =
+      normalized.schedule_action?.toLowerCase() === "updated"
+        ? `Please be informed that the schedule details for your ${normalized.defense_stage} Defense have been updated by the Office of the Graduate School.`
+        : `Please be informed that your ${normalized.defense_stage} Defense has been officially scheduled by the Office of the Graduate School.`;
+  }
+  if (!normalized.assignment_message && normalized.defense_stage && normalized.panel_role) {
+    normalized.assignment_message = `You have been formally designated to serve as ${normalized.panel_role} for the ${normalized.defense_stage} Defense of ${normalized.student_name || "the candidate"}.`;
+  }
   return normalized;
+}
+
+function resolveSenderAddress(): string {
+  return (
+    process.env.EMAIL_FROM?.trim() ||
+    process.env.SMTP_FROM?.trim() ||
+    "EARIST Graduate School <noreply@graduate-system.edu.ph>"
+  );
 }
 
 export class EmailService {
@@ -169,9 +186,7 @@ export class EmailService {
 
     const transporter = getSmtpTransporter();
     return transporter.sendMail({
-      from:
-        process.env.EMAIL_FROM?.trim() ||
-        "EARIST Graduate School <noreply@graduate-system.edu.ph>",
+      from: resolveSenderAddress(),
       to: params.to,
       subject: params.subject,
       html: params.html,
@@ -196,6 +211,8 @@ export class EmailService {
       htmlBody: html,
       textBody: text,
       status: "PROCESSING",
+      attemptCount: 1,
+      lastAttemptAt: new Date(),
     });
 
     try {
@@ -523,6 +540,7 @@ export class EmailService {
     }
 
     if (mode === "dry_run" || mode === "disabled") {
+      const now = new Date();
       const created = await emailRepository.createLog({
         recipient,
         recipientName: "Test Recipient",
@@ -532,7 +550,9 @@ export class EmailService {
         htmlBody: rendered.html,
         textBody: rendered.text,
         status: "SENT",
-        sentAt: new Date(),
+        attemptCount: 1,
+        lastAttemptAt: now,
+        sentAt: now,
         triggeredById: params.triggeredById,
       });
       return {
@@ -554,6 +574,8 @@ export class EmailService {
       htmlBody: rendered.html,
       textBody: rendered.text,
       status: "PROCESSING",
+      attemptCount: 1,
+      lastAttemptAt: new Date(),
       triggeredById: params.triggeredById,
     });
 
@@ -622,9 +644,7 @@ export class EmailService {
       smtpConfigured: isSmtpConfigured(),
       smtpHost: process.env.SMTP_HOST?.trim() || null,
       smtpPort: Number(process.env.SMTP_PORT) || 587,
-      fromAddress:
-        process.env.EMAIL_FROM?.trim() ||
-        "EARIST Graduate School <noreply@graduate-system.edu.ph>",
+      fromAddress: resolveSenderAddress(),
       publicUrl: resolveAppPublicUrl(),
       workerRunning,
     };

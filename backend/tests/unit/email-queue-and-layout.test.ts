@@ -96,6 +96,14 @@ describe("Phase 1: Email Registry, Layout, MySQL Persistent Queue & Cron", () =>
       ]);
     });
 
+    it("enforces formal institutional formatting with no em-dashes or middots in any canonical template", () => {
+      for (const tpl of EMAIL_TEMPLATE_REGISTRY) {
+        expect(tpl.defaultSubject).not.toMatch(/[—·]/);
+        expect(tpl.defaultBodyHtml).not.toMatch(/[—·]/);
+        expect(tpl.defaultBodyHtml).not.toContain("&middot;");
+      }
+    });
+
     it("enforces policy-only wording for temporary passwords (never raw password variable)", () => {
       for (const key of [
         "faculty_account_created",
@@ -134,9 +142,11 @@ describe("Phase 1: Email Registry, Layout, MySQL Persistent Queue & Cron", () =>
       });
 
       expect(html).toContain("Office of the Graduate School");
+      expect(html).toContain("Respectfully,");
       expect(html).toContain("#8b1e1e");
       expect(html).toContain("View Schedule");
       expect(html).toContain("Nagtahan, Sampaloc, Manila");
+      expect(html).not.toContain("&middot;");
       expect(html).not.toContain("localhost:3000/logo");
 
       const text = htmlToPlainText(html);
@@ -171,7 +181,7 @@ describe("Phase 1: Email Registry, Layout, MySQL Persistent Queue & Cron", () =>
           defense_date: "December 5, 2026",
           defense_time: "2:00 PM",
           venue: "Room 301",
-          portal_link: "http://localhost:3000/student/thesis/proposal",
+          portal_link: "http://localhost:3000/student/thesis/proposal-defense",
         },
         { idempotencyKey: "defense-sched-1" },
       );
@@ -241,7 +251,7 @@ describe("Phase 1: Email Registry, Layout, MySQL Persistent Queue & Cron", () =>
       const res = await EmailService.sendTemplateEmail(
         "applicant@inbox.testmail.app",
         "ecat_result_pass",
-        { student_name: "Maria", portal_link: "http://localhost:3000/applicant/result" },
+        { student_name: "Maria", portal_link: "http://localhost:3000/applicant/results" },
         { jobId: "exam-result-app1-score1-pass" },
       );
 

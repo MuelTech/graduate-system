@@ -156,6 +156,15 @@ function formatDateTime(value: string | null | undefined): string {
   });
 }
 
+function formatRetryTime(value: string | null | undefined): string {
+  if (!value) return "";
+  return new Date(value).toLocaleTimeString("en-PH", {
+    hour: "numeric",
+    minute: "2-digit",
+    second: "2-digit",
+  });
+}
+
 function formatModeLabel(mode?: DeliveryHealth["mode"]): string {
   if (mode === "smtp") return "Live SMTP";
   if (mode === "dry_run") return "Dry Run";
@@ -738,12 +747,21 @@ export default function AdminEmailManagerPage() {
                             {log.attemptCount}/{log.maxAttempts}
                           </TableCell>
                           <TableCell>
-                            <Badge
-                              variant="outline"
-                              className={STATUS_BADGE_STYLES[log.status]}
-                            >
-                              {log.status}
-                            </Badge>
+                            <div className="flex flex-col items-start gap-1">
+                              <Badge
+                                variant="outline"
+                                className={STATUS_BADGE_STYLES[log.status]}
+                              >
+                                {log.status}
+                              </Badge>
+                              {log.status === "QUEUED" &&
+                                log.attemptCount > 0 &&
+                                log.nextAttemptAt && (
+                                  <span className="whitespace-nowrap text-[11px] text-amber-700">
+                                    Next retry: {formatRetryTime(log.nextAttemptAt)}
+                                  </span>
+                                )}
+                            </div>
                           </TableCell>
                           <TableCell className="whitespace-nowrap text-right">
                             <div className="inline-flex items-center gap-1.5">
@@ -1324,6 +1342,13 @@ export default function AdminEmailManagerPage() {
                   <span className="font-medium text-gray-800">
                     {logDetail.attemptCount} of {logDetail.maxAttempts}
                   </span>
+                  {logDetail.status === "QUEUED" &&
+                    logDetail.attemptCount > 0 &&
+                    logDetail.nextAttemptAt && (
+                      <span className="ml-2 text-amber-700">
+                        (Next retry: {formatRetryTime(logDetail.nextAttemptAt)})
+                      </span>
+                    )}
                 </div>
                 <div className="col-span-2">
                   <span className="text-gray-500">Subject:</span>{" "}

@@ -42,7 +42,12 @@ import {
   hashPasswordResetToken,
   resetPasswordRateLimitersForTests,
 } from "../../src/services/password-reset.service";
-import { EmailLifecycle } from "../../src/services/email-lifecycle.helper";
+import {
+  EmailLifecycle,
+  formatCompExamResultLabel,
+  formatDefenseOutcomeLabel,
+  formatDefenseStageLabel,
+} from "../../src/services/email-lifecycle.helper";
 
 describe("Phase 2: Self-Service Password Reset & Lifecycle Email Dispatchers", () => {
   const service = new PasswordResetService();
@@ -209,9 +214,87 @@ describe("Phase 2: Self-Service Password Reset & Lifecycle Email Dispatchers", (
       "comp_exam_recorded",
       expect.objectContaining({
         attempt_number: "1",
-        result: "PASSED",
+        result: "Passed",
         outcome_note: expect.stringContaining("Title Defense"),
       }),
+      expect.anything(),
+    );
+  });
+
+  it("formats Prisma defense enums cleanly without underscores, doubled words, or ALL-CAPS labels", async () => {
+    expect(formatDefenseStageLabel("TITLE_DEFENSE")).toBe("Title");
+    expect(formatDefenseStageLabel("PROPOSAL_DEFENSE")).toBe("Proposal");
+    expect(formatDefenseStageLabel("FINAL_DEFENSE")).toBe("Final");
+    expect(formatDefenseStageLabel("PROPOSAL")).toBe("Proposal");
+    expect(formatDefenseOutcomeLabel("REDEFENSE_REQUIRED")).toBe("Re-Defense Required");
+    expect(formatDefenseOutcomeLabel("REVISION_REQUIRED")).toBe("Revision Required");
+    expect(formatCompExamResultLabel("PASSED")).toBe("Passed");
+    expect(formatCompExamResultLabel("FAILED")).toBe("Did Not Pass");
+
+    EmailLifecycle.sendDefenseScheduleAndPanelEmails({
+      scheduleId: "sched-prop-1",
+      isCorrection: false,
+      triggeredById: "admin-1",
+      scheduleSnapshot: {
+        id: "sched-prop-1",
+        defenseType: "PROPOSAL_DEFENSE",
+        defenseDate: new Date("2026-11-25T00:00:00.000Z"),
+        defenseTime: new Date("1970-01-01T22:30:00.000Z"),
+        venueOrLink: "Graduate School Conference Room A",
+        thesis: {
+          student: {
+            user: {
+              email: "pia@inbox.testmail.app",
+              firstName: "Pia",
+              lastName: "Proposal",
+            },
+          },
+        },
+        panelAssignments: [
+          {
+            role: "CHAIRMAN",
+            isActive: true,
+            user: {
+              email: "william@inbox.testmail.app",
+              firstName: "William",
+              lastName: "Marcial",
+            },
+          },
+        ],
+      },
+    });
+
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(sendTemplateEmailMock).toHaveBeenCalledWith(
+      "pia@inbox.testmail.app",
+      "defense_schedule",
+      expect.objectContaining({
+        defense_stage: "Proposal",
+        schedule_action: "Scheduled",
+        schedule_message:
+          "Please be informed that your Proposal Defense has been officially scheduled by the Office of the Graduate School.",
+        portal_link: expect.stringContaining("/student/thesis/proposal-defense"),
+      }),
+      expect.anything(),
+    );
+
+    expect(sendBatchMock).toHaveBeenCalledWith(
+      [
+        expect.objectContaining({
+          to: "william@inbox.testmail.app",
+          variables: expect.objectContaining({
+            defense_stage: "Proposal",
+            panel_role: "Chairman",
+            assignment_action: "Assignment",
+            assignment_message:
+              "You have been formally designated to serve as Chairman for the Proposal Defense of Pia Proposal.",
+            portal_link: expect.stringContaining("/panelist/defense-workspace/sched-prop-1"),
+          }),
+        }),
+      ],
+      "defense_panel_assignment",
+      {},
       expect.anything(),
     );
   });

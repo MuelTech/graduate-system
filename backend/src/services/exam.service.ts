@@ -373,7 +373,7 @@ export class ExamService {
           {
             recipient_name: firstName,
             student_name: firstName,
-            portal_link: buildPortalUrl("/applicant/result"),
+            portal_link: buildPortalUrl("/applicant/results"),
           },
           { jobId, recipientName: firstName },
         );

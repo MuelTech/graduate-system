@@ -66,14 +66,14 @@ export const EMAIL_TEMPLATE_REGISTRY: readonly EmailTemplateDefinition[] = [
       "recipient_name, applicant_id, program_name, portal_link",
     defaultSubject: "Welcome to the EARIST Graduate School Portal",
     defaultBodyHtml: `<p>Dear {{recipient_name}},</p>
-<p>Your online Entrance Examination account has been created in the EARIST Graduate School Information System.</p>
+<p>We are pleased to inform you that your online Entrance Examination account has been created in the EARIST Graduate School Information System.</p>
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:16px 0;border:1px solid #e5e0d8;border-left:4px solid #8b1e1e;background:#faf8f5;border-radius:6px;">
   <tr><td style="padding:14px 16px;font-size:14px;line-height:1.6;color:#2c2c2c;">
     <strong>Applicant ID:</strong> {{applicant_id}}<br/>
     <strong>Applied Program:</strong> {{program_name}}
   </td></tr>
 </table>
-<p>Sign in to the Applicant Portal using your Applicant ID and password to book an available Entrance Examination schedule.</p>`,
+<p>Please sign in to the Applicant Portal using your Applicant ID and password to select an available Entrance Examination schedule.</p>`,
     ctaLabel: "Open Applicant Portal",
     ctaVariable: "portal_link",
     sampleVariables: {
@@ -94,7 +94,7 @@ export const EMAIL_TEMPLATE_REGISTRY: readonly EmailTemplateDefinition[] = [
     variablesDescription: "recipient_name, login_email, portal_link",
     defaultSubject: "Your EARIST Graduate School Faculty Account Is Ready",
     defaultBodyHtml: `<p>Dear {{recipient_name}},</p>
-<p>A Faculty account has been created for you in the EARIST Graduate School Information System.</p>
+<p>Please be informed that a Faculty account has been created for you in the EARIST Graduate School Information System.</p>
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:16px 0;border:1px solid #e5e0d8;border-left:4px solid #8b1e1e;background:#faf8f5;border-radius:6px;">
   <tr><td style="padding:14px 16px;font-size:14px;line-height:1.6;color:#2c2c2c;">
     <strong>Sign-In Role:</strong> Faculty<br/>
@@ -102,7 +102,7 @@ export const EMAIL_TEMPLATE_REGISTRY: readonly EmailTemplateDefinition[] = [
     <strong>Temporary Password:</strong> Your LAST NAME in ALL CAPS
   </td></tr>
 </table>
-<p>For your account security, you will be required to set a new password immediately after signing in for the first time.</p>`,
+<p>For your account security, you will be required to set a new personal password upon your first sign-in.</p>`,
     ctaLabel: "Sign In to Faculty Portal",
     ctaVariable: "portal_link",
     sampleVariables: {
@@ -122,7 +122,7 @@ export const EMAIL_TEMPLATE_REGISTRY: readonly EmailTemplateDefinition[] = [
     variablesDescription: "recipient_name, login_email, access_level, portal_link",
     defaultSubject: "Your EARIST Graduate School Administrator Account Is Ready",
     defaultBodyHtml: `<p>Dear {{recipient_name}},</p>
-<p>An Administrator account has been provisioned for you in the EARIST Graduate School Information System.</p>
+<p>Please be informed that an Administrator account has been provisioned for you in the EARIST Graduate School Information System.</p>
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:16px 0;border:1px solid #e5e0d8;border-left:4px solid #8b1e1e;background:#faf8f5;border-radius:6px;">
   <tr><td style="padding:14px 16px;font-size:14px;line-height:1.6;color:#2c2c2c;">
     <strong>Sign-In Role:</strong> Administrator ({{access_level}})<br/>
@@ -130,7 +130,7 @@ export const EMAIL_TEMPLATE_REGISTRY: readonly EmailTemplateDefinition[] = [
     <strong>Temporary Password:</strong> Your LAST NAME in ALL CAPS
   </td></tr>
 </table>
-<p>You will be prompted to create a personal password immediately upon first sign-in.</p>`,
+<p>For your account security, you will be prompted to set a personal password immediately upon your first sign-in.</p>`,
     ctaLabel: "Sign In to Admin Portal",
     ctaVariable: "portal_link",
     sampleVariables: {
@@ -149,16 +149,16 @@ export const EMAIL_TEMPLATE_REGISTRY: readonly EmailTemplateDefinition[] = [
     recipientRole: "All Roles",
     variables: ["recipient_name", "login_identifier", "portal_link"],
     variablesDescription: "recipient_name, login_identifier, portal_link",
-    defaultSubject: "Your Account Password Has Been Reset",
+    defaultSubject: "Notice of Account Password Reset",
     defaultBodyHtml: `<p>Dear {{recipient_name}},</p>
-<p>An Administrator has reset the password for your EARIST Graduate School Information System account. Any previous active sessions have been signed out.</p>
+<p>Please be informed that an Administrator has reset the password for your EARIST Graduate School Information System account. All previous active sessions have been signed out for your security.</p>
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:16px 0;border:1px solid #e5e0d8;border-left:4px solid #8b1e1e;background:#faf8f5;border-radius:6px;">
   <tr><td style="padding:14px 16px;font-size:14px;line-height:1.6;color:#2c2c2c;">
     <strong>Account Identifier:</strong> {{login_identifier}}<br/>
     <strong>Temporary Password:</strong> Your LAST NAME in ALL CAPS
   </td></tr>
 </table>
-<p>You will be required to change your password immediately upon signing in. If you did not request this reset, please contact the Office of the Graduate School.</p>`,
+<p>You will be required to change your password immediately upon signing in. If you did not request this reset, please contact the Office of the Graduate School promptly.</p>`,
     ctaLabel: "Sign In and Change Password",
     ctaVariable: "portal_link",
     sampleVariables: {
@@ -176,11 +176,11 @@ export const EMAIL_TEMPLATE_REGISTRY: readonly EmailTemplateDefinition[] = [
     recipientRole: "All Roles",
     variables: ["recipient_name", "reset_link", "expiry_minutes"],
     variablesDescription: "recipient_name, reset_link, expiry_minutes",
-    defaultSubject: "Password Reset Request — EARIST Graduate School",
+    defaultSubject: "Password Reset Request: EARIST Graduate School Portal",
     defaultBodyHtml: `<p>Dear {{recipient_name}},</p>
 <p>We received a request to reset the password for your EARIST Graduate School Information System account.</p>
-<p>Use the button below to choose a new password. This link is valid for <strong>{{expiry_minutes}} minutes</strong> and can only be used once.</p>
-<p style="font-size:13px;color:#555555;">If you did not request a password reset, you can safely ignore this message. Your current password will remain unchanged.</p>`,
+<p>Please select the button below to establish a new password. For your security, this link is valid for <strong>{{expiry_minutes}} minutes</strong> and may only be used once.</p>
+<p style="font-size:13px;color:#555555;">If you did not initiate this request, you may safely disregard this notice. Your current password will remain unchanged.</p>`,
     ctaLabel: "Reset Password",
     ctaVariable: "reset_link",
     sampleVariables: {
@@ -199,9 +199,9 @@ export const EMAIL_TEMPLATE_REGISTRY: readonly EmailTemplateDefinition[] = [
     variables: ["recipient_name", "status_label", "status_message", "portal_link"],
     variablesDescription:
       "recipient_name, status_label, status_message, portal_link",
-    defaultSubject: "Account Status Update: {{status_label}}",
+    defaultSubject: "Notice of Account Status Update: {{status_label}}",
     defaultBodyHtml: `<p>Dear {{recipient_name}},</p>
-<p>Your EARIST Graduate School Information System account status has been updated.</p>
+<p>Please be informed that the status of your EARIST Graduate School Information System account has been updated.</p>
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:16px 0;border:1px solid #e5e0d8;border-left:4px solid #8b1e1e;background:#faf8f5;border-radius:6px;">
   <tr><td style="padding:14px 16px;font-size:14px;line-height:1.6;color:#2c2c2c;">
     <strong>Current Status:</strong> {{status_label}}<br/>
@@ -230,9 +230,9 @@ export const EMAIL_TEMPLATE_REGISTRY: readonly EmailTemplateDefinition[] = [
     variables: ["recipient_name", "program_name", "exam_date", "exam_time", "portal_link"],
     variablesDescription:
       "recipient_name, program_name, exam_date, exam_time, portal_link",
-    defaultSubject: "Entrance Examination Schedule Confirmed — {{exam_date}}",
+    defaultSubject: "Entrance Examination Schedule Confirmed: {{exam_date}}",
     defaultBodyHtml: `<p>Dear {{recipient_name}},</p>
-<p>Your online Graduate School Entrance Examination schedule has been confirmed.</p>
+<p>Please be informed that your online Graduate School Entrance Examination schedule has been confirmed.</p>
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:16px 0;border:1px solid #e5e0d8;border-left:4px solid #8b1e1e;background:#faf8f5;border-radius:6px;">
   <tr><td style="padding:14px 16px;font-size:14px;line-height:1.6;color:#2c2c2c;">
     <strong>Program:</strong> {{program_name}}<br/>
@@ -240,7 +240,7 @@ export const EMAIL_TEMPLATE_REGISTRY: readonly EmailTemplateDefinition[] = [
     <strong>Time:</strong> {{exam_time}} (Philippine Time)
   </td></tr>
 </table>
-<p>Please sign in to your Applicant Portal before your scheduled start time with a stable internet connection.</p>`,
+<p>Kindly sign in to your Applicant Portal prior to your scheduled examination time using a reliable device and stable internet connection.</p>`,
     ctaLabel: "View Examination Schedule",
     ctaVariable: "portal_link",
     sampleVariables: {
@@ -263,7 +263,7 @@ export const EMAIL_TEMPLATE_REGISTRY: readonly EmailTemplateDefinition[] = [
       "recipient_name, program_name, exam_date, exam_time, portal_link",
     defaultSubject: "Reminder: Entrance Examination Tomorrow ({{exam_date}})",
     defaultBodyHtml: `<p>Dear {{recipient_name}},</p>
-<p>This is a reminder that your online Graduate School Entrance Examination is scheduled for tomorrow.</p>
+<p>This is a courtesy reminder that your online Graduate School Entrance Examination is scheduled for tomorrow.</p>
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:16px 0;border:1px solid #e5e0d8;border-left:4px solid #8b1e1e;background:#faf8f5;border-radius:6px;">
   <tr><td style="padding:14px 16px;font-size:14px;line-height:1.6;color:#2c2c2c;">
     <strong>Program:</strong> {{program_name}}<br/>
@@ -271,8 +271,8 @@ export const EMAIL_TEMPLATE_REGISTRY: readonly EmailTemplateDefinition[] = [
     <strong>Time:</strong> {{exam_time}} (Philippine Time)
   </td></tr>
 </table>
-<p>Ensure your device and internet connection are ready ahead of your examination window.</p>`,
-    ctaLabel: "Go to Applicant Portal",
+<p>Please ensure that your device and internet connection are ready ahead of your scheduled examination window.</p>`,
+    ctaLabel: "Open Applicant Portal",
     ctaVariable: "portal_link",
     sampleVariables: {
       recipient_name: "Maria Santos",
@@ -284,7 +284,7 @@ export const EMAIL_TEMPLATE_REGISTRY: readonly EmailTemplateDefinition[] = [
   },
   {
     templateKey: "ecat_result_pass",
-    name: "Entrance Examination Result — Passed",
+    name: "Entrance Examination Result: Passed",
     category: "ADMISSIONS_EXAM",
     categoryLabel: EMAIL_CATEGORY_LABELS.ADMISSIONS_EXAM,
     triggerEvent: "When an Administrator releases a PASSED Entrance Examination result",
@@ -293,18 +293,18 @@ export const EMAIL_TEMPLATE_REGISTRY: readonly EmailTemplateDefinition[] = [
     variablesDescription: "recipient_name, portal_link",
     defaultSubject: "Entrance Examination Result: Passed",
     defaultBodyHtml: `<p>Dear {{recipient_name}},</p>
-<p>Congratulations. You have <strong>passed</strong> the EARIST Graduate School Entrance Examination.</p>
-<p>Your next step is to sign in to your Applicant Portal and upload your official Certificate of Registration (COR) once enrolled so your account can be upgraded to Student status.</p>`,
-    ctaLabel: "View Result & Upload COR",
+<p>Congratulations. We are pleased to inform you that you have <strong>passed</strong> the EARIST Graduate School Entrance Examination.</p>
+<p>Once officially enrolled, please sign in to your Applicant Portal and upload your official Certificate of Registration (COR) so that your account may be upgraded to Graduate Student status.</p>`,
+    ctaLabel: "View Result and Upload COR",
     ctaVariable: "portal_link",
     sampleVariables: {
       recipient_name: "Maria Santos",
-      portal_link: "http://localhost:3000/applicant/result",
+      portal_link: "http://localhost:3000/applicant/results",
     },
   },
   {
     templateKey: "ecat_result_fail",
-    name: "Entrance Examination Result — Did Not Pass",
+    name: "Entrance Examination Result: Did Not Pass",
     category: "ADMISSIONS_EXAM",
     categoryLabel: EMAIL_CATEGORY_LABELS.ADMISSIONS_EXAM,
     triggerEvent: "When an Administrator releases a FAILED Entrance Examination result",
@@ -313,33 +313,33 @@ export const EMAIL_TEMPLATE_REGISTRY: readonly EmailTemplateDefinition[] = [
     variablesDescription: "recipient_name, portal_link",
     defaultSubject: "Entrance Examination Result Released",
     defaultBodyHtml: `<p>Dear {{recipient_name}},</p>
-<p>Your EARIST Graduate School Entrance Examination result has been released. We regret to inform you that your score did not meet the required passing threshold.</p>
-<p>You may sign in to your Applicant Portal to review your result summary or coordinate with the Office of the Graduate School for guidance.</p>`,
+<p>Please be informed that the result of your EARIST Graduate School Entrance Examination has been released. We regret to inform you that your score did not meet the required passing threshold.</p>
+<p>You may sign in to your Applicant Portal to review your result summary or coordinate with the Office of the Graduate School for further guidance.</p>`,
     ctaLabel: "View Examination Result",
     ctaVariable: "portal_link",
     sampleVariables: {
       recipient_name: "Maria Santos",
-      portal_link: "http://localhost:3000/applicant/result",
+      portal_link: "http://localhost:3000/applicant/results",
     },
   },
   {
     templateKey: "ecat_result_reconsidered",
-    name: "Entrance Examination — Passed (Reconsidered)",
+    name: "Entrance Examination Result: Passed (Reconsidered)",
     category: "ADMISSIONS_EXAM",
     categoryLabel: EMAIL_CATEGORY_LABELS.ADMISSIONS_EXAM,
-    triggerEvent: "When an Administrator records a Passed — Reconsidered decision",
+    triggerEvent: "When an Administrator records a Passed (Reconsidered) decision",
     recipientRole: "Applicant",
     variables: ["recipient_name", "portal_link"],
     variablesDescription: "recipient_name, portal_link",
-    defaultSubject: "Entrance Examination Decision: Passed — Reconsidered",
+    defaultSubject: "Entrance Examination Decision: Passed (Reconsidered)",
     defaultBodyHtml: `<p>Dear {{recipient_name}},</p>
-<p>Following administrative review, your Entrance Examination decision has been recorded as <strong>Passed — Reconsidered</strong>.</p>
-<p>You may now proceed to upload your official Certificate of Registration (COR) through your Applicant Portal once enrolled.</p>`,
+<p>Following administrative review, please be informed that your Entrance Examination decision has been recorded as <strong>Passed (Reconsidered)</strong>.</p>
+<p>Once officially enrolled, you may proceed to upload your official Certificate of Registration (COR) through your Applicant Portal.</p>`,
     ctaLabel: "Open Applicant Portal",
     ctaVariable: "portal_link",
     sampleVariables: {
       recipient_name: "Maria Santos",
-      portal_link: "http://localhost:3000/applicant/cor",
+      portal_link: "http://localhost:3000/applicant/cor-upload",
     },
   },
   {
@@ -351,16 +351,16 @@ export const EMAIL_TEMPLATE_REGISTRY: readonly EmailTemplateDefinition[] = [
     recipientRole: "Student",
     variables: ["recipient_name", "student_number", "portal_link"],
     variablesDescription: "recipient_name, student_number, portal_link",
-    defaultSubject: "COR Verified: Welcome to the Graduate Student Portal",
+    defaultSubject: "Certificate of Registration Verified: Welcome to the Graduate Student Portal",
     defaultBodyHtml: `<p>Dear {{recipient_name}},</p>
-<p>Your Certificate of Registration (COR) has been verified and your account has been upgraded to an enrolled <strong>Graduate Student</strong> account.</p>
+<p>We are pleased to inform you that your Certificate of Registration (COR) has been verified and your account has been officially upgraded to <strong>Graduate Student</strong> status.</p>
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:16px 0;border:1px solid #e5e0d8;border-left:4px solid #8b1e1e;background:#faf8f5;border-radius:6px;">
   <tr><td style="padding:14px 16px;font-size:14px;line-height:1.6;color:#2c2c2c;">
     <strong>Student Number:</strong> {{student_number}}<br/>
     <strong>Password:</strong> Your existing account password
   </td></tr>
 </table>
-<p>Sign in by selecting <strong>Student</strong> on the login page using your Student Number and your existing password.</p>`,
+<p>Please sign in by selecting <strong>Student</strong> on the portal login page using your official Student Number and your existing account password.</p>`,
     ctaLabel: "Sign In to Student Portal",
     ctaVariable: "portal_link",
     sampleVariables: {
@@ -379,21 +379,21 @@ export const EMAIL_TEMPLATE_REGISTRY: readonly EmailTemplateDefinition[] = [
     recipientRole: "Applicant",
     variables: ["recipient_name", "remarks", "portal_link"],
     variablesDescription: "recipient_name, remarks, portal_link",
-    defaultSubject: "Action Required: Certificate of Registration Returned",
+    defaultSubject: "Action Required: Certificate of Registration Returned for Resubmission",
     defaultBodyHtml: `<p>Dear {{recipient_name}},</p>
-<p>Your uploaded Certificate of Registration (COR) could not be verified and requires re-submission.</p>
+<p>Please be informed that your submitted Certificate of Registration (COR) could not be verified and requires resubmission.</p>
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:16px 0;border:1px solid #e5e0d8;border-left:4px solid #8b1e1e;background:#faf8f5;border-radius:6px;">
   <tr><td style="padding:14px 16px;font-size:14px;line-height:1.6;color:#2c2c2c;">
     <strong>Reviewer Remarks:</strong> {{remarks}}
   </td></tr>
 </table>
-<p>Please sign in to your Applicant Portal to upload a clear, valid copy of your official COR.</p>`,
-    ctaLabel: "Re-Upload COR",
+<p>Kindly sign in to your Applicant Portal to upload a clear and complete copy of your official Certificate of Registration.</p>`,
+    ctaLabel: "Resubmit COR",
     ctaVariable: "portal_link",
     sampleVariables: {
       recipient_name: "Maria Santos",
       remarks: "The uploaded file was cropped and the Student Number was not readable.",
-      portal_link: "http://localhost:3000/applicant/cor",
+      portal_link: "http://localhost:3000/applicant/cor-upload",
     },
   },
 
@@ -410,21 +410,21 @@ export const EMAIL_TEMPLATE_REGISTRY: readonly EmailTemplateDefinition[] = [
       "recipient_name, attempt_number, result, outcome_note, portal_link",
     defaultSubject: "Written Comprehensive Examination Result: {{result}}",
     defaultBodyHtml: `<p>Dear {{recipient_name}},</p>
-<p>Your Written Comprehensive Examination record has been updated in the Graduate School Information System.</p>
+<p>Please be informed that your Written Comprehensive Examination record has been officially updated in the EARIST Graduate School Information System.</p>
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:16px 0;border:1px solid #e5e0d8;border-left:4px solid #8b1e1e;background:#faf8f5;border-radius:6px;">
   <tr><td style="padding:14px 16px;font-size:14px;line-height:1.6;color:#2c2c2c;">
     <strong>Attempt:</strong> Attempt {{attempt_number}} of 3<br/>
     <strong>Result:</strong> {{result}}<br/>
-    <strong>Note:</strong> {{outcome_note}}
+    <strong>Remarks:</strong> {{outcome_note}}
   </td></tr>
 </table>
-<p>Sign in to your Student Portal to view your academic standing and next requirements.</p>`,
+<p>Kindly sign in to your Student Portal to review your academic standing and next program requirements.</p>`,
     ctaLabel: "View Academic Journey",
     ctaVariable: "portal_link",
     sampleVariables: {
       recipient_name: "Juan Dela Cruz",
       attempt_number: "1",
-      result: "PASSED",
+      result: "Passed",
       outcome_note: "You are now eligible to proceed with your Title Defense application.",
       portal_link: "http://localhost:3000/student/journey",
     },
@@ -438,15 +438,15 @@ export const EMAIL_TEMPLATE_REGISTRY: readonly EmailTemplateDefinition[] = [
     recipientRole: "Student",
     variables: ["recipient_name", "warning_details", "portal_link"],
     variablesDescription: "recipient_name, warning_details, portal_link",
-    defaultSubject: "Advisory: Graduate Program Residency Standing",
+    defaultSubject: "Official Advisory: Graduate Program Residency Standing",
     defaultBodyHtml: `<p>Dear {{recipient_name}},</p>
-<p>This is an official advisory regarding your graduate program residency timeline.</p>
+<p>Please be informed that this is an official advisory regarding your graduate program residency timeline.</p>
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:16px 0;border:1px solid #e5e0d8;border-left:4px solid #8b1e1e;background:#faf8f5;border-radius:6px;">
   <tr><td style="padding:14px 16px;font-size:14px;line-height:1.6;color:#2c2c2c;">
     <strong>Advisory Details:</strong> {{warning_details}}
   </td></tr>
 </table>
-<p>Please coordinate with your Adviser and the Office of the Graduate School to plan your remaining academic milestones.</p>`,
+<p>Kindly coordinate with your Adviser and the Office of the Graduate School to plan the timely completion of your remaining academic requirements.</p>`,
     ctaLabel: "View Student Profile",
     ctaVariable: "portal_link",
     sampleVariables: {
@@ -467,23 +467,23 @@ export const EMAIL_TEMPLATE_REGISTRY: readonly EmailTemplateDefinition[] = [
     variables: ["recipient_name", "student_name", "program_name", "portal_link"],
     variablesDescription:
       "recipient_name, student_name, program_name, portal_link",
-    defaultSubject: "New Adviser Request from {{student_name}}",
+    defaultSubject: "New Thesis/Dissertation Adviser Request: {{student_name}}",
     defaultBodyHtml: `<p>Dear {{recipient_name}},</p>
-<p>A graduate student has submitted an official Adviser Request nominating you as their Thesis/Dissertation Adviser.</p>
+<p>Please be informed that a graduate student has submitted an official Adviser Request nominating you to serve as their Thesis/Dissertation Adviser.</p>
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:16px 0;border:1px solid #e5e0d8;border-left:4px solid #8b1e1e;background:#faf8f5;border-radius:6px;">
   <tr><td style="padding:14px 16px;font-size:14px;line-height:1.6;color:#2c2c2c;">
     <strong>Student:</strong> {{student_name}}<br/>
     <strong>Program:</strong> {{program_name}}
   </td></tr>
 </table>
-<p>Please sign in to the Faculty Portal to review the request and record your Conforme or Decline decision.</p>`,
+<p>Kindly sign in to the Faculty Portal to review the request and record your Conforme or Decline decision.</p>`,
     ctaLabel: "Review Adviser Request",
     ctaVariable: "portal_link",
     sampleVariables: {
       recipient_name: "Dr. Elena Reyes",
       student_name: "Juan Dela Cruz",
       program_name: "Master of Arts in Teaching major in Mathematics",
-      portal_link: "http://localhost:3000/faculty/adviser-requests",
+      portal_link: "http://localhost:3000/panelist/adviser-requests",
     },
   },
   {
@@ -496,9 +496,9 @@ export const EMAIL_TEMPLATE_REGISTRY: readonly EmailTemplateDefinition[] = [
     variables: ["recipient_name", "student_name", "adviser_name", "portal_link"],
     variablesDescription:
       "recipient_name, student_name, adviser_name, portal_link",
-    defaultSubject: "Adviser Assignment Approved — {{student_name}}",
+    defaultSubject: "Official Adviser Assignment Approved: {{student_name}}",
     defaultBodyHtml: `<p>Dear {{recipient_name}},</p>
-<p>The Dean of the Graduate School has approved the Adviser Request. The official Adviser assignment is now active.</p>
+<p>Please be informed that the Dean of the Graduate School has approved the Adviser Request. The official Adviser assignment is now active.</p>
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:16px 0;border:1px solid #e5e0d8;border-left:4px solid #8b1e1e;background:#faf8f5;border-radius:6px;">
   <tr><td style="padding:14px 16px;font-size:14px;line-height:1.6;color:#2c2c2c;">
     <strong>Student:</strong> {{student_name}}<br/>
@@ -525,16 +525,16 @@ export const EMAIL_TEMPLATE_REGISTRY: readonly EmailTemplateDefinition[] = [
     variables: ["recipient_name", "decision_label", "remarks", "portal_link"],
     variablesDescription:
       "recipient_name, decision_label, remarks, portal_link",
-    defaultSubject: "Adviser Request Update: {{decision_label}}",
+    defaultSubject: "Adviser Request Status Update: {{decision_label}}",
     defaultBodyHtml: `<p>Dear {{recipient_name}},</p>
-<p>Your Adviser Request was not finalized.</p>
+<p>Please be informed that your recent Adviser Request was not finalized.</p>
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:16px 0;border:1px solid #e5e0d8;border-left:4px solid #8b1e1e;background:#faf8f5;border-radius:6px;">
   <tr><td style="padding:14px 16px;font-size:14px;line-height:1.6;color:#2c2c2c;">
     <strong>Status:</strong> {{decision_label}}<br/>
     <strong>Remarks:</strong> {{remarks}}
   </td></tr>
 </table>
-<p>Please sign in to your Student Portal to select another eligible Adviser and submit a new request.</p>`,
+<p>Kindly sign in to your Student Portal to select another eligible Adviser and submit a new request.</p>`,
     ctaLabel: "Open Adviser Request",
     ctaVariable: "portal_link",
     sampleVariables: {
@@ -556,15 +556,15 @@ export const EMAIL_TEMPLATE_REGISTRY: readonly EmailTemplateDefinition[] = [
       "recipient_name, defense_stage, status_label, remarks, portal_link",
     defaultSubject: "{{defense_stage}} Defense Application: {{status_label}}",
     defaultBodyHtml: `<p>Dear {{recipient_name}},</p>
-<p>Your <strong>{{defense_stage}} Defense</strong> application has been reviewed by the Graduate School Office.</p>
+<p>Please be informed that your <strong>{{defense_stage}} Defense</strong> application has been reviewed by the Office of the Graduate School.</p>
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:16px 0;border:1px solid #e5e0d8;border-left:4px solid #8b1e1e;background:#faf8f5;border-radius:6px;">
   <tr><td style="padding:14px 16px;font-size:14px;line-height:1.6;color:#2c2c2c;">
-    <strong>Stage:</strong> {{defense_stage}} Defense<br/>
+    <strong>Defense Stage:</strong> {{defense_stage}} Defense<br/>
     <strong>Decision:</strong> {{status_label}}<br/>
     <strong>Remarks:</strong> {{remarks}}
   </td></tr>
 </table>
-<p>Sign in to your Student Portal to review the current status and next steps.</p>`,
+<p>Kindly sign in to your Student Portal to review the current status and next steps.</p>`,
     ctaLabel: "Open Defense Portal",
     ctaVariable: "portal_link",
     sampleVariables: {
@@ -572,7 +572,7 @@ export const EMAIL_TEMPLATE_REGISTRY: readonly EmailTemplateDefinition[] = [
       defense_stage: "Proposal",
       status_label: "Approved for Scheduling",
       remarks: "All submitted requirements are complete. Please wait for your defense schedule.",
-      portal_link: "http://localhost:3000/student/thesis/proposal",
+      portal_link: "http://localhost:3000/student/thesis/proposal-defense",
     },
   },
   {
@@ -586,35 +586,38 @@ export const EMAIL_TEMPLATE_REGISTRY: readonly EmailTemplateDefinition[] = [
       "recipient_name",
       "defense_stage",
       "schedule_action",
+      "schedule_message",
       "defense_date",
       "defense_time",
       "venue",
       "portal_link",
     ],
     variablesDescription:
-      "recipient_name, defense_stage, schedule_action, defense_date, defense_time, venue, portal_link",
-    defaultSubject: "{{defense_stage}} Defense {{schedule_action}} — {{defense_date}}",
+      "recipient_name, defense_stage, schedule_action, schedule_message, defense_date, defense_time, venue, portal_link",
+    defaultSubject: "{{defense_stage}} Defense {{schedule_action}}: {{defense_date}}",
     defaultBodyHtml: `<p>Dear {{recipient_name}},</p>
-<p>Your <strong>{{defense_stage}} Defense</strong> schedule has been <strong>{{schedule_action}}</strong>.</p>
+<p>{{schedule_message}}</p>
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:16px 0;border:1px solid #e5e0d8;border-left:4px solid #8b1e1e;background:#faf8f5;border-radius:6px;">
   <tr><td style="padding:14px 16px;font-size:14px;line-height:1.6;color:#2c2c2c;">
-    <strong>Stage:</strong> {{defense_stage}} Defense<br/>
+    <strong>Defense Stage:</strong> {{defense_stage}} Defense<br/>
     <strong>Date:</strong> {{defense_date}}<br/>
-    <strong>Time:</strong> {{defense_time}}<br/>
+    <strong>Time:</strong> {{defense_time}} (Philippine Time)<br/>
     <strong>Venue:</strong> {{venue}}
   </td></tr>
 </table>
-<p>Sign in to your Student Portal to review your defense details and finalized Defense Application record.</p>`,
+<p>Please sign in to your Student Portal to review your defense details and finalized Defense Application record.</p>`,
     ctaLabel: "View Defense Details",
     ctaVariable: "portal_link",
     sampleVariables: {
       recipient_name: "Juan Dela Cruz",
       defense_stage: "Proposal",
       schedule_action: "Scheduled",
+      schedule_message:
+        "Please be informed that your Proposal Defense has been officially scheduled by the Office of the Graduate School.",
       defense_date: "December 5, 2026",
       defense_time: "2:00 PM",
       venue: "Graduate School Conference Room A",
-      portal_link: "http://localhost:3000/student/thesis/proposal",
+      portal_link: "http://localhost:3000/student/thesis/proposal-defense",
     },
   },
   {
@@ -627,6 +630,7 @@ export const EMAIL_TEMPLATE_REGISTRY: readonly EmailTemplateDefinition[] = [
     variables: [
       "recipient_name",
       "assignment_action",
+      "assignment_message",
       "panel_role",
       "student_name",
       "defense_stage",
@@ -636,32 +640,36 @@ export const EMAIL_TEMPLATE_REGISTRY: readonly EmailTemplateDefinition[] = [
       "portal_link",
     ],
     variablesDescription:
-      "recipient_name, assignment_action, panel_role, student_name, defense_stage, defense_date, defense_time, venue, portal_link",
-    defaultSubject: "Defense Committee {{assignment_action}}: {{student_name}} ({{defense_stage}})",
+      "recipient_name, assignment_action, assignment_message, panel_role, student_name, defense_stage, defense_date, defense_time, venue, portal_link",
+    defaultSubject:
+      "Notice of Defense Committee {{assignment_action}}: {{defense_stage}} Defense ({{student_name}})",
     defaultBodyHtml: `<p>Dear {{recipient_name}},</p>
-<p>Your defense committee assignment has been updated: <strong>{{assignment_action}}</strong>.</p>
+<p>{{assignment_message}}</p>
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:16px 0;border:1px solid #e5e0d8;border-left:4px solid #8b1e1e;background:#faf8f5;border-radius:6px;">
   <tr><td style="padding:14px 16px;font-size:14px;line-height:1.6;color:#2c2c2c;">
     <strong>Student:</strong> {{student_name}}<br/>
-    <strong>Stage:</strong> {{defense_stage}} Defense<br/>
+    <strong>Defense Stage:</strong> {{defense_stage}} Defense<br/>
     <strong>Committee Role:</strong> {{panel_role}}<br/>
-    <strong>Date &amp; Time:</strong> {{defense_date}} · {{defense_time}}<br/>
+    <strong>Date:</strong> {{defense_date}}<br/>
+    <strong>Time:</strong> {{defense_time}} (Philippine Time)<br/>
     <strong>Venue:</strong> {{venue}}
   </td></tr>
 </table>
-<p>Sign in to the Faculty Portal to inspect the manuscript and defense workspace.</p>`,
+<p>Please sign in to the Faculty Portal to review the manuscript and defense details prior to the scheduled session.</p>`,
     ctaLabel: "Open Defense Workspace",
     ctaVariable: "portal_link",
     sampleVariables: {
       recipient_name: "Dr. Elena Reyes",
-      assignment_action: "Assigned",
+      assignment_action: "Assignment",
+      assignment_message:
+        "You have been formally designated to serve as Panelist for the Proposal Defense of Juan Dela Cruz.",
       panel_role: "Panelist",
       student_name: "Juan Dela Cruz",
       defense_stage: "Proposal",
       defense_date: "December 5, 2026",
       defense_time: "2:00 PM",
       venue: "Graduate School Conference Room A",
-      portal_link: "http://localhost:3000/faculty/defenses",
+      portal_link: "http://localhost:3000/panelist/defenses",
     },
   },
   {
@@ -674,23 +682,23 @@ export const EMAIL_TEMPLATE_REGISTRY: readonly EmailTemplateDefinition[] = [
     variables: ["recipient_name", "defense_stage", "verdict_label", "remarks", "portal_link"],
     variablesDescription:
       "recipient_name, defense_stage, verdict_label, remarks, portal_link",
-    defaultSubject: "{{defense_stage}} Defense Verdict Released: {{verdict_label}}",
+    defaultSubject: "Official {{defense_stage}} Defense Verdict Released: {{verdict_label}}",
     defaultBodyHtml: `<p>Dear {{recipient_name}},</p>
-<p>The official verdict for your <strong>{{defense_stage}} Defense</strong> has been recorded.</p>
+<p>Please be informed that the official verdict for your <strong>{{defense_stage}} Defense</strong> has been recorded.</p>
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:16px 0;border:1px solid #e5e0d8;border-left:4px solid #8b1e1e;background:#faf8f5;border-radius:6px;">
   <tr><td style="padding:14px 16px;font-size:14px;line-height:1.6;color:#2c2c2c;">
-    <strong>Stage:</strong> {{defense_stage}} Defense<br/>
+    <strong>Defense Stage:</strong> {{defense_stage}} Defense<br/>
     <strong>Official Verdict:</strong> {{verdict_label}}<br/>
     <strong>Remarks:</strong> {{remarks}}
   </td></tr>
 </table>
-<p>Sign in to your Student Portal to review the complete defense outcome and your next academic step.</p>`,
+<p>Kindly sign in to your Student Portal to review the complete defense outcome and your next academic requirements.</p>`,
     ctaLabel: "View Defense Outcome",
     ctaVariable: "portal_link",
     sampleVariables: {
       recipient_name: "Juan Dela Cruz",
       defense_stage: "Proposal",
-      verdict_label: "Approved with Minor Revisions",
+      verdict_label: "Passed with Minor Revisions",
       remarks: "Address the panel recommendations before proceeding to data gathering.",
       portal_link: "http://localhost:3000/student/journey",
     },

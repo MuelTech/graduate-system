@@ -82,7 +82,7 @@ export function wrapEaristEmailHtml(input: EaristEmailLayoutInput): string {
         <tr>
           <td align="center" bgcolor="#8b1e1e" style="border-radius:6px;">
             <a href="${escapeHtml(safeCtaUrl)}" target="_blank" rel="noopener noreferrer"
-               style="display:inline-block;padding:12px 24px;font-family:Georgia,'Times New Roman',serif,Arial,sans-serif;font-family:Arial,Helvetica,sans-serif;font-size:14px;font-weight:700;color:#ffffff;text-decoration:none;border-radius:6px;">
+               style="display:inline-block;padding:12px 24px;font-family:Arial,Helvetica,sans-serif;font-size:14px;font-weight:700;color:#ffffff;text-decoration:none;border-radius:6px;">
               ${safeCtaLabel}
             </a>
           </td>
@@ -110,7 +110,7 @@ export function wrapEaristEmailHtml(input: EaristEmailLayoutInput): string {
           <tr>
             <td style="background-color:#8b1e1e;padding:22px 28px;border-bottom:4px solid #d4af37;">
               <div style="font-family:Arial,Helvetica,sans-serif;font-size:11px;font-weight:700;letter-spacing:1.2px;color:#f5e6c8;text-transform:uppercase;">
-                Eulogio &ldquo;Amang&rdquo; Rodriguez Institute of Science and Technology
+                Eulogio &quot;Amang&quot; Rodriguez Institute of Science and Technology
               </div>
               <div style="font-family:Georgia,'Times New Roman',serif;font-size:20px;font-weight:700;color:#ffffff;margin-top:4px;line-height:1.25;">
                 Office of the Graduate School
@@ -130,6 +130,10 @@ export function wrapEaristEmailHtml(input: EaristEmailLayoutInput): string {
                 ${input.bodyHtml}
               </div>
               ${ctaBlock}
+              <p style="margin:24px 0 0 0;font-size:14px;line-height:1.6;color:#2b2b2b;">
+                Respectfully,<br/>
+                <strong>Office of the Graduate School</strong>
+              </p>
             </td>
           </tr>
           <!-- Footer -->
@@ -139,7 +143,7 @@ export function wrapEaristEmailHtml(input: EaristEmailLayoutInput): string {
                 This is an automated institutional notice from the EARIST Graduate School Information System. Please do not reply directly to this email.
               </p>
               <p style="margin:0;color:#888888;">
-                Office of the Graduate School &middot; Nagtahan, Sampaloc, Manila
+                Office of the Graduate School, Nagtahan, Sampaloc, Manila
               </p>
             </td>
           </tr>

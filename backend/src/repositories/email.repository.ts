@@ -16,7 +16,9 @@ export interface EnqueueEmailLogInput {
   htmlBody?: string | null;
   textBody?: string | null;
   status?: EmailStatus;
+  attemptCount?: number;
   maxAttempts?: number;
+  lastAttemptAt?: Date | null;
   errorMessage?: string | null;
   triggeredById?: string | null;
   sentAt?: Date | null;
@@ -73,8 +75,10 @@ export class EmailRepository {
           htmlBody: data.htmlBody || null,
           textBody: data.textBody || null,
           status: data.status ?? "QUEUED",
+          attemptCount: data.attemptCount ?? 0,
           maxAttempts: data.maxAttempts ?? 3,
           nextAttemptAt: (data.status ?? "QUEUED") === "QUEUED" ? new Date() : null,
+          lastAttemptAt: data.lastAttemptAt ?? null,
           errorMessage: data.errorMessage || null,
           triggeredById: data.triggeredById || null,
           sentAt: data.sentAt ?? (data.status === "SENT" ? new Date() : null),

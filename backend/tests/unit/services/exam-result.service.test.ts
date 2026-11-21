@@ -65,7 +65,7 @@ describe("B0B result finality", () => {
       expect.objectContaining({
         student_name: "Synthetic",
         recipient_name: "Synthetic",
-        portal_link: expect.stringMatching(/^https?:\/\/[^,]+\/applicant\/result$/),
+        portal_link: expect.stringMatching(/^https?:\/\/[^,]+\/applicant\/results$/),
       }),
       expect.objectContaining({ jobId: "exam-result-exact-identity" }),
     );
