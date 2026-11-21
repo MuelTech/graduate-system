@@ -73,7 +73,6 @@ const PAGE_TITLE_MAP: Array<{ prefix: string; title: string }> = [
   { prefix: "/programs", title: "Graduate Programs" },
   { prefix: "/about", title: "About EARIST Graduate School" },
   { prefix: "/repository", title: "Public Research Repository" },
-  { prefix: "/faq", title: "Frequently Asked Questions" },
   { prefix: "/login", title: "Portal Sign In" },
   { prefix: "/register", title: "Applicant Registration" },
   { prefix: "/forgot-password", title: "Forgot Password" },

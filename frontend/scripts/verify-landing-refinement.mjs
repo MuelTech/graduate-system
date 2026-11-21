@@ -259,7 +259,7 @@ try {
       await expect(page.locator("#applicant-access")).toHaveCount(0);
       await expect(
         page.locator(
-          'footer a[href="/#getting-started"], footer a[href="/faq"]',
+          'footer a[href="/#getting-started"]',
         ),
       ).toHaveCount(0);
       await expect(page.locator("#news h2")).toHaveText(
@@ -515,7 +515,7 @@ try {
         "Research",
         "Contact",
       ];
-      for (const route of ["/about", "/programs", "/repository", "/faq"]) {
+      for (const route of ["/about", "/programs", "/repository"]) {
         const response = await page.goto(baseURL + route, {
           waitUntil: "networkidle",
         });

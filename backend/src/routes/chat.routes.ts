@@ -246,7 +246,7 @@ router.post(
       console.error("Chat API error:", error);
       res.status(200).json({
         reply:
-          "Sorry, I encountered a temporary issue processing your request. Please try again or visit the Frequently Asked Questions page.",
+          "Sorry, I encountered a temporary issue processing your request. Please try again or contact the Graduate School Office at gs@earist.edu.ph or (02) 8534-8267.",
         language: "en",
         mode: "local-rag",
         isOutOfScope: false,

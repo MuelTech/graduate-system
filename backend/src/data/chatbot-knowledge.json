@@ -537,8 +537,8 @@
         "href": "/register"
       },
       {
-        "label": "Admissions FAQ",
-        "href": "/faq"
+        "label": "Getting Started",
+        "href": "/#getting-started"
       }
     ]
   },
@@ -737,8 +737,8 @@
     "answerTl": "Sa ilalim ng patakaran sa academic qualifications: 1) Kung hindi aligned ang kurso (unrelated field), kailangang makumpleto ang 9-unit Bridging Program na inendorso ng Dean bilang bahagi ng enrollment at Plan of Coursework. 2) Para sa non-education graduates na papasok sa education programs, kailangan ng hindi bababa sa 18 units ng Professional Education courses. 3) Ang non-thesis Master's holders na papasok sa Doctoral ay kailangan munang kumuha ng Methodology of Research, Thesis 1, at Thesis 2. Paalala: Bahagi ng enrollment at Plan of Coursework ang bridging at hindi nito hinaharang ang pagkuha ng online Entrance Examination.",
     "relatedRoutes": [
       {
-        "label": "Admissions FAQ",
-        "href": "/faq"
+        "label": "Getting Started",
+        "href": "/#getting-started"
       }
     ]
   },
@@ -786,8 +786,8 @@
         "href": "/applicant/cor-upload"
       },
       {
-        "label": "Admissions FAQ",
-        "href": "/faq"
+        "label": "Getting Started",
+        "href": "/#getting-started"
       }
     ]
   },
@@ -1224,8 +1224,8 @@
         "href": "/student/profile"
       },
       {
-        "label": "System FAQ",
-        "href": "/faq"
+        "label": "Getting Started",
+        "href": "/#getting-started"
       }
     ]
   },
@@ -1764,8 +1764,8 @@
     "answerTl": "Patakaran sa Tuition at Miscellaneous Fees:\n1. Walang nakalagay na fixed peso table o eksaktong halaga per unit sa Graduate School Manual of Operations dahil ang opisyal na assessment ay lumalabas sa Pinnacle tuwing enrollment at kinokolekta ng Financial Management Services (FMS).\n2. Ang mag-e-enroll sa coursework, Thesis/Dissertation 1, at Thesis/Dissertation 2 ay kailangang magbayad ng kaukulang tuition at miscellaneous fees para sa term.\n3. Ang mag-o-audit ng klase ay magbabayad ng full matriculation fees, at sa oral re-defense ay may panelists' fee na babayaran ang candidate.\n4. Libre sa tuition at miscellaneous fees ang EARIST personnel (maliban sa augmentation fees), at may augmentation fee refund naman ang mga elected FEGSSC officers.\n\nPara sa eksaktong halaga ng tuition per unit at miscellaneous fees ngayong semester, tingnan ang iyong Pinnacle assessment o makipag-ugnayan sa FMS / GS Office sa gs@earist.edu.ph o (02) 8534-8267.\n\nDiscipline: Sumusunod ang graduate students sa disciplinary rules ng Undergraduate Student Handbook (mula warning hanggang dismissal).",
     "relatedRoutes": [
       {
-        "label": "Admissions FAQ",
-        "href": "/faq"
+        "label": "Getting Started",
+        "href": "/#getting-started"
       }
     ]
   },
@@ -2145,8 +2145,8 @@
         "href": "/login"
       },
       {
-        "label": "Admissions FAQ",
-        "href": "/faq"
+        "label": "Getting Started",
+        "href": "/#getting-started"
       }
     ]
   },
@@ -2841,16 +2841,16 @@
       "What is the email, phone number, and address of EARIST Graduate School?",
       "Ano ang address, email, at telephone number ng EARIST Graduate School?"
     ],
-    "answerEn": "EARIST Graduate School Office Contact Details:\n- Address: Nagtahan St., Sampaloc, Manila, 1008 Metro Manila (with satellite campus in Gen. Mariano Alvarez, Cavite)\n- Email: gs@earist.edu.ph\n- Telephone: (02) 8534-8267\nFor portal assistance or policy clarifications, you may also visit the Frequently Asked Questions page.",
-    "answerTl": "Contact Details ng EARIST Graduate School Office:\n- Address: Nagtahan St., Sampaloc, Manila, 1008 Metro Manila (at satellite campus sa Gen. Mariano Alvarez, Cavite)\n- Email: gs@earist.edu.ph\n- Telephone: (02) 8534-8267\nPara sa karagdagang gabay, maaari mo ring bisitahin ang Frequently Asked Questions page.",
+    "answerEn": "EARIST Graduate School Office Contact Details:\n- Address: Nagtahan St., Sampaloc, Manila, 1008 Metro Manila (with satellite campus in Gen. Mariano Alvarez, Cavite)\n- Email: gs@earist.edu.ph\n- Telephone: (02) 8534-8267\nFor quick portal guidance, you can also check the Getting Started section on the Home page or ask me directly here.",
+    "answerTl": "Contact Details ng EARIST Graduate School Office:\n- Address: Nagtahan St., Sampaloc, Manila, 1008 Metro Manila (at satellite campus sa Gen. Mariano Alvarez, Cavite)\n- Email: gs@earist.edu.ph\n- Telephone: (02) 8534-8267\nPara sa mabilisang gabay, maaari mo ring tingnan ang Getting Started section sa Home page o magtanong nang direkta dito.",
     "relatedRoutes": [
       {
         "label": "Contact Section",
         "href": "/#contact"
       },
       {
-        "label": "System FAQ",
-        "href": "/faq"
+        "label": "Getting Started",
+        "href": "/#getting-started"
       }
     ]
   }
