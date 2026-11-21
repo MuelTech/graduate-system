@@ -40,8 +40,8 @@
     "answerTl": "Itinatag ang EARIST noong 1945 bilang Eulogio Rodriguez Vocational High School (ERVHS) at nakuha ang site sa Nagtahan, Sampaloc, Manila noong July 1, 1946. Mahahalagang batas: RA 4072 (1964) Technical Education Dept; RA 5088 (1967) naging EARMSAT; RA 6595 (1972) naging kolehiyong EARIST; at PD 1521 (June 11, 1978) na nag-convert dito sa chartered state college kasama si Dr. Hilario G. Nudas bilang unang College President.",
     "relatedRoutes": [
       {
-        "label": "About EARIST",
-        "href": "/about"
+        "label": "About EARIST GS",
+        "href": "/#about"
       }
     ]
   },
@@ -79,8 +79,8 @@
     "answerTl": "Mga naging Presidente ng EARIST: Dr. Hilario G. Nudas (1972–1983), Dr. Frederick So. Pada (1983–1988), Dr. Lydia Profeta (1988–1992), Dr. Arturo P. Casuga (1992–1998), Dr. Maura V. Bautista (1998–2006), Dr. Eduardo S. Caillo (2006–2014), Dr. Editha V. Pillo (2014–2022), at ang kasalukuyang Presidente ay si Dr. Rogelio T. Mamaradlo (2022–present).",
     "relatedRoutes": [
       {
-        "label": "About EARIST",
-        "href": "/about"
+        "label": "About EARIST GS",
+        "href": "/#about"
       }
     ]
   },
@@ -120,11 +120,11 @@
     "relatedRoutes": [
       {
         "label": "Graduate Programs",
-        "href": "/programs"
+        "href": "/#programs"
       },
       {
-        "label": "About EARIST",
-        "href": "/about"
+        "label": "About EARIST GS",
+        "href": "/#about"
       }
     ]
   },
@@ -165,7 +165,7 @@
     "relatedRoutes": [
       {
         "label": "About EARIST GS",
-        "href": "/about"
+        "href": "/#about"
       }
     ]
   },
@@ -200,7 +200,7 @@
     "relatedRoutes": [
       {
         "label": "About EARIST GS",
-        "href": "/about"
+        "href": "/#about"
       }
     ]
   },
@@ -235,7 +235,7 @@
     "relatedRoutes": [
       {
         "label": "About EARIST GS",
-        "href": "/about"
+        "href": "/#about"
       }
     ]
   },
@@ -275,7 +275,7 @@
     "relatedRoutes": [
       {
         "label": "About EARIST GS",
-        "href": "/about"
+        "href": "/#about"
       }
     ]
   },
@@ -327,8 +327,8 @@
     "answerTl": "May kabuuang 16 na graduate programs ang ino-offer ng EARIST Graduate School: 4 na Doctoral Programs (PQF Level 8, Professional Track) at 12 na Master's Programs (PQF Level 7, Academic Track, sa ilalim ng 7 Master's degree titles).\n\nDoctoral Programs (4):\n1. Doctor of Education major in Educational Management (Ed.D.-EM)\n2. Doctor of Philosophy in Industrial Psychology (PhD-IP)\n3. Doctor of Public Administration (DPA)\n4. Doctor of Business Administration (DBA)\n\nMaster's Programs (12):\n1. Master of Arts in Education major in Administration and Supervision (MAEd)\n2. Master of Arts in Education major in Guidance and Counseling (MAEd)\n3. Master of Arts in Education major in Special Education (MAEd)\n4. Master of Arts in Industrial Education major in Hotel, Restaurant and Management (MAIE)\n5. Master in Business Administration (MBA)\n6. Master in Public Administration (MPA)\n7. Master of Arts in Teaching major in Science (MAT)\n8. Master of Arts in Teaching major in Mathematics (MAT)\n9. Master of Arts in Teaching major in Electronics Technology (MAT)\n10. Master of Arts in Teaching major in Electrical Technology (MAT)\n11. Master of Arts in Industrial Psychology (MAIP)\n12. Master of Science in Mathematics (MSM)\n\nSa EARIST Cavite Campus naman ino-offer ang 3 sa mga ito: Ed.D.-EM, MAEd major in Administration and Supervision, at MBA.",
     "relatedRoutes": [
       {
-        "label": "View All Programs",
-        "href": "/programs"
+        "label": "Graduate Programs",
+        "href": "/#programs"
       },
       {
         "label": "Register Account",
@@ -370,8 +370,8 @@
     "answerTl": "May apat (4) na Doctoral Programs (PQF Level 8, Professional Track) sa EARIST Graduate School: 1) Doctor of Education major in Educational Management (Ed.D-EM), 2) Doctor of Philosophy in Industrial Psychology (PhD-IP), 3) Doctor of Public Administration (DPA), at 4) Doctor of Business Administration (DBA).",
     "relatedRoutes": [
       {
-        "label": "View All Programs",
-        "href": "/programs"
+        "label": "Graduate Programs",
+        "href": "/#programs"
       },
       {
         "label": "Register Account",
@@ -415,8 +415,8 @@
     "answerTl": "Mga Master's Programs sa Education at Teaching (PQF Level 7): • MAEd: Administration & Supervision, Guidance & Counseling, Special Education • MAIE: Hotel, Restaurant and Management • MAT: Science, Mathematics, Electronics Technology, at Electrical Technology.",
     "relatedRoutes": [
       {
-        "label": "View All Programs",
-        "href": "/programs"
+        "label": "Graduate Programs",
+        "href": "/#programs"
       }
     ]
   },
@@ -453,8 +453,8 @@
     "answerTl": "Bukod sa Education programs, nag-o-offer din ang EARIST Graduate School ng: • Master in Business Administration (MBA) • Master in Public Administration (MPA) • Master of Arts in Industrial Psychology (MAIP) • Master of Science in Mathematics (MSM). Bisitahin ang Graduate Programs page para sa buong detalye.",
     "relatedRoutes": [
       {
-        "label": "View All Programs",
-        "href": "/programs"
+        "label": "Graduate Programs",
+        "href": "/#programs"
       }
     ]
   },
@@ -490,7 +490,7 @@
     "relatedRoutes": [
       {
         "label": "Faculty Profile",
-        "href": "/panelist/profile"
+        "href": "/faculty/profile"
       }
     ]
   },
@@ -537,8 +537,8 @@
         "href": "/register"
       },
       {
-        "label": "Getting Started",
-        "href": "/#getting-started"
+        "label": "Contact Section",
+        "href": "/#contact"
       }
     ]
   },
@@ -613,7 +613,7 @@
     "relatedRoutes": [
       {
         "label": "Graduate Programs",
-        "href": "/programs"
+        "href": "/#programs"
       }
     ]
   },
@@ -737,8 +737,8 @@
     "answerTl": "Sa ilalim ng patakaran sa academic qualifications: 1) Kung hindi aligned ang kurso (unrelated field), kailangang makumpleto ang 9-unit Bridging Program na inendorso ng Dean bilang bahagi ng enrollment at Plan of Coursework. 2) Para sa non-education graduates na papasok sa education programs, kailangan ng hindi bababa sa 18 units ng Professional Education courses. 3) Ang non-thesis Master's holders na papasok sa Doctoral ay kailangan munang kumuha ng Methodology of Research, Thesis 1, at Thesis 2. Paalala: Bahagi ng enrollment at Plan of Coursework ang bridging at hindi nito hinaharang ang pagkuha ng online Entrance Examination.",
     "relatedRoutes": [
       {
-        "label": "Getting Started",
-        "href": "/#getting-started"
+        "label": "Contact Section",
+        "href": "/#contact"
       }
     ]
   },
@@ -786,8 +786,8 @@
         "href": "/applicant/cor-upload"
       },
       {
-        "label": "Getting Started",
-        "href": "/#getting-started"
+        "label": "Contact Section",
+        "href": "/#contact"
       }
     ]
   },
@@ -943,8 +943,8 @@
     "answerTl": "Ayon sa Sec. 7.6, mahigpit na ipinagbabawal (strictly prohibited) ang sabay na pag-enroll sa dalawa o higit pang graduate programs.",
     "relatedRoutes": [
       {
-        "label": "Browse Programs",
-        "href": "/programs"
+        "label": "Graduate Programs",
+        "href": "/#programs"
       }
     ]
   },
@@ -1224,8 +1224,8 @@
         "href": "/student/profile"
       },
       {
-        "label": "Getting Started",
-        "href": "/#getting-started"
+        "label": "Contact Section",
+        "href": "/#contact"
       }
     ]
   },
@@ -1481,7 +1481,7 @@
       },
       {
         "label": "Faculty Defenses",
-        "href": "/panelist/defenses"
+        "href": "/faculty/defenses"
       }
     ]
   },
@@ -1521,7 +1521,7 @@
       },
       {
         "label": "Faculty Advisees",
-        "href": "/panelist/advisees"
+        "href": "/faculty/advisees"
       }
     ]
   },
@@ -1681,8 +1681,8 @@
     "answerTl": "Mga opisyal na kulay ng Academic Gown/Toga (Sec. 7.26): • Navy Blue: Ph.D-IP • Royal Blue: Ed.D-EM, MAEd, MAIE-HRM, MAT • White: DPA at MPA • Yellow Gold: DBA at MBA • Green: MS Mathematics at MA Industrial Psychology.",
     "relatedRoutes": [
       {
-        "label": "View Programs",
-        "href": "/programs"
+        "label": "Graduate Programs",
+        "href": "/#programs"
       }
     ]
   },
@@ -1764,8 +1764,8 @@
     "answerTl": "Patakaran sa Tuition at Miscellaneous Fees:\n1. Walang nakalagay na fixed peso table o eksaktong halaga per unit sa Graduate School Manual of Operations dahil ang opisyal na assessment ay lumalabas sa Pinnacle tuwing enrollment at kinokolekta ng Financial Management Services (FMS).\n2. Ang mag-e-enroll sa coursework, Thesis/Dissertation 1, at Thesis/Dissertation 2 ay kailangang magbayad ng kaukulang tuition at miscellaneous fees para sa term.\n3. Ang mag-o-audit ng klase ay magbabayad ng full matriculation fees, at sa oral re-defense ay may panelists' fee na babayaran ang candidate.\n4. Libre sa tuition at miscellaneous fees ang EARIST personnel (maliban sa augmentation fees), at may augmentation fee refund naman ang mga elected FEGSSC officers.\n\nPara sa eksaktong halaga ng tuition per unit at miscellaneous fees ngayong semester, tingnan ang iyong Pinnacle assessment o makipag-ugnayan sa FMS / GS Office sa gs@earist.edu.ph o (02) 8534-8267.\n\nDiscipline: Sumusunod ang graduate students sa disciplinary rules ng Undergraduate Student Handbook (mula warning hanggang dismissal).",
     "relatedRoutes": [
       {
-        "label": "Getting Started",
-        "href": "/#getting-started"
+        "label": "Contact Section",
+        "href": "/#contact"
       }
     ]
   },
@@ -1807,7 +1807,7 @@
     "relatedRoutes": [
       {
         "label": "About EARIST GS",
-        "href": "/about"
+        "href": "/#about"
       }
     ]
   },
@@ -1893,7 +1893,7 @@
       },
       {
         "label": "Faculty Announcements",
-        "href": "/panelist/announcements"
+        "href": "/faculty/announcements"
       }
     ]
   },
@@ -1968,8 +1968,8 @@
     "answerTl": "Ayon sa Sec. 16.0, may tatlong learning modalities sa Graduate School: 1) Face-to-Face Learning, 2) Blended Learning (hybrid in-person at online), at 3) Online Learning (parehong may real-time synchronous classes at self-paced asynchronous sessions).",
     "relatedRoutes": [
       {
-        "label": "Explore Programs",
-        "href": "/programs"
+        "label": "Graduate Programs",
+        "href": "/#programs"
       }
     ]
   },
@@ -2009,7 +2009,7 @@
     "relatedRoutes": [
       {
         "label": "About EARIST GS",
-        "href": "/about"
+        "href": "/#about"
       }
     ]
   },
@@ -2053,7 +2053,7 @@
     "relatedRoutes": [
       {
         "label": "Faculty Profile",
-        "href": "/panelist/profile"
+        "href": "/faculty/profile"
       },
       {
         "label": "Student Repository",
@@ -2097,8 +2097,8 @@
     "answerTl": "Sa ilalim ng Sec. 20.0 (RA 11058 & DOLE DO 198 s. 2018), ipinapatupad ang PPE sa lab, fire/earthquake/evacuation drills (2x kada taon), ERTs, first aid, annual physical exam para sa faculty/staff, mental health counseling, at quarterly safety audits. Nasa Sec. 21.0 naman ang Separability Clause.",
     "relatedRoutes": [
       {
-        "label": "About EARIST",
-        "href": "/about"
+        "label": "About EARIST GS",
+        "href": "/#about"
       }
     ]
   },
@@ -2145,8 +2145,8 @@
         "href": "/login"
       },
       {
-        "label": "Getting Started",
-        "href": "/#getting-started"
+        "label": "Contact Section",
+        "href": "/#contact"
       }
     ]
   },
@@ -2214,8 +2214,8 @@
       "How do I view or edit my applicant personal and academic profile?",
       "Saan makikita ang progress ng application ko sa Applicant Portal?"
     ],
-    "answerEn": "In the Applicant Portal: Open the Applicant Dashboard to monitor your admissions progress stepper, upcoming entrance exam schedule, result status, and COR verification status. Use the Applicant Profile page to update your contact details or password, and check Applicant Notifications for admission, exam schedule, result, and COR updates.",
-    "answerTl": "Sa Applicant Portal: Tingnan sa Applicant Dashboard ang iyong admissions progress, exam schedule, resulta, at COR verification status. Pwedeng i-update ang contact details o password sa Applicant Profile page, at makikita ang lahat ng updates sa Applicant Notifications.",
+    "answerEn": "In the Applicant Portal: Open the Applicant Dashboard to monitor your admissions progress, upcoming entrance exam schedule, result status, and COR verification status. Use the Applicant Profile page to update your contact details or password, and open the Notification Bell in the top header to review admission, exam schedule, result, and COR updates.",
+    "answerTl": "Sa Applicant Portal: Tingnan sa Applicant Dashboard ang iyong admissions progress, exam schedule, resulta, at COR verification status. Pwedeng i-update ang contact details o password sa Applicant Profile page, at buksan ang Notification Bell sa itaas ng screen para makita ang lahat ng admission, exam, at COR updates.",
     "relatedRoutes": [
       {
         "label": "Applicant Dashboard",
@@ -2447,8 +2447,8 @@
       "Where do Students view announcements and notifications?",
       "Saan makikita ng Student ang grades, curriculum checklist, at announcements?"
     ],
-    "answerEn": "In the Student Portal: Student Dashboard displays your active thesis milestone, upcoming defense schedule, and alerts; Student Profile manages your academic and contact details; Curriculum tracks your Plan of Coursework checklist, enrolled/completed units, and GWA; Academic Journey shows your full milestone timeline; Announcements lists official Graduate School memos; and Notifications tracks read and unread alerts.",
-    "answerTl": "Sa Student Portal: Makikita ang buod ng progress sa Student Dashboard, personal at academic details sa Student Profile, Plan of Coursework checklist at GWA sa Curriculum page, buong timeline sa Academic Journey, official memos sa Announcements, at alerts sa Notifications.",
+    "answerEn": "In the Student Portal: Student Dashboard displays your active thesis milestone, upcoming defense schedule, and alerts; Student Profile manages your academic and contact details (including your saved e-signature); Curriculum tracks your Plan of Coursework checklist, enrolled/completed units, and GWA; Academic Journey shows your full milestone timeline; Announcements lists official Graduate School memos; and the Notification Bell in the top header tracks read and unread alerts.",
+    "answerTl": "Sa Student Portal: Makikita ang buod ng progress sa Student Dashboard, personal at academic details sa Student Profile, Plan of Coursework checklist at GWA sa Curriculum page, buong timeline sa Academic Journey, official memos sa Announcements, at lahat ng alerts sa Notification Bell sa itaas ng screen.",
     "relatedRoutes": [
       {
         "label": "Student Dashboard",
@@ -2712,23 +2712,23 @@
       "What features are inside the Collaborative Defense Workspace?",
       "Saan mag-a-annotate ng manuscript at maglalagay ng rubric score ang Panelist?"
     ],
-    "answerEn": "Faculty and Panelists view all assigned Title, Proposal, and Final defenses on the Assigned Defenses page (with summary metrics on the Faculty Dashboard). Opening the Defense Workspace gives a split-screen view with an interactive PDF Manuscript Viewer for highlight and comment annotations on the left, and Rubric Evaluation & Scoring, Rapporteur Notes/Report, Committee Verdict, and E-Signature controls on the right.",
-    "answerTl": "Makikita ng Faculty at Panelists ang lahat ng assigned defenses sa Assigned Defenses page (at summary sa Faculty Dashboard). Sa pagbubukas ng Defense Workspace, may split-screen PDF Manuscript Viewer na may highlight at comment annotations, kasama ang Rubric Scoring, Rapporteur Report, Committee Verdict, at E-Signature controls.",
+    "answerEn": "Faculty and Panelists view all assigned Title, Proposal, and Final defenses on the My Defenses page (with summary metrics on the Faculty Dashboard). Opening the Defense Workspace gives a split-screen view with an interactive PDF Manuscript Viewer for highlight and comment annotations on the left, and Rubric Evaluation & Scoring, Rapporteur Notes/Report, Committee Verdict, and contextual Rapporteur Report E-Signature controls on the right.",
+    "answerTl": "Makikita ng Faculty at Panelists ang lahat ng assigned defenses sa My Defenses page (at summary sa Faculty Dashboard). Sa pagbubukas ng Defense Workspace, may split-screen PDF Manuscript Viewer na may highlight at comment annotations, kasama ang Rubric Scoring, Rapporteur Report, Committee Verdict, at E-Signature signing controls.",
     "relatedRoutes": [
       {
         "label": "Faculty Dashboard",
-        "href": "/panelist/dashboard"
+        "href": "/faculty/dashboard"
       },
       {
         "label": "My Defenses",
-        "href": "/panelist/defenses"
+        "href": "/faculty/defenses"
       }
     ]
   },
   {
     "id": "faculty-advisees-essays-signatures-guide",
     "category": "System Navigation & Portal Guide",
-    "section": "System Guide — Faculty Advisees, Essay Evaluations & E-Signatures",
+    "section": "System Guide — Faculty Advisees, Essay Evaluations & E-Signature Management",
     "title": "Grading Applicant Essays, Managing Advisees & E-Signature Sign-Offs",
     "roles": [
       "faculty",
@@ -2750,20 +2750,20 @@
       "How do Thesis Advisers endorse manuscripts and sign Rapporteur Reports?",
       "Saan nag-grade ng Applicant essays at nag-a-approve ng advisees ang Faculty?"
     ],
-    "answerEn": "In the Faculty Portal: Open Essay Evaluations to review and score Applicant Entrance Exam essays; open Adviser Requests and My Advisees to review incoming Adviser Requests (Conforme/Decline) and certify advisee manuscripts before Proposal or Final Defense; and open E-Signatures to manage your saved e-signature specimen and sign Rapporteur Reports.",
-    "answerTl": "Sa Faculty Portal: Buksan ang Essay Evaluations para mag-grade ng Entrance Exam essays; gamitin ang Adviser Requests at My Advisees para mag-Conforme/Decline ng adviser requests at mag-certify ng advisee manuscripts bago ang Proposal o Final Defense; at buksan ang E-Signatures para sa iyong saved signature specimen at pagpirma ng Rapporteur Reports.",
+    "answerEn": "In the Faculty Portal: Open Essay Evaluations to review and score Applicant Entrance Exam essays (when authorized as an essay evaluator); open My Advisees to review incoming Adviser Requests (Conforme or Decline) and certify advisee manuscripts before Proposal or Final Defense; open Faculty Profile to manage your reusable personal e-signature specimen; and sign Rapporteur Reports directly inside the Defense Workspace (from My Defenses).",
+    "answerTl": "Sa Faculty Portal: Buksan ang Essay Evaluations para mag-grade ng Entrance Exam essays (kung authorized essay evaluator); buksan ang My Advisees para mag-Conforme o Decline ng adviser requests at mag-certify ng advisee manuscripts bago ang Proposal o Final Defense; gamitin ang Faculty Profile para i-manage ang iyong saved e-signature specimen; at direktang pumirma ng Rapporteur Reports sa loob ng Defense Workspace (mula sa My Defenses).",
     "relatedRoutes": [
       {
         "label": "Essay Evaluations",
-        "href": "/panelist/essay-evaluations"
+        "href": "/faculty/essay-evaluations"
       },
       {
         "label": "My Advisees",
-        "href": "/panelist/advisees"
+        "href": "/faculty/advisees"
       },
       {
-        "label": "E-Signatures",
-        "href": "/panelist/signatures"
+        "label": "Faculty Profile",
+        "href": "/faculty/profile"
       }
     ]
   },
@@ -2841,16 +2841,12 @@
       "What is the email, phone number, and address of EARIST Graduate School?",
       "Ano ang address, email, at telephone number ng EARIST Graduate School?"
     ],
-    "answerEn": "EARIST Graduate School Office Contact Details:\n- Address: Nagtahan St., Sampaloc, Manila, 1008 Metro Manila (with satellite campus in Gen. Mariano Alvarez, Cavite)\n- Email: gs@earist.edu.ph\n- Telephone: (02) 8534-8267\nFor quick portal guidance, you can also check the Getting Started section on the Home page or ask me directly here.",
-    "answerTl": "Contact Details ng EARIST Graduate School Office:\n- Address: Nagtahan St., Sampaloc, Manila, 1008 Metro Manila (at satellite campus sa Gen. Mariano Alvarez, Cavite)\n- Email: gs@earist.edu.ph\n- Telephone: (02) 8534-8267\nPara sa mabilisang gabay, maaari mo ring tingnan ang Getting Started section sa Home page o magtanong nang direkta dito.",
+    "answerEn": "EARIST Graduate School Office Contact Details:\n- Address: Nagtahan St., Sampaloc, Manila, 1008 Metro Manila (with satellite campus in Gen. Mariano Alvarez, Cavite)\n- Email: gs@earist.edu.ph\n- Telephone: (02) 8534-8267\nFor inquiries, you may also use the Contact section on the Home page or ask me directly here.",
+    "answerTl": "Contact Details ng EARIST Graduate School Office:\n- Address: Nagtahan St., Sampaloc, Manila, 1008 Metro Manila (at satellite campus sa Gen. Mariano Alvarez, Cavite)\n- Email: gs@earist.edu.ph\n- Telephone: (02) 8534-8267\nPara sa karagdagang katanungan, maaari mo ring gamitin ang Contact section sa Home page o magtanong nang direkta dito.",
     "relatedRoutes": [
       {
         "label": "Contact Section",
         "href": "/#contact"
-      },
-      {
-        "label": "Getting Started",
-        "href": "/#getting-started"
       }
     ]
   }

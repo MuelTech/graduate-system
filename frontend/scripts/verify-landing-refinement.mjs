@@ -515,7 +515,7 @@ try {
         "Research",
         "Contact",
       ];
-      for (const route of ["/about", "/programs", "/repository"]) {
+      for (const route of ["/repository"]) {
         const response = await page.goto(baseURL + route, {
           waitUntil: "networkidle",
         });

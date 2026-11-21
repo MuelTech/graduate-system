@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { resolvePageTitle } from "../src/services/chatbot-context.service";
 import {
   buildGroundedResponseFallback,
   CANONICAL_GS_EMAIL,
@@ -195,5 +196,20 @@ describe("chatbot-rag.service", () => {
     const fallback = buildGroundedResponseFallback(result, "applicant");
     expect(fallback.reply).toContain("9-unit Bridging Program");
     expect(fallback.reply).not.toContain("/applicant/alignment");
+  });
+
+  it("normalizes /faculty and /panelist page titles and references live Faculty UI surfaces", () => {
+    expect(resolvePageTitle("/faculty/defenses")).toBe("My Defenses");
+    expect(resolvePageTitle("/panelist/defenses")).toBe("My Defenses");
+    expect(resolvePageTitle("/faculty/advisees")).toBe("My Advisees");
+    expect(resolvePageTitle("/faculty/profile")).toBe("Faculty Profile");
+
+    const sigRes = retrieveKnowledgeChunks(
+      "Saan pipirma ng Rapporteur Report?",
+      "faculty",
+    );
+    const sigReply = buildGroundedResponseFallback(sigRes, "faculty").reply;
+    expect(sigReply).not.toContain("open E-Signatures");
+    expect(sigReply).not.toContain("buksan ang E-Signatures");
   });
 });

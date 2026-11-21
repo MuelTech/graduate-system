@@ -1593,7 +1593,7 @@ export function buildGroundedResponseFallback(
     return {
       reply: getOutOfScopeFallbackReply(retrieval.language),
       citations: [],
-      relatedRoutes: [{ label: "Getting Started", href: "/#getting-started" }],
+      relatedRoutes: [{ label: "Contact Section", href: "/#contact" }],
     };
   }
 

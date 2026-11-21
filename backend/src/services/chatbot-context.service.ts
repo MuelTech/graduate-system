@@ -28,7 +28,6 @@ const PAGE_TITLE_MAP: Array<{ prefix: string; title: string }> = [
   { prefix: "/student/thesis/strike", title: "Plagiarism Check" },
   { prefix: "/student/thesis/final-defense", title: "Final Defense" },
   { prefix: "/student/thesis", title: "Thesis Journey Hub" },
-  { prefix: "/student/plagiarism", title: "Plagiarism Check" },
   { prefix: "/student/repository/submit", title: "Research Repository Submission" },
   { prefix: "/student/repository", title: "Student Research Repository" },
   { prefix: "/student/curriculum", title: "Curriculum Checklist" },
@@ -37,23 +36,16 @@ const PAGE_TITLE_MAP: Array<{ prefix: string; title: string }> = [
   { prefix: "/student/announcements", title: "Student Announcements" },
   { prefix: "/student/notifications", title: "Student Notifications" },
 
-  // Faculty / Panelist portal
-  { prefix: "/panelist/defense-workspace", title: "Defense Workspace" },
-  { prefix: "/panelist/defense-lobby", title: "Defense Lobby" },
-  { prefix: "/panelist/defenses", title: "Assigned Defenses" },
-  { prefix: "/panelist/advisees", title: "My Advisees" },
-  { prefix: "/panelist/adviser-requests", title: "Adviser Requests" },
-  { prefix: "/panelist/adviser-reviews", title: "Pre-Defense Adviser Reviews" },
-  { prefix: "/panelist/essay-evaluations", title: "Essay Evaluations" },
-  { prefix: "/panelist/signatures", title: "E-Signatures" },
-  { prefix: "/panelist/scoring", title: "Defense Scoring" },
-  { prefix: "/panelist/materials", title: "Defense Materials" },
-  { prefix: "/panelist/repository", title: "Faculty Research Repository" },
-  { prefix: "/panelist/announcements", title: "Faculty Announcements" },
-  { prefix: "/panelist/notifications", title: "Faculty Notifications" },
-  { prefix: "/panelist/profile", title: "Faculty Profile" },
-  { prefix: "/panelist/dashboard", title: "Faculty Dashboard" },
-  { prefix: "/panelist", title: "Faculty Portal" },
+  // Faculty / Panelist portal (canonical /faculty/*, with /panelist/* normalized before matching)
+  { prefix: "/faculty/defense-workspace", title: "Defense Workspace" },
+  { prefix: "/faculty/defenses", title: "My Defenses" },
+  { prefix: "/faculty/advisees", title: "My Advisees" },
+  { prefix: "/faculty/essay-evaluations", title: "Essay Evaluations" },
+  { prefix: "/faculty/repository", title: "Faculty Research Repository" },
+  { prefix: "/faculty/announcements", title: "Faculty Announcements" },
+  { prefix: "/faculty/notifications", title: "Faculty Notifications" },
+  { prefix: "/faculty/profile", title: "Faculty Profile" },
+  { prefix: "/faculty/dashboard", title: "Faculty Dashboard" },
   { prefix: "/faculty", title: "Faculty Portal" },
 
   // Admin portal
@@ -70,8 +62,6 @@ const PAGE_TITLE_MAP: Array<{ prefix: string; title: string }> = [
   { prefix: "/admin", title: "Admin Portal" },
 
   // Public & Auth pages
-  { prefix: "/programs", title: "Graduate Programs" },
-  { prefix: "/about", title: "About EARIST Graduate School" },
   { prefix: "/repository", title: "Public Research Repository" },
   { prefix: "/login", title: "Portal Sign In" },
   { prefix: "/register", title: "Applicant Registration" },
@@ -81,7 +71,10 @@ const PAGE_TITLE_MAP: Array<{ prefix: string; title: string }> = [
 ];
 
 export function resolvePageTitle(rawPathname?: string): string {
-  const pathname = (rawPathname ?? "/").trim().slice(0, 200);
+  const pathname = (rawPathname ?? "/")
+    .trim()
+    .slice(0, 200)
+    .replace(/^\/panelist(?=\/|$)/, "/faculty");
   if (pathname === "/" || pathname === "") {
     return "EARIST Graduate School Home";
   }
