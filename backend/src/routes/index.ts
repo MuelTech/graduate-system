@@ -23,6 +23,7 @@ import adminDashboardRoutes from './admin-dashboard.routes';
 import adminStorageRoutes from './admin-storage.routes';
 import documentRoutes from './document.routes';
 import curriculumRoutes from './curriculum.routes';
+import chatRoutes from './chat.routes';
 
 const router = Router();
 
@@ -53,5 +54,6 @@ router.use('/admin/dashboard', adminDashboardRoutes);
 router.use('/admin/storage', adminStorageRoutes);
 router.use('/documents', documentRoutes);
 router.use('/curricula', curriculumRoutes);
+router.use('/chat', chatRoutes);
 
 export default router;

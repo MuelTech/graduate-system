@@ -886,12 +886,12 @@ The master checklist should retain visibility of major completed foundations so 
 
 | Status | Item | Current / target state |
 | --- | --- | --- |
-| 🟡 | Chatbot/RAG | Not yet treated as fully implemented/production-ready. Requires implementation-state audit before package planning. |
-| ⏳ | Gmail dataset cleaning | Extract Graduate School-relevant inquiry/answer content and remove irrelevant/noisy records. |
-| ⏳ | Embedding/vector pipeline | Finalize local embeddings + vector-store ingestion/update workflow. |
-| ⏳ | Local LLM runtime | Development/production runtime integration and service startup/recovery. |
-| ⏳ | RAG evaluation | Ground-truth questions, retrieval/answer metrics, hallucination/guardrail evaluation. |
-| ⏳ | Production API integration | Authenticated GS-IS chatbot endpoint and operational monitoring. |
+| 🚧 | Chatbot/RAG | **ACTIVE PACKAGE (`feat/rag-chatbot-deepseek`, spec `docs/superpowers/specs/2026-11-21-rag-chatbot-deepseek-integration-design.md`):** Implementing Express `POST /api/chat` with Hybrid TF-IDF + Lexical + Common-Inquiry RAG grounded on the 35-page EARIST Graduate School Manual of Operations + reconciled production workflows, DeepSeek API (`deepseek-flash`) with deterministic local-RAG fallback, server-side Prisma live user context (`optionalAuthenticateJWT`), 20 req/min rate limiting, 5-role floating `ChatbotWidget`, and `/applicant/exam` exam-integrity hide. |
+| ⏳ | Gmail dataset cleaning | Extract Graduate School-relevant inquiry/answer content and remove irrelevant/noisy records (optional future corpus enrichment). |
+| 🚧 | Hybrid RAG retrieval & knowledge base | Porting and reconciling the curated Manual §1.0–§21.0 + production portal workflow corpus (`backend/src/data/chatbot-knowledge.json`) and hybrid TF-IDF/lexical/inquiry retriever (`chatbot-rag.service.ts`). |
+| 🚧 | LLM runtime (DeepSeek API) | Native `fetch` integration to `${DEEPSEEK_BASE_URL}/chat/completions` (`DEEPSEEK_MODEL=deepseek-flash`, `temperature: 0.2`, `max_tokens: 1200`, `15s` timeout) with vendor/identity guardrails and automatic deterministic local-RAG fallback. |
+| 🚧 | RAG evaluation | Porting and verifying the 70-case multilingual benchmark (`backend/scripts/verify-chatbot-rag.mjs`) plus Vitest unit/route tests. |
+| 🚧 | Production API integration | Express `POST /api/chat` with `optionalAuthenticateJWT`, server-side Prisma live context, and rate limiting. |
 | 🟡 | COR extraction | Native PDF extraction exists; OCR fallback/evaluation remains a separate research/implementation track. |
 | ⏳ | OCR fallback evaluation | Tesseract/image-PDF fallback and controlled accuracy evaluation, if still in approved scope. |
 
@@ -938,7 +938,7 @@ This list is intentionally orderable and may change. *(Completed items: Exam Pha
 2. **STRIKE Plagiarism & AI-Content API (Objective 8):** Re-evaluate and redesign collaborator branch `origin/feat/strike-plagiarism-integration` (`0fda020e`) for code, security, and workflow integrity before merging.
 3. **Real OCR-Based COR Extraction (Objective 7):** Replace `UnavailableOcrExtractor` in `backend/src/extraction/ocr.extractor.ts` with real OCR fallback for scanned PDFs and JPG/PNG COR uploads alongside `earist-cor-parser@2` (§13).
 4. **Live Academic Analytics & Reporting (Objective 3) + AI Analytics Assistant (Objective 5):** Replace hardcoded `MOCK_*` data in `/admin/analytics` and `AiAnalyticsAssistant` with live backend analytics queries (entrance exam, comprehensive exam, thesis pipeline) and a live LLM summary/interpretation endpoint (§8, §14).
-5. **LLM-Driven RAG Chatbot (Objective 6):** Replace frontend keyword matching in `chatbot-widget.tsx` with a real LLM + RAG pipeline grounded on the EARIST Graduate School Manual of Operations, programs, and FAQs (§13).
+5. 🚧 **ACTIVE PACKAGE — LLM-Driven RAG Chatbot (Objective 6, `feat/rag-chatbot-deepseek`):** Implementing DeepSeek-powered (`deepseek-flash`) Multilingual RAG AI Assistant (`POST /api/chat` + server-side Prisma live context + 5-role `ChatbotWidget` hidden on `/applicant/exam`), grounded on the 35-page EARIST Graduate School Manual of Operations and reconciled production workflows — spec: `docs/superpowers/specs/2026-11-21-rag-chatbot-deepseek-integration-design.md` (§13).
 6. **Remaining Collaborator Comms Review (§8, §14):** Review notifications, announcements, and memos for role/audience targeting and lifecycle consistency.
 7. **Written Comprehensive Examination Official PDF Certificate Template (§22):** Implement `CompExamCertificateService.renderCertificatePdf` and unhide certification UI once the official EARIST layout is finalized (3-attempt tracking is already merged via PR #62).
 8. **Continuing Student Onboarding (`CONT-STUDENT-1` & `CONT-STUDENT-2`, §18) & Student Leave of Absence / Return (`ON_LEAVE` excluded from MRR per Manual §7.13, §19):** Implement COR-based continuing-student onboarding, pre-GSIS standing initialization, and non-destructive student inactivity/reactivation flows.
