@@ -9,9 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle, ArrowLeft, CheckCircle, Eye, EyeOff } from "lucide-react";
-
-const API_URL =
-  process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
+import { getClientBackendBaseUrl } from "@/lib/backend-origin.client";
 
 function ResetPasswordContent() {
   const router = useRouter();
@@ -42,8 +40,9 @@ function ResetPasswordContent() {
         return;
       }
       try {
+        const apiBaseUrl = getClientBackendBaseUrl();
         const res = await fetch(
-          `${API_URL}/auth/reset-password/validate?token=${encodeURIComponent(token)}`,
+          `${apiBaseUrl}/api/auth/reset-password/validate?token=${encodeURIComponent(token)}`,
         );
         const data = await res.json().catch(() => ({}));
         if (active) {
@@ -85,7 +84,8 @@ function ResetPasswordContent() {
 
     setSubmitting(true);
     try {
-      const res = await fetch(`${API_URL}/auth/reset-password`, {
+      const apiBaseUrl = getClientBackendBaseUrl();
+      const res = await fetch(`${apiBaseUrl}/api/auth/reset-password`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ token, newPassword }),

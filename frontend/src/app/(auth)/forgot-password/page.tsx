@@ -8,9 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle, ArrowLeft, CheckCircle } from "lucide-react";
-
-const API_URL =
-  process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
+import { getClientBackendBaseUrl } from "@/lib/backend-origin.client";
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
@@ -29,7 +27,8 @@ export default function ForgotPasswordPage() {
 
     setSubmitting(true);
     try {
-      const res = await fetch(`${API_URL}/auth/forgot-password`, {
+      const apiBaseUrl = getClientBackendBaseUrl();
+      const res = await fetch(`${apiBaseUrl}/api/auth/forgot-password`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: trimmed }),
