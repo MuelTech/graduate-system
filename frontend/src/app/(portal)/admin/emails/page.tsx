@@ -30,7 +30,6 @@ import {
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue,
 } from "@/components/ui/select";
 import { RefreshCw, RotateCcw, Send, Search, Eye, CheckCircle2 } from "lucide-react";
 
@@ -121,6 +120,14 @@ interface ScheduledJobRow {
   scheduleDescription: string;
   isActive: boolean;
 }
+
+const STATUS_OPTIONS = [
+  { value: "ALL", label: "All Statuses" },
+  { value: "SENT", label: "Sent" },
+  { value: "QUEUED", label: "Queued" },
+  { value: "PROCESSING", label: "Processing" },
+  { value: "FAILED", label: "Failed" },
+];
 
 const CATEGORY_OPTIONS = [
   { value: "ALL", label: "All Categories" },
@@ -461,10 +468,10 @@ export default function AdminEmailManagerPage() {
       />
 
       {/* Compact Delivery Status Strip */}
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-gray-200 bg-white px-4 py-3 text-xs text-gray-600">
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-xs text-gray-600">
         <div className="flex flex-wrap items-center gap-x-5 gap-y-1.5">
           <span>
-            <strong className="text-gray-900">Mode:</strong>{" "}
+            <strong className="text-gray-900">Delivery:</strong>{" "}
             <Badge
               variant="outline"
               className={
@@ -477,18 +484,10 @@ export default function AdminEmailManagerPage() {
             </Badge>
           </span>
           <span>
-            <strong className="text-gray-900">Queue:</strong> MySQL Persistent
-            Queue
-          </span>
-          <span>
             <strong className="text-gray-900">SMTP:</strong>{" "}
             {health?.smtpConfigured
               ? `${health.smtpHost}:${health.smtpPort}`
               : "Not configured"}
-          </span>
-          <span>
-            <strong className="text-gray-900">Portal URL:</strong>{" "}
-            {health?.publicUrl ?? "—"}
           </span>
         </div>
         <Button
@@ -539,43 +538,43 @@ export default function AdminEmailManagerPage() {
           {/* KPI Strip */}
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
             <Card>
-              <CardContent className="p-4">
+              <CardContent className="px-4 py-3">
                 <p className="text-xs font-medium text-gray-500">Total Emails</p>
-                <p className="mt-1 text-2xl font-bold text-gray-900">
+                <p className="mt-0.5 text-xl font-bold text-gray-900">
                   {stats?.total ?? 0}
                 </p>
               </CardContent>
             </Card>
             <Card>
-              <CardContent className="p-4">
+              <CardContent className="px-4 py-3">
                 <p className="text-xs font-medium text-gray-500">Sent</p>
-                <p className="mt-1 text-2xl font-bold text-emerald-700">
+                <p className="mt-0.5 text-xl font-bold text-emerald-700">
                   {stats?.sent ?? 0}
                 </p>
               </CardContent>
             </Card>
             <Card>
-              <CardContent className="p-4">
+              <CardContent className="px-4 py-3">
                 <p className="text-xs font-medium text-gray-500">Queued</p>
-                <p className="mt-1 text-2xl font-bold text-amber-700">
+                <p className="mt-0.5 text-xl font-bold text-amber-700">
                   {(stats?.queued ?? 0) + (stats?.processing ?? 0)}
                 </p>
               </CardContent>
             </Card>
             <Card>
-              <CardContent className="p-4">
+              <CardContent className="px-4 py-3">
                 <p className="text-xs font-medium text-gray-500">Failed</p>
-                <p className="mt-1 text-2xl font-bold text-red-700">
+                <p className="mt-0.5 text-xl font-bold text-red-700">
                   {stats?.failed ?? 0}
                 </p>
               </CardContent>
             </Card>
             <Card className="col-span-2 sm:col-span-1">
-              <CardContent className="p-4">
+              <CardContent className="px-4 py-3">
                 <p className="text-xs font-medium text-gray-500">
                   Delivery Rate
                 </p>
-                <p className="mt-1 text-2xl font-bold text-gray-900">
+                <p className="mt-0.5 text-xl font-bold text-gray-900">
                   {stats?.deliveryRate ?? 100}%
                 </p>
               </CardContent>
@@ -606,15 +605,21 @@ export default function AdminEmailManagerPage() {
                       setLogPage(1);
                     }}
                   >
-                    <SelectTrigger className="h-9 w-[150px] text-sm">
-                      <SelectValue placeholder="Status" />
+                    <SelectTrigger className="h-9 w-[160px] text-sm">
+                      <span className="truncate text-left">
+                        {STATUS_OPTIONS.find((o) => o.value === logStatus)
+                          ?.label ?? "All Statuses"}
+                      </span>
                     </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="ALL">All Statuses</SelectItem>
-                      <SelectItem value="SENT">Sent</SelectItem>
-                      <SelectItem value="QUEUED">Queued</SelectItem>
-                      <SelectItem value="PROCESSING">Processing</SelectItem>
-                      <SelectItem value="FAILED">Failed</SelectItem>
+                    <SelectContent
+                      alignItemWithTrigger={false}
+                      className="w-(--anchor-width)"
+                    >
+                      {STATUS_OPTIONS.map((opt) => (
+                        <SelectItem key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                   <Select
@@ -624,10 +629,16 @@ export default function AdminEmailManagerPage() {
                       setLogPage(1);
                     }}
                   >
-                    <SelectTrigger className="h-9 w-[210px] text-sm">
-                      <SelectValue placeholder="Category" />
+                    <SelectTrigger className="h-9 w-[230px] text-sm">
+                      <span className="truncate text-left">
+                        {CATEGORY_OPTIONS.find((o) => o.value === logCategory)
+                          ?.label ?? "All Categories"}
+                      </span>
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent
+                      alignItemWithTrigger={false}
+                      className="w-(--anchor-width)"
+                    >
                       {CATEGORY_OPTIONS.map((opt) => (
                         <SelectItem key={opt.value} value={opt.value}>
                           {opt.label}
@@ -1404,10 +1415,18 @@ export default function AdminEmailManagerPage() {
                 value={testTemplateKey}
                 onValueChange={(val) => setTestTemplateKey(val ?? "NONE")}
               >
-                <SelectTrigger className="h-9 text-sm">
-                  <SelectValue placeholder="Connectivity Test (Default)" />
+                <SelectTrigger className="h-10 w-full text-sm">
+                  <span className="truncate text-left">
+                    {testTemplateKey === "NONE"
+                      ? "Connectivity Test (Default)"
+                      : (templates.find((t) => t.templateKey === testTemplateKey)
+                          ?.name ?? "Connectivity Test (Default)")}
+                  </span>
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent
+                  alignItemWithTrigger={false}
+                  className="max-h-64 w-(--anchor-width) overflow-y-auto"
+                >
                   <SelectItem value="NONE">
                     Connectivity Test (Default)
                   </SelectItem>
