@@ -2,7 +2,6 @@ import { MemoRepository } from "../repositories/memo.repository";
 import { NotificationRepository } from "../repositories/notification.repository";
 import { MemoAudience, NotificationType } from "@prisma/client";
 import prisma from "../config/database";
-import { EmailService } from "./email.service";
 
 export class MemoService {
     private memoRepo = new MemoRepository();
@@ -78,7 +77,7 @@ export class MemoService {
         }
 
         if (targetUsers.length > 0) {
-            // Create In-App Notifications
+            // Memos stay strictly in-app (Memos + Notifications) to prevent mass email spam.
             const notifs = targetUsers.map(user => ({
                 userId: user.id,
                 title: "New Announcement",
@@ -88,16 +87,6 @@ export class MemoService {
                 relatedRecordId: memo.id,
             }));
             await this.notifRepo.createMany(notifs);
-
-            // Trigger Email Broadcast via BullMQ Job Queue
-            const emails = targetUsers.map(user => user.email);
-
-            await EmailService.sendBatch(emails, "memo_broadcast", {
-                student_name: "Student",
-                memo_title: title,
-                memo_content: content,
-                portal_link: process.env.FRONTEND_URL || "http://localhost:3000"
-            });
         }
 
         return memo;

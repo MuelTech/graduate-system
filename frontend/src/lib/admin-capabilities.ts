@@ -301,7 +301,7 @@ export function getRequiredCapabilityForAdminPath(
   if (pathname.startsWith("/admin/analytics")) {
     return ADMIN_CAPABILITIES.SYSTEM_ANALYTICS;
   }
-  if (pathname.startsWith("/admin/settings")) {
+  if (pathname.startsWith("/admin/settings") || pathname.startsWith("/admin/emails")) {
     return ADMIN_CAPABILITIES.SYSTEM_SETTINGS;
   }
   if (pathname.startsWith("/admin/memos")) {

@@ -33,7 +33,6 @@ import { ReadyDefenseSubmission } from "@/components/admin/defense-scheduling/re
 import { DefenseCommitteeBuilder } from "@/components/admin/defense-scheduling/defense-committee-builder";
 import { DefenseScheduleForm } from "@/components/admin/defense-scheduling/defense-schedule-form";
 import { DefenseReviewSummary } from "@/components/admin/defense-scheduling/defense-review-summary";
-import { EmailPreviewDialog } from "@/components/admin/defense-scheduling/email-preview-dialog";
 import { ScheduledDefenseDetail } from "@/components/admin/defense-scheduling/scheduled-defense-detail";
 import {
   computeCommitteeReadiness,
@@ -98,7 +97,6 @@ function AdminSchedulingPageInner() {
   const [programId, setProgramId] = useState("ALL");
   const [committee, setCommittee] = useState<CommitteeMember[]>([]);
   const [schedule, setSchedule] = useState<ScheduleFormState>(EMPTY_SCHEDULE);
-  const [showEmailPreview, setShowEmailPreview] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [missingItems, setMissingItems] = useState<MissingRequirement[]>([]);
   const [feedback, setFeedback] = useState<{
@@ -555,7 +553,6 @@ function AdminSchedulingPageInner() {
                         schedule={schedule}
                         isValid={isValid}
                         isSubmitting={scheduleMutation.isPending}
-                        onPreviewEmail={() => setShowEmailPreview(true)}
                         onSubmit={() => setShowConfirm(true)}
                       />
                     </div>
@@ -587,17 +584,6 @@ function AdminSchedulingPageInner() {
           )}
         </div>
       </div>
-
-      {selected && activeTab === "READY" && (
-        <EmailPreviewDialog
-          open={showEmailPreview}
-          onOpenChange={setShowEmailPreview}
-          application={selected}
-          committee={committee}
-          adviser={adviser}
-          schedule={schedule}
-        />
-      )}
 
       {/* Confirmation — scheduling is a consequential mutation. */}
       <Dialog open={showConfirm} onOpenChange={setShowConfirm}>

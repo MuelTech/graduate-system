@@ -40,7 +40,6 @@ import {
   GraduationCap,
   Shield,
   FileText,
-  Mail,
   Lock,
   Search,
   Trash2,
@@ -50,14 +49,6 @@ import {
   X,
   ListChecks,
 } from "lucide-react";
-
-type EmailTemplateItem = {
-  key: string;
-  subject: string;
-  bodyHtml: string;
-  description?: string;
-  variables?: string;
-};
 
 type OfficialRoleKey = "dean" | "vpaa" | "president";
 
@@ -123,7 +114,6 @@ export default function AdminSettingsPage() {
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState("academic_year");
   const [showSaveConfirm, setShowSaveConfirm] = useState(false);
-  const [editingTemplate, setEditingTemplate] = useState<EmailTemplateItem | null>(null);
 
   const [academicYear, setAcademicYear] = useState("2025-2026");
   const [semester, setSemester] = useState("second");
@@ -171,7 +161,6 @@ export default function AdminSettingsPage() {
     { id: "programs", label: "Programs", icon: BookOpen },
     { id: "curricula", label: "Curricula", icon: ListChecks },
     { id: "chatbot", label: "AI Chatbot FAQ", icon: GraduationCap },
-    { id: "email", label: "Email Templates", icon: Mail },
     { id: "strike", label: "STRIKE Settings", icon: Shield },
     { id: "academic_year", label: "Academic Year", icon: Calendar },
     { id: "officials", label: "Institutional Officials", icon: Award },
@@ -244,15 +233,6 @@ export default function AdminSettingsPage() {
     onError: (error: Error) => {
       toast.error(error.message);
     },
-  });
-
-  // Fetch Email Templates
-  const { data: emailTemplates = [] } = useQuery({
-    queryKey: ["emailTemplates"],
-    queryFn: async () => {
-      return await apiClientRequest("/settings/email-templates");
-    },
-    enabled: activeTab === "email",
   });
 
   // Fetch Institutional Officials
@@ -424,24 +404,6 @@ export default function AdminSettingsPage() {
       }, 0);
     }
   }, [settingsData]);
-
-  // Save Email Template Mutation
-  const emailMutation = useMutation({
-    mutationFn: async (payload: { key: string; subject: string; bodyHtml: string }) => {
-      await apiClientRequest(`/settings/email-templates/${payload.key}`, {
-        method: "PUT",
-        body: JSON.stringify({ subject: payload.subject, bodyHtml: payload.bodyHtml }),
-      });
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["emailTemplates"] });
-      toast.success("Email template saved successfully.");
-      setEditingTemplate(null);
-    },
-    onError: (error: Error) => {
-      toast.error(error.message || "Failed to save email template.");
-    }
-  });
 
   // 3. Save Mutation
   const saveMutation = useMutation({
@@ -709,78 +671,6 @@ export default function AdminSettingsPage() {
                 Save Academic Year Settings
               </Button>
             </div>
-          )}
-
-          {/* Email Templates Tab */}
-          {activeTab === "email" && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg font-bold text-(--earist-primary)">Email Templates</CardTitle>
-                <p className="text-sm text-(--earist-body-text)">Customize the automated emails sent by the system.</p>
-              </CardHeader>
-              <CardContent>
-                {editingTemplate ? (
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <h4 className="font-semibold text-(--earist-primary)">Editing: {editingTemplate.key}</h4>
-                      <Button variant="outline" size="sm" onClick={() => setEditingTemplate(null)}>Cancel</Button>
-                    </div>
-                    <div>
-                      <label className="mb-1 block text-xs font-medium text-(--earist-secondary)">Subject</label>
-                      <input 
-                        type="text" 
-                        value={editingTemplate.subject} 
-                        onChange={(e) => setEditingTemplate({...editingTemplate, subject: e.target.value})}
-                        className="w-full rounded-lg border border-(--earist-border-gray) px-3 py-2 text-sm focus:border-(--earist-primary) focus:outline-none"
-                      />
-                    </div>
-                    <div>
-                      <label className="mb-1 block text-xs font-medium text-(--earist-secondary)">Email Body (HTML)</label>
-                      <textarea 
-                        rows={10}
-                        value={editingTemplate.bodyHtml} 
-                        onChange={(e) => setEditingTemplate({...editingTemplate, bodyHtml: e.target.value})}
-                        className="w-full rounded-lg border border-(--earist-border-gray) px-3 py-2 text-sm font-mono focus:border-(--earist-primary) focus:outline-none"
-                      />
-                    </div>
-                    {editingTemplate.variables && (
-                      <div className="rounded-lg bg-blue-50 p-3 text-xs text-blue-800">
-                        <strong>Available Variables:</strong> {JSON.parse(editingTemplate.variables).join(", ")}
-                      </div>
-                    )}
-                    <Button 
-                      className="w-full bg-(--earist-primary) text-white hover:bg-(--earist-primary)/90"
-                      onClick={() => emailMutation.mutate({ 
-                        key: editingTemplate.key, 
-                        subject: editingTemplate.subject, 
-                        bodyHtml: editingTemplate.bodyHtml 
-                      })}
-                      disabled={emailMutation.isPending}
-                    >
-                      {emailMutation.isPending ? "Saving..." : <><Save className="mr-2 h-4 w-4" /> Save Template</>}
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {emailTemplates.length === 0 ? (
-                      <div className="py-8 text-center text-sm text-(--earist-body-text)">No email templates found.</div>
-                    ) : (
-                      emailTemplates.map((template: EmailTemplateItem) => (
-                        <div key={template.key} className="flex items-center justify-between rounded-lg border border-(--earist-border-gray) p-4 hover:border-(--earist-primary)/50">
-                          <div>
-                            <p className="font-semibold text-(--earist-primary)">{template.key}</p>
-                            <p className="text-xs text-(--earist-body-text)">{template.description}</p>
-                          </div>
-                          <Button variant="outline" size="sm" onClick={() => setEditingTemplate(template)}>
-                            Edit
-                          </Button>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
           )}
 
           {/* Institutional Officials Tab */}
@@ -1566,7 +1456,6 @@ export default function AdminSettingsPage() {
             activeTab !== "curricula" &&
             activeTab !== "academic_year" &&
             activeTab !== "audit" &&
-            activeTab !== "email" &&
             activeTab !== "officials" && (
             <Card>
               <CardContent className="py-12">

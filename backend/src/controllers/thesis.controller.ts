@@ -730,30 +730,14 @@ export class ThesisController {
       if (!schedule) {
         throw new AppError("Defense schedule could not be created.", 500);
       }
-      const studentUser = schedule.thesis?.student?.user ?? null;
-      if (studentUser?.email) {
-        await import("../services/email.service").then(module => {
-          module.EmailService.sendTemplateEmail(
-            studentUser.email,
-            "defense_schedule",
-            {
-              student_name: `${studentUser.firstName} ${studentUser.lastName}`,
-              defense_date: schedule.defenseDate.toLocaleDateString("en-PH", {
-                timeZone: "UTC",
-                year: "numeric",
-                month: "short",
-                day: "numeric",
-              }),
-              defense_time: schedule.defenseTime.toLocaleTimeString("en-PH", {
-                timeZone: "UTC",
-                hour: "numeric",
-                minute: "2-digit",
-              }),
-              venue: schedule.venueOrLink?.trim() || "To be announced",
-            }
-          ).catch(err => console.error("Failed to queue email:", err));
-        });
-      }
+
+      const { EmailLifecycle } = await import("../services/email-lifecycle.helper");
+      EmailLifecycle.sendDefenseScheduleAndPanelEmails({
+        scheduleId: schedule.id,
+        isCorrection: false,
+        triggeredById: req.user.userId,
+        scheduleSnapshot: schedule,
+      });
 
       res.status(201).json({ message: "Defense scheduled.", result: schedule });
     } catch (error: any) {
@@ -1332,20 +1316,7 @@ export class ThesisController {
     try {
       const rapId = req.params.rapId as string;
       const missingSignatures = await this.thesisService.getMissingSignaturesForRap(rapId);
-      
-      for (const sig of missingSignatures) {
-        await import("../services/email.service").then(module => {
-          module.EmailService.sendTemplateEmail(
-            sig.user.email,
-            "rap_distributed",
-            {
-              panelist_name: `${sig.user.firstName} ${sig.user.lastName}`,
-              rap_link: `${process.env.FRONTEND_URL || "http://localhost:3000"}/panelist/rap-reports`
-            }
-          ).catch(err => console.error("Failed to queue email:", err));
-        });
-      }
-
+      // Committee report e-signature reminders stay in-app inside Defense Workspace (no email dispatch).
       res.status(200).json({ success: true, remindedCount: missingSignatures.length });
     } catch (error: any) {
       res.status(400).json({ error: error.message });

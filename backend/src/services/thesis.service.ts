@@ -23,6 +23,7 @@ import type {
   CommitteeAssignmentInput,
 } from '../interfaces/defense-committee.interfaces';
 import { AppError } from '../utils/AppError';
+import { EmailLifecycle } from './email-lifecycle.helper';
 import {
   canCreateDefenseSchedule,
   hasActiveCurrentStageSchedule,
@@ -270,12 +271,22 @@ export class ThesisService {
         409,
       );
     }
-    return this.thesisRepo.rejectApplication({
+    const rejected = await this.thesisRepo.rejectApplication({
       thesisId,
       actorId,
       reason: reason.trim(),
       stage: thesis.stage as 'TITLE' | 'PROPOSAL' | 'FINAL',
     });
+
+    EmailLifecycle.sendDefenseApplicationReviewedByThesisId({
+      thesisId,
+      stage: thesis.stage,
+      approved: false,
+      remarks: reason.trim(),
+      triggeredById: actorId ?? undefined,
+    });
+
+    return rejected;
   }
 
   /**
@@ -673,11 +684,20 @@ export class ThesisService {
     }
 
     if (status === 'APPROVED') {
-      return this.thesisRepo.approveApplication({
+      const approved = await this.thesisRepo.approveApplication({
         thesisId,
         actorId: actorId ?? null,
         stage: thesis.stage as 'TITLE' | 'PROPOSAL' | 'FINAL',
       });
+
+      EmailLifecycle.sendDefenseApplicationReviewedByThesisId({
+        thesisId,
+        stage: thesis.stage,
+        approved: true,
+        triggeredById: actorId ?? undefined,
+      });
+
+      return approved;
     }
 
     return this.thesisRepo.updateThesisStatus(
@@ -905,11 +925,20 @@ export class ThesisService {
     );
 
     try {
-      return await this.thesisRepo.concludeDefense(scheduleId, userId, {
+      const concluded = await this.thesisRepo.concludeDefense(scheduleId, userId, {
         outcome,
         selectedTitleId: options?.selectedTitleId ?? null,
         finalRemarks: options?.finalRemarks ?? null,
       });
+
+      EmailLifecycle.sendDefenseConcludedByScheduleId({
+        scheduleId,
+        outcome,
+        remarks: options?.finalRemarks ?? null,
+        triggeredById: userId,
+      });
+
+      return concluded;
     } catch (error: unknown) {
       // CP7-FIX1 Issue 11: unique race → 409, never expose raw Prisma errors.
       const code = (error as { code?: string })?.code;

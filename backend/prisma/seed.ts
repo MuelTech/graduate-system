@@ -1043,114 +1043,39 @@ async function main() {
     }
   }
 
-  // ── 7. Clean Email Templates (Pre-exam Waiver/Alignment templates removed) ─
+  // ── 7. Clean Email Templates (22 canonical transactional templates across 4 cycles) ─
   console.log("Seeding Email Templates...");
+  const {
+    EMAIL_TEMPLATE_REGISTRY,
+    RETIRED_EMAIL_TEMPLATE_KEYS,
+  } = await import("../src/config/email-templates.registry");
+
   await prisma.emailTemplate.deleteMany({
     where: {
       templateKey: {
-        in: [
-          "bridging_waiver_validated",
-          "bridging_waiver_rejected",
-          "alignment_aligned",
-          "alignment_misaligned",
-        ],
+        in: [...RETIRED_EMAIL_TEMPLATE_KEYS],
       },
     },
   });
 
-  const emailTemplates = [
-    {
-      templateKey: "ecat_result_pass",
-      subject: "Entrance Examination Result: PASSED",
-      bodyHtml:
-        "<p>Dear {{student_name}},</p><p>Congratulations! You passed the Graduate School Entrance Examination. Login to your portal to upload your COR: {{portal_link}}</p>",
-    },
-    {
-      templateKey: "ecat_result_fail",
-      subject: "Entrance Examination Result: FAILED",
-      bodyHtml:
-        "<p>Dear {{student_name}},</p><p>We regret to inform you that you did not meet the passing score in the Entrance Examination. Login to your portal: {{portal_link}}</p>",
-    },
-    {
-      templateKey: "credential_dispatch",
-      subject: "COR Verified: Your Student Account",
-      bodyHtml:
-        "<p>Dear {{student_name}},</p><p>Your Certificate of Registration (COR) has been verified and your account is now a Student account.</p><p>Your Student Number is: <strong>{{student_number}}</strong></p><p>Sign in through the Student portal using your Student Number and your existing account password.</p><p>If you have forgotten your password, use the \"Forgot your password?\" option on the login page.</p><p>Portal: {{portal_link}}</p>",
-    },
-    {
-      templateKey: "defense_schedule",
-      subject: "Defense Schedule",
-      bodyHtml:
-        "<p>Dear {{student_name}},</p><p>Your defense is scheduled on {{defense_date}} at {{defense_time}} in {{venue}}.</p>",
-    },
-    {
-      templateKey: "cor_verified",
-      subject: "COR Verified",
-      bodyHtml:
-        "<p>Dear {{student_name}},</p><p>Your Certificate of Registration has been verified. Login to your portal: {{portal_link}}</p>",
-    },
-    {
-      templateKey: "memo_broadcast",
-      subject: "{{memo_title}}",
-      bodyHtml:
-        "<p>Dear {{student_name}},</p><div>{{memo_content}}</div><p>Login to your portal: {{portal_link}}</p>",
-    },
-    {
-      templateKey: "residency_warning",
-      subject: "Residency Warning",
-      bodyHtml:
-        "<p>Dear {{student_name}},</p><p>This is a warning regarding your residency: {{warning_details}}.</p><p>Login to your portal: {{portal_link}}</p>",
-    },
-    {
-      templateKey: "exam_reminder_24h",
-      subject: "Reminder: Entrance Examination Tomorrow",
-      bodyHtml:
-        "<p>Dear {{student_name}},</p><p>This is a 24-hour reminder for your scheduled exam on {{exam_date}}. Login to your portal: {{portal_link}}</p>",
-    },
-    {
-      templateKey: "rap_distributed",
-      subject: "RAP Report E-signature Requested",
-      bodyHtml:
-        "<p>Dear {{panelist_name}},</p><p>Please review and e-sign the RAP Report here: {{rap_link}}</p>",
-    },
-    {
-      templateKey: "rap_finalized",
-      subject: "RAP Report Finalized",
-      bodyHtml:
-        "<p>Dear {{student_name}},</p><p>Your RAP Report has been finalized by all panelists. View it here: {{rap_link}}</p>",
-    },
-    {
-      templateKey: "strike_result",
-      subject: "Plagiarism Strike Result",
-      bodyHtml:
-        "<p>Dear {{student_name}},</p><p>Your submission received a similarity percentage of {{similarity_percentage}}%.</p><div>Instructions: {{instructions}}</div>",
-    },
-    {
-      templateKey: "adviser_assigned",
-      subject: "Adviser Assigned",
-      bodyHtml:
-        "<p>Dear {{student_name}},</p><p>Your assigned adviser is {{adviser_name}}. Login to your portal: {{portal_link}}</p>",
-    },
-    {
-      templateKey: "comp_exam_recorded",
-      subject: "Comprehensive Exam Result Recorded",
-      bodyHtml:
-        "<p>Dear {{student_name}},</p><p>Your comprehensive exam result ({{result}}) has been recorded. Login to your portal: {{portal_link}}</p>",
-    },
-  ];
-
-  for (const tpl of emailTemplates) {
+  for (const tpl of EMAIL_TEMPLATE_REGISTRY) {
     await prisma.emailTemplate.upsert({
       where: { templateKey: tpl.templateKey },
-      update: { subject: tpl.subject, bodyHtml: tpl.bodyHtml },
+      update: {
+        subject: tpl.defaultSubject,
+        bodyHtml: tpl.defaultBodyHtml,
+        variablesDescription: tpl.variablesDescription,
+      },
       create: {
         templateKey: tpl.templateKey,
-        subject: tpl.subject,
-        bodyHtml: tpl.bodyHtml,
+        subject: tpl.defaultSubject,
+        bodyHtml: tpl.defaultBodyHtml,
+        variablesDescription: tpl.variablesDescription,
+        isActive: true,
       },
     });
   }
-  console.log(`Ensured ${emailTemplates.length} clean Email Templates.`);
+  console.log(`Ensured ${EMAIL_TEMPLATE_REGISTRY.length} canonical Email Templates.`);
 
   // ── 8. Defense Lobby Fixtures (student@earist.edu.ph + Doctoral Scheduled) ─
   console.log("Seeding defense lobby & upcoming schedule fixtures...");
