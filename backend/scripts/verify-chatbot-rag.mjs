@@ -667,6 +667,56 @@ for (const tc of BENCHMARK_CASES) {
   }
 }
 
+// Verify 16-program canonical count (4 Doctoral + 12 Master's)
+const totalProgRes = rag.retrieveKnowledgeChunks(
+  "What is the total of programs they offering?",
+  "public",
+  4,
+);
+const totalProgReply = rag.buildGroundedResponseFallback(totalProgRes, "public").reply;
+if (
+  totalProgRes.hits[0]?.chunk.id !== "programs-all-overview" ||
+  !totalProgReply.includes("16 graduate programs") ||
+  !totalProgReply.includes("4 Doctoral Programs") ||
+  !totalProgReply.includes("12 Master's Programs")
+) {
+  console.error("FAIL: 16-program count check failed:", totalProgReply);
+  process.exit(1);
+}
+
+// Verify strict RBAC cross-role isolation across all 5 roles
+const rbacBlockedCases = [
+  { role: "public", query: "What navigation for admin portal?", history: [] },
+  {
+    role: "public",
+    query: "How about faculty?",
+    history: ["What navigation for admin portal?"],
+  },
+  { role: "public", query: "What pages are inside the student portal?", history: [] },
+  { role: "public", query: "How do faculty use the Defense Workspace?", history: [] },
+  { role: "applicant", query: "What navigation for admin portal?", history: [] },
+  { role: "applicant", query: "Saan mag-grade ng essays ang faculty?", history: [] },
+  { role: "applicant", query: "What pages are in the student dashboard?", history: [] },
+  { role: "student", query: "Paano gamitin ang Admin Email Manager?", history: [] },
+  { role: "student", query: "How do faculty annotate PDFs in Defense Workspace?", history: [] },
+  { role: "faculty", query: "What is inside Admin System Settings?", history: [] },
+];
+
+for (const rc of rbacBlockedCases) {
+  const res = rag.retrieveKnowledgeChunks(rc.query, rc.role, 4, undefined, rc.history);
+  if (!res.isRoleRestricted || res.hits.length > 0) {
+    console.error("FAIL: RBAC failed to block cross-role query:", rc, res);
+    process.exit(1);
+  }
+}
+
+// Admin retains full access to admin portal guidance
+const adminOk = rag.retrieveKnowledgeChunks("What navigation for admin portal?", "admin", 4);
+if (adminOk.isRoleRestricted || adminOk.hits.length === 0) {
+  console.error("FAIL: Admin was erroneously blocked from admin portal guidance");
+  process.exit(1);
+}
+
 // Verify DeepSeek + multi-vendor identity detection
 for (const probe of [
   "Are you DeepSeek?",

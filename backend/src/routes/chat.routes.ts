@@ -121,25 +121,31 @@ router.post(
         pathname,
       );
 
-      // Retrieve top-4 knowledge chunks for the current query
+      const recentUserMessages = history
+        .filter((turn) => turn.role === "user")
+        .map((turn) => turn.content);
+
+      // Retrieve top-4 knowledge chunks for the current query (hard-filtered by activeRole)
       let retrieval = retrieveKnowledgeChunks(
         message,
         activeRole,
         4,
         userContext,
+        recentUserMessages,
       );
 
-      // Enrich brief conversational follow-ups (e.g., "How about Doctoral?") with the last user turn
+      // Enrich brief conversational follow-ups (e.g., "How about Doctoral?", "not 16?") with the last user turn
       const wordCount = message.split(/\s+/).filter(Boolean).length;
       const isShortFollowUp =
         wordCount <= 6 &&
-        /\b(how about|what about|eh yung|eh sa|paano naman|how long|magkano|ilan|doctoral|masters)\b/i.test(
+        /\b(how about|what about|eh yung|eh sa|paano naman|how long|magkano|ilan|doctoral|masters|not\s+\d+|\d+\??|total)\b/i.test(
           message,
         );
       if (
         !retrieval.isGreeting &&
         !retrieval.isConversational &&
         !retrieval.isIdentityQuery &&
+        !retrieval.isRoleRestricted &&
         retrieval.isOutOfScope &&
         isShortFollowUp
       ) {
@@ -152,8 +158,12 @@ router.post(
             activeRole,
             4,
             userContext,
+            recentUserMessages,
           );
-          if (!combinedRetrieval.isOutOfScope) {
+          if (
+            !combinedRetrieval.isOutOfScope &&
+            !combinedRetrieval.isRoleRestricted
+          ) {
             retrieval = {
               ...combinedRetrieval,
               query: message,
@@ -165,12 +175,14 @@ router.post(
 
       const { apiKey } = getDeepSeekConfig();
 
-      // Only identity guardrail, explicit off-topic queries, or missing API key short-circuit before DeepSeek.
-      // Greetings, conversational messages (thanks/ok/wait), pre-question openers, and factual queries
-      // are sent to DeepSeek with top-4 chunks, recent history, and server-derived live state.
+      // Identity guardrail, RBAC role-restricted portal queries, explicit off-topic queries,
+      // or missing API key short-circuit BEFORE calling DeepSeek.
+      // Greetings, conversational messages (thanks/ok/wait), pre-question openers, and allowed factual queries
+      // are sent to DeepSeek with top-4 role-filtered chunks, recent history, and server-derived live state.
       if (
         !apiKey ||
         retrieval.isIdentityQuery ||
+        retrieval.isRoleRestricted ||
         retrieval.isExplicitOutOfScope
       ) {
         const fallback = buildGroundedResponseFallback(

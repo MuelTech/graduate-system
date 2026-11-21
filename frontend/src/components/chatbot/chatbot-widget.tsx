@@ -178,7 +178,9 @@ export function ChatbotWidget() {
       const headers: Record<string, string> = {
         "Content-Type": "application/json",
       };
-      if (session?.user?.accessToken) {
+      // Only attach the authenticated session token on authenticated portal routes;
+      // public pages strictly operate under unauthenticated public RBAC scope.
+      if (portalRole !== "public" && session?.user?.accessToken) {
         headers.Authorization = `Bearer ${session.user.accessToken}`;
       }
 

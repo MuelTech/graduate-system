@@ -115,8 +115,8 @@
       "Anong graduate programs ang meron sa EARIST Cavite Campus?",
       "May Graduate School ba sa EARIST Cavite?"
     ],
-    "answerEn": "EARIST Cavite Campus (formerly EARIST-GASAT) was established on March 24, 1982 under Dr. Rodrigo Hipol and transferred to its 31,282-sqm NHA site in Gen. Mariano Alvarez, Cavite in 1986. At the Cavite Campus, three graduate programs are offered: Doctor of Education major in Educational Management (Ed.D-EM), Master of Arts in Education major in Administration and Supervision (MAEd), and Master in Business Administration (MBA). Meanwhile, the main EARIST Manila Graduate School offers all 4 Doctoral programs (Ed.D-EM, Ph.D-IP, DPA, DBA) and 7 Master's programs (MAEd, MAIE, MBA, MPA, MAT, MAIP, MSM).",
-    "answerTl": "Itinatag ang EARIST Cavite Campus (dating EARIST-GASAT) noong March 24, 1982 sa GMA, Cavite at nalipat sa 31,282-sqm NHA site noong 1986. Nag-o-offer ang Cavite Campus ng tatlong graduate programs: Doctor of Education major in Educational Management (Ed.D-EM), Master of Arts in Education major in Administration and Supervision (MAEd), at Master in Business Administration (MBA). Sa main EARIST Manila campus naman ino-offer ang lahat ng 4 Doctoral programs (Ed.D-EM, Ph.D-IP, DPA, DBA) at 7 Master's programs (MAEd, MAIE, MBA, MPA, MAT, MAIP, MSM).",
+    "answerEn": "EARIST Cavite Campus (formerly EARIST-GASAT) was established on March 24, 1982 under Dr. Rodrigo Hipol and transferred to its 31,282-sqm NHA site in Gen. Mariano Alvarez, Cavite in 1986. At the Cavite Campus, three graduate programs are offered: Doctor of Education major in Educational Management (Ed.D.-EM), Master of Arts in Education major in Administration and Supervision (MAEd), and Master in Business Administration (MBA). Meanwhile, the main EARIST Manila Graduate School offers all 16 graduate programs: 4 Doctoral programs (Ed.D.-EM, PhD-IP, DPA, DBA) and 12 Master's programs (3 MAEd majors, MAIE-HRM, MBA, MPA, 4 MAT majors, MAIP, and MSM).",
+    "answerTl": "Itinatag ang EARIST Cavite Campus (dating EARIST-GASAT) noong March 24, 1982 sa GMA, Cavite at nalipat sa 31,282-sqm NHA site noong 1986. Nag-o-offer ang Cavite Campus ng tatlong graduate programs: Doctor of Education major in Educational Management (Ed.D.-EM), Master of Arts in Education major in Administration and Supervision (MAEd), at Master in Business Administration (MBA). Sa main EARIST Manila campus naman ino-offer ang lahat ng 16 na graduate programs: 4 Doctoral programs (Ed.D.-EM, PhD-IP, DPA, DBA) at 12 Master's programs (3 MAEd majors, MAIE-HRM, MBA, MPA, 4 MAT majors, MAIP, at MSM).",
     "relatedRoutes": [
       {
         "label": "Graduate Programs",
@@ -283,7 +283,7 @@
     "id": "programs-all-overview",
     "category": "Curricular Programs",
     "section": "Manual Sec. 5.0 (5.1 & 5.2) — Complete Doctoral and Master's Program Offerings",
-    "title": "Complete List of Graduate Programs Offered by EARIST (Doctoral & Master's)",
+    "title": "Complete List of All 16 Graduate Programs Offered by EARIST (4 Doctoral & 12 Master's)",
     "roles": [
       "public",
       "applicant",
@@ -305,16 +305,26 @@
       "anong programs",
       "mga kurso",
       "masteral",
-      "doctorate"
+      "doctorate",
+      "16",
+      "16 programs",
+      "total programs",
+      "total of programs",
+      "how many programs",
+      "ilan ang programs",
+      "ilang programs",
+      "12 masters",
+      "4 doctoral"
     ],
     "commonInquiries": [
       "What graduate programs are offered by EARIST?",
-      "What degree programs does the EARIST Graduate School offer?",
-      "List all Master's and Doctoral programs at EARIST.",
-      "Ano-anong graduate programs o courses ang ino-offer sa EARIST?"
+      "What is the total number of graduate programs offered by EARIST?",
+      "How many Master's and Doctoral programs does EARIST Graduate School offer?",
+      "List all 16 Master's and Doctoral programs at EARIST.",
+      "Ilan at ano-anong graduate programs ang ino-offer sa EARIST?"
     ],
-    "answerEn": "EARIST Graduate School offers 4 Doctoral Programs (PQF Level 8, Professional Track) and 7 Master's Programs (PQF Level 7, Academic Track):\n\nDoctoral Programs:\n1. Doctor of Education major in Educational Management (Ed.D-EM)\n2. Doctor of Philosophy in Industrial Psychology (Ph.D-IP)\n3. Doctor of Public Administration (DPA)\n4. Doctor of Business Administration (DBA)\n\nMaster's Programs:\n1. Master of Arts in Education (MAEd) — Majors in Administration & Supervision, Guidance & Counseling, and Special Education\n2. Master of Arts in Industrial Education (MAIE) — Major in Hotel, Restaurant and Management\n3. Master in Business Administration (MBA)\n4. Master in Public Administration (MPA)\n5. Master of Arts in Teaching (MAT) — Majors in Science, Mathematics, Electronics Technology, and Electrical Technology\n6. Master of Arts in Industrial Psychology (MAIP)\n7. Master of Science in Mathematics (MSM)\n\nEARIST Cavite Campus specifically offers Ed.D-EM, MAEd (Administration & Supervision), and MBA.",
-    "answerTl": "Nag-o-offer ang EARIST Graduate School ng 4 na Doctoral Programs (PQF Level 8) at 7 Master's Programs (PQF Level 7):\n\nDoctoral Programs:\n1. Doctor of Education major in Educational Management (Ed.D-EM)\n2. Doctor of Philosophy in Industrial Psychology (Ph.D-IP)\n3. Doctor of Public Administration (DPA)\n4. Doctor of Business Administration (DBA)\n\nMaster's Programs:\n1. Master of Arts in Education (MAEd) — Majors sa Administration & Supervision, Guidance & Counseling, at Special Education\n2. Master of Arts in Industrial Education (MAIE) — Major sa Hotel, Restaurant and Management\n3. Master in Business Administration (MBA)\n4. Master in Public Administration (MPA)\n5. Master of Arts in Teaching (MAT) — Majors sa Science, Mathematics, Electronics Technology, at Electrical Technology\n6. Master of Arts in Industrial Psychology (MAIP)\n7. Master of Science in Mathematics (MSM)\n\nSa EARIST Cavite Campus naman ay ino-offer ang Ed.D-EM, MAEd (Administration & Supervision), at MBA.",
+    "answerEn": "EARIST Graduate School offers 16 graduate programs in total: 4 Doctoral Programs (PQF Level 8, Professional Track) and 12 Master's Programs (PQF Level 7, Academic Track, spanning 7 Master's degree titles).\n\nDoctoral Programs (4):\n1. Doctor of Education major in Educational Management (Ed.D.-EM)\n2. Doctor of Philosophy in Industrial Psychology (PhD-IP)\n3. Doctor of Public Administration (DPA)\n4. Doctor of Business Administration (DBA)\n\nMaster's Programs (12):\n1. Master of Arts in Education major in Administration and Supervision (MAEd)\n2. Master of Arts in Education major in Guidance and Counseling (MAEd)\n3. Master of Arts in Education major in Special Education (MAEd)\n4. Master of Arts in Industrial Education major in Hotel, Restaurant and Management (MAIE)\n5. Master in Business Administration (MBA)\n6. Master in Public Administration (MPA)\n7. Master of Arts in Teaching major in Science (MAT)\n8. Master of Arts in Teaching major in Mathematics (MAT)\n9. Master of Arts in Teaching major in Electronics Technology (MAT)\n10. Master of Arts in Teaching major in Electrical Technology (MAT)\n11. Master of Arts in Industrial Psychology (MAIP)\n12. Master of Science in Mathematics (MSM)\n\nEARIST Cavite Campus specifically offers 3 of these programs: Ed.D.-EM, MAEd major in Administration and Supervision, and MBA.",
+    "answerTl": "May kabuuang 16 na graduate programs ang ino-offer ng EARIST Graduate School: 4 na Doctoral Programs (PQF Level 8, Professional Track) at 12 na Master's Programs (PQF Level 7, Academic Track, sa ilalim ng 7 Master's degree titles).\n\nDoctoral Programs (4):\n1. Doctor of Education major in Educational Management (Ed.D.-EM)\n2. Doctor of Philosophy in Industrial Psychology (PhD-IP)\n3. Doctor of Public Administration (DPA)\n4. Doctor of Business Administration (DBA)\n\nMaster's Programs (12):\n1. Master of Arts in Education major in Administration and Supervision (MAEd)\n2. Master of Arts in Education major in Guidance and Counseling (MAEd)\n3. Master of Arts in Education major in Special Education (MAEd)\n4. Master of Arts in Industrial Education major in Hotel, Restaurant and Management (MAIE)\n5. Master in Business Administration (MBA)\n6. Master in Public Administration (MPA)\n7. Master of Arts in Teaching major in Science (MAT)\n8. Master of Arts in Teaching major in Mathematics (MAT)\n9. Master of Arts in Teaching major in Electronics Technology (MAT)\n10. Master of Arts in Teaching major in Electrical Technology (MAT)\n11. Master of Arts in Industrial Psychology (MAIP)\n12. Master of Science in Mathematics (MSM)\n\nSa EARIST Cavite Campus naman ino-offer ang 3 sa mga ito: Ed.D.-EM, MAEd major in Administration and Supervision, at MBA.",
     "relatedRoutes": [
       {
         "label": "View All Programs",
@@ -455,9 +465,10 @@
     "title": "Faculty Teaching and Thesis Advising Requirements",
     "roles": [
       "public",
+      "applicant",
+      "student",
       "faculty",
-      "admin",
-      "student"
+      "admin"
     ],
     "keywords": [
       "faculty requirements",
@@ -491,6 +502,8 @@
     "roles": [
       "public",
       "applicant",
+      "student",
+      "faculty",
       "admin"
     ],
     "keywords": [
@@ -537,6 +550,8 @@
     "roles": [
       "public",
       "applicant",
+      "student",
+      "faculty",
       "admin"
     ],
     "keywords": [
@@ -572,6 +587,8 @@
     "roles": [
       "public",
       "applicant",
+      "student",
+      "faculty",
       "admin"
     ],
     "keywords": [
@@ -608,6 +625,8 @@
     "roles": [
       "public",
       "applicant",
+      "student",
+      "faculty",
       "admin"
     ],
     "keywords": [
@@ -690,6 +709,7 @@
       "public",
       "applicant",
       "student",
+      "faculty",
       "admin"
     ],
     "keywords": [
@@ -731,6 +751,7 @@
       "public",
       "applicant",
       "student",
+      "faculty",
       "admin"
     ],
     "keywords": [
@@ -778,7 +799,6 @@
     "roles": [
       "applicant",
       "student",
-      "faculty",
       "admin"
     ],
     "keywords": [
@@ -825,6 +845,7 @@
     "section": "Manual Sec. 7.4 — Academic Load",
     "title": "Maximum Units Allowed per Semester (9, 12, or 15 Units)",
     "roles": [
+      "public",
       "applicant",
       "student",
       "faculty",
@@ -864,8 +885,10 @@
     "section": "Manual Sec. 7.5 — Transfer of Credits",
     "title": "Crediting Transfer Units (Maximum 6 Units Within 5 Years)",
     "roles": [
+      "public",
       "applicant",
       "student",
+      "faculty",
       "admin"
     ],
     "keywords": [
@@ -901,6 +924,7 @@
       "public",
       "applicant",
       "student",
+      "faculty",
       "admin"
     ],
     "keywords": [
@@ -930,6 +954,8 @@
     "section": "Manual Sec. 7.7 — Class Attendance",
     "title": "20% Unexcused Absence Drop Rule & Excused Absence Duties",
     "roles": [
+      "public",
+      "applicant",
       "student",
       "faculty",
       "admin"
@@ -963,6 +989,8 @@
     "section": "Manual Sec. 7.8 — Dropping of Courses",
     "title": "Deadline and Procedure for Dropping Subjects",
     "roles": [
+      "public",
+      "applicant",
       "student",
       "faculty",
       "admin"
@@ -996,6 +1024,8 @@
     "section": "Manual Sec. 7.9 — Retention Standards",
     "title": "Minimum Maintaining GWA for Retention (2.00 Master's / 1.75 Doctoral)",
     "roles": [
+      "public",
+      "applicant",
       "student",
       "faculty",
       "admin"
@@ -1029,6 +1059,8 @@
     "section": "Manual Sec. 7.10 — Residency Requirements",
     "title": "2-Semester Academic Residence & Thesis/Dissertation 1 & 2 Enrollment",
     "roles": [
+      "public",
+      "applicant",
       "student",
       "faculty",
       "admin"
@@ -1062,8 +1094,9 @@
     "section": "Manual Sec. 7.11 — Length of Study (Maximum Residence Rule)",
     "title": "Maximum Residence Rule: 4 Years (Master's) and 6 Years (Doctoral)",
     "roles": [
-      "student",
+      "public",
       "applicant",
+      "student",
       "faculty",
       "admin"
     ],
@@ -1097,8 +1130,10 @@
     "section": "Manual Sec. 7.12 — Class Audit",
     "title": "Auditing Graduate Courses (No Grade / No Credit)",
     "roles": [
-      "student",
+      "public",
       "applicant",
+      "student",
+      "faculty",
       "admin"
     ],
     "keywords": [
@@ -1126,7 +1161,10 @@
     "section": "Manual Sec. 7.13 — Leave of Absence (LOA)",
     "title": "Filing a Leave of Absence (Max 1 Year, Excluded from MRR)",
     "roles": [
+      "public",
+      "applicant",
       "student",
+      "faculty",
       "admin"
     ],
     "keywords": [
@@ -1157,8 +1195,10 @@
     "section": "Manual Sec. 7.14 & System Policy — Change of Program / Shifting",
     "title": "Shifting Graduate Programs and Post-Title Proposal Restriction",
     "roles": [
-      "student",
+      "public",
       "applicant",
+      "student",
+      "faculty",
       "admin"
     ],
     "keywords": [
@@ -1195,6 +1235,8 @@
     "section": "Manual Sec. 7.15 & 12.1.3–12.1.5 — Written Comprehensive Examination",
     "title": "Comprehensive Exam Schedule, 75% Passing Score & 3-Attempt Limit",
     "roles": [
+      "public",
+      "applicant",
       "student",
       "faculty",
       "admin"
@@ -1237,6 +1279,8 @@
     "section": "Manual Sec. 7.16.1 — Graduate Grading System",
     "title": "Master's and Doctoral Numerical & Percentage Grading Scale",
     "roles": [
+      "public",
+      "applicant",
       "student",
       "faculty",
       "admin"
@@ -1276,6 +1320,8 @@
     "section": "Manual Sec. 7.16.2–7.16.3 — Incomplete (INC) Grade & Removal",
     "title": "Rules for Receiving and Removing an Incomplete (INC) Grade",
     "roles": [
+      "public",
+      "applicant",
       "student",
       "faculty",
       "admin"
@@ -1309,6 +1355,8 @@
     "section": "Manual Sec. 7.17 — Application & Completion Timeline for Defense",
     "title": "Title Defense Eligibility and Thesis/Dissertation Defense Timeframes",
     "roles": [
+      "public",
+      "applicant",
       "student",
       "faculty",
       "admin"
@@ -1378,8 +1426,8 @@
       "Which chapters are required for Proposal Defense vs. Final Defense?",
       "Ano ang laman ng manuscript sa Title, Proposal, at Final Defense?"
     ],
-    "answerEn": "EARIST Thesis/Dissertation Process (Sec. 7.17–7.18): After passing the Written Comprehensive Exam, complete the 5-step Thesis Journey in the Thesis Journey Hub:\n1) Title Defense: Present three (3) proposed titles for panel evaluation.\n2) Adviser Request: Select an eligible doctoral-degree adviser (1:5 cap) via digital e-signature.\n3) Proposal Defense: Submit adviser-endorsed manuscript (title page, TOC, Chapters 1–3, references, appendix, CV) at least 7 days before defense.\n4) STRIKE Plagiarism Check: Pass similarity screening (<20%) for clearance.\n5) Final Defense: Submit full manuscript (certification/approval/acceptance pages, abstract, ack, dedication, TOC, Chapters 1–5, references, appendix, CV), pass oral defense, then submit archival copy on the Repository Submission page and fulfill required journal publication.",
-    "answerTl": "Proseso ng Thesis / Dissertation (Sec. 7.17–7.18):\nPagkatapos maipasa ang Comprehensive Exam, dadaan ka sa 5-Step Thesis Journey sa Student Portal (Thesis Journey Hub):\n1) Title Defense: Magpre-present ng 3 proposed titles sa panel.\n2) Adviser Request: Pipili ng Thesis/Dissertation Adviser (may doctoral degree, max 1:5 ratio).\n3) Proposal Defense: Ipasa ang Chapters 1–3 (kasama title page, TOC, references, appendix, at CV) nang hindi bababa sa 7 days bago ang defense.\n4) STRIKE Plagiarism Check: Kailangang <20% similarity index para makakuha ng clearance.\n5) Final Defense: Ipasa ang buong Chapters 1–5 (with abstract, approval sheets, references, CV), tapusin ang oral defense, mag-upload sa Repository (Repository Submission page), at tuparin ang journal publication requirement.",
+    "answerEn": "EARIST Thesis and Dissertation Process:\nAfter completing prescribed coursework and passing the Written Comprehensive Examination, candidates go through the following academic stages:\n1. Title Defense: Present three (3) proposed research titles for panel evaluation.\n2. Thesis/Dissertation Adviser Selection: Select an eligible doctoral-degree adviser from the panel of examiners (capped at 5 students per faculty adviser per semester).\n3. Proposal Defense: Submit the adviser-endorsed manuscript (title page, table of contents, Chapters 1–3, references, appendix, and curriculum vitae) at least 7 days before the scheduled defense.\n4. Plagiarism and Ethics Clearance: Complete required language editing, statistics consultation if needed, and plagiarism/ethics screening before proceeding to Final Defense.\n5. Final Defense and Graduation Requirements: Submit the complete manuscript (title page, certification/approval/acceptance pages, abstract, acknowledgment, dedication, table of contents, Chapters 1–5, references, appendix, and curriculum vitae), pass the oral defense, submit signed final copies, and fulfill the mandatory journal publication requirement.",
+    "answerTl": "Proseso ng Thesis at Dissertation sa EARIST Graduate School:\nPagkatapos makumpleto ang coursework at pumasa sa Written Comprehensive Examination, dumaraan ang kandidato sa mga sumusunod na hakbang:\n1. Title Defense: Magpre-present ng tatlong (3) proposed titles para suriin ng panel.\n2. Pagpili ng Thesis/Dissertation Adviser: Pipili ng qualified adviser na may doctoral degree mula sa panel (maximum na 5 estudyante bawat adviser kada semester).\n3. Proposal Defense: Isusumite ang manuscript na may Chapters 1–3 (kasama ang title page, table of contents, references, appendix, at curriculum vitae) nang hindi bababa sa 7 araw bago ang defense.\n4. Plagiarism at Ethics Clearance: Dadaan sa language editing, statistical review kung kinakailangan, at plagiarism/ethics clearance bago ang Final Defense.\n5. Final Defense at Graduation: Isusumite ang buong manuscript na may Chapters 1–5 (kasama ang abstract, approval sheets, references, at curriculum vitae), ipapasa ang oral defense, magsusumite ng signed final copies, at tutuparin ang publication requirement.",
     "relatedRoutes": [
       {
         "label": "Thesis Hub",
@@ -1405,6 +1453,8 @@
     "section": "Manual Sec. 7.19 — Rules Governing the Oral Defense",
     "title": "Oral Defense Conduct, Final Rating, and Re-Defense Fee Rule",
     "roles": [
+      "public",
+      "applicant",
       "student",
       "faculty",
       "admin"
@@ -1441,6 +1491,8 @@
     "section": "Manual Sec. 7.20 — Thesis/Dissertation Adviser",
     "title": "Adviser Selection, Qualifications & 1:5 Student-to-Adviser Ratio",
     "roles": [
+      "public",
+      "applicant",
       "student",
       "faculty",
       "admin"
@@ -1479,6 +1531,8 @@
     "section": "Manual Sec. 7.21 — Manuscript Submission & Defense Schedules",
     "title": "7-Day Manuscript Deadline & Academic Council Cutoff Dates",
     "roles": [
+      "public",
+      "applicant",
       "student",
       "faculty",
       "admin"
@@ -1517,6 +1571,8 @@
     "section": "Manual Sec. 7.22–7.24 — Statistical, Language, Ethics, Format & Plan of Coursework",
     "title": "Statistics Consultancy, Language Editor, Ethics Review & Plan of Coursework",
     "roles": [
+      "public",
+      "applicant",
       "student",
       "faculty",
       "admin"
@@ -1557,6 +1613,8 @@
     "section": "Manual Sec. 7.25 — Graduation Requirements & Student Output",
     "title": "Graduation Requirements & Mandatory Journal Publication",
     "roles": [
+      "public",
+      "applicant",
       "student",
       "faculty",
       "admin"
@@ -1598,8 +1656,9 @@
     "section": "Manual Sec. 7.26 — Academic Costume",
     "title": "Academic Gown / Toga Colors per Graduate Program",
     "roles": [
-      "student",
       "public",
+      "applicant",
+      "student",
       "faculty",
       "admin"
     ],
@@ -1633,7 +1692,10 @@
     "section": "Manual Sec. 7.27 — Academic Credentials",
     "title": "Requirements for Releasing Diplomas and Official Transcripts",
     "roles": [
+      "public",
+      "applicant",
       "student",
+      "faculty",
       "admin"
     ],
     "keywords": [
@@ -1668,6 +1730,7 @@
       "public",
       "applicant",
       "student",
+      "faculty",
       "admin"
     ],
     "keywords": [
@@ -1754,6 +1817,8 @@
     "section": "Manual Sec. 11.0 — Graduate School Journal Publications",
     "title": "Journal Submission Guidelines (APA 7th, 5,000–8,000 Words, Peer Review)",
     "roles": [
+      "public",
+      "applicant",
       "student",
       "faculty",
       "admin"
@@ -1799,6 +1864,7 @@
     "title": "Dean Supervision, Official Channels & GS Records Section",
     "roles": [
       "public",
+      "applicant",
       "student",
       "faculty",
       "admin"
@@ -1837,6 +1903,8 @@
     "section": "Manual Sec. 15 — Research Ethics & AI Use Policy",
     "title": "Policy on Ethical Use of AI (ChatGPT, Grammarly) in Graduate Research",
     "roles": [
+      "public",
+      "applicant",
       "student",
       "faculty",
       "admin"
@@ -1951,6 +2019,8 @@
     "section": "Manual Sec. 19.0 — Research & Creative Work Agenda, Incentives & Honoraria",
     "title": "Creative Work Incentives (₱5,000–₱30,000), Evaluator Honoraria & IP/MOA Rules",
     "roles": [
+      "public",
+      "applicant",
       "student",
       "faculty",
       "admin"
@@ -2039,7 +2109,8 @@
     "title": "How to Apply for Admission & Register Using Your Pinnacle Applicant ID",
     "roles": [
       "public",
-      "applicant"
+      "applicant",
+      "admin"
     ],
     "keywords": [
       "how to apply",
@@ -2112,8 +2183,8 @@
       "How do I reset a forgotten password?",
       "Paano mag-log in at ano ang mga portal sa sistema?"
     ],
-    "answerEn": "Open the Portal Sign In page to access your account. Applicants sign in using their Applicant ID, Graduate Students sign in using their confirmed Student Number, and Faculty/Panelists and Administrators sign in using their institutional email address. If you forget your password, click Forgot your password on the Sign In page to receive a 30-minute single-use password reset link via email (or contact the Graduate School Office for assistance).",
-    "answerTl": "Pumunta sa Portal Sign In page para mag-log in. Gumagamit ang Applicants ng Applicant ID, ang Graduate Students ng Student Number, at ang Faculty/Panelists at Administrators ng institutional email address. Kung nakalimutan ang password, gamitin ang Forgot your password sa Sign In page para makatanggap ng 30-minute reset link sa iyong email.",
+    "answerEn": "Open the Portal Sign In page to access your authorized account. Applicants sign in with their Applicant ID, Graduate Students sign in with their Student Number, and Faculty and Administrators sign in with their institutional email address. If you forget your password, select Forgot your password on the Sign In page to receive a 30-minute single-use reset link by email, or contact the Graduate School Office at gs@earist.edu.ph or (02) 8534-8267.",
+    "answerTl": "Pumunta sa Portal Sign In page para mag-sign in sa iyong authorized account. Gumagamit ang Applicants ng Applicant ID, ang Graduate Students ng Student Number, at ang Faculty at Administrators ng institutional email address. Kung nakalimutan ang password, gamitin ang Forgot your password sa Sign In page para makatanggap ng 30-minute reset link sa email, o makipag-ugnayan sa Graduate School Office sa gs@earist.edu.ph o (02) 8534-8267.",
     "relatedRoutes": [
       {
         "label": "Sign In (/login)",
@@ -2128,7 +2199,7 @@
     "title": "Tracking Application Status & Updating Applicant Profile",
     "roles": [
       "applicant",
-      "public"
+      "admin"
     ],
     "keywords": [
       "applicant dashboard",
@@ -2208,7 +2279,6 @@
     "title": "Booking an Entrance Exam Slot (Table & Calendar Views)",
     "roles": [
       "applicant",
-      "public",
       "admin"
     ],
     "keywords": [
@@ -2245,7 +2315,7 @@
     "title": "Taking the Entrance Exam (72 MCQs, Graduate Essay, Timer & Auto-Save)",
     "roles": [
       "applicant",
-      "public"
+      "admin"
     ],
     "keywords": [
       "entrance exam",
@@ -2284,7 +2354,6 @@
     "title": "Viewing Exam Score Breakdown (MCQ + Essay + Passing Threshold)",
     "roles": [
       "applicant",
-      "faculty",
       "admin"
     ],
     "keywords": [
@@ -2321,7 +2390,6 @@
     "title": "Uploading Your Certificate of Registration (COR) & Role Promotion",
     "roles": [
       "applicant",
-      "student",
       "admin"
     ],
     "keywords": [
@@ -2361,7 +2429,8 @@
     "section": "System Guide — Student Dashboard, Curriculum, Journey & Announcements",
     "title": "Navigating Student Dashboard, Profile, Curriculum, Journey & Memos",
     "roles": [
-      "student"
+      "student",
+      "admin"
     ],
     "keywords": [
       "student dashboard",
@@ -2401,9 +2470,8 @@
     "section": "System Guide — Student Thesis Journey Hub",
     "title": "Overview of the 5-Step Thesis Journey in the Student Portal",
     "roles": [
-      "public",
       "student",
-      "faculty"
+      "admin"
     ],
     "keywords": [
       "thesis hub",
@@ -2445,7 +2513,7 @@
     "title": "Applying for Title Defense & Uploading Required Documents",
     "roles": [
       "student",
-      "faculty"
+      "admin"
     ],
     "keywords": [
       "apply title defense",
@@ -2476,7 +2544,7 @@
     "title": "Browsing Faculty Advisers, E-Signing & Tracking GS-020 Approval",
     "roles": [
       "student",
-      "faculty"
+      "admin"
     ],
     "keywords": [
       "adviser request",
@@ -2508,7 +2576,7 @@
     "title": "2-Step Defense Workflow (Adviser Endorsement -> Application) & Rapporteur Report",
     "roles": [
       "student",
-      "faculty"
+      "admin"
     ],
     "keywords": [
       "proposal defense",
@@ -2545,7 +2613,6 @@
     "title": "STRIKE Plagiarism Check (<20% Similarity Threshold) & Clearance",
     "roles": [
       "student",
-      "faculty",
       "admin"
     ],
     "keywords": [
@@ -2602,8 +2669,8 @@
       "Where do graduating students submit their final thesis for archival?",
       "Paano maghanap ng published theses o mag-upload ng final thesis sa Repository?"
     ],
-    "answerEn": "Visitors can browse published thesis and dissertation titles, authors, and abstracts on the Public Research Repository without signing in. Signed-in Students and Faculty can view full institutional repository records in their portals. After passing Final Defense and completing revisions, graduating students archive their final approved manuscript on the Repository Submission page.",
-    "answerTl": "Maaaring mag-browse ng published thesis titles, authors, at abstracts nang walang login sa Public Research Repository. Ang mga naka-sign in na Student at Faculty ay makakatingin ng repository records sa kani-kanilang portal, at sa Repository Submission page ipinapasa ang final approved archival copy pagkatapos ng Final Defense.",
+    "answerEn": "Visitors can browse published graduate thesis and dissertation titles, authors, and abstracts on the Public Research Repository without signing in. Signed-in Graduate Students and Faculty can access full institutional repository records inside their respective portals, and graduating students submit their final approved archival copy after passing Final Defense.",
+    "answerTl": "Maaaring mag-browse ng published graduate thesis at dissertation titles, authors, at abstracts nang walang login sa Public Research Repository. Ang mga naka-sign in na Graduate Students at Faculty ay may access sa repository records sa kani-kanilang portal, at ang mga graduating student ay nagsusumite ng final approved archival copy pagkatapos pumasa sa Final Defense.",
     "relatedRoutes": [
       {
         "label": "Public Repository",
@@ -2706,10 +2773,7 @@
     "section": "System Guide — Administrator Responsibilities",
     "title": "Administrator Verification, Scheduling & Governance Functions",
     "roles": [
-      "admin",
-      "faculty",
-      "student",
-      "applicant"
+      "admin"
     ],
     "keywords": [
       "admin",

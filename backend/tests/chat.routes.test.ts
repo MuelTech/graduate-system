@@ -172,7 +172,7 @@ describe("POST /api/chat", () => {
     expect(sentPayload.model).toBe("deepseek-flash");
     expect(sentPayload.temperature).toBe(0.2);
     expect(sentPayload.max_tokens).toBe(1200);
-    expect(sentPayload.messages[0]?.content).toContain("programs-all-overview" in sentPayload ? "" : "Complete List of Graduate Programs Offered by EARIST");
+    expect(sentPayload.messages[0]?.content).toContain("All 16 Graduate Programs Offered by EARIST");
     expect(sentPayload.messages[1]?.content).toContain("Recent conversation context:");
 
     expect(json.mode).toBe("deepseek-rag");
@@ -241,8 +241,92 @@ describe("POST /api/chat", () => {
     expect(status).toBe(200);
     expect(fetchMock).not.toHaveBeenCalled();
     expect(json.mode).toBe("local-rag");
-    expect(String(json.reply)).toContain("Ed.D-EM");
+    expect(String(json.reply)).toContain("16 graduate programs");
+    expect(String(json.reply)).toContain("Ed.D.-EM");
     expect(String(json.reply)).toContain("MSM");
+  });
+
+  it("blocks cross-role portal navigation queries on public landing page before calling DeepSeek", async () => {
+    const fetchMock = vi.fn();
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+    const adminNav = await postChat({
+      message: "What navigation for admin portal?",
+      pathname: "/",
+    });
+    expect(adminNav.status).toBe(200);
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(adminNav.json.mode).toBe("local-rag");
+    expect(adminNav.json.isOutOfScope).toBe(true);
+    expect(String(adminNav.json.reply)).toContain("restricted to signed-in authorized accounts");
+
+    const facultyFollowUp = await postChat({
+      message: "How about faculty?",
+      pathname: "/",
+      history: [
+        { role: "user", content: "What navigation for admin portal?" },
+        { role: "bot", content: String(adminNav.json.reply) },
+      ],
+    });
+    expect(facultyFollowUp.status).toBe(200);
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(facultyFollowUp.json.mode).toBe("local-rag");
+    expect(facultyFollowUp.json.isOutOfScope).toBe(true);
+  });
+
+  it("allows authenticated ADMIN to query Admin portal navigation", async () => {
+    const adminToken = jwt.sign(
+      { userId: "admin-user-1", role: "ADMIN", tokenVersion: 1 },
+      process.env.JWT_SECRET!,
+    );
+
+    mockPrisma.user.findUnique
+      .mockResolvedValueOnce({
+        id: "admin-user-1",
+        isActive: true,
+        tokenVersion: 1,
+      })
+      .mockResolvedValueOnce({
+        id: "admin-user-1",
+        title: null,
+        firstName: "Registrar",
+        lastName: "Admin",
+        suffix: null,
+        role: "ADMIN",
+        adminAccessLevel: "FULL",
+      });
+    mockPrisma.corUpload.count.mockResolvedValueOnce(2);
+    mockPrisma.thesisRecord.count
+      .mockResolvedValueOnce(1)
+      .mockResolvedValueOnce(0);
+    mockPrisma.adviserRequest.count.mockResolvedValueOnce(1);
+
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        choices: [
+          {
+            message: {
+              content:
+                "In the Administrator Portal, you can use System Settings and the Email Manager.",
+            },
+          },
+        ],
+      }),
+    });
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+    const res = await postChat(
+      {
+        message: "What navigation for admin portal?",
+        pathname: "/admin/dashboard",
+      },
+      { Authorization: `Bearer ${adminToken}` },
+    );
+
+    expect(res.status).toBe(200);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(res.json.mode).toBe("deepseek-rag");
   });
 
   it("injects server-side Student live context from Prisma for active tokenVersion: 1 session", async () => {

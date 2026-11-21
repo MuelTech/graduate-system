@@ -49,6 +49,7 @@ export interface RetrievalResult {
   isGreeting: boolean;
   isConversational: boolean;
   isIdentityQuery: boolean;
+  isRoleRestricted: boolean;
   isOutOfScope: boolean;
   isExplicitOutOfScope: boolean;
   conversationalReply?: string;
@@ -721,7 +722,7 @@ const SYNONYM_EXPANSIONS: Array<{ pattern: RegExp; tokens: string[] }> = [
   },
   {
     pattern:
-      /\b(programs?\s+offered|offered\s+programs?|graduate\s+programs?|curricular\s+programs?|courses?\s+offered|what\s+programs?|anong\s+(?:mga\s+)?(?:graduate\s+)?programs?|mga\s+kurso)\b/i,
+      /\b(programs?\s+offered|offered\s+programs?|graduate\s+programs?|curricular\s+programs?|courses?\s+offered|what\s+programs?|total\s+(?:number\s+)?(?:of\s+)?programs?|how\s+many\s+(?:graduate\s+)?programs?|16\s+programs?|anong\s+(?:mga\s+)?(?:graduate\s+)?programs?|ilang\s+(?:graduate\s+)?programs?|mga\s+kurso)\b/i,
     tokens: [
       "graduate",
       "programs",
@@ -731,6 +732,8 @@ const SYNONYM_EXPANSIONS: Array<{ pattern: RegExp; tokens: string[] }> = [
       "masters",
       "all",
       "overview",
+      "16",
+      "total",
     ],
   },
   {
@@ -1062,15 +1065,137 @@ function detectConversationalIntent(
   return null;
 }
 
+const PORTAL_INTERNALS_INTENT_PATTERN =
+  /\b(portal|navigation|navigate|sidebar|menus?|dashboards?|workspaces?|tabs?|modules?|tools?|pages?|email\s+manager|system\s+settings|delivery\s+logs|automated\s+triggers|cor\s+verification|essay\s+evaluations?|grade\s+(?:applicant\s+)?essays?|rubric\s+scor(?:e|ing)|annotate\s+pdf|e-?signatures?|responsibilities|manage\s+(?:users?|slots?|curricula|emails?|officials?)|what(?:'s|\s+is)\s+inside|paano\s+gamitin|saan\s+(?:makikita|mag-?grade|pipirma|mina-?manage))\b/i;
+
+const SHORT_FOLLOWUP_ROLE_PATTERN =
+  /^(?:how\s+about|what\s+about|and\s+(?:for\s+)?|for\s+|eh\s+(?:sa|yung)|paano\s+naman(?:\s+sa)?)\s+(?:the\s+)?(admin(?:istrator)?|faculty|panelists?|students?|applicants?)(?:\s+portal|\s+navigation|\s+dashboard|\s+pages?)?[?!.,\s]*$/i;
+
+const TARGET_ROLE_PATTERNS: Array<{ role: Exclude<KnowledgeRole, "public">; pattern: RegExp }> = [
+  {
+    role: "admin",
+    pattern: /\b(admin(?:istrator)?s?|email\s+manager|system\s+settings|delivery\s+logs|institutional\s+officials)\b/i,
+  },
+  {
+    role: "faculty",
+    pattern: /\b(faculty|panelists?|defense\s+workspace|essay\s+evaluations?|my\s+advisees)\b/i,
+  },
+  {
+    role: "student",
+    pattern: /\b(student\s+portal|student\s+dashboard|thesis\s+journey\s+hub)\b/i,
+  },
+  {
+    role: "applicant",
+    pattern: /\b(applicant\s+portal|applicant\s+dashboard)\b/i,
+  },
+];
+
+function isTargetRoleDisallowed(
+  viewerRole: KnowledgeRole,
+  targetRole: Exclude<KnowledgeRole, "public">,
+): boolean {
+  if (viewerRole === "admin") return false;
+  if (viewerRole === "public") return true;
+  return viewerRole !== targetRole;
+}
+
 /**
- * Retrieves the top-K relevant knowledge chunks using Hybrid Vector + Lexical scoring
- * and enforces the strict Scope Boundary Gate for out-of-scope queries.
+ * Detects queries attempting to access internal portal navigation, tools, or workflows
+ * belonging to a role the current user is not authorized to view.
+ */
+export function detectRoleRestrictedPortalQuery(
+  query: string,
+  activeRole?: string,
+  recentUserMessages: string[] = [],
+): boolean {
+  const viewerRole = normalizeKnowledgeRole(activeRole) ?? "public";
+  if (viewerRole === "admin") return false;
+
+  const trimmed = query.trim();
+  if (!trimmed) return false;
+
+  // 1. Short follow-up referencing another role (e.g., "How about faculty?", "Eh sa admin?")
+  //    when prior turns discussed portal navigation, dashboards, or internal tools.
+  const followUpMatch = trimmed.match(SHORT_FOLLOWUP_ROLE_PATTERN);
+  if (followUpMatch) {
+    const rawTarget = followUpMatch[1]?.toLowerCase() ?? "";
+    const targetRole: Exclude<KnowledgeRole, "public"> | null =
+      rawTarget.startsWith("admin")
+        ? "admin"
+        : rawTarget.startsWith("faculty") || rawTarget.startsWith("panelist")
+          ? "faculty"
+          : rawTarget.startsWith("student")
+            ? "student"
+            : rawTarget.startsWith("applicant")
+              ? "applicant"
+              : null;
+
+    if (targetRole && isTargetRoleDisallowed(viewerRole, targetRole)) {
+      const priorDiscussedPortal = recentUserMessages.some(
+        (msg) =>
+          PORTAL_INTERNALS_INTENT_PATTERN.test(msg) ||
+          /\b(admin|faculty|panelist|student|applicant)\s+(?:portal|navigation|dashboard|menu|sidebar)\b/i.test(
+            msg,
+          ),
+      );
+      if (priorDiscussedPortal) {
+        return true;
+      }
+    }
+  }
+
+  // 2. Direct internal portal / navigation / tool query targeting a disallowed role
+  if (!PORTAL_INTERNALS_INTENT_PATTERN.test(trimmed)) {
+    return false;
+  }
+
+  // Allow generic sign-in / login questions ("How do I log in to the Applicant, Student, or Faculty portal?")
+  if (/\b(log\s*in|sign\s*in|forgot\s+(?:my\s+)?password|reset\s+(?:my\s+)?password)\b/i.test(trimmed)) {
+    return false;
+  }
+
+  // Allow general academic/manual policy queries even if they mention "faculty" or "student"
+  if (
+    /\b(1:5|ratio|doctoral\s+units|qualification|cmo|scholarship|exemption|osh|drills|safety|creative\s+work|incentive|honoraria|journal|publication)\b/i.test(
+      trimmed,
+    )
+  ) {
+    return false;
+  }
+
+  for (const { role: targetRole, pattern } of TARGET_ROLE_PATTERNS) {
+    if (pattern.test(trimmed) && isTargetRoleDisallowed(viewerRole, targetRole)) {
+      return true;
+    }
+  }
+
+  // Explicitly block queries like "student navigation" / "navigation for students" / "navigation for applicants"
+  if (
+    /\b(navigation|navigate|sidebar|menu|dashboard|pages?|tabs?|modules?)\b/i.test(
+      trimmed,
+    )
+  ) {
+    if (/\bstudents?\b/i.test(trimmed) && isTargetRoleDisallowed(viewerRole, "student")) {
+      return true;
+    }
+    if (/\bapplicants?\b/i.test(trimmed) && isTargetRoleDisallowed(viewerRole, "applicant")) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+/**
+ * Retrieves the top-K relevant knowledge chunks using Hybrid Vector + Lexical scoring,
+ * strictly filtered to the verified user role (RBAC) and enforcing the Scope Boundary Gate.
  */
 export function retrieveKnowledgeChunks(
   query: string,
   activeRole?: string,
   topK = 4,
   userContext?: UserLiveStateContext,
+  recentUserMessages: string[] = [],
 ): RetrievalResult {
   const trimmed = query.trim();
   const language = detectQueryLanguage(trimmed);
@@ -1082,6 +1207,7 @@ export function retrieveKnowledgeChunks(
       isGreeting: true,
       isConversational: false,
       isIdentityQuery: false,
+      isRoleRestricted: false,
       isOutOfScope: false,
       isExplicitOutOfScope: false,
       topScore: 1,
@@ -1096,9 +1222,25 @@ export function retrieveKnowledgeChunks(
       isGreeting: false,
       isConversational: false,
       isIdentityQuery: true,
+      isRoleRestricted: false,
       isOutOfScope: false,
       isExplicitOutOfScope: false,
       topScore: 1,
+      hits: [],
+    };
+  }
+
+  if (detectRoleRestrictedPortalQuery(trimmed, activeRole, recentUserMessages)) {
+    return {
+      query: trimmed,
+      language,
+      isGreeting: false,
+      isConversational: false,
+      isIdentityQuery: false,
+      isRoleRestricted: true,
+      isOutOfScope: true,
+      isExplicitOutOfScope: false,
+      topScore: 0,
       hits: [],
     };
   }
@@ -1115,6 +1257,7 @@ export function retrieveKnowledgeChunks(
       isGreeting: false,
       isConversational: true,
       isIdentityQuery: false,
+      isRoleRestricted: false,
       isOutOfScope: false,
       isExplicitOutOfScope: false,
       conversationalReply,
@@ -1135,6 +1278,7 @@ export function retrieveKnowledgeChunks(
       isGreeting: false,
       isConversational: false,
       isIdentityQuery: false,
+      isRoleRestricted: false,
       isOutOfScope: true,
       isExplicitOutOfScope: true,
       topScore: 0,
@@ -1152,6 +1296,7 @@ export function retrieveKnowledgeChunks(
       isGreeting: false,
       isConversational: false,
       isIdentityQuery: false,
+      isRoleRestricted: false,
       isOutOfScope: true,
       isExplicitOutOfScope: false,
       topScore: 0,
@@ -1175,9 +1320,14 @@ export function retrieveKnowledgeChunks(
   const qNorm = Math.sqrt(qSqSum) || 1;
 
   const normalizedQuery = normalizeText(trimmed);
-  const roleKey = normalizeKnowledgeRole(activeRole);
+  const roleKey = normalizeKnowledgeRole(activeRole) ?? "public";
 
-  const scored: RetrievalHit[] = indexedChunks.map((entry) => {
+  // Hard RBAC filter: a role can ONLY retrieve chunks explicitly authorized for that role
+  const eligibleChunks = indexedChunks.filter((entry) =>
+    entry.chunk.roles.includes(roleKey),
+  );
+
+  const scored: RetrievalHit[] = eligibleChunks.map((entry) => {
     // 1. Cosine Similarity on TF-IDF vector space
     let dot = 0;
     for (const [term, qWeight] of qVec.entries()) {
@@ -1225,13 +1375,11 @@ export function retrieveKnowledgeChunks(
     }
     const inquiryScore = Math.min(1, bestInquiryOverlap);
 
-    // 4. Gentle role-context boost (only when content already has a baseline match)
+    // 4. Role-specific preference boost for portal chunks belonging to this exact role
     const baseScore =
       0.48 * vectorScore + 0.34 * lexicalScore + 0.18 * inquiryScore;
-    const roleBoost =
-      roleKey && entry.chunk.roles.includes(roleKey) && baseScore > 0.12
-        ? 0.03
-        : 0;
+    const isRoleSpecific = entry.chunk.roles.length < 5;
+    const roleBoost = isRoleSpecific && baseScore > 0.12 ? 0.03 : 0;
 
     return {
       chunk: entry.chunk,
@@ -1253,6 +1401,7 @@ export function retrieveKnowledgeChunks(
     isGreeting: false,
     isConversational: false,
     isIdentityQuery: false,
+    isRoleRestricted: false,
     isOutOfScope,
     isExplicitOutOfScope: false,
     topScore,
@@ -1362,6 +1511,32 @@ export function getGreetingReply(
   return `Hello! I'm the EARIST Graduate School Assistant${roleLabel ? ` (${roleLabel} view)` : ""}. You can ask me in English, Tagalog, or Taglish about admissions, academic policies, thesis procedures, or navigating the portal.`;
 }
 
+export function getRoleRestrictedReply(
+  language: QueryLanguage,
+  activeRole?: string,
+): string {
+  const roleKey = normalizeKnowledgeRole(activeRole) ?? "public";
+  const isTl = language === "tl" || language === "taglish";
+
+  if (roleKey === "public") {
+    return isTl
+      ? `Pangkalahatang impormasyon tungkol sa EARIST Graduate School at public admissions guide lang ang maibibigay ko dito. Ang internal portal navigation at tools para sa Applicants, Students, Faculty, at Administrators ay para lamang sa mga naka-sign in na authorized account. Kung kailangan mo ng tulong sa iyong account, makipag-ugnayan sa ${CANONICAL_GS_EMAIL} o ${CANONICAL_GS_PHONE}.`
+      : `I can only provide general EARIST Graduate School information and public admissions guidance here. Internal portal navigation and tools for Applicants, Students, Faculty, and Administrators are restricted to signed-in authorized accounts. If you need assistance with portal access, please contact the Graduate School Office at ${CANONICAL_GS_EMAIL} or ${CANONICAL_GS_PHONE}.`;
+  }
+
+  const roleNameMap: Record<Exclude<KnowledgeRole, "public">, string> = {
+    applicant: "Applicant",
+    student: "Graduate Student",
+    faculty: "Faculty",
+    admin: "Administrator",
+  };
+  const label = roleNameMap[roleKey];
+
+  return isTl
+    ? `Ang maibibigay ko lang na portal navigation at workflow guide ay para sa iyong kasalukuyang ${label} account. Ang internal pages at tools ng ibang portal ay para lamang sa kaukulang authorized users.`
+    : `I can only share portal navigation and workflow guidance for your current ${label} access level. Internal pages and tools for other portals are restricted to authorized accounts.`;
+}
+
 export function getOutOfScopeFallbackReply(language: QueryLanguage): string {
   if (language === "tl" || language === "taglish") {
     return `Paumanhin, pero labas sa impormasyon ng EARIST Graduate School at ng portal na ito ang iyong tanong.\n\nMaaari kang magtanong tungkol sa admissions, programs, academic policies, thesis process, o kung paano gamitin ang portal. Para sa iba pang concerns, makipag-ugnayan sa ${CANONICAL_GS_EMAIL} o ${CANONICAL_GS_PHONE}.`;
@@ -1401,6 +1576,14 @@ export function buildGroundedResponseFallback(
   if (retrieval.isIdentityQuery) {
     return {
       reply: getIdentityReply(retrieval.language, activeRole, userContext),
+      citations: [],
+      relatedRoutes: [],
+    };
+  }
+
+  if (retrieval.isRoleRestricted) {
+    return {
+      reply: getRoleRestrictedReply(retrieval.language, activeRole),
       citations: [],
       relatedRoutes: [],
     };

@@ -16,7 +16,7 @@ describe("chatbot-rag.service", () => {
     expect(stats.categories.length).toBeGreaterThanOrEqual(8);
   });
 
-  it("retrieves programs-all-overview as top-1 for general graduate program queries", () => {
+  it("retrieves programs-all-overview as top-1 with all 16 programs (4 Doctoral + 12 Master's)", () => {
     const retrieval = retrieveKnowledgeChunks(
       "What graduate programs are offered by EARIST?",
       "public",
@@ -25,8 +25,11 @@ describe("chatbot-rag.service", () => {
     expect(retrieval.hits[0]?.chunk.id).toBe("programs-all-overview");
 
     const fallback = buildGroundedResponseFallback(retrieval, "public");
-    expect(fallback.reply).toContain("Ed.D-EM");
-    expect(fallback.reply).toContain("Ph.D-IP");
+    expect(fallback.reply).toContain("16 graduate programs");
+    expect(fallback.reply).toContain("4 Doctoral Programs");
+    expect(fallback.reply).toContain("12 Master's Programs");
+    expect(fallback.reply).toContain("Ed.D.-EM");
+    expect(fallback.reply).toContain("PhD-IP");
     expect(fallback.reply).toContain("DPA");
     expect(fallback.reply).toContain("DBA");
     expect(fallback.reply).toContain("MAEd");
@@ -36,6 +39,68 @@ describe("chatbot-rag.service", () => {
     expect(fallback.reply).toContain("MAT");
     expect(fallback.reply).toContain("MAIP");
     expect(fallback.reply).toContain("MSM");
+
+    // Also verify total count inquiry hits programs-all-overview
+    const totalRes = retrieveKnowledgeChunks(
+      "Yes what is the total of programs they offering",
+      "public",
+    );
+    expect(totalRes.hits[0]?.chunk.id).toBe("programs-all-overview");
+  });
+
+  it("enforces strict RBAC knowledge isolation across public, applicant, student, faculty, and admin", () => {
+    // Public cannot access admin, faculty, student, or applicant internal portals
+    expect(
+      retrieveKnowledgeChunks("What navigation for admin portal?", "public")
+        .isRoleRestricted,
+    ).toBe(true);
+    expect(
+      retrieveKnowledgeChunks(
+        "How about faculty?",
+        "public",
+        4,
+        undefined,
+        ["What navigation for admin portal?"],
+      ).isRoleRestricted,
+    ).toBe(true);
+    expect(
+      retrieveKnowledgeChunks("What pages are inside the student portal?", "public")
+        .isRoleRestricted,
+    ).toBe(true);
+
+    // Applicant cannot access admin, faculty, or student portals
+    expect(
+      retrieveKnowledgeChunks("What is in Admin Email Manager?", "applicant")
+        .isRoleRestricted,
+    ).toBe(true);
+    expect(
+      retrieveKnowledgeChunks("How do faculty use Defense Workspace?", "applicant")
+        .isRoleRestricted,
+    ).toBe(true);
+
+    // Student cannot access admin or faculty portals
+    expect(
+      retrieveKnowledgeChunks("What are admin responsibilities in system settings?", "student")
+        .isRoleRestricted,
+    ).toBe(true);
+    expect(
+      retrieveKnowledgeChunks("Saan mag-grade ng essays ang faculty?", "student")
+        .isRoleRestricted,
+    ).toBe(true);
+
+    // Faculty cannot access admin portal internals
+    expect(
+      retrieveKnowledgeChunks("Paano gamitin ang Admin Email Manager?", "faculty")
+        .isRoleRestricted,
+    ).toBe(true);
+
+    // Admin CAN access admin portal internals
+    const adminRes = retrieveKnowledgeChunks(
+      "What navigation for admin portal?",
+      "admin",
+    );
+    expect(adminRes.isRoleRestricted).toBe(false);
+    expect(adminRes.hits.length).toBeGreaterThan(0);
   });
 
   it("detects English, Tagalog, and Taglish accurately", () => {
